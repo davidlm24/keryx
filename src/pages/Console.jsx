@@ -1263,11 +1263,17 @@ export default function Console() {
     };
     const renderModule = (id, fold) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id, fold }) : null);
 
-    // The service clock in the top bar, and how late the item on air runs.
+    // The service clock in the top bar, and how late the item on air runs, at
+    // the time the bar's own clock gives (TopBar's Clocks ticks, never the
+    // console).
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
-    const late = service ? serviceTiming({ items: playable, times: plannedTimes(service, playable), airIdx: playAirIdx, startedAt: playAirIdx >= 0 ? log[airItemId]?.start : null, now: c.now }).late : 0;
+    const svcTimes = service ? plannedTimes(service, playable) : null;
+    const svcStart = playAirIdx >= 0 ? log[airItemId]?.start : null;
     const showForecast = useShowForecast();
-    const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now, forecast: showForecast, compact: true });
+    const svcAt = (now) => {
+        const late = service ? serviceTiming({ items: playable, times: svcTimes, airIdx: playAirIdx, startedAt: svcStart, now }).late : 0;
+        return serviceClock({ service, seconds: setPlan.seconds, late, now, forecast: showForecast, compact: true });
+    };
 
     // The palette opens centred (owner decision 2026-10-11); the dimmed scrim
     // keeps the console readable behind it.
@@ -1387,7 +1393,7 @@ export default function Console() {
         <ConfirmContext.Provider value={askConfirm}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar inert={winOpen} c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
+            <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
                 onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}

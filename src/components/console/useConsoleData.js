@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
-import { remember, forget, localId } from "@/lib/console/outputs";
+import { remember, forget, localId, sameAnswer } from "@/lib/console/outputs";
 import { bundledBackgrounds } from "@/lib/backgrounds";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { backgroundList, sourceOf } from "@/lib/console/backgroundPrefs";
@@ -181,7 +181,8 @@ export function useOutputs() {
             if (!alive) return;
             const name = (path, fallback) => (path && lookRef.current(path).custom) || fallback;
             const data = d?.data ? { ...d.data, outputs: (d.data.outputs || []).map((o) => ({ ...o, label: name(o.key, o.label) })) } : null;
-            if (data) setLocal(data);
+            // The same answer keeps the old object: no re-render every 5 s.
+            if (data) setLocal((prev) => (sameAnswer(prev, data) ? prev : data));
             const clients = n?.data ? (n.data.clients || []).map((cl) => ({ ...cl, label: name(cl.screen, cl.label) })) : null;
             // A removed output leaves the session memory too: a window closed
             // by removal is no "Fechada" nag, and re-adding starts clean.

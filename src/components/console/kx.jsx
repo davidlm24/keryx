@@ -287,6 +287,8 @@ export function useLiveRegion() {
 // ({ word, title, pos, size: "live" | "next" }) gives the caption its own
 // hierarchy (the live column); `caption` is the plain one-line form.
 // `noCap`: no caption row (the Programa's caption is its panel's header).
+// `now` freezes the screen at that time (a still frame); without one it
+// keeps its own clock (ScreenRenderer).
 export function Monitor({ state, caption, cap, noCap = false, live, now, logoUrl, right, motion = false, className = "", style, dropProps, children }) {
     return (
         <div className={`kx-mon ${state ? `is-${state}` : ""} ${className}`} style={style} {...dropProps}>

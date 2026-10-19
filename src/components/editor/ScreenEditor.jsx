@@ -56,7 +56,7 @@ const seedFor = (path) => {
 // as its actions; ⧉ Destacar from the window, or onDetach) and no footer;
 // the middle column splits into Desenho | Ajustes. Both hosts — the
 // console's window and a detached /Janela — mount it hosted.
-export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
+export default function ScreenEditor({ say, live: liveState, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colTelas = useWinCol("screen.telas", { name: "Telas", def: 190, min: 160, max: 360 });
     const colAjustes = useWinCol("screen.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
@@ -280,7 +280,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
 
     // What the canvas shows: what is on air when something is, else a sample
     // song 42 minutes into a service with a Setlist.
-    const madeAt = useRef(now);
+    const madeAt = useRef(keryx.live.now());
     const sampleDoc = useMemo(() => ({ ...sampleLive(madeAt.current), session: { startedAt: madeAt.current - 42 * 60000 } }), []);
     const liveOn = liveState && mainLayer(liveState) !== "none" ? liveState : null;
     const shown = source === "sample" || !liveOn ? sampleDoc : { ...liveOn, session: liveOn.session || sampleDoc.session };
@@ -312,7 +312,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
 
     const type = selected ? typeOf(selected.type) : null;
     const num = (el, k, v, lo, hi) => { const n = Number(v); if (Number.isFinite(n)) setEl(el.id, { [k]: Math.min(hi, Math.max(lo, n)) }); };
-    const cLike = { say, now, live: liveState };
+    const cLike = { say, live: liveState };
 
     const screensMenu = (
         <div className="col" style={colTelas.style}>
@@ -543,7 +543,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                         <div className="le-stage">
                             <div ref={screenRef} className="le-screen" onPointerDown={() => setSel(null)}>
                                 <div className={`le-fill ${renderer ? "kp-out" : ""}`} style={renderer ? prefVars(pref) || undefined : undefined}>
-                                    <LayoutRenderer layout={draft} live={live} screenState={screenState} alert={canvasAlert} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!renderer ? pref.scale : undefined} embed ghost />
+                                    <LayoutRenderer layout={draft} live={live} screenState={screenState} alert={canvasAlert} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!renderer ? pref.scale : undefined} embed ghost />
                                 </div>
                                 <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
                                     {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}

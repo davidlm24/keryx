@@ -161,7 +161,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const doc = useMemo(() => {
         if (!song || !slides.length) return null;
         // Stamped like a send: the default theme dresses it when it follows.
-        try { return applyWithFundo(emptyState(c.now), "content.show", c.stamp("content.show", { ...songContent({ ...song, slides }, {}, themes), kind: "lyrics" }), c.now); } catch { return null; }
+        const t = keryx.live.now();
+        try { return applyWithFundo(emptyState(t), "content.show", c.stamp("content.show", { ...songContent({ ...song, slides }, {}, themes), kind: "lyrics" }), t); } catch { return null; }
     }, [song, slides, themes, c.stamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Seguir o tema padrão, or this song's own look. While it follows, the
@@ -528,7 +529,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                                 : fit.lines + (fit.lines === 1 ? " linha, " : " linhas, ") + fit.chars + " caracteres · cabe na tela";
                             return (
                             <button type="button" key={i} className={`ed-th kx-t ${i === sel ? "is-sel" : ""}`} onClick={() => setSel(i)} onContextMenu={(e) => slideMenu(e, i)} title={s.label || `Slide ${i + 1}`}>
-                                <ScreenRenderer state={{ ...doc, content: { ...doc.content, index: i, ...(showChords ? { show: { chords: true, labels: true } } : {}) } }} now={c.now} preview />
+                                <ScreenRenderer state={{ ...doc, content: { ...doc.content, index: i, ...(showChords ? { show: { chords: true, labels: true } } : {}) } }} preview />
                                 <span className="n">{i + 1}{Number.isFinite(starts[i]) ? ` · ${mmss(starts[i])}` : ""}</span>
                                 {s.label && (i === 0 || slides[i - 1].label !== s.label) && <span className="lab">{s.label}</span>}
                                 <span className={"fit" + (fit.wraps.length ? " is-warn" : "")} title={fitTitle}>{fit.lines} l · {fit.chars} c{fit.wraps.length ? " · fonte menor" : ""}</span>

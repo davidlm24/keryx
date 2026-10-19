@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { remember, forget, outputHealth, rowStatus, netId, localId, showsOn, byGroup, groupOf } from "./outputs.js";
+import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, localId, showsOn, byGroup, groupOf } from "./outputs.js";
 
 const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção", open, placement: { mode: "fullscreen", displayId: 2, missing } });
 const stage = (open) => ({ key: "/StageView", label: "Palco", open, placement: { mode: "window", displayId: null, missing: false } });
@@ -159,4 +159,21 @@ test("outputs group by what they are for: Público, Palco, Transmissão", () => 
     // Empty groups are left out; an unknown page counts as Público.
     assert.deepEqual(byGroup([{ p: "/Nova" }], (x) => x.p).map((g) => g.key), ["publico"]);
     assert.equal(groupOf("/PastorView"), "palco");
+});
+
+test("sameAnswer: a poll that finds the windows as they were changes nothing", () => {
+    const answer = { displays: [{ id: 1, primary: true }, { id: 2 }], outputs: [proj(true), stage(false)] };
+    // Every poll's answer is a new object from IPC, with the same content.
+    const again = JSON.parse(JSON.stringify(answer));
+    assert.notEqual(again, answer);
+    assert.equal(sameAnswer(answer, again), true);
+    assert.equal(sameAnswer(answer, answer), true);
+    // A window opened or closed, a monitor gone, a name changed: each is new.
+    assert.equal(sameAnswer(answer, { ...answer, outputs: [proj(true), stage(true)] }), false);
+    assert.equal(sameAnswer(answer, { ...answer, outputs: [proj(true, true), stage(false)] }), false);
+    assert.equal(sameAnswer(answer, { ...answer, displays: [{ id: 1, primary: true }] }), false);
+    assert.equal(sameAnswer(answer, { ...answer, outputs: [{ ...proj(true), label: "Telão" }, stage(false)] }), false);
+    // The first answer is never the same as nothing.
+    assert.equal(sameAnswer(null, answer), false);
+    assert.equal(sameAnswer(answer, null), false);
 });

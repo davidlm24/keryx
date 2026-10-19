@@ -49,7 +49,7 @@ function KindThemes({ c, themes, setDefault }) {
                     return (
                         <button type="button" key={kind} className="kx-t fg-tile tmg-tile" onClick={() => choose(kind, name)} aria-label={`Tema padrão de ${name}: ${what}`} title={`${name} · clique para escolher o tema`}>
                             <span className="tmg-kind">{name}</span>
-                            <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <FactoryThumb now={c.now} />}</span>
+                            <span className="fg-img">{t ? <ThemeThumb theme={t} /> : <FactoryThumb />}</span>
                             <span className="fg-name">{what}</span>
                             <span className="kx-meta tmg-meta">{same ? "o mesmo das músicas" : kind === "lyrics" ? "" : "próprio"}</span>
                         </button>
@@ -119,7 +119,7 @@ export default function TemasSection({ c }) {
                 {themes.map((t) => (
                     <button type="button" key={t.id} role="listitem" className="kx-t fg-tile tmg-tile" aria-label={themeName(t)}
                         title={`${themeName(t)} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
-                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /><NoBgMark theme={t} label /></span>
+                        <span className="fg-img"><ThemeThumb theme={t} /><NoBgMark theme={t} label /></span>
                         {(t.is_default || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
                         <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G"].filter(Boolean).join(" · ")}</span>
                     </button>
