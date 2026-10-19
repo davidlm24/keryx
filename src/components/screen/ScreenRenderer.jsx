@@ -3,7 +3,8 @@ import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
 import AlertBar from "./AlertBar";
 import { mainLayer, currentSlide, nextSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
-import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
+import { FONT_MAP, getTextEffect, typography } from "@/lib/deviceStyles";
+import { sizeCqw } from "@/lib/textSize";
 import { fontStack } from "@/lib/fonts";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
@@ -259,8 +260,6 @@ function bgLook(bg) {
     };
 }
 
-const SIZES = ["xsmall", "small", "medium", "large", "xlarge", "xxlarge"];
-const SIZE_CQW = { xsmall: "2.4cqw", small: "3cqw", medium: "3.8cqw", large: "4.8cqw", xlarge: "5.8cqw", xxlarge: "7cqw" };
 const ANIM = { fade: "ks-anim-fade", slide: "ks-anim-slide", zoom: "ks-anim-zoom", crossfade: "ks-anim-fade", none: "", cut: "" };
 
 function textStyle(style) {
@@ -272,16 +271,15 @@ function textStyle(style) {
     return { ...base, color, ...getTextEffect(style.text_effect || "shadow", color) };
 }
 
-// Camadas' extra text look: how see-through, how wide, the line spacing,
-// capitals, a box behind it (a band across the screen or a block around the
-// text) and a fine vertical nudge (% of the screen's height, in cqw).
-const LINE_HEIGHT = { tight: 1.08, normal: 1.22, loose: 1.45 };
+// Camadas' extra text look: how see-through, how wide, capitals, a box
+// behind it (a band across the screen or a block around the text) and a fine
+// vertical nudge (% of the screen's height, in cqw); the theme's typography
+// (weight, italic, line and letter spacing, outline) is typography().
 const rgba = (hex, a) => { const n = parseInt(String(hex || "#000000").slice(1), 16); return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`; };
 function textExtra(style) {
-    const out = {};
+    const out = typography(style);
     if (style.text_opacity != null) out.opacity = style.text_opacity;
     if (style.text_max_width != null) out.maxWidth = `${style.text_max_width}%`;
-    if (style.line_height && LINE_HEIGHT[style.line_height]) out.lineHeight = LINE_HEIGHT[style.line_height];
     if (style.text_case === "upper") out.textTransform = "uppercase";
     if (style.text_box === "block" || style.text_box === "band") {
         out.boxDecorationBreak = "clone";
@@ -355,7 +353,8 @@ function Content({ content, showTitle = true, still = false }) {
     // The item's own choice (Camadas) wins over the church's (showTitle).
     const titled = style.title === "hide" ? false : style.title === "show" ? true : showTitle;
     const slide = currentSlide(content) || { text: "" };
-    const size = SIZES.includes(style.font_size) ? style.font_size : "large";
+    // A number in cqw (Rodada HF2); a preset's name reads as its number.
+    const size = sizeCqw(style.font_size);
     const align = style.text_align || "center";
     const pos = style.text_position || "middle";
     const anim = still ? "" : ANIM[style.transition ?? "fade"] ?? "ks-anim-fade";
@@ -365,17 +364,17 @@ function Content({ content, showTitle = true, still = false }) {
     const chorded = lyrics && show.chords ? chordedOf(content.stage, content.index, slide.text) : null;
     const reference = slide.ref || content.ref?.reference || content.title;
     const key = `${content.startedAt}:${content.index}`;
-    const { textRef, probeRef, fit } = useFitWidth(lyrics, [key, slide.text, chorded, size, style.font_family, style.text_max_width, style.text_box, style.text_case]);
+    const { textRef, probeRef, fit } = useFitWidth(lyrics, [key, slide.text, chorded, size, style.font_family, style.text_max_width, style.text_box, style.text_case, style.font_weight, style.font_style, style.letter_spacing, style.text_outline_px]);
     const body = bible ? verseNodes(slide.text, style.verse_numbers) : chorded ? <ChordedLines chorded={chorded} /> : slide.text;
     return (
         <>
             {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: fontStack(style.font_family) }}>{content.title}</div>}
-            <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size], ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
+            <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": `${size}cqw`, ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {show.labels && !bible && slide.label && <div className="ks-chorus">{slide.label}</div>}
                     {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}
                     {(slide.text || !slide.image_url) && (
-                        <div ref={textRef} className={`ks-text ks-${size} ${lyrics ? `ks-lines ${fit.wrap ? "is-wrap" : ""}` : ""}`} style={{ ...textStyle(style), ...textExtra(style) }}>
+                        <div ref={textRef} className={`ks-text ${lyrics ? `ks-lines ${fit.wrap ? "is-wrap" : ""}` : ""}`} style={{ ...textStyle(style), ...textExtra(style) }}>
                             {lyrics ? <>
                                 <span className="ks-fit" style={fit.scale < 1 ? { fontSize: `${fit.scale}em` } : undefined}>{body}</span>
                                 <span ref={probeRef} className="ks-fit-probe" aria-hidden="true">{body}</span>
@@ -412,9 +411,8 @@ function Presentation({ content, still = false }) {
 // same font, colour, effect, size, title and transition as the text.
 function activityLook(content, showTitle, still) {
     const style = slideStyle(content);
-    const size = SIZES.includes(style.font_size) ? style.font_size : "large";
     return {
-        text: textStyle(style), font: { fontFamily: fontStack(style.font_family) }, color: style.text_color || "#ffffff", size: SIZE_CQW[size],
+        text: textStyle(style), font: { fontFamily: fontStack(style.font_family) }, color: style.text_color || "#ffffff", size: `${sizeCqw(style.font_size)}cqw`,
         titled: style.title === "hide" ? false : style.title === "show" ? true : showTitle, upper: style.text_case === "upper",
         anim: still ? "" : ANIM[style.transition ?? "fade"] ?? "ks-anim-fade",
     };

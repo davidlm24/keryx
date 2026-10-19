@@ -10,6 +10,17 @@ test("the characters that fit on a screen line shrink as the letters grow", () =
     assert.ok(lineLimit("xsmall") > lineLimit("small"));
 });
 
+test("a free size, the font's width and the letter spacing (Rodada HF2)", () => {
+    assert.equal(lineLimit("4.8"), lineLimit("large"), "a preset's number is the preset");
+    assert.equal(lineLimit(12), 12);
+    assert.equal(lineLimit(1), 152);
+    assert.ok(lineLimit("4.8", { em: 0.6 }) < lineLimit("4.8"), "wider letters, fewer per line");
+    assert.ok(lineLimit("4.8", { spacing: 0.1 }) < lineLimit("4.8"), "spaced letters, fewer per line");
+    assert.ok(lineLimit("4.8", { spacing: -0.1 }) > lineLimit("4.8"));
+    assert.equal(lineLimit("4.8", { em: 0 }), lineLimit("4.8"), "no measure: Geist's 0.55");
+    assert.deepEqual(slideFit("A tua bondade me alcança", 7, { em: 0.55 }).wraps, [1]);
+});
+
 test("a slide's lines, characters and the lines that will wrap", () => {
     const fit = slideFit("Tu és fiel, Senhor\n\nA tua bondade me alcança todos os dias da minha vida\n", "large");
     assert.equal(fit.lines, 2, "blank lines do not count");

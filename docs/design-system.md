@@ -426,6 +426,25 @@ open the Programa monitor draws one still frame (the air never pauses).
   new field takes `kx-input` / `kx-select`, never a class of its own. Big
   search fields keep their size (the palette 40 px, the lyrics search
   36 px, the quick jump 40 px) and the same states.
+- **Numbers** (Rodada HF2): a number with steps is `NumBox` (kx.jsx,
+  `kx-num` in `bundle.css`): `− [4,8] + %`, 24 px tall, the field's `bg-2`
+  and quiet focus, the steppers 24 × 24 (out of the Tab order: the field
+  takes ↑/↓, Shift ×10), the unit after the + in `fg-3`, a comma as the
+  decimal point. Typing commits on Enter or when the field loses focus,
+  clamped and rounded to the step. Presets that are only shortcuts sit
+  beside it as a `Seg` that writes the number and is pressed when it is
+  equal (the Editor de temas' Tamanho: `NumBox` 1–12 % + PP…GGG). A
+  slider stays for what is felt rather than read (opacity, the dim).
+  The Editor de temas' form is `CfgGroup`s since the Rodada HF3 (ids
+  `tema.<grupo>`; summaries `fontSummary`…`transitionSummary` in themes.js):
+  Nome e padrão (plain heading: Nome, Tema padrão, Comentário, Título do
+  item), Fonte and Fundo open, Cor e efeito, Caixa do texto, Posição and
+  Transição closed with a summary ("Bebas Neue · 4,8 % · negrito"). The
+  Fonte rows: Fonte (FontPicker and
+  its note), Tamanho, Estilo (N and I toggles, 24 px, `aria-pressed`, and
+  Maiúsculas), Entrelinhas (0,9–2, "1,22 = normal"), Espaçamento
+  (−0,10–0,50 em); Contorno (0–8 px and its colour) sits under Efeito e
+  cor, Comentário under the name.
 - **Live fill buttons** (audit C-22): *Enviar ao ar* (`kx-btn-prev`),
   *Destravar* (`kx-btn-rh`) and *Encerrar* / *Excluir* (`kx-btn-air`) step
   **darker** on hover and when pressed (`--prev-fill-hover`/`-pressed`,

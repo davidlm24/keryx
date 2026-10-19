@@ -87,7 +87,13 @@ export const MEMORIZE_ROUNDS = [1, 12];
 export const DISCUSSION_MINUTES = [0.5, 60];
 // The text's look. The first ten are free text (as saved in songs and themes);
 // the rest (Camadas, 2026-10-10) are typed: a number in a range or a choice.
-export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20], transition_ms: [120, 600], background_dim: [0, 0.9], background_blur: [0, 20] };
+// letter_spacing is em, text_outline_px px on a 1920-wide screen (Rodada
+// HF2, the theme's typography; src/lib/textSize.js has the same ranges).
+export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20], transition_ms: [120, 600], background_dim: [0, 0.9], background_blur: [0, 20],
+    letter_spacing: [-0.1, 0.5], text_outline_px: [0, 8] };
+// The line spacing: one of the old names, or a number (Rodada HF2).
+export const LINE_HEIGHT_NAMES = ["tight", "normal", "loose"];
+export const LINE_HEIGHT_RANGE = [0.9, 2];
 // Something the congregation sees or hears right now: a restart (an update,
 // closing the KERYX) would take it off every screen. Read by the console
 // (src/lib/console/updates.js) and the main process (closing the console).
@@ -100,9 +106,10 @@ export function isOnAir(live) {
 // and its reference (Configurações › Bíblia e músicas, src/lib/bibleDisplay.js).
 // title: the item's name over the slide, for this item (Camadas › Texto
 // principal); unset, the church's choice (Aparência › Títulos nas telas).
-export const STYLE_CHOICES = { line_height: ["tight", "normal", "loose"], text_case: ["none", "upper"], text_box: ["none", "band", "block"], verse_numbers: ["sup", "hide"], ref_line: ["full", "plain", "none"], title: ["show", "hide"] };
+// font_weight and font_style: the theme's bold and italic (Rodada HF2).
+export const STYLE_CHOICES = { text_case: ["none", "upper"], text_box: ["none", "band", "block"], verse_numbers: ["sup", "hide"], ref_line: ["full", "plain", "none"], title: ["show", "hide"], font_weight: ["normal", "bold"], font_style: ["normal", "italic"] };
 export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color", "text_align", "text_position", "transition",
-    ...Object.keys(STYLE_RANGES), ...Object.keys(STYLE_CHOICES), "text_box_color"];
+    ...Object.keys(STYLE_RANGES), ...Object.keys(STYLE_CHOICES), "line_height", "text_box_color", "text_outline_color"];
 export const BACKGROUND_FITS = ["cover", "contain"];
 export const BACKGROUND_POSITIONS = ["center", "top", "bottom"];
 export const LOGO_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
@@ -272,7 +279,9 @@ function style(value) {
         if (v === undefined || v === null || v === "") continue;
         if (STYLE_RANGES[key]) out[key] = ranged(v, STYLE_RANGES[key], key);
         else if (STYLE_CHOICES[key]) out[key] = oneOf(v, STYLE_CHOICES[key], key);
+        else if (key === "line_height") out[key] = LINE_HEIGHT_NAMES.includes(v) ? v : ranged(v, LINE_HEIGHT_RANGE, key);
         else if (key === "text_box_color") { if (!HEX.test(String(v))) throw new LiveError("Cor da caixa inválida."); out[key] = String(v).toLowerCase(); }
+        else if (key === "text_outline_color") { if (!HEX.test(String(v))) throw new LiveError("Cor do contorno inválida."); out[key] = String(v).toLowerCase(); }
         else out[key] = text(v, key, { max: key.startsWith("background") ? MAX_URL * 1024 : 200 });
     }
     return out;
