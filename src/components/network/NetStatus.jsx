@@ -9,7 +9,8 @@ import "./net.css";
 // every page (App.jsx): a full screen while it has never connected and has
 // nothing to show, then only an amber chip while it reconnects, over the last
 // image (the screen keeps showing what it had: never a blank wall mid-service).
-export default function NetStatus() {
+// chip false: a page that says it itself (the controle remoto).
+export default function NetStatus({ chip = true }) {
     const conn = useConnection();
     const live = useLiveState();
     const logo = useChurchLogo();
@@ -29,7 +30,7 @@ export default function NetStatus() {
         );
     }
     // Connected once and has a picture: say it quietly, at the top.
-    if (conn.phase === "connecting" && conn.attempt < 2) return null;
+    if (!chip || (conn.phase === "connecting" && conn.attempt < 2)) return null;
     return (
         <div className="net-reconnect" role="status" aria-live="polite">
             <i aria-hidden="true" />{text.title}{text.hint && <small>· {text.hint}</small>}
