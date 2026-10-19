@@ -470,9 +470,12 @@ async function checkVideo(webContents, { live }) {
     // fade rides in the op (1 s, so a round trip cannot miss it); whether it
     // looks smooth needs a real window.
     {
+        // The projector closed just above: wait until it is gone, or the
+        // open below finds the closing window and the look reads nothing.
+        for (let end = Date.now() + 4000; Date.now() < end && windowFor("/Projection");) await sleep(100);
         live.call("content.show", { kind: "lyrics", title: "Primeira", slides: ["Primeira música"] });
         await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
-        const proj = windowFor("/Projection");
+        const proj = await waitWindow("/Projection");
         const look = () => (proj ? proj.webContents.executeJavaScript(`(() => ({ ghosts: document.querySelectorAll(".ks-ghost").length, text: document.body.innerText }))()`).catch(() => null) : null);
         let ready = false;
         for (let end = Date.now() + 6000; Date.now() < end && !ready;) { ready = Boolean((await look())?.text.includes("Primeira música")); if (!ready) await sleep(100); }
@@ -2198,13 +2201,19 @@ async function checkConsole(webContents, { live, outputs }) {
         result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog')) && [...document.querySelectorAll('.lib-foot button')].some((b) => b.textContent === 'Fechar')"), 4000);
         await js("(() => { const b = [...document.querySelectorAll('.lib-foot button')].find((x) => x.textContent === 'Fechar'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 3000);
-        // Tela ociosa is in Culto › Fora do ar (it was Aparência's).
-        await section("Culto");
-        await waitText(webContents, "Tela ociosa");
+        // The Tela ociosa is a screen of the Editor de telas (owner
+        // 2026-10-19, #275): Telas e saídas' card opens it in the window,
+        // and Esc comes back to Configurações.
+        await section("Telas e saídas");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg [aria-label=\"Tela ociosa\"] .cfg-card-thumb'))"), 4000);
+        await click('.console .cfg [aria-label="Tela ociosa"] .cfg-card-thumb', "");
+        await waitText(webContents, "Todas as telas mostram isto");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
         await click(".console .cfg .kx-seg button", "Logo da igreja");
         await waitFor(() => live.get().idle === "logo");
+        await press("Escape");
+        await waitFor(() => js("[...document.querySelectorAll('.console .win-dialog .kx-row .kx-row-title')].some((t) => t.textContent === 'Igreja')"), 4000);
         await click(".console .win-dialog .kx-row", "Igreja");
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg input[placeholder=\"Nome da igreja\"]'))"));
         await click(".console .cfg .kx-field", "");
