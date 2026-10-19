@@ -8,11 +8,12 @@ import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
 import { importSongFiles as importSongs } from "./importSongs";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
-import { songRow, mmss, mediaIcon } from "@/lib/console/libraryRows";
+import { songRow, mmss, mediaIcon, copyingRows } from "@/lib/console/libraryRows";
 import { mediaFromYouTube } from "@/lib/mediaImport";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles, importSummary } from "@/lib/mediaImport";
-import PagesMeta from "./PagesMeta";
+import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
+import { useCopyingFiles } from "@/hooks/useCopyingFiles";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { noticeLabel, noticeIcon } from "@/lib/console/notice";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
@@ -127,6 +128,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
 
     // The playbacks the sync has not brought yet (a song row says "baixando").
     const pending = usePendingMedia();
+    // The files this window is copying into the Mídia (a row each, Rodada H).
+    const copying = useCopyingFiles();
 
     // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
     const importSongFiles = (files) => importSongs(files, c.say);
@@ -194,8 +197,6 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
             <div className="searchrow">
                 <Field value={q} onChange={setQ} placeholder="Buscar…" />
                 {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} aria-label="Só favoritas" onClick={() => setFavOnly((f) => !f)} />}
-                {/* The media library is one click away on every tab (owner, Rodada G1). */}
-                {onOpenMedia && <IconBtn name="media" title="Abrir a Biblioteca de mídia" aria-label="Abrir a Biblioteca de mídia" onClick={() => onOpenMedia()} />}
                 <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
             </div>
 
@@ -238,6 +239,9 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
 
             {mediaKinds && (() => {
                 const media = data.media.filter((m) => mediaKinds.includes(m.type) && match(ql, m.title, m.description));
+                // A file being copied is a row "Copiando o arquivo…" until its
+                // Media row arrives and takes its place.
+                const copies = copyingRows(copying, data.media, { kinds: mediaKinds, q: ql });
                 const audios = media.filter((m) => m.type === "audio" && !m.missing);
                 const ytStage = /youtu/.test(yt) ? stageFromYouTube(yt.trim()) : null;
                 const saveYt = async () => {
@@ -269,7 +273,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         {...rowProps(m)}
                         item
                         actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label={`${m.title}: pôr na prévia para as telas de vídeo`}><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
-                    />
+                    >{m.type === "pdf" && <PagesBar id={m.id} />}</Row>
                 );
                 return (
                     <>
@@ -286,7 +290,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
                         <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
-                            {!media.length && data.loaded?.media !== false && <Empty icon={{ imagens: "image", audios: "volume", apresentacoes: "presentation" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
+                            {copies.map((p) => <Row key={p.key} className="is-copying" icon={mediaIcon(p)} title={p.title} meta={[p.type === "pdf" ? "PDF" : MEDIA_LABEL[p.type], p.meta].filter(Boolean).join(" · ")} item><RowBar /></Row>)}
+                            {!media.length && !copies.length && data.loaded?.media !== false && <Empty icon={{ imagens: "image", audios: "volume", apresentacoes: "presentation" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
                             {media.map(mediaRow)}
                         </div>
                     </>

@@ -39,3 +39,18 @@ export function songRow(song, { duplicate = false, syncing = false, showArtist =
     const tip = artist ? `${title} · ${artist}` : title;
     return { meta, badges, tip };
 }
+
+// The files being copied (copyingNow in mediaImport.js) that a list of the
+// Mídia draws as rows of their own (Rodada H, HB): those of its kinds
+// (null = every kind), never a background (not in these lists), matching
+// the search, and only until their Media row is in `media` — the real row
+// then takes their place. -> [{ key, title, type, meta }]
+export const COPYING_SAY = "Copiando o arquivo…";
+export const QUEUED_SAY = "Na fila";
+export function copyingRows(copying = [], media = [], { kinds = null, q = "" } = {}) {
+    const ids = new Set((media || []).map((m) => m?.id));
+    const ql = String(q || "").trim().toLowerCase();
+    return (copying || [])
+        .filter((c) => c && c.category !== "background" && (!kinds || kinds.includes(c.type)) && !(c.rowId && ids.has(c.rowId)) && (!ql || String(c.title || "").toLowerCase().includes(ql)))
+        .map((c) => ({ key: c.key, title: c.title || c.name || "", type: c.type, meta: c.waiting ? QUEUED_SAY : COPYING_SAY }));
+}

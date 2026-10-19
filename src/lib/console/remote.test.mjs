@@ -139,3 +139,21 @@ test("the library, a page at a time: accents folded, lyrics without chords, back
     assert.equal(libraryPage({ tab: "pieces", pieces: [{ id: "a", title: "", text: "Bem-vindos", type: "announcement" }] }).rows[0].title, "Bem-vindos");
     assert.equal(libraryPage({ tab: "materials", materials: [{ id: "x", title: "Lição 1", class_name: "Jovens" }], q: "jovens" }).total, 1);
 });
+
+test("a PDF whose pages are being made says how far on the phone (state.items and the library)", () => {
+    const media = [{ id: "pdf1", type: "pdf", title: "Culto", file_url: "http://127.0.0.1:7700/media/a.pdf" }, { id: "img", type: "image", title: "Foto", file_url: "http://x/y.jpg" }];
+    const progress = { pdf1: { done: 2, total: 12 } };
+    const progressOf = (id) => progress[id] || null;
+    const items = [{ id: "i1", type: "PDF", title: "Culto", contentId: "pdf1" }, { id: "i2", type: "IMAGE", title: "Foto", contentId: "img" }, { id: "i3", type: "SONG", title: "Hino", contentId: "pdf1" }];
+    const st = remoteState({ v: 2, items, media, progressOf });
+    assert.equal(st.items[0].st, "blocked");
+    assert.equal(st.items[0].progress, "Preparando páginas 3/12");
+    assert.equal("progress" in st.items[1], false, "nothing to say: no field (additive)");
+    assert.equal("progress" in st.items[2], false, "only media items");
+    assert.equal("progress" in remoteState({ v: 2, items, media }).items[0], false, "a console that does not pass it");
+    const page = libraryPage({ tab: "media", media, progressOf });
+    assert.equal(page.rows.find((r) => r.id === "pdf1").progress, "Preparando páginas 3/12");
+    progress.pdf1 = { error: { cause: "o arquivo está corrompido ou incompleto", retryable: true } };
+    assert.equal(libraryPage({ tab: "media", media, progressOf }).rows.find((r) => r.id === "pdf1").progress, "Não deu para preparar as páginas: o arquivo está corrompido ou incompleto.");
+    assert.equal("progress" in libraryPage({ tab: "media", media, progressOf }).rows.find((r) => r.id === "img"), false);
+});

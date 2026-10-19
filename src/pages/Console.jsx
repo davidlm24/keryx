@@ -6,7 +6,7 @@ import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { usePosterBackfill } from "@/hooks/usePosterBackfill";
-import { usePagesBackfill } from "@/hooks/usePagesBackfill";
+import { usePagesBackfill, pagesProgressAll, subscribePagesProgress, retryPages } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
 import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
@@ -1103,7 +1103,14 @@ export default function Console() {
             items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
     );
     const libraryPanel = (
-        <Panel title="Biblioteca" actions={<TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Biblioteca" actions={<>
+            {/* The header holds the doors (owner's pick, Rodada H, H1): the
+                media library, a page of its own, one click away on every tab,
+                then the chooser of what shows here (the eye). The search row
+                keeps Buscar, ☆ and the + that adds. */}
+            <IconBtn name="media" small title="Abrir a Biblioteca de mídia" aria-label="Abrir a Biblioteca de mídia" onClick={() => openMedia()} />
+            <TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />
+        </>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
                 onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
                 dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} />
@@ -1299,7 +1306,8 @@ export default function Console() {
             case "song.saved": songSaved(m.song); break;
             case "setlist.material": addMaterial(m.material); break;
             case "console.open": if (m.what === "novidades") openWhatsNew(); else openSettings(m.section || "console"); break;
-            case "console.hello": tellPrev(c.prev); break;
+            case "console.hello": tellPrev(c.prev); tellPages(); break;
+            case "pages.retry": retryPages(m.id); break;
             default: break;
         }
     };
@@ -1309,6 +1317,10 @@ export default function Console() {
     // A Prévia the list cannot carry (a theme's example) reads as empty there.
     const tellPrev = (stage) => { if (!relaySend("console", "console.prev", { stage: stage || null })) relaySend("console", "console.prev", { stage: null }); };
     useEffect(() => { tellPrev(c.prev); }, [c.prev]);
+    // How far each PDF's pages are: only this window makes them, so a
+    // detached Mídia reads the progress from here (Rodada H, HB).
+    const tellPages = () => relaySend("console", "pages.progress", { pages: pagesProgressAll() });
+    useEffect(() => subscribePagesProgress(() => relaySend("console", "pages.progress", { pages: pagesProgressAll() })), []);
 
     return (
         <ContextMenuProvider value={openMenu}>

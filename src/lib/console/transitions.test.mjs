@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { withTransitions, clearFade, pauseFade, enterFade, kindMode, SOUND_OPS, EXIT_OPS, ENTER_OPS, MEDIA_MS, CLEAR_MS, PAUSE_MS, ENTER_MS, KIND_MODES, IMAGE_SECONDS } from "./transitions.js";
+import * as transitionsMod from "./transitions.js";
 import { TRANSITION_TYPE_IDS } from "../contentKinds.js";
 import { prefsOf } from "../prefs/schema.js";
 import { applyOp, emptyState } from "../../../shared/live-state.mjs";
@@ -28,7 +29,7 @@ test("transitions: each choice of the rows reaches the op", () => {
     assert.deepEqual(withTransitions("media.playlist", {}, prefsOf({ media_transition_ms: 2000 })).transition, { mode: "fade", ms: 2000 });
     assert.deepEqual(withTransitions("clear", {}, prefsOf({ clear_transition: "cut" })), {}, "Corte: no fade");
     assert.equal(withTransitions("content.clear", {}, prefsOf({ clear_transition_ms: 1000 })).fade, 1000);
-    // Tela preta e Logo off, or Ao tirar da tela on Corte: they cut.
+    // Tela preta e Logo off, or Ao tirar do ar on Corte: they cut.
     assert.deepEqual(withTransitions("screen.set", { mode: "logo" }, prefsOf({ screen_transition: false })), { mode: "logo" });
     assert.deepEqual(withTransitions("screen.set", { mode: "logo" }, prefsOf({ clear_transition: "cut" })), { mode: "logo" });
     assert.equal(clearFade(prefsOf({ clear_transition: "cut", clear_transition_ms: 600 })), 0);
@@ -55,7 +56,7 @@ test("transitions: other ops, no prefs and the sender's own choice are left alon
     assert.equal(withTransitions("clear", { fade: 1000 }, defaults).fade, 1000);
 });
 
-test("transitions: the eye's picture follows Ao tirar da tela, and never hushes", () => {
+test("transitions: the eye's picture follows Ao tirar do ar, and never hushes", () => {
     assert.deepEqual(withTransitions("media.toAudio", {}, defaults), { fade: 300 });
     // Mostrar o vídeo puts a video on the screen: it enters (Rodada G5).
     assert.deepEqual(withTransitions("audio.toMedia", {}, defaults), { fade: 500 });
@@ -142,4 +143,14 @@ test("transitions: song → song in the live state, through the console's args",
     assert.deepEqual(two.fade, { ms: 500, at: T0 + 10 });
     const step = applyOp(two, "content.goTo", withTransitions("content.goTo", { index: 0 }, defaults), T0 + 20);
     assert.equal(step.fade.at, T0 + 10, "a step adds no fade");
+});
+
+test("transitions: the closed group's summary says the choices in one line (Rodada H0)", () => {
+    const { transitionsSummary } = transitionsMod;
+    assert.equal(transitionsSummary(defaults), "Tirar Suave 0,3 s · Entrar Suave 0,5 s · Áudios Suave 0,5 s");
+    assert.equal(transitionsSummary(prefsOf({ clear_transition: "cut", enter_transition: "cut", media_transition: "mix" })), "Tirar Corte · Entrar Corte · Áudios Tocar junto");
+    assert.equal(transitionsSummary(prefsOf({ clear_transition_ms: 600, enter_transition_ms: 1000, media_transition: "cut" })), "Tirar Suave 0,6 s · Entrar Suave 1 s · Áudios Corte");
+    assert.equal(transitionsSummary(prefsOf({ enter_transition_kinds: { tool: "fade" } })), "Tirar Suave 0,3 s · Entrar Suave 0,5 s (1 exceção) · Áudios Suave 0,5 s", "Por tipo de conteúdo counts its exceptions");
+    assert.equal(transitionsSummary(prefsOf({ enter_transition_kinds: { tool: "fade", image: "cut" } })), "Tirar Suave 0,3 s · Entrar Suave 0,5 s (2 exceções) · Áudios Suave 0,5 s");
+    assert.equal(transitionsSummary(null), "");
 });

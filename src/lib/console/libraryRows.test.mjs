@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { songRow, mmss, SONG_BADGES, mediaIcon } from "./libraryRows.js";
+import { songRow, mmss, SONG_BADGES, mediaIcon, copyingRows, COPYING_SAY, QUEUED_SAY } from "./libraryRows.js";
 
 test("one glyph per kind of media, everywhere it is listed", () => {
     assert.equal(mediaIcon({ type: "video", file_url: "keryx-media://a.mp4" }), "film");
@@ -47,4 +47,19 @@ test("mmss", () => {
     assert.equal(mmss(0), "0:00");
     assert.equal(mmss(61.4), "1:01");
     assert.equal(mmss(-3), "0:00");
+});
+
+test("a file being copied is a row of its own until its Media row arrives", () => {
+    const copying = [
+        { key: "1:0", name: "Culto.pdf", title: "Culto", type: "pdf", category: "other", waiting: false, rowId: null },
+        { key: "1:1", name: "Fundo.mp4", title: "Fundo", type: "video", category: "other", waiting: true, rowId: null },
+        { key: "2:0", name: "Céu.jpg", title: "Céu", type: "image", category: "background", waiting: false, rowId: null },
+    ];
+    assert.deepEqual(copyingRows(copying, []).map((r) => [r.title, r.meta]), [["Culto", COPYING_SAY], ["Fundo", QUEUED_SAY]], "a background never shows in these lists");
+    assert.deepEqual(copyingRows(copying, [], { kinds: ["pdf", "powerpoint"] }).map((r) => r.key), ["1:0"], "a list shows only its kinds");
+    assert.deepEqual(copyingRows(copying, [], { q: "fun" }).map((r) => r.key), ["1:1"], "and follows the search");
+    const done = [{ ...copying[0], rowId: "m1" }, copying[1]];
+    assert.deepEqual(copyingRows(done, [{ id: "m9" }]).map((r) => r.key), ["1:0", "1:1"], "copied, its row not listed yet: still there");
+    assert.deepEqual(copyingRows(done, [{ id: "m1" }]).map((r) => r.key), ["1:1"], "the real row takes its place");
+    assert.deepEqual(copyingRows(), []);
 });

@@ -24,9 +24,12 @@ const FILES = {
     "SyncSection.jsx": "sincronizacao",
     "SobreSection.jsx": "sobre",
 };
+// A FormRow's label, a CfgKey's and a CfgGroup's (Rodada H0: a group's
+// header is a search target too, and a jump into a closed group opens it).
 const labelsIn = (src) => [
     ...[...src.matchAll(/FormRow[^>]*?\sk="([^"]+)"/g)].map((m) => m[1]),
     ...[...src.matchAll(/CfgKey[^>]*?\sk="([^"]+)"/g)].map((m) => m[1]),
+    ...[...src.matchAll(/CfgGroup[^>]*?\sk="([^"]+)"/g)].map((m) => m[1]),
 ];
 const sources = Object.fromEntries(Object.keys(FILES).map((f) => [f, readFileSync(path.join(dir, f), "utf8")]));
 
@@ -43,7 +46,7 @@ test("search index: every jump lands on a row that exists", () => {
     for (const entry of SETTINGS_INDEX) {
         const files = Object.entries(FILES).filter(([, s]) => s === entry.section).map(([f]) => f);
         const found = files.some((f) => labelsIn(sources[f]).includes(entry.target));
-        assert.ok(found, `${entry.section} › ${entry.label}: target "${entry.target}" is not a FormRow k or a CfgKey k`);
+        assert.ok(found, `${entry.section} › ${entry.label}: target "${entry.target}" is not a FormRow k, a CfgKey k or a CfgGroup k`);
         assert.ok(SECTIONS.some((s) => s.id === entry.section), entry.section);
     }
 });

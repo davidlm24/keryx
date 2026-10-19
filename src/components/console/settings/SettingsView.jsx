@@ -86,13 +86,14 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
     }, [active, letters]);
 
     // After a jump: wait for the section to draw the row (some read the
-    // computer first), bring it into view and light it up.
+    // computer first; a closed group opens itself, CfgGroup, so a row still
+    // inside one is not found yet), bring it into view and light it up.
     useEffect(() => {
         if (!pending) return undefined;
         let tries = 0;
         let timer = null;
         const find = () => {
-            const el = [...document.querySelectorAll(".win-dialog .cfg [data-cfg-k]")].find((n) => n.getAttribute("data-cfg-k") === pending);
+            const el = [...document.querySelectorAll(".win-dialog .cfg [data-cfg-k]")].find((n) => n.getAttribute("data-cfg-k") === pending && !n.closest(".cfg-group:not(.is-open)"));
             if (el) { el.scrollIntoView({ block: "center" }); setFlash(pending); setPending(null); return; }
             tries += 1;
             if (tries < 60) timer = setTimeout(find, 50);
@@ -107,6 +108,7 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
         return () => clearTimeout(t);
     }, [flash]);
 
+    const flashCtx = useMemo(() => ({ flash, pending }), [flash, pending]);
     const jump = (hit) => {
         setQ("");
         setFlash(null);
@@ -159,7 +161,7 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
     if (escRef) escRef.current = (mode) => onClose(mode === "all");
 
     return (
-        <CfgFlash.Provider value={flash}>
+        <CfgFlash.Provider value={flashCtx}>
             <WinBar title="Configurações" tools={
                 <span className="cfg-search">
                     <Field value={q} onChange={setQ} placeholder="Buscar nas configurações" inputRef={inputRef} onKeyDown={onSearchKey} kbd={q ? null : keyHint("search", letters)} />

@@ -220,3 +220,14 @@ test("Bíblia: the console's edition first, then the installed ones, then those 
     assert.ok(!v.some((x) => x.id === "AA"), "AA is neither installed nor online");
     assert.equal(bibleVersions(null)[0].id, "NVI");
 });
+
+test("a presentation being prepared says how far, in the console's words, when it sends them", () => {
+    const rows = setlistRows({ items: [
+        { id: "p1", title: "Culto.pdf", type: "PDF", st: "blocked", progress: "Preparando páginas 3/12" },
+        { id: "p2", title: "Velho.pdf", type: "PDF", st: "blocked" },
+        { id: "p3", title: "Sumido.pdf", type: "PDF", st: "missing", progress: "Preparando páginas 1/2" },
+    ] });
+    assert.deepEqual(rows.map((r) => r.stText), ["Preparando páginas 3/12", "Preparando páginas", "Arquivo não encontrado"], "a console that says nothing, or another state, keeps the old words");
+    assert.equal(mediaRow({ id: "m", title: "Lição", st: "blocked", progress: "Não deu para preparar as páginas: o arquivo está corrompido ou incompleto." }).stText, "Não deu para preparar as páginas: o arquivo está corrompido ou incompleto.");
+    assert.equal(mediaRow({ id: "m", title: "Lição", st: "ok", progress: "x" }).stText, "");
+});
