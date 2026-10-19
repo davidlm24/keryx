@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, localId, showsOn, byGroup, groupOf } from "./outputs.js";
+import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, localId, showsOn, byGroup, groupOf, outputsSummary, outputStatusText } from "./outputs.js";
 
 const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção", open, placement: { mode: "fullscreen", displayId: 2, missing } });
 const stage = (open) => ({ key: "/StageView", label: "Palco", open, placement: { mode: "window", displayId: null, missing: false } });
@@ -176,4 +176,20 @@ test("sameAnswer: a poll that finds the windows as they were changes nothing", (
     // The first answer is never the same as nothing.
     assert.equal(sameAnswer(null, answer), false);
     assert.equal(sameAnswer(answer, null), false);
+});
+
+test("Saídas' summary: how many outputs and how many open (a removed one is no row)", () => {
+    assert.equal(outputsSummary([proj(true), stage(true), stage(false)]), "3 saídas · 2 abertas");
+    assert.equal(outputsSummary([proj(true)]), "1 saída · 1 aberta");
+    assert.equal(outputsSummary([proj(false), { ...stage(true), removed: true }]), "1 saída · nenhuma aberta");
+    assert.equal(outputsSummary([]), "0 saídas · nenhuma aberta");
+    assert.equal(outputsSummary(null), "0 saídas · nenhuma aberta");
+});
+
+test("an output's status line: a missing display, full screen on a numbered one, a window", () => {
+    assert.equal(outputStatusText({ mode: "fullscreen", displayId: 2, missing: true }, 2), "A tela está desligada · a saída aparece quando ela ligar");
+    assert.equal(outputStatusText({ mode: "fullscreen", displayId: 2 }, 2), "Tela cheia na Tela 2");
+    assert.equal(outputStatusText({ mode: "fullscreen", displayId: 9 }, 0), "Tela cheia");
+    assert.equal(outputStatusText({ mode: "window" }), "Abre numa janela");
+    assert.equal(outputStatusText(undefined), "Abre numa janela");
 });

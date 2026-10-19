@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Icon from "../Icon";
 import { Btn, Empty, Seg } from "../kx";
-import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading, FormRow } from "./parts";
+import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading, FormRow, CfgGroup } from "./parts";
 import { useLibrary } from "../useConsoleData";
 import { OutputPreview } from "./OutputPrefCard";
 import { normalizePref, isDefaultPref, designOf, outputLook } from "@/lib/outputPrefs";
@@ -12,14 +12,11 @@ import { keryx } from "@/api/keryxClient";
 import { buildOutputsFile, readOutputsFile, prefWrites, fileName } from "@/lib/outputsFile";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
+import { outputsSummary, outputStatusText } from "@/lib/console/outputs";
+import { CHIME_VOLUMES, somSummary, ARQUIVO_SUMMARY } from "@/lib/console/cfgSummaries";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm } from "../ConfirmDialog";
 import TransicoesBlock from "./TransicoesBlock";
-import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
-import { emptyState } from "@shared/live-state.mjs";
-
-const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
 // Som do aviso: the chime of avisos with "Som de alerta", on or off and its
 // volume, for every output and network screen (on the profile). The YouTube
@@ -30,18 +27,20 @@ function SomBlock({ c }) {
     const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
     const vol = String(prefs.chime_volume);
     return (
-        <div className="frm" style={{ borderTop: "1px solid var(--line)", marginTop: "var(--space-1)" }}>
-            <FormRow k="Som do aviso">
-                <Switch on={prefs.chime_on} onChange={(on) => save({ chime_on: on }, on ? "O sino dos avisos toca." : "Sino dos avisos desligado em todas as telas.")} label="Tocar o sino dos avisos" />
-                <Seg small label="Volume do sino" value={VOLUMES.some(([v]) => v === vol) ? vol : "35"} options={VOLUMES} onChange={(v) => save({ chime_volume: Number(v) })} />
-                <Btn small disabled={!prefs.chime_on} onClick={() => ringBell({ on: true, volume: prefs.chime_volume })} title="Toca o sino aqui, neste computador">Testar som</Btn>
-                <span className="kx-meta">o sino curto dos avisos com Som de alerta, nas saídas e nas telas na rede</span>
-            </FormRow>
-            <FormRow k="Título do YouTube">
-                <Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título que o YouTube põe sobre o vídeo" />
-                <span className="kx-meta">a faixa que o YouTube põe sobre o vídeo, em todas as telas</span>
-            </FormRow>
-        </div>
+        <CfgGroup id="telas.som" k="Som e YouTube" defaultOpen={false} summary={somSummary(prefs)}>
+            <div className="frm">
+                <FormRow k="Som do aviso">
+                    <Switch on={prefs.chime_on} onChange={(on) => save({ chime_on: on }, on ? "O sino dos avisos toca." : "Sino dos avisos desligado em todas as telas.")} label="Tocar o sino dos avisos" />
+                    <Seg small label="Volume do sino" value={CHIME_VOLUMES.some(([v]) => v === vol) ? vol : "35"} options={CHIME_VOLUMES} onChange={(v) => save({ chime_volume: Number(v) })} />
+                    <Btn small disabled={!prefs.chime_on} onClick={() => ringBell({ on: true, volume: prefs.chime_volume })} title="Toca o sino aqui, neste computador">Testar som</Btn>
+                    <span className="kx-meta">o sino curto dos avisos com Som de alerta, nas saídas e nas telas na rede</span>
+                </FormRow>
+                <FormRow k="Título do YouTube">
+                    <Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título que o YouTube põe sobre o vídeo" />
+                    <span className="kx-meta">a faixa que o YouTube põe sobre o vídeo, em todas as telas</span>
+                </FormRow>
+            </div>
+        </CfgGroup>
     );
 }
 
@@ -50,9 +49,12 @@ function SomBlock({ c }) {
 // RIGHT NOW (OutputPreview: its view, Mostrar, theme, design — a still).
 // Clicking a thumbnail (or Editar… in its right-click menu) opens the
 // Editor on that screen; the card keeps only the placement (Automático /
-// Tela N, Abrir ao iniciar, Abrir/Fechar; Remover in the menu). The chime
-// and the settings file sit below — no more vertical tabs. The idle look
-// is in Culto › Fora do ar; the placement rules live in electron/outputs.cjs.
+// Tela N, Abrir ao iniciar, Abrir/Fechar; Remover in the menu) until the
+// Editor's Destino block takes it over (Rodada H2). Rodada H1 (owner
+// 2026-10-19): groups — Telas (the monitors, static at the top), Saídas,
+// Transições, Som e YouTube and the settings file, the last three closed.
+// The Tela ociosa moved to Temas e fundos. The placement rules live in
+// electron/outputs.cjs.
 export default function TelasSection({ c, onOpenScreen }) {
     const displays = useBridge("displays");
     const [state, , setState, readError] = usePoll(() => displays?.list(), 3000);
@@ -133,12 +135,7 @@ export default function TelasSection({ c, onOpenScreen }) {
             c.say("Ajustes das saídas importados.");
         } catch (err) { c.say(err?.message || "Não foi possível importar todos os ajustes das saídas."); }
     };
-    const status = (o) => {
-        const p = o.placement || {};
-        if (p.missing) return "A tela está desligada · a saída aparece quando ela ligar";
-        if (p.mode === "fullscreen") return number(p.displayId) ? `Tela cheia na Tela ${number(p.displayId)}` : "Tela cheia";
-        return "Abre numa janela";
-    };
+    const status = (o) => outputStatusText(o.placement, number(o.placement?.displayId));
     const removeOutput = async (o) => {
         const ok = await confirm({ title: `Remover a saída ${o.label}?`, text: "Ela sai das listas e não abre mais ao iniciar. Os ajustes continuam salvos: Adicionar saída traz de volta.", ok: "Remover" });
         if (!ok) return;
@@ -156,40 +153,28 @@ export default function TelasSection({ c, onOpenScreen }) {
 
     return (
         <>
-            <CfgKey k="Identificar telas" className="diagram">
-                {list.map((d, i) => {
-                    const w = Math.round(80 + 160 * ((d.bounds?.width || 1920) / widest));
-                    const shows = onDisplay(d);
-                    return (
-                        <div key={d.id} className={`dmon ${shows.length ? "is-live" : ""}`}>
-                            <div className="box" style={{ width: w, height: Math.round(w * 9 / 16) }}>
-                                <span>Tela {i + 1}{d.primary ? " · Operador" : ""}</span>
-                                {shows.length > 0 && <span className="kx-meta">{shows.join(", ")}</span>}
+            {/* The monitors stay on top, never folded (owner 2026-10-19: "telas
+                1 e 2, e outras que forem ligadas, sempre no topo"). */}
+            <CfgGroup id="telas.telas" k="Telas" fold={false}>
+                <CfgKey k="Identificar telas" className="diagram">
+                    {list.map((d, i) => {
+                        const w = Math.round(80 + 160 * ((d.bounds?.width || 1920) / widest));
+                        const shows = onDisplay(d);
+                        return (
+                            <div key={d.id} className={`dmon ${shows.length ? "is-live" : ""}`}>
+                                <div className="box" style={{ width: w, height: Math.round(w * 9 / 16) }}>
+                                    <span>Tela {i + 1}{d.primary ? " · Operador" : ""}</span>
+                                    {shows.length > 0 && <span className="kx-meta">{shows.join(", ")}</span>}
+                                </div>
+                                <span className="kx-meta">{d.bounds?.width || d.width}×{d.bounds?.height || d.height}</span>
                             </div>
-                            <span className="kx-meta">{d.bounds?.width || d.width}×{d.bounds?.height || d.height}</span>
-                        </div>
-                    );
-                })}
-                <span style={{ flex: 1 }} />
-                <Btn onClick={identify} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
-            </CfgKey>
-            {/* The Tela ociosa (owner 2026-10-19): the whole app's, not a
-                culto's; a card like the outputs', the click opens it in the
-                Editor de telas. The still shows what the screens show then. */}
-            <CfgKey k="Tela ociosa" className="listhead"><span className="kx-section">Tela ociosa <span className="kx-count">· todas as telas, quando nada está no ar e não há papel de parede</span></span></CfgKey>
-            <div className="cfg-grid" role="list" aria-label="Tela ociosa">
-                <div role="listitem" className="cfg-card">
-                    <button type="button" className="kx-t cfg-card-thumb" onClick={() => onOpenScreen?.(IDLE_SCREEN)} title="Editar a tela ociosa no Editor">
-                        <div className="cfg-prev"><div className="cfg-prev-fill"><ScreenRenderer fill state={{ ...emptyState(0), idle: c.live?.idle === "black" ? "black" : "logo", idleLook: c.live?.idleLook ?? null }} logoUrl={church.logo} preview audio={false} /></div></div>
-                    </button>
-                    <div className="cfg-card-h">
-                        <Icon name="monitor" />
-                        <span className="cfg-card-t">Tela ociosa</span>
-                    </div>
-                    <span className="kx-meta cfg-card-m">{c.live?.idle === "black" ? "Preto" : "Logo da igreja"}{c.live?.idleLook ? " · com ajustes" : ""}</span>
-                </div>
-            </div>
-            <CfgKey k="Saídas" className="listhead"><span className="kx-section">Saídas <span className="kx-count">· clique numa tela para editá-la no Editor</span></span></CfgKey>
+                        );
+                    })}
+                    <span style={{ flex: 1 }} />
+                    <Btn onClick={identify} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
+                </CfgKey>
+            </CfgGroup>
+            <CfgGroup id="telas.saidas" k="Saídas" summary={outputsSummary(outs)}>
             <div className="cfg-grid" role="list" aria-label="Saídas">
                 {active.map((o) => {
                     const pref = normalizePref(prefRow(o.key));
@@ -238,22 +223,25 @@ export default function TelasSection({ c, onOpenScreen }) {
                     </CfgKey>
                 ))}
             </div>
-            <CfgKey k="Arquivo de ajustes" className="listhead"><span className="kx-section">Arquivo de ajustes</span>
-                <span style={{ flex: 1 }} />
-                <CfgKey as="span" k="Exportar ajustes das saídas"><Btn small onClick={exportPrefs} title="Salva num arquivo a tela e os ajustes de cada saída, para restaurar depois ou levar para outro computador">Exportar ajustes…</Btn></CfgKey>
-                <CfgKey as="span" k="Importar ajustes das saídas"><Btn small onClick={importPrefs} title="Abre um arquivo exportado e mostra o que muda antes de aplicar">Importar ajustes…</Btn></CfgKey>
-            </CfgKey>
-            {pending && (
-                <div className="cfg-import" role="group" aria-label="Importar ajustes das saídas">
-                    <span className="kx-section">Importar {pending.name}</span>
-                    <span className="kx-meta">{pending.read.exportedAt ? `Exportado em ${new Date(pending.read.exportedAt).toLocaleDateString("pt-BR")} · ` : ""}a tela de {pending.read.outputs} {pending.read.outputs === 1 ? "saída" : "saídas"} e os ajustes de {pending.read.pages} {pending.read.pages === 1 ? "saída" : "saídas"}. Substitui o que está configurado agora nessas saídas.</span>
-                    {pending.read.notes.map((n) => <span key={n} className="kx-meta kx-warn">{n}</span>)}
-                    <span className="cfg-import-acts"><Btn kind="brand" onClick={applyImport}>Importar</Btn><Btn onClick={() => setPending(null)}>Cancelar</Btn></span>
-                </div>
-            )}
+            <div className="listhead"><span className="kx-meta">Clique numa tela para editá-la no Editor. As saídas não aparecem na barra de tarefas; fechar o KERYX fecha todas.</span></div>
+            </CfgGroup>
             <TransicoesBlock c={c} />
             <SomBlock c={c} />
-            <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas; fechar o KERYX fecha todas.</span></div>
+            <CfgGroup id="telas.arquivo" k="Arquivo de ajustes" defaultOpen={false} summary={ARQUIVO_SUMMARY}>
+                <div className="cfg-file">
+                    <CfgKey as="span" k="Exportar ajustes das saídas"><Btn small onClick={exportPrefs} title="Salva num arquivo a tela e os ajustes de cada saída, para restaurar depois ou levar para outro computador">Exportar ajustes…</Btn></CfgKey>
+                    <CfgKey as="span" k="Importar ajustes das saídas"><Btn small onClick={importPrefs} title="Abre um arquivo exportado e mostra o que muda antes de aplicar">Importar ajustes…</Btn></CfgKey>
+                    <span className="kx-meta">a tela e os ajustes de cada saída, num arquivo para restaurar depois ou levar a outro computador</span>
+                </div>
+                {pending && (
+                    <div className="cfg-import" role="group" aria-label="Importar ajustes das saídas">
+                        <span className="kx-section">Importar {pending.name}</span>
+                        <span className="kx-meta">{pending.read.exportedAt ? `Exportado em ${new Date(pending.read.exportedAt).toLocaleDateString("pt-BR")} · ` : ""}a tela de {pending.read.outputs} {pending.read.outputs === 1 ? "saída" : "saídas"} e os ajustes de {pending.read.pages} {pending.read.pages === 1 ? "saída" : "saídas"}. Substitui o que está configurado agora nessas saídas.</span>
+                        {pending.read.notes.map((n) => <span key={n} className="kx-meta kx-warn">{n}</span>)}
+                        <span className="cfg-import-acts"><Btn kind="brand" onClick={applyImport}>Importar</Btn><Btn onClick={() => setPending(null)}>Cancelar</Btn></span>
+                    </div>
+                )}
+            </CfgGroup>
         </>
     );
 }

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Btn, Seg } from "../kx";
-import { FormRow, Switch, CfgKey, useBridge } from "./parts";
+import { FormRow, Switch, CfgGroup, useBridge } from "./parts";
 import ShortcutList from "../ShortcutList";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
 import { relaySend } from "@/lib/janelaRelay";
 import { LETTER_KEYS, LETTER_KEYS_HINT, letterKeys } from "@/lib/console/keys";
 import { usePrefs, updateUser } from "@/hooks/useUser";
+import { machineSummary, shortcutsSummary } from "@/lib/console/cfgSummaries";
 
 // The console's zoom steps (electron/consoleZoom.cjs ZOOM_STEPS).
 const ZOOMS = [[0.9, "90 %"], [1, "100 %"], [1.1, "110 %"], [1.25, "125 %"], [1.5, "150 %"]].map(([z, l]) => [String(z), l]);
@@ -44,6 +45,7 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
     const inConsole = () => { if (relaySend("janela", "console.open", { what: "settings", section: "console" })) c.say("Configurações › Console abriu no console."); };
     return (
         <>
+            <CfgGroup id="console.disposicao" k="Disposição" fold={false}>
             <div className="frm">
                 {!layout && <FormRow k="Disposição">
                     <Btn small onClick={inConsole}>Abrir no console</Btn>
@@ -62,14 +64,14 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                     <Seg small label="Densidade" value={densityOf(layout)} onChange={(v) => setLayout({ ...layout, density: v })} options={DENSITIES} />
                     <span className="kx-meta">a altura das linhas das listas · da igreja, viaja no backup</span>
                 </FormRow>
-                <FormRow k="Disposição">
+                <FormRow k="Restaurar">
                     <Btn small onClick={restoreLayout}>Restaurar disposição</Btn>
                     <span className="kx-meta">volta os módulos, a densidade, os tamanhos e a ordem das colunas ao padrão · deste computador</span>
                 </FormRow></>}
-                <FormRow k="Teclas de uma letra">
-                    <Seg small label="Teclas de uma letra" value={letters} onChange={setLetters} options={LETTER_KEYS} />
-                    <span className="kx-meta">{LETTER_KEYS_HINT[letters]} · da igreja, viaja no backup</span>
-                </FormRow>
+            </div>
+            </CfgGroup>
+            <CfgGroup id="console.computador" k="Este computador" summary={machineSummary(machine)}>
+            <div className="frm">
                 <FormRow k="Zoom">
                     <Seg small label="Zoom do console" value={String(machine?.zoom ?? 1)} options={ZOOMS.map(([v, l]) => [v, l, machine?.zoom === undefined ? { disabled: true } : undefined])}
                         onChange={(v) => machine?.zoom !== undefined && change("machineSet", { zoom: Number(v) })} />
@@ -88,8 +90,17 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                     </span>
                 </FormRow>
             </div>
-            <CfgKey k="Atalhos" className="listhead"><span className="kx-section">Atalhos <span className="kx-count">· {letters === "off" ? "também no menu do logo, Atalhos do teclado" : "também no ? do console"}</span></span></CfgKey>
-            <div className="cfg-shortcuts"><ShortcutList /></div>
+            </CfgGroup>
+            <CfgGroup id="console.atalhos" k="Atalhos" defaultOpen={false} summary={shortcutsSummary(letters)}>
+                <div className="frm">
+                    <FormRow k="Teclas de uma letra">
+                        <Seg small label="Teclas de uma letra" value={letters} onChange={setLetters} options={LETTER_KEYS} />
+                        <span className="kx-meta">{LETTER_KEYS_HINT[letters]} · da igreja, viaja no backup</span>
+                    </FormRow>
+                </div>
+                <div className="cfg-shortcuts"><ShortcutList /></div>
+                <div className="listhead"><span className="kx-meta">{letters === "off" ? "Também no menu do logo, Atalhos do teclado." : "Também no ? do console."}</span></div>
+            </CfgGroup>
         </>
     );
 }

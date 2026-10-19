@@ -365,7 +365,11 @@ open the Programa monitor draws one still frame (the air never pauses).
   search jump opens it. Groups are 12 px apart with a hairline; a page's
   first area is the same heading without the chevron (static, the chevron's
   slot kept so titles line up), and only the areas after it, or the rare
-  ones, fold. Hover `bg-3` on the header, the focus ring inside it.
+  ones, fold. Hover `bg-3` on the header, the focus ring inside it. The
+  title is the console's grey caption at weight 600 (never gold: gold is the
+  brand and what is live). State is the closed summary, never a header hint;
+  a page's groups run identity first, then what changes most, then the rare
+  (Rodada H1, every Configurações section).
 - **List rows are inset cards**: every `kx-row` and `kx-layer` in the
   console (Biblioteca, Setlist, the tabs panel, Camadas, Configurações' menu,
   the views) sits 4 px in from its column with `radius-control` and 2 px

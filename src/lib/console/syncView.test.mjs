@@ -1,7 +1,7 @@
 // node --test src/lib/console/syncView.test.mjs   (npm test)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ago, syncStep, syncState, computerRows, sinceLine, sameSyncStatus, biblesMissingHere, editionsList } from "./syncView.js";
+import { ago, syncStep, syncState, computerRows, sinceLine, sameSyncStatus, biblesMissingHere, editionsList, syncSummary, SYNC_TRAVEL_SUMMARY } from "./syncView.js";
 
 const NOW = Date.parse("2026-10-16T20:00:00.000Z");
 const minus = (ms) => new Date(NOW - ms).toISOString();
@@ -89,4 +89,11 @@ test("the Bible editions the other computers have and this one lacks", () => {
     assert.deepEqual(many.missing, ["AA", "NVI"], "computers without the code or taken out do not count");
     assert.equal(many.line, "Instaladas nos outros computadores: AA e NVI. Faltam a AA e a NVI aqui.");
     assert.equal(editionsList(["NVI", "ACF", "AA"]), "NVI, ACF e AA");
+});
+
+test("Código da igreja's summary counts the computers that hold the code", () => {
+    assert.equal(syncSummary(base), "1 computador com o código");
+    const withOthers = { ...base, engine: { state: "ok", computers: [{ pc: "b", verified: true }, { pc: "c", verified: false }, { pc: "d", verified: true, removed: { at: minus(1000), by: "me" } }, { pc: "e" }] } };
+    assert.equal(syncSummary(withOthers), "3 computadores com o código", "this one, a verified one and one nobody checked; not the one without the code, not the removed one");
+    assert.ok(SYNC_TRAVEL_SUMMARY.includes("vão") && SYNC_TRAVEL_SUMMARY.includes("ficam"));
 });
