@@ -90,7 +90,8 @@ export function useCommands({ setGate }) {
         if (r.off) { setGate("off"); return r; }
         if (r.closed) { setGate("closed"); return r; }
         setUnknown(Boolean(r.unknown));
-        if (navigator.vibrate) try { navigator.vibrate(r.ok ? 15 : [30, 40, 30]); } catch { /* no vibration */ }
+        // Only after a real tap: before one, Chrome blocks the call and logs it.
+        if (navigator.vibrate && navigator.userActivation?.hasBeenActive !== false) try { navigator.vibrate(r.ok ? 15 : [30, 40, 30]); } catch { /* no vibration */ }
         // An unknown outcome is the banner's ("Não sei se foi"), not a toast too.
         if (!r.ok) { if (!r.unknown) say(r.message, { bad: true }); else setToast(null); }
         else if (action === "end") say("Projeção encerrada.", { undo: Boolean(r.result?.undo) });
