@@ -14,7 +14,7 @@ export function useRemote({ c, service, items, airItemId, airNow, nextItem, pref
         locked: c.locked,
         lockedSay: LOCKED_SAY,
         service, items, airItemId, airNow, nextItem, prefs, playerPick,
-        callOp: c.callOp, liveOp: c.liveOp, clearText: c.clearText, say: c.say, undoEnd: c.undoEnd,
+        callOp: c.callOp, liveOp: c.liveOp, clearText: c.clearText, say: c.say, end: c.end,
         sendStage, buildStage, referenceVerses, stageFromVerses,
     };
     useEffect(() => {

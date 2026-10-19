@@ -1900,6 +1900,9 @@
         "screen_transition": {
           "type": "boolean"
         },
+        "pause_fade_ms": {
+          "type": "integer"
+        },
         "standby_background": {
           "type": "text"
         },

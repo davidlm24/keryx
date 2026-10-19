@@ -108,7 +108,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         // A PDF goes on air by itself, page by page; a PowerPoint not at all (presentation.js).
         const visual = list.filter(playsInSequence);
         const skipped = list.filter(isDoc).length;
-        if (!visual.length && audios.length) { onSend(stageFromAudioList(audios)); c.say(`${audios.length} áudios em sequência no canal de áudio · Esc não para a música.`); return; }
+        if (!visual.length && audios.length) { onSend(stageFromAudioList(audios)); c.say(`${audios.length} áudios em sequência no canal de áudio · Esc para a música.`); return; }
         if (!visual.length) { c.say(skipped ? "Apresentações não tocam em sequência: envie uma por vez." : "Nada para tocar: escolha vídeos ou imagens."); return; }
         onSend(stageFromMediaList(visual));
         c.say(`${visual.length} em sequência nas telas${audios.length ? " · os áudios ficam de fora (use Áudios)" : ""}${skipped ? ` · ${skipped === 1 ? "a apresentação fica" : "as apresentações ficam"} de fora (envie uma por vez)` : ""} · Esc interrompe.`);
