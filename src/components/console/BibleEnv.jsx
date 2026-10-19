@@ -372,7 +372,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 </span>
                 <Seg small label="Nomes dos livros" value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
                 <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
-                <IconBtn name="grid" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
+                <IconBtn name="more" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
                     { label: `Tema da Bíblia… · ${bibleTheme ? themeName(bibleTheme) : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`, icon: "star", onSelect: chooseTheme },
                     "sep",
                     // A narrow column hides Abrev | Nomes (console.css, C-47): then it is here.

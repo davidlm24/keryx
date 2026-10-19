@@ -16,6 +16,16 @@ const EXTRA = {
     cloud: '<path d="M7.5 18.5h9.5a3.75 3.75 0 0 0 .4-7.48 5.5 5.5 0 0 0-10.6 1.26A3.1 3.1 0 0 0 7.5 18.5z"/>',
     // Two ticks: select all (the Bíblia's verses).
     checks: '<path d="m3.5 12.5 3.5 3.5 7-8"/><path d="m11 15.5.5.5 8-9"/>',
+    // One glyph per kind of thing (Rodada G1, owner 19/10: the film meant
+    // video, the Mídia, presentations and YouTube at once).
+    // The media library (Mídia): a picture frame in front of another.
+    media: '<rect x="3.5" y="8" width="13" height="11" rx="1.5"/><path d="M7.5 5h11a2 2 0 0 1 2 2v8.5"/><path d="m3.5 16 3.5-3.5 3 3 2-2 4.5 4.5"/><circle cx="12.5" cy="11.5" r="1"/>',
+    // A presentation (PDF pages on air): a board on its stand with a chart.
+    presentation: '<path d="M3 4.5h18"/><path d="M4.5 4.5v10a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-10"/><path d="M12 15.5v3M8.5 20.5l3.5-2 3.5 2"/><path d="M9 12.5v-2M12 12.5v-4M15 12.5v-1"/>',
+    // A YouTube link: the rounded player with its triangle.
+    youtube: '<rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="m10 9 5 3-5 3z"/>',
+    // A song synced to its media (Sincronizar): lyrics lines with a clock.
+    synced: '<path d="M4.5 6.5h11M4.5 11h8M4.5 15.5h5"/><circle cx="16.5" cy="15.5" r="4"/><path d="M16.5 13.5v2l1.4 1"/>',
     // The set's undo, mirrored (Refazer in the editors).
     redo: '<path d="M15.5 13.5 20 9l-4.5-4.5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H14"/>',
 };

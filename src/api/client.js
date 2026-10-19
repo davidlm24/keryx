@@ -65,9 +65,9 @@ export const { entities, auth, integrations, appLogs, live, pendingMedia } = bac
 
 // The link to the KERYX computer, for a screen on the network to show while
 // it (re)connects (src/lib/network/connection.js). Everywhere else there is
-// no link to lose: always open.
+// no link to lose: always open, and always just heard from (lastEventAt).
 const OPEN = Object.freeze({ phase: "open", attempt: 0, everOpen: true });
-export const connection = networkBridge ? networkBridge.connection : { current: () => OPEN, subscribe: () => () => {} };
+export const connection = networkBridge ? networkBridge.connection : { current: () => OPEN, lastEventAt: () => Date.now(), subscribe: () => () => {} };
 
 export const keryx = { entities, auth, integrations, appLogs, live, pendingMedia, connection, isDesktop, isNetworkScreen, isPreview };
 export default keryx;

@@ -6,7 +6,7 @@ import { keyHint } from "@/lib/console/keys";
 import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
-import { MenuList, useFocusFirst } from "./Menu";
+import { MenuList, useFocusFirst, usePlaced } from "./Menu";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
 import { PANEL_TABS, TABS_MENU_TITLE, tabsMenu } from "@/lib/console/panelTabs";
 import { restoreArgs } from "@/lib/projection";
@@ -19,6 +19,7 @@ import { byGroup, rowStatus } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { Switch } from "./settings/parts";
 import { useDialogFocus } from "./useDialogFocus";
+import { mediaIcon } from "@/lib/console/libraryRows";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
@@ -72,7 +73,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     const items = [
         { label: "Culto", icon: "list", kbd: <Icon name="chevron-right" />, onSelect: () => setOpen("cultos") },
         { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
-        { label: "Mídia", icon: "film", onSelect: go(onMedia) },
+        { label: "Mídia", icon: "media", onSelect: go(onMedia) },
         { label: "Avisos", icon: "megaphone", onSelect: go(onNotices) },
         { label: "Novo aviso", icon: "plus", onSelect: go(onNewNotice) },
         { label: "Escola bíblica", icon: "book", onSelect: go(onSchool) },
@@ -211,25 +212,34 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
 // The (+) at the end of a trimmable tab row (open: "tabs:panel" or
 // "tabs:lib"): every tab with its check mark, as Ver lists the modules.
 // A click checks or unchecks and the list stays open; the last tab checked
-// cannot go. Under the (+), its right edge on the button's — above it when
-// the window has no room below (the panel beside the Prévia is low).
-export function TabsMenu({ open, list, onToggle, onRestore, onClose }) {
+// cannot go. Under the (+), its right edge on the button's — its left edge
+// near the window's left (the Biblioteca), above it when the window has no
+// room below (the panel beside the Prévia is low): usePlaced, Menu.jsx.
+// The Biblioteca's also says what the songs' second line shows (`songLine`:
+// { artist, key, length }, layout.libShowArtist/Key/Length; Rodada G1).
+const SONG_LINE = [["artist", "Mostrar o artista"], ["key", "Mostrar o tom"], ["length", "Mostrar a duração"]];
+export function TabsMenu({ open, list, onToggle, onRestore, onClose, songLine = null, onSongLine }) {
     const row = open?.startsWith("tabs:") ? open.slice(5) : null;
-    if (!row || !PANEL_TABS[row]) return null;
-    const plus = document.querySelector(`.console [data-tabs-plus="${row}"]`)?.getBoundingClientRect();
-    const tall = (PANEL_TABS[row].length + 2) * 32 + 24;
-    const below = !plus || plus.bottom + 4 + tall <= window.innerHeight - 8;
-    const style = !plus ? { right: 8, top: "var(--pop-top)", width: 240 }
-        : below ? { right: Math.max(8, Math.round(window.innerWidth - plus.right)), top: Math.round(plus.bottom + 4), width: 240 }
-            : { right: Math.max(8, Math.round(window.innerWidth - plus.right)), bottom: Math.round(window.innerHeight - plus.top + 4), width: 240 };
+    const known = Boolean(row && PANEL_TABS[row]);
+    const pop = useRef(null);
+    const plus = useRef(null);
+    plus.current = known ? document.querySelector(`.console [data-tabs-plus="${row}"]`) : null;
+    usePlaced(pop, plus, { open: known && Boolean(plus.current) });
+    if (!known) return null;
+    const style = plus.current ? { width: 240 } : { right: 8, top: "var(--pop-top)", width: 240 };
     return (
-        <MenuList key={row} className="pop kx-pop tabs-menu" style={style} label={TABS_MENU_TITLE[row]} closeOnPick={false} onClose={onClose} items={[
+        <MenuList key={row} listRef={pop} className="pop kx-pop tabs-menu" style={style} label={TABS_MENU_TITLE[row]} closeOnPick={false} onClose={onClose} items={[
             { head: TABS_MENU_TITLE[row] },
             ...tabsMenu(row, list).map((t) => ({
                 label: <span className="tabs-menu-t">{t.name}{t.hint && <span className="kx-meta"> {t.hint}</span>}</span>, role: "menuitemcheckbox", checked: t.checked,
                 title: t.last ? "Pelo menos uma aba fica à vista" : undefined, ariaDisabled: t.last, onSelect: () => onToggle(row, t.id),
             })),
             "sep",
+            ...(row === "lib" && songLine && onSongLine ? [
+                { head: "Nas letras" },
+                ...SONG_LINE.map(([k, label]) => ({ label, role: "menuitemcheckbox", checked: Boolean(songLine[k]), onSelect: () => onSongLine(k, !songLine[k]) })),
+                "sep",
+            ] : []),
             { label: "Restaurar abas padrão", onSelect: () => onRestore(row) },
         ]} />
     );
@@ -312,7 +322,7 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
     if (!ref && onBibleSearch && ql.length >= 3) bible.push({ icon: "search", title: `Buscar “${q.trim()}” na Bíblia`, meta: "Busca por palavra na Bíblia instalada", act: "Buscar", pick: () => onBibleSearch(q.trim()) });
     const rund = (ql ? items.filter((it) => has(it.title)) : []).slice(0, 4).map((it) => ({ icon: "list", title: it.title, meta: "Setlist", pick: () => onPrepare(it, items.indexOf(it)) }));
     const songs = (ql ? data.songs.filter((s) => has(s.title, s.artist)) : data.songs.slice(0, 4)).slice(0, 5).map((s) => ({ icon: "music", title: s.title, meta: [s.artist, s.song_key].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromSong(s, {}, data.themes)), add: onAddSong ? () => onAddSong(s) : null }));
-    const media = (ql ? data.media.filter((m) => has(m.title)) : []).slice(0, 4).map((m) => ({ icon: m.type === "image" ? "image" : "film", title: m.title, meta: m.type, pick: () => onPrepare(stageFromMedia(m)) }));
+    const media = (ql ? data.media.filter((m) => has(m.title)) : []).slice(0, 4).map((m) => ({ icon: mediaIcon(m), title: m.title, meta: m.type, pick: () => onPrepare(stageFromMedia(m)) }));
     const pieces = (ql ? data.pieces.filter((p) => has(p.title, p.text)) : []).slice(0, 4).map((p) => ({ icon: "megaphone", title: p.title || p.text, meta: "Aviso", pick: () => onPrepare(stageFromPiece(p)) }));
     const mats = (ql ? (data.materials || []).filter((m) => has(m.title, m.subject, m.class_name)) : []).slice(0, 4).map((m) => ({ icon: materialIcon(m.type), title: m.title, meta: ["Escola bíblica", m.subject, materialMeta(m)].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromMaterial(m)) }));
     // A reference typed in the KERYX environment is what the operator wants: first.

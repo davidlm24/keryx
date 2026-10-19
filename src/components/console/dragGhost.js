@@ -1,7 +1,7 @@
 import { iconSvg } from "./Icon";
 
 // A stage's glyph for its ghost (the Biblioteca and the Mídia drag stages).
-const STAGE_ICON = { lyrics: "music", bible: "book", text: "text", audio: "volume", video: "film", media: "image", presentation: "image", piece: "megaphone", tool: "clock" };
+const STAGE_ICON = { lyrics: "music", bible: "book", text: "text", audio: "volume", video: "film", media: "image", presentation: "presentation", piece: "megaphone", tool: "clock" };
 export const stageGhost = (stage) => ({ label: stage?.title || "", icon: STAGE_ICON[stage?.kind] || "text" });
 
 // The card that follows the pointer on every HTML5 drag (owner 2026-10-16,

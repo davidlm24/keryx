@@ -293,7 +293,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   "Mostrar nomes" is on (`layout.temasThumb`/`temasNames`, per computer);
   an empty slot is a dashed + that makes a new theme; the panel is as tall
   as its slots (`Measure` → `locked.temas`), like Camadas. Its header has
-  the library (`grid` icon; the library's right click pins a theme here)
+  the library (`palette` icon, as Temas everywhere; the library's right click pins a theme here)
   and the **+ menu** (`menuRef`): Novo tema, Configurações › Temas…, Salvar/Tirar tema para a
   música, Usar neste culto, Seguir o culto, Tornar padrão, Visualização.
   Nothing else in the body: no "tema do culto" line, no buttons.
@@ -338,7 +338,35 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `askText` (PromptDialog.jsx; Esc closes it first). The Setlist's **+** is a menu
   too: Buscar… (the palette), Seção…, Texto…, Timer… (a ServiceItem under
   the item in the Prévia, else at the end) and Planejar o culto…; the
-  Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory). **Camadas is as tall as what it holds**
+  Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
+  the search row has a button beside the ☆, "Abrir a Biblioteca de
+  mídia" (the Mídia page, every tab), and no (+) holds the lines-per-slide
+  chips any more ("Ao importar letras" lives in Configurações › Bíblia e
+  músicas; Rodada G1). **Hover buttons are glyphs only** (owner, Rodada
+  G1): the word stays inside the button as screen-reader text (`.kx-act-l`,
+  which the smoke clicks by), the tooltip says it. **One glyph per kind of
+  thing** (owner 2026-10-19): `media` = the Mídia (the library page),
+  `film` = a video, `youtube` = a YouTube link, `presentation` = a
+  PDF/presentation, `volume` = an audio file (`music` = a song only),
+  `synced` = a song synced to its media, `clock` = a timer or the live
+  clock, `palette` = Temas, `grid` = the Multiview only; a Media row's
+  glyph is `mediaIcon` (libraryRows.js, tested) wherever it is listed.
+  New glyphs go in Icon.jsx's EXTRA, in the set's style. **A row with hover buttons is one line** (Rodada G1, owner
+  2026-10-19): in Confortável too, its title ends in "…" (the whole title
+  is its tooltip) — the Biblioteca, the Setlist, the palette, the Mídia and
+  the planner (one rule, `.kx-row:has(> .kx-row-acts)` in console.css).
+  A song's row has no glyph (media and avisos keep theirs); under its
+  title the artist, the key and the length as the Biblioteca header (+)'s
+  "Nas letras" checks say (Mostrar o artista / o tom / a duração:
+  `layout.libShowArtist` off, `libShowKey`/`libShowLength` on, per
+  computer); the artist is always in the tooltip; sincronizada, parece repetida
+  and baixando are small badges at the row's end that the hover buttons
+  replace (`songRow` in `src/lib/console/libraryRows.js`, tested). **Menus
+  from a button stay inside the window** (the (+) menus, the tabs' (+), the
+  Bíblia's lists): `placeBox` (contextMenu.js, tested) + `usePlaced`
+  (Menu.jsx) put them under the button, turned to its other edge or above
+  it where the window ends, scrolled with a max-height when nothing fits;
+  `.addmenu-pop` is `position: fixed`, so no panel clips it. **Camadas is as tall as what it holds**
   (its list, plus the settings a pencil opened; `Measure` in kx.jsx) and
   the No ar strip as tall as the slide on air with the most lines (the
   song's editor decides them; `onAirHeight`): heights the console passes
@@ -709,7 +737,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and Imagens — `libMediaKinds` in panelTabs.js, tested) that lists every tab with a check mark
   (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
   in the list's order, at least one always, "Restaurar abas padrão" at the
-  bottom; saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
+  bottom (the Biblioteca's has "Nas letras" — Mostrar o artista, o tom, a
+  duração — above it); saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
   tested; "Restaurar disposição" resets it). The panel's tabs reuse what
   exists, no projection logic of their own: **Notas** (the
   `ServiceItem.notes` of the item in the Prévia / on air, and the Escola
@@ -923,7 +952,36 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   optional, separate from the screens' PIN), it posts commands from a
   closed list (`REMOTE_ACTIONS`, `remoteCommand`) that main relays to the
   console (`keryx:remote`), which runs them as its own keys would — never
-  a direct write to the store or the live state from the network. Each screen says which
+  a direct write to the store or the live state from the network. **Its
+  protocol is `shared/remoteProtocol.json`** (version 2, Rodada G6; the
+  server, the console's runner and the phone all code against it, and
+  `shared/remoteProtocol.test.mjs` checks it against `REMOTE_ACTIONS` and
+  `WHILE_LOCKED`): `POST /api/remote { v: 2, action, args }` (no `v` = a
+  version 1 page, which keeps working), at most 4 kB; each action's `args`
+  schema (enum, int[min,max], bool, id, str[max] trimmed; unknown keys
+  dropped), its `kind` — R reads (no log, no lock check), S puts on air
+  (423 while locked; = `!WHILE_LOCKED.has(op)` for its `ops`), T takes
+  off (works locked) —, its pt-BR `label`, its `cap` (state's `caps`
+  gate the phone's sections) and its `result`; the refusal `codes`
+  (locked, nothing, not_found, missing, syncing, blocked, busy, rate) and
+  the pt-BR `messages`; timeouts 3 s (8 s for bible*; 504 = outcome
+  unknown, never retried). The live state reaches the phone over SSE,
+  what only the console knows through `state` (built per request; the v1
+  names stay, the smoke reads `items` and `serviceId`) and `library`.
+  Additive only: never rename or retype a field; a changed `app` reloads
+  the page; an unknown action is 400 and the phone says "Atualize o
+  KERYX no computador". A new action is an entry in the JSON first.
+  `remoteCommand` (lan.cjs) checks every command against it; a phone
+  signed in only with the remote's code (the screens have a PIN it does
+  not have) reads only `/api/live`, `/media`, `User` `get` and its own
+  event stream (User, live and `hb` frames; `/api/screens` is 401); taps
+  past a burst of 10 / 8 a second, or 4 waiting per phone (8 in all), get
+  429/503 (`createRemoteGate`); every stream gets an `hb` every 10 s
+  (`connection.lastEventAt()` in network.js) and is dropped past 256 kB
+  unread; reads are never logged. Under `npm run dev` the `/Remote` tab
+  works too: `scripts/preview/server.cjs` checks its commands the same
+  way and hands them to the console tab that listened last
+  (`remote.onCommand` in preview.js). Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
   the screens connected right now from that (`useOutputs`). Links and QR
   codes meant for other devices come from the network info's `urls`

@@ -254,7 +254,7 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
                 {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                 {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
                 {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}
-                {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"}</div>}
+                {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="volume" /> Áudio · {prev.title || "sem título"}</div>}
                 {prev && pendingUrls(prev, pending, { skip: ["poster", "thumbnail_url"] }).length > 0
                     ? <div className="kx-screen-hatch"><div>Baixando…<small>{prev.title} · da sincronização</small></div></div>
                     : prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}

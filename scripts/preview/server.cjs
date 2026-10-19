@@ -14,6 +14,12 @@
 //   POST /__keryx/media?name=  the file's bytes -> { data: { fileName } }
 //   POST /__keryx/media-info   { names } -> { data: { [name]: { exists, size } } }
 //   GET  /media/<file>         the preview's media folder; /media/bundled/ is resources/
+//   POST /api/remote           the controle remoto's command (the /Remote tab),
+//                              checked as electron/lan.cjs checks it, run by
+//                              the console tab listening on:
+//   GET  /__keryx/remote-events  Server-Sent Events: "remote" commands, to the
+//                              console tab that connected last
+//   POST /__keryx/remote-result  { id, ok, message, status, code, data }: its answer
 //
 // Never packaged (electron-builder "files" leaves scripts/ out) and never
 // required by the main process. Loopback only; it never touches the real
@@ -27,6 +33,8 @@ const { createStore } = require("../../electron/db/store.cjs");
 const { createLive, loadLiveRules } = require("../../electron/live.cjs");
 const { OUTPUTS } = require("../../electron/outputs.cjs");
 const { within, sendFile } = require("../../electron/server.cjs");
+const { remoteCommand, remoteReply, remoteTimeout } = require("../../electron/lan.cjs");
+const PROTOCOL = require("../../shared/remoteProtocol.json");
 const schema = require("../../electron/db/schema.json");
 const { seed } = require("./fixtures.cjs");
 
@@ -95,10 +103,37 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
     const ping = setInterval(() => broadcast(": ping\n\n"), KEEPALIVE_MS);
     ping.unref?.();
 
+    // The controle remoto's mock: the console tab that listens last runs the
+    // phone's commands (only one, so two console tabs never both run one).
+    const consoles = [];
+    const pending = new Map();
+    let seq = 0;
+    async function handleRemote(req, res) {
+        let command;
+        try {
+            command = remoteCommand(JSON.parse((await readBody(req, PROTOCOL.limits.bodyBytes)).toString("utf8") || "{}"));
+        } catch (err) {
+            return json(res, err.status || 400, { error: { message: err.status && err.status !== 413 ? err.message : "Pedido inválido.", status: err.status || 400 } });
+        }
+        const target = consoles[consoles.length - 1];
+        if (!target) return json(res, 503, { error: { message: PROTOCOL.messages.consoleClosed, status: 503, code: "busy" } });
+        const id = ++seq;
+        let timer;
+        const answer = await new Promise((resolve) => {
+            pending.set(id, resolve);
+            timer = setTimeout(() => resolve({ ok: false, message: "O console não respondeu.", status: 504 }), remoteTimeout(command.action));
+            target.write(`event: remote\ndata: ${JSON.stringify({ id, ...command })}\n\n`);
+        });
+        clearTimeout(timer);
+        pending.delete(id);
+        const { status, body } = remoteReply(answer);
+        return json(res, status, body);
+    }
+
     // Connect-style middleware: answers its own paths, passes the rest on.
     async function middleware(req, res, next) {
         const url = new URL(req.url, "http://localhost");
-        const own = url.pathname.startsWith(PREFIX) || url.pathname.startsWith("/media/");
+        const own = url.pathname.startsWith(PREFIX) || url.pathname.startsWith("/media/") || url.pathname === "/api/remote";
         if (!own) return next();
         // This machine only, by address and by name (no DNS rebinding).
         if (!LOOPBACK.has(req.socket.remoteAddress) || !HOSTS.test(String(req.headers.host || ""))) return json(res, 403, { error: { message: "A prévia só atende este computador.", status: 403 } });
@@ -106,6 +141,7 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
         if (req.method === "POST" && req.headers["x-keryx"] !== "1") return json(res, 403, { error: { message: "Pedido não autorizado.", status: 403 } });
         try {
             if (url.pathname.startsWith("/media/")) return serveMedia(req, res, url.pathname);
+            if (url.pathname === "/api/remote") return req.method === "POST" ? handleRemote(req, res) : json(res, 405, { error: { message: "Só POST.", status: 405 } });
             const route = url.pathname.slice(PREFIX.length);
             if (route === "db" && req.method === "POST") {
                 const { entity, op, args } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
@@ -122,6 +158,19 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
                 clients.add(res);
                 req.on("close", () => clients.delete(res));
                 return undefined;
+            }
+            if (route === "remote-events" && req.method === "GET") {
+                res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
+                res.write("retry: 2000\n\n");
+                consoles.push(res);
+                req.on("close", () => { const i = consoles.indexOf(res); if (i >= 0) consoles.splice(i, 1); });
+                return undefined;
+            }
+            if (route === "remote-result" && req.method === "POST") {
+                const answer = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                const done = pending.get(answer.id);
+                if (done) { pending.delete(answer.id); done(answer); }
+                return json(res, 200, { data: Boolean(done) });
             }
             if (route === "outputs" && req.method === "GET") return json(res, 200, { data: OUTPUTS.map(({ key, label, windowName }) => ({ key, label, windowName })) });
             if (route === "bible" && req.method === "GET") return json(res, 200, { data: store.countBy("BibleVerse", "version") });
@@ -171,6 +220,7 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
             offLive();
             for (const res of clients) res.end();
             clients.clear();
+            for (const res of consoles.splice(0)) res.end();
             live.flush();
             store.close();
         },

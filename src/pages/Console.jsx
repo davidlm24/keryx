@@ -12,7 +12,8 @@ import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/
 import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
 import { themeInUseSeed, defaultTheme, themeName } from "@/lib/console/themes";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
-import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
+import { useConsole } from "@/components/console/useConsole";
+import { useRemote } from "@/components/console/useRemote";
 import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
@@ -80,8 +81,7 @@ import { plan, playableItems, isSection, total, itemOnAir } from "@/lib/console/
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { readChapter } from "@/lib/bibleText";
-import { formatReference, parseReference } from "@/lib/bibleBooks";
-import { remoteState, remoteSay, passagePreview } from "@/lib/console/remote";
+import { formatReference } from "@/lib/bibleBooks";
 
 // The modules Ver (and Configurações › Console) show or hide: in the culto's
 // dock, in or out of the tray, on this computer (owner 2026-10-13). The
@@ -91,6 +91,8 @@ const VER_MODULES = VER_LIST.map(([id]) => id);
 
 // Where a control keeps the focus after a mouse click: overlays that run
 // their own keys (a question, the palette, the quick jump…).
+// The header (+)'s "Nas letras" options → their layout keys (Rodada G1).
+const SONG_LINE_KEYS = { artist: "libShowArtist", key: "libShowKey", length: "libShowLength" };
 const KEEPS_FOCUS = ".dialog, .palette, .qj, .lyr, .addmenu";
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
@@ -363,6 +365,8 @@ export default function Console() {
         const next = switchTier(layout, tier);
         if (next !== layout) setLayout(next);
     }, [tier, layout.dockTier]); // eslint-disable-line react-hooks/exhaustive-deps
+    // What the Biblioteca's songs show under their title (the header's (+)).
+    const songLine = { artist: layout.libShowArtist, key: layout.libShowKey, length: layout.libShowLength };
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT, hidden: layout.hidden, trayFromChurch: false, dockPresets: layout.dockPresets || [] }); c.say("Layout padrão restaurado."); };
     // The trimmable tab rows (panelTabs.js): what each shows, the (+) list.
     const tabLists = layout.tabs || DEFAULT_TABS;
@@ -743,89 +747,9 @@ export default function Console() {
             c.say(`${title} adicionado ao fim da setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
-    // Controle remoto (a phone, electron/lan.cjs): each command runs what the
-    // console's own key or palette does, so Travar telas, themes and the
-    // Desfazer of Encerrar hold; the answer goes back to the phone, and the
-    // console says what the phone did. Read through a ref: the latest state.
-    const remoteRun = async ({ action, args = {} }) => {
-        const refuse = (message, status = 409) => ({ ok: false, message, status });
-        const putsOnAir = ["next", "prev", "sendNext", "sendItem", "bibleSend", "play"].includes(action);
-        if (putsOnAir && c.locked) return refuse(LOCKED_SAY, 423);
-        const sendOne = async (stage, said) => ((await sendStage(stage)) ? { ok: true, message: remoteSay(action, said) } : refuse("Não foi para o ar."));
-        const reference = async () => {
-            const ref = parseReference(args.ref);
-            if (!ref) return { error: refuse(`Não entendi "${args.ref}". Escreva como jo 3 16.`, 400) };
-            const { version, verses } = await referenceVerses(ref);
-            return { ref, version, verses, nums: referenceNums(ref) };
-        };
-        switch (action) {
-            case "state":
-                return { ok: true, data: remoteState({ service, items, airItemId: airNow ? airItemId : null, nextItemId: nextItem?.id || null, live: c.cur }) };
-            case "next": case "prev":
-                if (!c.cur?.content) return refuse("Nada com slides no ar.");
-                await c.callOp(action === "next" ? "content.next" : "content.prev");
-                return { ok: true, message: remoteSay(action) };
-            case "black": case "logo": {
-                const turningOn = c.cur?.screen !== action;
-                await c.liveOp("screen.set", { mode: turningOn ? action : "show" });
-                return { ok: true, message: remoteSay(action, `${action === "black" ? "Tela preta" : "Logo"} ${turningOn ? "ligado" : "desligado"}`) };
-            }
-            case "clear":
-                await c.clearText();
-                return { ok: true, message: remoteSay(action) };
-            case "play": {
-                const op = playerOp(c.cur, playerLayer(c.cur, playerPick), "toggle");
-                if (!op) return refuse("Nada tocando.");
-                await c.callOp(op[0], op[1]);
-                return { ok: true, message: remoteSay(action) };
-            }
-            case "end": {
-                // As the Esc: everything off, with Desfazer on the console.
-                const before = c.cur;
-                await c.callOp("clear");
-                c.say("Celular: projeção encerrada.", { label: "Desfazer", undo: true, run: () => c.undoEnd(before) });
-                return { ok: true, message: "Projeção encerrada." };
-            }
-            case "sendNext":
-                if (!nextItem) return refuse("Não há próximo item na setlist.");
-                return sendOne(await buildStage(nextItem, items.indexOf(nextItem)), `enviou "${nextItem.title}"`);
-            case "sendItem": {
-                const index = items.findIndex((i) => i.id === args.itemId);
-                if (index < 0) return refuse("Esse item não está na setlist.", 404);
-                if (isSection(items[index])) return refuse("Uma seção não vai ao ar.");
-                return sendOne(await buildStage(items[index], index), `enviou "${items[index].title}"`);
-            }
-            case "bibleFind": {
-                const r = await reference();
-                if (r.error) return r.error;
-                if (r.nums.length && !r.verses.some((v) => r.nums.includes(v.number))) return refuse(`${formatReference(r.ref)} não existe na ${r.version}.`, 404);
-                return { ok: true, data: passagePreview(`${formatReference(r.ref)} · ${r.version}`, r.verses, r.nums) };
-            }
-            case "bibleSend": {
-                const r = await reference();
-                if (r.error) return r.error;
-                const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
-                const st = stageFromVerses({ verses: r.verses, nums: r.nums, how: prefs.bible_verses_per_slide, version: r.version, book: r.ref.book, chapter: r.ref.chapter, onAir });
-                if (!st) return refuse(`${formatReference(r.ref)} não existe na ${r.version}.`, 404);
-                return sendOne(st, `enviou ${formatReference(r.ref)}`);
-            }
-            default:
-                return refuse("Comando desconhecido.", 400);
-        }
-    };
-    const remoteRef = useRef(remoteRun);
-    remoteRef.current = remoteRun;
-    useEffect(() => {
-        const remote = window.keryxDesktop?.remote;
-        if (!remote?.onCommand) return undefined;
-        return remote.onCommand(async (command) => {
-            let answer;
-            try { answer = await remoteRef.current(command); } catch (err) { answer = { ok: false, message: err?.message || "Não foi possível.", status: err?.status || 500 }; }
-            // What the phone did shows here too (Encerrar says it with its Desfazer).
-            if (answer.ok && answer.message && command.action !== "end") c.say(answer.message);
-            remote.reply(command.id, answer);
-        });
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Controle remoto (a phone, electron/lan.cjs): useRemote.js runs each
+    // command as the console's own key or palette would.
+    useRemote({ c, service, items, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses });
 
     // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
     // electron/consoleZoom.cjs): say where it stands. Ctrl+wheel (and a
@@ -1138,7 +1062,7 @@ export default function Console() {
     // The header: the library (where the 9 slots are pinned) and the + menu
     // (owner 2026-10-14: the body is only the thumbnails); as tall as its
     // slots (Measure → locked.temas), like Camadas.
-    const temasBtns = <><IconBtn name="grid" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
+    const temasBtns = <><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
     const temasPanel = <Panel title="Temas" count={themeInUseName ? `em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");
     const layers = (
@@ -1179,7 +1103,7 @@ export default function Console() {
         <Panel title="Biblioteca" actions={<TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
                 onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
-                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} />
+                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} />
         </Panel>
     );
     const slidesPanel = (
@@ -1475,7 +1399,8 @@ export default function Console() {
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} />
-            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)} />
+            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)}
+                songLine={songLine} onSongLine={(k, v) => setLayout({ ...layout, [SONG_LINE_KEYS[k]]: v })} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
