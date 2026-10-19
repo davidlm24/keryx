@@ -203,3 +203,23 @@ export function outputHealth({ outputs = [], seen = {}, locked = false, air = ""
 
     return { rows, connected, total, problems: problems.length, status, onAir, banner };
 }
+
+// Configurações › Telas e saídas › Saídas, the group's summary while it is
+// closed (Rodada H1): "7 saídas · 2 abertas". `outputs` are the main
+// process's output windows ({ open, removed }); a removed output is no row.
+export function outputsSummary(outputs) {
+    const active = (outputs || []).filter((o) => !o.removed);
+    const open = active.filter((o) => o.open).length;
+    const total = `${active.length} ${active.length === 1 ? "saída" : "saídas"}`;
+    return `${total} · ${open ? `${open} ${open === 1 ? "aberta" : "abertas"}` : "nenhuma aberta"}`;
+}
+
+// The line under an output's card in Telas e saídas: where it opens.
+// `displayNumber` is the display's number as Windows counts it here (0: not
+// among the ones on).
+export function outputStatusText(placement, displayNumber = 0) {
+    const p = placement || {};
+    if (p.missing) return "A tela está desligada · a saída aparece quando ela ligar";
+    if (p.mode === "fullscreen") return displayNumber ? `Tela cheia na Tela ${displayNumber}` : "Tela cheia";
+    return "Abre numa janela";
+}

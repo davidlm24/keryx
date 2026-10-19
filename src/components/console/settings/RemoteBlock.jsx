@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import Icon from "../Icon";
 import { Btn } from "../kx";
-import { FormRow, Switch, CfgKey } from "./parts";
+import { remoteSummary } from "@/lib/console/cfgSummaries";
+import { FormRow, Switch, CfgGroup } from "./parts";
 
 // How long Mostrar código keeps the code on screen.
 const SHOW_MS = 30000;
@@ -50,8 +51,7 @@ export default function RemoteBlock({ c, network, info, setInfo, url }) {
     const address = url ? `${url}/Remote` : "";
 
     return (
-        <>
-            <CfgKey k="Controle remoto" className="listhead"><span className="kx-section">Controle remoto</span></CfgKey>
+        <CfgGroup id="rede.remoto" k="Controle remoto" summary={remoteSummary(remote, remotes.length)}>
             <div className="frm">
                 <FormRow k="Celular">
                     <Switch on={remote.enabled} disabled={busy} label="Ligar o controle remoto"
@@ -87,6 +87,6 @@ export default function RemoteBlock({ c, network, info, setInfo, url }) {
                 </div>
             )}
             {remote.enabled && !info.running && <div className="listhead"><span className="kx-warn">Ligue as telas na rede (acima) para o celular encontrar o KERYX.</span></div>}
-        </>
+        </CfgGroup>
     );
 }

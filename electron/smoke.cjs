@@ -2112,6 +2112,15 @@ async function checkConsole(webContents, { live, outputs }) {
         // and a db write restores them.
         const cardOf = (label) => `[...document.querySelectorAll(".console .cfg .cfg-card")].find((n) => { const t = n.querySelector(".cfg-card-t"); return t && t.textContent === ${JSON.stringify(label)}; })`;
         result.cfgOutGrid = await waitFor(() => js(`document.querySelectorAll('.console .cfg .cfg-card').length >= 6 && Boolean(${cardOf("Projeção")})`), 5000);
+        // Rodada H1: the Saídas group (open by default) lays its cards out
+        // 3–4 across at the default window, never one per row.
+        result.cfgSaidasGrid = await waitFor(() => js(`(() => { const cs = [...document.querySelectorAll('.console .cfg [aria-label="Saídas"] .cfg-card')]; if (cs.length < 2) return false; const top = cs[0].getBoundingClientRect().top; return cs.filter((n) => Math.abs(n.getBoundingClientRect().top - top) < 4).length >= 2; })()`), 5000);
+        // A group closed by default opens by its header (openGroup) before
+        // anything inside it is clicked; Arquivo de ajustes is one of them.
+        const openGroup = (title) => js(`(() => { const b = [...document.querySelectorAll('.console .cfg button.cfg-group-t')].find((x) => x.getAttribute('data-cfg-k') === ${JSON.stringify(title)}); if (b && b.getAttribute('aria-expanded') === 'false') b.click(); return Boolean(b); })()`);
+        await openGroup("Arquivo de ajustes");
+        result.cfgFileGroup = await waitFor(() => js(`(() => { const g = document.querySelector('.console .cfg .cfg-group.is-open[data-cfg-group="telas.arquivo"]'); return Boolean(g && [...g.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Exportar ajustes…')); })()`), 4000);
+        await js("document.querySelector('.console .cfg button.cfg-group-t[data-cfg-k=\"Arquivo de ajustes\"]').click(); true"); // closed again: the default
         const stagePrefRow = async () => ((await js('window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: "/StageView" }])')).data || [])[0] || null;
         result.palcoPrev = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".net-stage .ns-chords")); })()`), 8000);
         const stageRow0 = await stagePrefRow();
@@ -2244,9 +2253,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("(() => { const b = [...document.querySelectorAll('.lib-foot button')].find((x) => x.textContent === 'Fechar'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 3000);
         // The Tela ociosa is a screen of the Editor de telas (owner
-        // 2026-10-19, #275): Telas e saídas' card opens it in the window,
-        // and Esc comes back to Configurações.
-        await section("Telas e saídas");
+        // 2026-10-19, #275): its card, in Temas e fundos since Rodada H1,
+        // opens it in the window, and Esc comes back to Configurações.
+        await section("Temas e fundos");
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg [aria-label=\"Tela ociosa\"] .cfg-card-thumb'))"), 4000);
         await click('.console .cfg [aria-label="Tela ociosa"] .cfg-card-thumb', "");
         await waitText(webContents, "Todas as telas mostram isto");
@@ -2937,7 +2946,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.cfgSaidasGrid && result.cfgFileGroup && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edMenuOnScreen === true && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edSplitLive && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

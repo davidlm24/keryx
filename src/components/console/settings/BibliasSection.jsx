@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { Btn, Empty } from "../kx";
 import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
 import { forgetInstalledVersions } from "@/lib/bibleText";
-import { useBridge, usePoll, desktopOnly, Reading } from "./parts";
+import { useBridge, usePoll, desktopOnly, Reading, CfgGroup } from "./parts";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { biblesMissingHere } from "@/lib/console/syncView";
+import { biblesSummary } from "@/lib/console/cfgSummaries";
 
 // Bíblias instaladas: each version downloaded once (or from a file) works
 // without internet; the one in use (User.bible_version, also set by the Livros selector) is
@@ -21,8 +22,11 @@ export default function BibliasSection({ c }) {
     const def = usePrefs().bible_version;
     const sync = useSyncStatus();
     const elsewhere = biblesMissingHere(sync, Object.keys(installed || {}).filter((v) => installed[v] > 0));
-    if (!bible) return <Empty icon="book" title="Só no aplicativo">{desktopOnly}</Empty>;
-    if (!installed) return <Reading what="as Bíblias" error={readError} />;
+    // The group is the section's third area (Rodada H1); the summary says the
+    // edition in use and how many are installed here.
+    const group = (body) => <CfgGroup id="biblia.instaladas" k="Bíblias instaladas" summary={biblesSummary(def, installed ? Object.values(installed).filter((n) => n > 0).length : 0)}>{body}</CfgGroup>;
+    if (!bible) return group(<Empty icon="book" title="Só no aplicativo">{desktopOnly}</Empty>);
+    if (!installed) return group(<Reading what="as Bíblias" error={readError} />);
 
     const install = async (version, fromFile) => {
         try {
@@ -60,7 +64,7 @@ export default function BibliasSection({ c }) {
             .catch(() => c.say("Não foi possível salvar a versão em uso."));
     };
 
-    return (
+    return group(
         <>
             {elsewhere && (
                 <div className="cfg-note" role="status">

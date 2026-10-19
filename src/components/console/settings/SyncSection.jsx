@@ -3,11 +3,11 @@ import { keryx } from "@/api/keryxClient";
 import { Btn, Empty } from "../kx";
 import { useConfirm } from "../ConfirmDialog";
 import { useLibrary } from "../useConsoleData";
-import { FormRow, CfgKey, Switch, useBridge, formatWhen, desktopOnly } from "./parts";
+import { FormRow, CfgKey, CfgGroup, Switch, useBridge, formatWhen, desktopOnly } from "./parts";
 import { useSyncStatus, setSyncStatus } from "@/hooks/useSyncStatus";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { usePrefs, updateUser } from "@/hooks/useUser";
-import { syncStep, syncState, computerRows, sinceLine, ago, SYNC_GOES, SYNC_STAYS, SYNC_MIRROR_HINT, SYNC_SHARED_HINT } from "@/lib/console/syncView";
+import { syncStep, syncState, computerRows, sinceLine, ago, syncSummary, SYNC_GOES, SYNC_STAYS, SYNC_TRAVEL_SUMMARY, SYNC_MIRROR_HINT, SYNC_SHARED_HINT } from "@/lib/console/syncView";
 import { parseCode, codeMessage } from "@shared/syncCode.mjs";
 import { duplicateSongs, keepPairs, mergePlan } from "@shared/syncDuplicates.mjs";
 
@@ -92,10 +92,9 @@ function MadeCode({ made, c, onDone }) {
 
 // O que vai e o que fica (Rodada G7): the two short lists and the hints
 // about the folder, before choosing it and while syncing.
-function Travel() {
-    return (
-        <div className="cfg-sync-travel">
-            <CfgKey k="O que vai e o que fica" className="listhead"><span className="kx-section">O que vai e o que fica</span></CfgKey>
+function Travel({ grouped }) {
+    const rows = (
+        <>
             <div className="kx-row">
                 <div className="kx-row-main">
                     <div className="kx-row-title">Vai para o outro computador</div>
@@ -111,6 +110,15 @@ function Travel() {
             <div className="cfg-note">
                 <span><b>Dica:</b> {SYNC_MIRROR_HINT}<br />{SYNC_SHARED_HINT}</span>
             </div>
+        </>
+    );
+    // Before the folder is chosen it is a plain list under a sub-title; while
+    // syncing it is a group, closed (Rodada H1).
+    if (grouped) return <CfgGroup id="sync.travel" k="O que vai e o que fica" defaultOpen={false} summary={SYNC_TRAVEL_SUMMARY}><div className="cfg-sync-travel">{rows}</div></CfgGroup>;
+    return (
+        <div className="cfg-sync-travel">
+            <CfgKey k="O que vai e o que fica" className="listhead"><span className="kx-section">O que vai e o que fica</span></CfgKey>
+            {rows}
         </div>
     );
 }
@@ -236,6 +244,7 @@ function OnStep({ c, st, busy, run, setMade }) {
 
     return (
         <>
+            <CfgGroup id="sync.andamento" k="Andamento" fold={false}>
             <div className="frm">
                 <FormRow k="Sincronizar">
                     <Switch on={!st.paused} disabled={any} label="Sincronizar" onChange={(on) => run("setPaused", { paused: !on }, "Sincronizar")} />
@@ -272,21 +281,24 @@ function OnStep({ c, st, busy, run, setMade }) {
                         {rows.length === 1 && <span className="kx-meta">nenhum outro computador nesta pasta ainda: escolha a mesma pasta em outro computador e digite o código da igreja</span>}
                     </div>
                 </FormRow>
-            </div>
-            <Travel />
-            <div className="frm">
-                <FormRow k="Código da igreja">
-                    <span className="kx-content cfg-path cfg-sync-codeshown">{shown || "••••-••••"}</span>
-                    {st.canShowCode && <Btn disabled={any} onClick={showCode}>{shown ? "Esconder" : "Mostrar"}</Btn>}
-                    {shown && <Btn disabled={any} onClick={() => copy(shown)}>Copiar</Btn>}
-                    <Btn kind="outline" disabled={any} onClick={rotate}>{busy === "rotate" ? "Trocando…" : "Trocar o código…"}</Btn>
-                </FormRow>
-                <Duplicates c={c} confirm={confirm} />
                 <FormRow k="Sair">
                     <Btn kind="outline" disabled={any} onClick={leave}>Sair da sincronização…</Btn>
                     <span className="kx-meta">este computador para; os outros continuam e nada é apagado</span>
                 </FormRow>
             </div>
+            </CfgGroup>
+            <Travel grouped />
+            <CfgGroup id="sync.codigo" k="Código da igreja" defaultOpen={false} summary={syncSummary(st)}>
+                <div className="frm">
+                    <FormRow k="Código">
+                        <span className="kx-content cfg-path cfg-sync-codeshown">{shown || "••••-••••"}</span>
+                        {st.canShowCode && <Btn disabled={any} onClick={showCode}>{shown ? "Esconder" : "Mostrar"}</Btn>}
+                        {shown && <Btn disabled={any} onClick={() => copy(shown)}>Copiar</Btn>}
+                        <Btn kind="outline" disabled={any} onClick={rotate}>{busy === "rotate" ? "Trocando…" : "Trocar o código…"}</Btn>
+                    </FormRow>
+                </div>
+            </CfgGroup>
+            <Duplicates c={c} confirm={confirm} />
         </>
     );
 }
@@ -355,10 +367,12 @@ function Duplicates({ c, confirm }) {
         }
     };
 
+    const line = n ? `${n} ${n === 1 ? "parece repetida" : "parecem repetidas"}` : "nenhuma";
     return (
-        <>
-            <FormRow k="Músicas repetidas">
-                <span className="kx-meta">{n ? `${n} ${n === 1 ? "parece repetida" : "parecem repetidas"} · mesmo título e mesma letra` : "nenhuma"}</span>
+        <CfgGroup id="sync.repetidas" k="Músicas repetidas" defaultOpen={n > 0} summary={line}>
+          <div className="frm">
+            <FormRow k="">
+                <span className="kx-meta">{n ? `${line} · mesmo título e mesma letra` : "nenhuma repetida · mesmo título e mesma letra"}</span>
                 {n > 0 && <Btn on={open} onClick={() => setOpen((o) => !o)}>{open ? "Fechar a lista" : "Ver…"}</Btn>}
             </FormRow>
             {open && n > 0 && (
@@ -382,6 +396,7 @@ function Duplicates({ c, confirm }) {
                     </div>
                 </FormRow>
             )}
-        </>
+          </div>
+        </CfgGroup>
     );
 }

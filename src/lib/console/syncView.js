@@ -140,3 +140,12 @@ export function biblesMissingHere(st, here) {
     const lack = `${missing.length === 1 ? "Falta" : "Faltam"} ${editionsList(missing, true)} aqui.`;
     return { elsewhere, missing, line: `Instaladas ${where}: ${editionsList(elsewhere)}. ${lack}` };
 }
+
+// Configurações › Sincronização › Código da igreja, the group's summary while
+// it is closed (Rodada H1): how many computers hold the code.
+export function syncSummary(st) {
+    const n = computerRows(st).filter((r) => !r.removed && r.tag !== "sem o código").length;
+    return `${n} ${n === 1 ? "computador com o código" : "computadores com o código"}`;
+}
+// "O que vai e o que fica", closed: the two lists in a line.
+export const SYNC_TRAVEL_SUMMARY = "Músicas, cultos e mídias vão · Bíblias, telas e disposição ficam";
