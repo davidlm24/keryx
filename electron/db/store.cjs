@@ -520,6 +520,17 @@ function createStore({ file, schema, log = console.warn }) {
         return transaction(() => rows.map((data) => insert(entity, def, data, { keepSystem: true, replace: true }))).length;
     }
 
+    // Removes every row of a computer's own entity whose column is `value`
+    // (an edition's 31k verses at once, Configurações › Bíblias › Excluir…).
+    // Never for a synced entity: those deletes must travel. Emits no events
+    // and records nothing, like importRows. -> the number of rows removed.
+    function dropRows(entity, column, value) {
+        const def = entityDef(entity);
+        if (isSynced(entity)) throw new StoreError(`${entity} é sincronizada: apague linha por linha.`, 400);
+        if (!def.columns[column]) throw new StoreError(`Campo '${column}' não existe em ${entity}.`, 400);
+        return Number(transaction(() => prepare(`DELETE FROM ${quote(def.table)} WHERE ${quote(column)} = ?`).run(value)).changes);
+    }
+
     // The single local operator profile behind auth.me() and entities.User.
     db.prepare(`INSERT OR IGNORE INTO ${quote(schema.entities.User.table)} (id, created_date, updated_date, ${Object.keys(PROFILE_DEFAULTS).map(quote).join(", ")}) VALUES (?, ?, ?, ${Object.keys(PROFILE_DEFAULTS).map(() => "?").join(", ")})`)
         .run(PROFILE_ID, new Date().toISOString(), new Date().toISOString(), ...Object.values(PROFILE_DEFAULTS));
@@ -818,6 +829,7 @@ function createStore({ file, schema, log = console.warn }) {
     return {
         call,
         importRows,
+        dropRows,
         countBy,
         tombstones,
         pruneTombstones,

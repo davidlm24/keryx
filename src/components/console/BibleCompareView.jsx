@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import Icon from "./Icon";
 import { Btn, Empty } from "./kx";
-import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
+import { editionCredit } from "@/lib/bibleEditions";
+import { useBibleEditions } from "./useBibleEditions";
 import { getChapter, installedVersions } from "@/lib/bibleText";
 
 const KEY = "keryx.console.bible.compare";
@@ -14,6 +15,7 @@ const loadChosen = () => { try { const v = JSON.parse(localStorage.getItem(KEY) 
 // version that fails says why in its own column.
 export default function BibleCompareView({ book, chapter, version, sel, onSelect, onSendVersion, onUseVersion }) {
     const [installed, setInstalled] = useState({});
+    const editions = useBibleEditions();
     const [chosen, setChosen] = useState(() => loadChosen() || [version, version === "ACF" ? "NVI" : "ACF"]);
     const [cols, setCols] = useState({}); // version -> { verses } | { error } | { loading }
     useEffect(() => { installedVersions().then(setInstalled).catch(() => {}); }, []);
@@ -41,8 +43,8 @@ export default function BibleCompareView({ book, chapter, version, sel, onSelect
         <div className="bc">
             <div className="bc-bar">
                 <span className="kx-meta">Versões</span>
-                {BIBLE_VERSIONS.map((v) => (
-                    <button type="button" key={v.id} className={`bc-chip kx-t ${chosen.includes(v.id) ? "is-on" : ""}`} onClick={() => toggle(v.id)} title={installed[v.id] ? "Instalada neste computador" : v.online ? "Pela internet" : "Indisponível sem instalar"}>
+                {editions.map((v) => (
+                    <button type="button" key={v.id} className={`bc-chip kx-t ${chosen.includes(v.id) ? "is-on" : ""}`} onClick={() => toggle(v.id)} title={[installed[v.id] ? "Instalada neste computador" : v.online ? "Pela internet" : "Indisponível sem instalar", editionCredit(v)].filter(Boolean).join(" · ")}>
                         {installed[v.id] && <Icon name="check" size={12} />}{v.id}
                     </button>
                 ))}

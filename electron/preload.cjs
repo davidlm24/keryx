@@ -128,6 +128,11 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         onlineChapter: (code, book, chapter) => ipcRenderer.invoke("keryx:bible:online-chapter", { code, book, chapter }),
         install: (version) => ipcRenderer.invoke("keryx:bible:install", { version }),
         installFromFile: (version) => ipcRenderer.invoke("keryx:bible:install-file", { version }),
+        // An edition of the church's own (electron/bible.cjs createOwnInstaller):
+        // pick and read a file, install the reading, or delete one.
+        readOwn: () => ipcRenderer.invoke("keryx:bible:own", { op: "read" }),
+        installOwn: (args) => ipcRenderer.invoke("keryx:bible:own", { op: "install", ...args }),
+        removeOwn: (sigla) => ipcRenderer.invoke("keryx:bible:own", { op: "remove", sigla }),
     },
     // What every output shows right now; pages use keryx.live, not this.
     live: {

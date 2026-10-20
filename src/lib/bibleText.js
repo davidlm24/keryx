@@ -12,6 +12,7 @@
 import { keryx } from "@/api/keryxClient";
 import { ClientError } from "@/api/errors";
 import { BIBLE_VERSIONS, bibleBooks, bookNumber, editionPlan, readByPlan } from "@/lib/bibleBooks";
+import { editionList, missingTestament } from "@/lib/bibleEditions";
 import { searchTerms, anchorTerm, verseMatches } from "@/lib/bibleSearch";
 
 const ONLINE_CACHE_PREFIX = "bible_";
@@ -46,6 +47,20 @@ export async function readChapter(wanted, book, chapter) {
 
 export function forgetInstalledVersions() {
     installedCache = null;
+    ownCache = null;
+}
+
+// The editions the church installed from its own files (BibleEdition rows,
+// electron/bible.cjs createOwnInstaller): read once, again after an install.
+let ownCache = null;
+export async function ownEditions() {
+    if (!keryx.isDesktop) return [];
+    if (!ownCache) ownCache = keryx.entities.BibleEdition.list("sigla").catch(() => []);
+    return ownCache;
+}
+// One edition of the list or of the church's, by its id (null: unknown).
+export async function editionInfo(id) {
+    return editionList(await ownEditions()).find((v) => v.id === id) || null;
 }
 
 // One chapter from the internet: { verses } or { error } (why it could not
@@ -80,6 +95,9 @@ async function fetchOnline(version, book, chapter) {
 export async function getChapter(version, book, chapter) {
     const local = await keryx.entities.BibleVerse.filter({ version, book, chapter: Number(chapter) }, "verse");
     if (local.length) return { verses: local.map((v) => ({ number: v.verse, text: v.text })), source: "local" };
+    // The BLT, or a church's own New Testament: says so on an Old Testament book.
+    const half = missingTestament(await editionInfo(version), book);
+    if (half) throw new ClientError(half, 404);
 
     const online = await fetchOnline(version, book, chapter);
     if (online?.verses) return { verses: online.verses, source: "online" };

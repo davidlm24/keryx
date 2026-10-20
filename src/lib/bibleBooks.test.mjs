@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { bibleBooks, findBook, parseReference, formatReference, editionPlan, readByPlan, BIBLE_VERSIONS, bookNumber, renamedVersion } from "./bibleBooks.js";
+import { editionList, editionCredit, missingTestament, ownEdition } from "./bibleEditions.js";
 
 const ref = (book, chapter, verseStart = null, verseEnd = verseStart) => ({ book, chapter, verseStart, verseEnd });
 
@@ -76,7 +77,11 @@ test("editions: installed here, else online with the installed one as fallback",
 });
 
 test("editions: every one installs; the online codes are bolls.life's; book numbers 1-66", () => {
-    assert.deepEqual(BIBLE_VERSIONS.map((v) => v.id), ["NVI", "ACF", "AA", "ARA", "ARC", "NAA", "NTLH", "KJA"]);
+    assert.deepEqual(BIBLE_VERSIONS.map((v) => v.id), ["NVI", "ACF", "AA", "ARA", "ARC", "NAA", "NTLH", "KJA", "BLIVRE", "NBV", "BPM", "BLT"]);
+    // The eight of before keep their group; the four of eBible.org are open, with their licence.
+    assert.deepEqual(BIBLE_VERSIONS.filter((v) => v.group === "publisher").map((v) => v.id), ["NVI", "ACF", "AA", "ARA", "ARC", "NAA", "NTLH", "KJA"]);
+    assert.ok(BIBLE_VERSIONS.filter((v) => v.group === "open").every((v) => v.license && v.chip && !v.online));
+    assert.deepEqual(BIBLE_VERSIONS.filter((v) => v.nt).map((v) => v.id), ["BLT"]);
     assert.ok(BIBLE_VERSIONS.every((v) => v.install === true));
     assert.deepEqual(BIBLE_VERSIONS.filter((v) => v.online).map((v) => v.online), ["ACF11", "ARA", "ARC09", "NAA", "NTLH", "KJA"]);
     // bolls.life's NVIPT is a refusal notice, never the text.
@@ -98,4 +103,35 @@ test("a chapter that cannot be fetched comes from the installed edition, and say
     assert.deepEqual([ok.version, ok.fellBack], ["ARA", null]);
     // Nothing to fall back to: the error stands.
     await assert.rejects(readByPlan(editionPlan("ARA", []), offline), /sem internet/);
+});
+
+test("an edition of the church's own is read installed only, and the open ones too", () => {
+    // Installed here: read here.
+    assert.deepEqual(editionPlan("BKJ", ["NVI", "BKJ"]), { use: "BKJ", online: false, fallback: null });
+    // Not on this computer (another one installed it): never online, the first installed instead.
+    assert.deepEqual(editionPlan("BKJ", ["NVI"]), { use: "NVI", online: false, fallback: null });
+    assert.deepEqual(editionPlan("BKJ", []), { use: "BKJ", online: true, fallback: null });
+    // eBible.org has no chapter endpoint: an open edition not installed gives way too.
+    assert.deepEqual(editionPlan("NBV", ["ACF"]), { use: "ACF", online: false, fallback: null });
+});
+
+test("editionList: the list, then the church's own; credit only for the open ones", () => {
+    const own = [{ id: "r1", sigla: "BKJ", name: "Bíblia King James Fiel 1611", testament: "all", format: "MySword", file_name: "bkj.bbl.mybible" }, { id: "r2", sigla: "NVI", name: "cópia" }];
+    const list = editionList(own);
+    assert.equal(list.length, BIBLE_VERSIONS.length + 1, "an own row never shadows the list");
+    assert.deepEqual(list.at(-1), ownEdition(own[0]));
+    assert.equal(list.at(-1).group, "own");
+    assert.equal(editionCredit(BIBLE_VERSIONS.find((v) => v.id === "NBV")), "Nova Bíblia Viva 2007 · Biblica, Inc. · CC BY-SA 4.0 · eBible.org");
+    assert.equal(editionCredit(BIBLE_VERSIONS.find((v) => v.id === "BPM")), "Bíblia Portuguesa Mundial · Domínio público · eBible.org");
+    assert.equal(editionCredit(BIBLE_VERSIONS.find((v) => v.id === "NVI")), null);
+});
+
+test("an edition with only the New Testament says so on an Old Testament book", () => {
+    const blt = BIBLE_VERSIONS.find((v) => v.id === "BLT");
+    assert.match(missingTestament(blt, "Gênesis"), /A BLT tem só o Novo Testamento: Gênesis não está nela/);
+    assert.equal(missingTestament(blt, "João"), null);
+    assert.equal(missingTestament(BIBLE_VERSIONS[0], "Gênesis"), null);
+    const ot = ownEdition({ sigla: "AT", name: "Só AT", testament: "ot" });
+    assert.match(missingTestament(ot, "Mateus"), /só o Antigo Testamento/);
+    assert.equal(missingTestament(null, "Gênesis"), null);
 });

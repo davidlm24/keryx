@@ -203,7 +203,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   fields first; whatever it keeps per computer (placement) stays local.
   **Bible text never travels**: each computer's `computer.json` lists its
   installed editions (`bibles`, names only), and Bíblia e músicas says
-  "Falta a NVI aqui" with Instalar aqui (`biblesMissingHere`). The section's
+  "Falta a NVI aqui" with Instalar aqui (`biblesMissingHere`); an edition
+  of the church's own asks for its file instead (`own`). The section's
   "O que vai e o que fica" (with the Drive hints) is `SYNC_GOES`/`SYNC_STAYS`
   in syncView.js: change it with the scope.
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
@@ -1154,18 +1155,56 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   answered 503 since October 2026). Every edition installs
   (`BIBLE_VERSIONS`, `install: true`; `electron/bible.cjs` `SOURCES`:
   NVI, ACF and AA from github.com/thiagobodruk/biblia, ARA, ARC, NAA, NTLH
-  and KJA as bolls.life zips, opened with yauzl; "Do arquivo…" takes either
-  JSON or the zip) and is read online while it is not, one chapter at a
-  time through the main process (`online`: the bolls.life code, ACF as
-  ACF11; NVI and AA have none — bolls.life refuses NVI). `cleanVerse`
-  strips the source's markup (NAA's `<sup>` footnote marks go with their
-  content). BKJ 1611 left the list: a saved `BKJ1611` reads as KJA
+  and KJA as bolls.life zips, and the **open editions of eBible.org**
+  (owner 2026-10-20, the "Bíblias" mockup: BLIVRE porbr2018 CC BY 4.0 BR,
+  NBV poronbv CC BY-SA, BPM porbrbsl domínio público, BLT porblt CC BY-SA
+  — `nt: true`, só o Novo Testamento, "A BLT tem só o Novo Testamento" on
+  an OT book, `missingTestament`) as their `_vpl.zip`, install only
+  (eBible has no chapter endpoint); `group` publisher | open, `holder`,
+  `chip`, `license` on each) and is read online while it is not, one
+  chapter at a time through the main process (`online`: the bolls.life
+  code, ACF as ACF11; NVI, AA and the open ones have none — bolls.life
+  refuses NVI). An install is whole or nothing (`MIN_VERSES`, the BLT
+  `MIN_NT_VERSES`) and replaces the edition (`store.dropRows` first).
+  **Every file is read by `electron/bibleFormats.cjs`** (tested with
+  fixtures in `electron/fixtures/bibles/`): USFM (zipped or not, notes and
+  cross references out), VPL ("GEN 1:1 …", any code or name), OSIS
+  (containers and milestones), Zefania, MySword `.bbl.mybible` (node:sqlite
+  on a temp copy), the thiagobodruk and bolls.life JSON; book codes of
+  every scheme map to the 66 (`CODES`, deuterocanonicals out); e-Sword
+  `.bblx` (enciphered), PDF and Word are refused with what to do
+  (`REFUSE`). `cleanVerse` (there now, re-exported by bible.cjs) strips
+  the source's markup (NAA's `<sup>` footnote marks go with their
+  content). **An edition of the church's own** (Instalar uma edição
+  própria…, `settings/OwnBibleDialog.jsx`; `createOwnInstaller` in
+  bible.cjs, IPC `keryx:bible:own` read | install | remove): the file is
+  read first (format, books, verses, language, Gênesis 1:1 and João 3:16),
+  then installed with a name and a sigla the church gives (`siglaProblem`,
+  the same in src/lib/bibleEditions.js and bible.cjs: 2–8 letters or digits, none of
+  the list's, not `BKJ1611`) only once the church ticks that it may use it
+  (`rights`, required); its verses are BibleVerse rows under its sigla and
+  its metadata a `BibleEdition` row, both `ON_EACH_COMPUTER`; rows have
+  Trocar o arquivo… (the sigla stays) and Excluir… (useConfirm). The list
+  of every edition is `editionList(BibleEdition rows)` (bibleEditions.js, kept
+  out of bibleBooks.js, which the outputs load; `useBibleEditions`);
+  `editionPlan` treats an own edition as installed-only, and
+  `biblesMissingHere` says "A BKJ é uma edição da igreja: instale-a com o
+  mesmo arquivo" with no Instalar aqui. Configurações › Bíblias instaladas
+  is three groups (`bibleGroups` in `src/lib/console/bibleRows.js`: Da
+  igreja, Abertas · eBible.org, Com direitos da editora), each row its
+  licence chip. **The open editions' credit** (b3 = sobre) is
+  `editionCredit` ("Nova Bíblia Viva 2007 · Biblica, Inc. · CC BY-SA 4.0
+  · eBible.org"): Configurações › Sobre lists every one installed, and the
+  Bíblia's version select says it in its tooltip; the projected reference
+  is unchanged. BKJ 1611 left the list: a saved `BKJ1611` reads as KJA
   (`renamedVersion`). The edition the operator chose is read with
   `readChapter` (`editionPlan` in `bibleBooks.js`): installed, else
   online, and a chapter that cannot be fetched comes from an installed
   edition, said so; with none installed the message says why the internet
   failed. The browser preview reads and installs the same way
-  (`scripts/preview/server.cjs` bible-online / bible-install). Never ask an AI for scripture, and don't fetch verses
+  (`scripts/preview/server.cjs` bible-online / bible-install / bible-file /
+  bible-own-read / bible-own; the browser's file chooser stands in for the
+  desktop's dialog). Never ask an AI for scripture, and don't fetch verses
   anywhere else. References parse with `parseReference` in
   `src/lib/bibleBooks.js`. Verse marks inside a slide's text are read with
   `src/lib/verseMarks.js` (numbers in sequence only). Favourites and notes

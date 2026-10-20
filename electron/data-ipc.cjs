@@ -5,7 +5,7 @@
 //   keryx:media-info    invoke  { names } -> { [name]: { exists, size } } files in the media folder
 //   keryx:config        sync    { mediaBaseUrl, mediaImportMaxBytes }
 //   keryx:displays:*    invoke  list / set / open / close / identify for output windows
-//   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter
+//   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter, the church's own editions (keryx:bible:own)
 //   keryx:fonts         invoke  { op: list | read, id } the PC's installed fonts (systemFonts.cjs): the
 //                               families with their faces, or one face's file as bytes
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
@@ -24,6 +24,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { BrowserWindow, dialog, ipcMain } = require("electron");
 const bible = require("./bible.cjs");
+const bibleFormats = require("./bibleFormats.cjs");
 const { createSystemFonts } = require("./systemFonts.cjs");
 const { importMedia, MAX_IMPORT_BYTES } = require("./mediaImport.cjs");
 
@@ -144,14 +145,34 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
     ipcMain.handle("keryx:bible:status", bibleOp(() => bible.installedVersions(store)));
     ipcMain.handle("keryx:bible:online-chapter", bibleOp((_e, args) => bible.fetchOnlineChapter(args)));
     ipcMain.handle("keryx:bible:install", bibleOp((_e, { version }) => bible.installFromSource(store, version)));
-    ipcMain.handle("keryx:bible:install-file", bibleOp(async (event, { version }) => {
-        const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
-            title: `Escolha o arquivo da ${version}`,
-            filters: [{ name: "Bíblia (JSON ou zip)", extensions: ["json", "zip"] }],
-            properties: ["openFile"],
-        });
+    // The Bible files the readers know (electron/bibleFormats.cjs); PDF and
+    // Word are listed so choosing one says what to do instead.
+    const BIBLE_FILES = [
+        { name: "Bíblia (USFM, VPL, OSIS, Zefania, MySword, JSON ou zip)", extensions: ["usfm", "sfm", "txt", "xml", "osis", "mybible", "json", "zip"] },
+        { name: "Todos os arquivos", extensions: ["*"] },
+    ];
+    const pickBible = async (event, title) => {
+        const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title, filters: BIBLE_FILES, properties: ["openFile"] });
         if (canceled || !filePaths[0]) return null;
-        return bible.installFromFile(store, version, await fs.promises.readFile(filePaths[0]));
+        const { size } = await fs.promises.stat(filePaths[0]);
+        if (size > bibleFormats.MAX_FILE_BYTES) throw Object.assign(new Error("O arquivo da Bíblia é grande demais."), { status: 413 });
+        return { bytes: await fs.promises.readFile(filePaths[0]), name: path.basename(filePaths[0]) };
+    };
+    ipcMain.handle("keryx:bible:install-file", bibleOp(async (event, { version }) => {
+        const file = await pickBible(event, `Escolha o arquivo da ${version}`);
+        return file ? bible.installFromFile(store, version, file.bytes, file.name) : null;
+    }));
+    // Instalar uma edição própria…: read the file the church picks (what the
+    // dialog shows), then install it with its sigla and name, or delete one.
+    const own = bible.createOwnInstaller(store);
+    ipcMain.handle("keryx:bible:own", bibleOp(async (event, { op, ...args }) => {
+        if (op === "read") {
+            const file = await pickBible(event, "Escolha o arquivo da edição");
+            return file ? own.inspect(file.bytes, file.name) : null;
+        }
+        if (op === "install") return own.install(args);
+        if (op === "remove") return own.remove(args.sigla);
+        throw Object.assign(new Error("Operação de Bíblia desconhecida."), { status: 400 });
     }));
 
     ipcMain.handle("keryx:system", async (event, payload) => {

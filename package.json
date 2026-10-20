@@ -111,6 +111,7 @@
     "files": [
       "electron/**/*",
       "!electron/**/*.test.cjs",
+      "!electron/fixtures/**/*",
       "shared/**/*",
       "!shared/**/*.test.mjs",
       "dist/**/*",

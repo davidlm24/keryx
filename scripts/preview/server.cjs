@@ -13,6 +13,9 @@
 //   GET  /__keryx/bible        installed Bible versions (rows per version)
 //   POST /__keryx/bible-online { code, book, chapter } one chapter from bolls.life (electron/bible.cjs)
 //   POST /__keryx/bible-install { version } downloads an edition into the preview's store
+//   POST /__keryx/bible-file?version=&name= (bytes) installs an edition of the list from a file
+//   POST /__keryx/bible-own-read?name= (bytes) reads a file for an edition of the church's own
+//   POST /__keryx/bible-own { op: install|remove, … } installs that reading, or deletes one
 //   GET  /__keryx/fonts        this PC's installed fonts (electron/systemFonts.cjs)
 //   GET  /__keryx/font?id=     one face's file (a collection's face cut out)
 //   POST /__keryx/media?name=  the file's bytes -> { data: { fileName } }
@@ -100,7 +103,8 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
     const mediaDir = path.join(dir, "media");
     const store = createStore({ file: path.join(dir, "keryx.db"), schema, log });
     const systemFonts = createSystemFonts();
-    const live = createLive({ file: path.join(dir, "live.json"), rules: await loadLiveRules(), log });
+    const ownBible = bible.createOwnInstaller(store);
+    const live =createLive({ file: path.join(dir, "live.json"), rules: await loadLiveRules(), log });
     seed(store);
 
     const clients = new Set();
@@ -196,6 +200,20 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
             if (route === "bible-install" && req.method === "POST") {
                 const { version } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
                 try { return json(res, 200, { data: await bible.installFromSource(store, version) }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            // "Do arquivo…" and Instalar uma edição própria… (the bytes the
+            // browser picked), as the desktop's main process does them.
+            if (route === "bible-file" && req.method === "POST") {
+                const bytes = await readBody(req, MAX_FILE);
+                try { return json(res, 200, { data: await bible.installFromFile(store, url.searchParams.get("version"), bytes, url.searchParams.get("name") || "") }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "bible-own-read" && req.method === "POST") {
+                const bytes = await readBody(req, MAX_FILE);
+                try { return json(res, 200, { data: await ownBible.inspect(bytes, url.searchParams.get("name") || "") }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "bible-own" && req.method === "POST") {
+                const { op, ...args } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                try { return json(res, 200, { data: op === "remove" ? ownBible.remove(args.sigla) : ownBible.install(args) }); } catch (err) { return json(res, 200, failure(err)); }
             }
             if (route === "media" && req.method === "POST") {
                 const bytes = await readBody(req, MAX_FILE);

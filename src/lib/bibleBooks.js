@@ -76,34 +76,49 @@ export const bibleBooks = [
 ];
 
 // Versions the app offers (owner 2026-10-20: every one installable, and
-// readable from the internet while it is not).
+// readable from the internet while it is not), in the groups of
+// Configurações › Bíblias instaladas (the "Bíblias" mockup, b1 = grupos):
+//   group:   "publisher" — copyrighted, downloaded from public repositories,
+//            the church's licence; "open" — eBible.org's open editions, free
+//            to copy with the credit (`credit`, shown in Sobre and the
+//            version's tooltip).
 //   install: true — the church can download it once into the local database
 //            (electron/bible.cjs SOURCES says from where: github.com/
-//            thiagobodruk/biblia for NVI, ACF and AA, bolls.life for the rest).
+//            thiagobodruk/biblia for NVI, ACF and AA, bolls.life for ARA…KJA,
+//            eBible.org for the open ones).
 //   online:  its code on bolls.life, read one chapter at a time while the
 //            edition is not installed; null = not there (bolls.life does not
-//            carry NVI or AA), so it works only installed.
+//            carry NVI or AA, eBible.org has no chapter endpoint), so it
+//            works only installed.
+//   holder:  who holds its rights; `chip` the licence in a word, `license`
+//            in full; `nt`: only the New Testament.
 export const BIBLE_VERSIONS = [
-    { id: "NVI", name: "Nova Versão Internacional", install: true, online: null },
-    { id: "ACF", name: "Almeida Corrigida Fiel", install: true, online: "ACF11" },
-    { id: "AA", name: "Almeida Revisada Imprensa Bíblica", install: true, online: null },
-    { id: "ARA", name: "Almeida Revista e Atualizada", install: true, online: "ARA" },
-    { id: "ARC", name: "Almeida Revista e Corrigida", install: true, online: "ARC09" },
-    { id: "NAA", name: "Nova Almeida Atualizada", install: true, online: "NAA" },
-    { id: "NTLH", name: "Nova Tradução na Linguagem de Hoje", install: true, online: "NTLH" },
-    { id: "KJA", name: "King James Atualizada", install: true, online: "KJA" },
+    { id: "NVI", name: "Nova Versão Internacional", install: true, online: null, group: "publisher", holder: "Biblica" },
+    { id: "ACF", name: "Almeida Corrigida Fiel", install: true, online: "ACF11", group: "publisher", holder: "SBTB" },
+    { id: "AA", name: "Almeida Revisada Imprensa Bíblica", install: true, online: null, group: "publisher", holder: "Imprensa Bíblica" },
+    { id: "ARA", name: "Almeida Revista e Atualizada", install: true, online: "ARA", group: "publisher", holder: "SBB" },
+    { id: "ARC", name: "Almeida Revista e Corrigida", install: true, online: "ARC09", group: "publisher", holder: "SBB" },
+    { id: "NAA", name: "Nova Almeida Atualizada", install: true, online: "NAA", group: "publisher", holder: "SBB" },
+    { id: "NTLH", name: "Nova Tradução na Linguagem de Hoje", install: true, online: "NTLH", group: "publisher", holder: "SBB" },
+    { id: "KJA", name: "King James Atualizada", install: true, online: "KJA", group: "publisher", holder: "Abba Press" },
+    { id: "BLIVRE", name: "Bíblia Livre", install: true, online: null, group: "open", holder: "Diego Santos, Mario Sérgio e Marco Teles", chip: "CC BY 4.0", license: "CC BY 4.0 Brasil" },
+    { id: "NBV", name: "Nova Bíblia Viva 2007", install: true, online: null, group: "open", holder: "Biblica, Inc.", chip: "CC BY-SA", license: "CC BY-SA 4.0" },
+    { id: "BPM", name: "Bíblia Portuguesa Mundial", install: true, online: null, group: "open", holder: null, chip: "Domínio público", license: "Domínio público" },
+    { id: "BLT", name: "Bíblia Livre Para Todos", install: true, online: null, group: "open", holder: "Free Bible Ministry, Inc.", chip: "CC BY-SA", license: "CC BY-SA 4.0", nt: true },
 ];
 // Editions that left the list, read as the one that took their place (the
 // King James Fiel 1611 was only ever online, from a source that closed).
 const RENAMED = { BKJ1611: "KJA" };
 export const renamedVersion = (id) => RENAMED[id] || id;
+export const RETIRED_VERSIONS = Object.keys(RENAMED);
 
 // Which edition to read, from the one the operator chose and the editions
 // installed on this computer (owner's decision 2026-10-10): an installed
 // edition is read here; one that is not installed but exists online (ARA,
 // ARC, NAA, NTLH, KJA or ACF before installing) is read from the internet, and a chapter that cannot be fetched comes from the first
 // installed edition instead (`fallback`), said so; an edition that is
-// neither (NVI or AA not installed) gives way to the first installed one.
+// neither (NVI, AA, the open ones or a church's own edition not installed
+// here) gives way to the first installed one.
 // -> { use, online, fallback }
 export function editionPlan(asked, installed = []) {
     const wanted = renamedVersion(asked);
