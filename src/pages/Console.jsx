@@ -1176,6 +1176,7 @@ export default function Console() {
         { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
         !camadasOn && { label: drawer ? "Fechar Camadas" : "Camadas…", icon: "layers", onSelect: () => setDrawer((d) => !d) },
         { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
+        "sep",
         menuItem("encerrar", { air: true, onSelect: () => setOpen("encerrar") }, letters),
     ] });
     // The Programa has no header (Rodada E1): the screen's top lines up with
