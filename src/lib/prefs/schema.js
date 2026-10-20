@@ -8,6 +8,7 @@
 // must not load the console's dock with them.
 import { DENSITIES, MODULES } from "../console/layoutChoices.js";
 import { normalizeCategories } from "../console/backgroundPrefs.js";
+import { renamedVersion } from "../bibleBooks.js";
 import { idleLookOf, isDefaultIdleLook } from "../../../shared/idleLook.mjs";
 import { TRANSITION_TYPE_IDS } from "../contentKinds.js";
 
@@ -22,7 +23,8 @@ const MODULE_KEYS = MODULES.map(([k]) => k);
 export const PREF_FIELDS = {
     bible_version: {
         default: "NVI",
-        normalize: (v) => (typeof v === "string" && /^[A-Za-z0-9]{1,12}$/.test(v.trim()) ? v.trim() : "NVI"),
+        // An edition that left the list reads as the one that replaced it (BKJ1611 → KJA).
+        normalize: (v) => (typeof v === "string" && /^[A-Za-z0-9]{1,12}$/.test(v.trim()) ? renamedVersion(v.trim()) : "NVI"),
     },
     bible_book_names: { default: "short", normalize: oneOf(["short", "full"], "short") },
     bible_verses_per_slide: { default: "auto", normalize: oneOf(["auto", "1", "2", "3"], "auto") },

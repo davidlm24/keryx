@@ -42,7 +42,7 @@ export default function BibleCompareView({ book, chapter, version, sel, onSelect
             <div className="bc-bar">
                 <span className="kx-meta">Versões</span>
                 {BIBLE_VERSIONS.map((v) => (
-                    <button type="button" key={v.id} className={`bc-chip kx-t ${chosen.includes(v.id) ? "is-on" : ""}`} onClick={() => toggle(v.id)} title={installed[v.id] ? "Instalada neste computador" : v.api ? "Pela internet" : "Indisponível sem instalar"}>
+                    <button type="button" key={v.id} className={`bc-chip kx-t ${chosen.includes(v.id) ? "is-on" : ""}`} onClick={() => toggle(v.id)} title={installed[v.id] ? "Instalada neste computador" : v.online ? "Pela internet" : "Indisponível sem instalar"}>
                         {installed[v.id] && <Icon name="check" size={12} />}{v.id}
                     </button>
                 ))}

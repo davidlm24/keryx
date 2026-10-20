@@ -124,7 +124,8 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     },
     bible: {
         status: () => ipcRenderer.invoke("keryx:bible:status"),
-        onlineChapter: (api, slug, chapter) => ipcRenderer.invoke("keryx:bible:online-chapter", { api, slug, chapter }),
+        // One chapter from bolls.life (electron/bible.cjs): its edition code, the book 1–66, the chapter.
+        onlineChapter: (code, book, chapter) => ipcRenderer.invoke("keryx:bible:online-chapter", { code, book, chapter }),
         install: (version) => ipcRenderer.invoke("keryx:bible:install", { version }),
         installFromFile: (version) => ipcRenderer.invoke("keryx:bible:install-file", { version }),
     },

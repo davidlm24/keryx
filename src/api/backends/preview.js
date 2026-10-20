@@ -133,8 +133,8 @@ export function createPreviewBridge() {
         displays,
         bible: {
             status: () => request("bible"),
-            onlineChapter: unavailable,
-            install: unavailable,
+            onlineChapter: (code, book, chapter) => request("bible-online", { method: "POST", body: { code, book, chapter } }),
+            install: (version) => request("bible-install", { method: "POST", body: { version } }),
             installFromFile: unavailable,
         },
         network: {

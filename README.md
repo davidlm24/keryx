@@ -194,11 +194,13 @@ lists the screens connected right now in the Saídas popover.
 
 ### Bible text
 
-Nothing ships with the app: NVI, ACF and AA are copyrighted editions. The
-Bíblia environment (or Configurações › Bíblia e músicas) installs one
-(≈4 MB each); after that, reading, word search and comparing run from the
-local database with no internet. Other versions (ARA, ARC, NAA, NTLH, BKJ
-1611) work online only. All Bible text goes through `src/lib/bibleText.js`.
+Nothing ships with the app: every edition is copyrighted. The Bíblia
+environment (or Configurações › Bíblia e músicas) installs NVI, ACF, AA,
+ARA, ARC, NAA, NTLH or KJA (NVI/ACF/AA from github.com/thiagobodruk/biblia,
+the others from bolls.life); after that, reading, word search and comparing
+run from the local database with no internet. An edition not installed is
+read from bolls.life one chapter at a time (all but NVI and AA). All Bible
+text goes through `src/lib/bibleText.js`.
 
 ### Fonts (Temas)
 

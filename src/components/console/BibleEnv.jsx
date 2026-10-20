@@ -126,7 +126,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         return () => { alive = false; };
     }, [wanted, installRev]);
     // Where the chapter on screen came from: "local" (installed on this
-    // computer), "online" (abibliadigital, needs internet) or null.
+    // computer), "online" (bolls.life, needs internet) or null.
     const [source, setSource] = useState(null);
     // The edition of the chapter on screen (`ver`): the chosen one, or the
     // installed one it fell back to (`fellBack`: the one that failed).

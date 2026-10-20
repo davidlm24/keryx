@@ -75,33 +75,40 @@ export const bibleBooks = [
     { name: "Apocalipse", short: "Ap", chapters: 22, verses: [20,29,22,11,14,17,17,13,21,11,19,18,18,20,8,21,18,24,21,15,27,21] }
 ];
 
-// Versions the app offers.
-//   install: the file name on github.com/thiagobodruk/biblia; on desktop the
-//            church can download it once into the local database.
-//   api:     the version on abibliadigital.com.br, used online when the
-//            version is not installed (null: not available there).
+// Versions the app offers (owner 2026-10-20: every one installable, and
+// readable from the internet while it is not).
+//   install: true — the church can download it once into the local database
+//            (electron/bible.cjs SOURCES says from where: github.com/
+//            thiagobodruk/biblia for NVI, ACF and AA, bolls.life for the rest).
+//   online:  its code on bolls.life, read one chapter at a time while the
+//            edition is not installed; null = not there (bolls.life does not
+//            carry NVI or AA), so it works only installed.
 export const BIBLE_VERSIONS = [
-    { id: "NVI", name: "Nova Versão Internacional", install: "nvi", api: "nvi" },
-    { id: "ACF", name: "Almeida Corrigida Fiel", install: "acf", api: "acf" },
-    { id: "AA", name: "Almeida Revisada Imprensa Bíblica", install: "aa", api: null },
-    { id: "ARA", name: "Almeida Revista e Atualizada", install: null, api: "ara" },
-    { id: "ARC", name: "Almeida Revista e Corrigida", install: null, api: "arc" },
-    { id: "NAA", name: "Nova Almeida Atualizada", install: null, api: "naa" },
-    { id: "NTLH", name: "Nova Tradução na Linguagem de Hoje", install: null, api: "ntlh" },
-    { id: "BKJ1611", name: "King James Fiel 1611", install: null, api: "bkj" },
+    { id: "NVI", name: "Nova Versão Internacional", install: true, online: null },
+    { id: "ACF", name: "Almeida Corrigida Fiel", install: true, online: "ACF11" },
+    { id: "AA", name: "Almeida Revisada Imprensa Bíblica", install: true, online: null },
+    { id: "ARA", name: "Almeida Revista e Atualizada", install: true, online: "ARA" },
+    { id: "ARC", name: "Almeida Revista e Corrigida", install: true, online: "ARC09" },
+    { id: "NAA", name: "Nova Almeida Atualizada", install: true, online: "NAA" },
+    { id: "NTLH", name: "Nova Tradução na Linguagem de Hoje", install: true, online: "NTLH" },
+    { id: "KJA", name: "King James Atualizada", install: true, online: "KJA" },
 ];
+// Editions that left the list, read as the one that took their place (the
+// King James Fiel 1611 was only ever online, from a source that closed).
+const RENAMED = { BKJ1611: "KJA" };
+export const renamedVersion = (id) => RENAMED[id] || id;
 
 // Which edition to read, from the one the operator chose and the editions
 // installed on this computer (owner's decision 2026-10-10): an installed
 // edition is read here; one that is not installed but exists online (ARA,
-// ARC, NAA, NTLH, King James, or NVI/ACF before installing) is read from the
-// internet, and a chapter that cannot be fetched comes from the first
+// ARC, NAA, NTLH, KJA or ACF before installing) is read from the internet, and a chapter that cannot be fetched comes from the first
 // installed edition instead (`fallback`), said so; an edition that is
-// neither (AA not installed) gives way to the first installed one.
+// neither (NVI or AA not installed) gives way to the first installed one.
 // -> { use, online, fallback }
-export function editionPlan(wanted, installed = []) {
+export function editionPlan(asked, installed = []) {
+    const wanted = renamedVersion(asked);
     if (installed.includes(wanted)) return { use: wanted, online: false, fallback: null };
-    if (BIBLE_VERSIONS.find((v) => v.id === wanted)?.api) return { use: wanted, online: true, fallback: installed.find((v) => v !== wanted) || null };
+    if (BIBLE_VERSIONS.find((v) => v.id === wanted)?.online) return { use: wanted, online: true, fallback: installed.find((v) => v !== wanted) || null };
     return { use: installed[0] || wanted, online: !installed.length, fallback: null };
 }
 
@@ -117,29 +124,9 @@ export async function readByPlan(plan, get) {
     }
 }
 
-export const VERSION_API_MAP = Object.fromEntries(BIBLE_VERSIONS.filter((v) => v.api).map((v) => [v.id, v.api]));
-
-export const BOOK_API_MAP = {
-    "Gênesis": "genesis", "Êxodo": "exodo", "Levítico": "levitico", "Números": "numeros",
-    "Deuteronômio": "deuteronomio", "Josué": "josue", "Juízes": "juizes", "Rute": "rute",
-    "1 Samuel": "1samuel", "2 Samuel": "2samuel", "1 Reis": "1reis", "2 Reis": "2reis",
-    "1 Crônicas": "1cronicas", "2 Crônicas": "2cronicas", "Esdras": "esdras",
-    "Neemias": "neemias", "Ester": "ester", "Jó": "jo", "Salmos": "salmos",
-    "Provérbios": "proverbios", "Eclesiastes": "eclesiastes", "Cânticos": "cantares",
-    "Isaías": "isaias", "Jeremias": "jeremias", "Lamentações": "lamentacoes",
-    "Ezequiel": "ezequiel", "Daniel": "daniel", "Oséias": "oseias", "Joel": "joel",
-    "Amós": "amos", "Obadias": "obadias", "Jonas": "jonas", "Miquéias": "miqueias",
-    "Naum": "naum", "Habacuque": "habacuque", "Sofonias": "sofonias", "Ageu": "ageu",
-    "Zacarias": "zacarias", "Malaquias": "malaquias", "Mateus": "mateus", "Marcos": "marcos",
-    "Lucas": "lucas", "João": "joao", "Atos": "atos", "Romanos": "romanos",
-    "1 Coríntios": "1corintios", "2 Coríntios": "2corintios", "Gálatas": "galatas",
-    "Efésios": "efesios", "Filipenses": "filipenses", "Colossenses": "colossenses",
-    "1 Tessalonicenses": "1tessalonicenses", "2 Tessalonicenses": "2tessalonicenses",
-    "1 Timóteo": "1timoteo", "2 Timóteo": "2timoteo", "Tito": "tito",
-    "Filemom": "filemom", "Hebreus": "hebreus", "Tiago": "tiago",
-    "1 Pedro": "1pedro", "2 Pedro": "2pedro", "1 João": "1joao",
-    "2 João": "2joao", "3 João": "3joao", "Judas": "judas", "Apocalipse": "apocalipse"
-};
+// A book's number on bolls.life (1 Gênesis … 66 Apocalipse): its place in
+// the canonical list.
+export const bookNumber = (name) => { const i = bibleBooks.findIndex((b) => b.name === name); return i < 0 ? null : i + 1; };
 
 // -- References ---------------------------------------------------------------
 
