@@ -1484,6 +1484,17 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .report-dialog .rp-line b { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
 .console .report-dialog .rp-addr { user-select: all; }
 .console .report-dialog .rp-body { resize: vertical; font-size: var(--fs-ui); line-height: 17px; }
+.console .report-dialog input.ed-text { height: 28px; }
+.console .cfg .cfg-queue { color: var(--warn-fg); font-size: var(--fs-ui); }
+.console .report-dialog .rp-res { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); }
+.console .report-dialog .rp-res.is-ok { background: var(--prev-tint); }
+.console .report-dialog .rp-res.is-ok > .kx-i { color: var(--prev-fg); }
+.console .report-dialog .rp-res.is-warn { background: var(--warn-tint); }
+.console .report-dialog .rp-res.is-warn > .kx-i { color: var(--warn-fg); }
+.console .report-dialog .rp-res > .kx-i { flex: none; margin-top: 2px; }
+.console .report-dialog .rp-res b { display: block; color: var(--fg-1); font-weight: 600; }
+.console .report-dialog .rp-res span { color: var(--fg-2); }
+.console .report-dialog .rp-code { font-weight: 600; color: var(--fg-1); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; user-select: all; }
 /* Bíblias instaladas (BibliasSection): the three groups' headings, each
    row's licence chip, and Instalar uma edição própria… (OwnBibleDialog,
    which wears the report dialog's fields). Tokens only. */
@@ -1821,6 +1832,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover * { background: HighlightText; color: Highlight; }
   .console :is(.kx-slide, .onair-card).is-next:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
   .console .mv-th.is-air { outline: 3px solid Highlight; outline-offset: 2px; }
+  /* Relatar um problema's answer (sent, queued, refused) is a tinted box. */
+  .console .report-dialog .rp-res { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* Chosen or pressed: tabs, chips, cells, tiles, Seg, an open menu… */
   .console :is(.is-on, .is-sel, .is-selected):not(.kx-switch, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
   .console .envtabs > button.is-on::after { background: Highlight; }

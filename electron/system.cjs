@@ -5,12 +5,14 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const crypto = require("node:crypto");
 const { pipeline } = require("node:stream/promises");
 const { pathToFileURL } = require("node:url");
 const yazl = require("yazl");
 const backup = require("./backup.cjs");
 const archive = require("./archive.cjs");
 const closeGuard = require("./closeGuard.cjs");
+const { createReportQueue } = require("./reportQueue.cjs");
 const { perfReport } = require("./perfMetrics.cjs");
 
 const SETTINGS_KEY = "backup";
@@ -88,7 +90,7 @@ function syncQuestion(kind, { day = "", others = 0 } = {}) {
 
 // syncInfo() -> the sync's status (syncControl.status), or null: whether
 // this computer syncs, and with how many others.
-function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications = null, consoleZoom = null, syncInfo = null }) {
+function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications = null, consoleZoom = null, syncInfo = null, net = null, fetch = null }) {
     const dataSize = cachedSize();
     const autoUpdates = () => Boolean((settings.get(UPDATES_KEY, {}) || {}).auto);
     const updateState = () => ({ ...updater.state(), auto: autoUpdates() });
@@ -423,28 +425,63 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         return filePath;
     }
 
-    // Relatar um problema (Rodada N3): the diagnostic goes to Downloads with
-    // no dialog (relato.txt inside), the folder opens on it, and the e-mail
-    // program opens addressed to support with the text filled in
-    // (shared/support.mjs). Only main opens the mailto; `opened` is false
-    // when no program took it, and the console then shows the address and
-    // the text to copy.
-    async function report({ text = "", doing = "", include = true, church = "" } = {}) {
+    // Relatar um problema (owner 2026-10-20): the report goes over the internet
+    // to support (electron/reportQueue.cjs, the queue in <data>/relatos). The
+    // diagnostic zip (relato.txt inside) is written beside it; the first try
+    // waits REPORT_WAIT_MS, then the report stays queued and goes by itself.
+    // The answer is { id, code, status: sent | queued | refused, reason }.
+    // The e-mail is the reserve (`reportMail`).
+    const reports = createReportQueue({
+        dir: path.join(dataDir, "relatos"),
+        fetch: fetch || (net?.fetch ? (url, init) => net.fetch(url, init) : globalThis.fetch),
+        support: loadSupport,
+        logger,
+    });
+    // One random id per computer, for the function's daily limit.
+    function installId() {
+        let id = settings.get("installId", null);
+        if (!id) { id = crypto.randomUUID(); settings.set("installId", id); }
+        return id;
+    }
+    async function report({ text = "", doing = "", contact = "", include = true, church = "" } = {}) {
         const what = String(text || "").trim().slice(0, 4000);
         if (!what) throw Object.assign(new Error("Escreva o que aconteceu."), { status: 400 });
         const how = String(doing || "").trim().slice(0, 4000);
+        const who = String(contact || "").trim().slice(0, 200);
         const now = new Date();
-        let file = null;
+        const id = crypto.randomUUID();
+        const { reportCode, REPORT_WAIT_MS } = await loadSupport();
+        const code = reportCode(id);
         if (include) {
+            const relato = [`Relato ${code} de ${now.toLocaleString("pt-BR")}`, "", "O que aconteceu:", what,
+                ...(how ? ["", "O que eu estava fazendo:", how] : []), ...(who ? ["", `Contato: ${who}`] : [])].join("\r\n");
+            await writeDiagnostics(reports.zipPath(id), relato);
+        }
+        reports.add({ id, writtenAt: now.toISOString(), church: String(church || "").slice(0, 120), version: app.getVersion(), os: osName(), install: installId(), text: what, doing: how, contact: who });
+        logger.info(`[keryx-relato] ${code} escrito${include ? " com o diagnóstico" : ""}`);
+        const out = await reports.send(id, { timeoutMs: REPORT_WAIT_MS });
+        return { id, code: out.code || code, status: out.status, reason: out.reason || null };
+    }
+
+    // The reserve: the queued report's diagnostic goes to Downloads, the
+    // folder shows it, the e-mail program opens addressed to support with the
+    // text filled in (shared/support.mjs), and the report leaves the queue so
+    // it never arrives twice. `opened` is false when no program took the
+    // mailto, and the console then shows the address and the text to copy.
+    async function reportMail({ id } = {}) {
+        const meta = reports.read(String(id || ""));
+        if (!meta) throw Object.assign(new Error("Este relato já não está na fila."), { status: 404 });
+        const { reportMail: mailOf, reportCode } = await loadSupport();
+        let file = null;
+        const zip = reports.zipFile(meta.id);
+        if (fs.existsSync(zip)) {
             const dir = app.getPath("downloads");
             fs.mkdirSync(dir, { recursive: true });
-            file = path.join(dir, `keryx-diagnostico-${fileStamp(now)}.zip`);
-            const relato = [`Relato de ${now.toLocaleString("pt-BR")}`, "", "O que aconteceu:", what, ...(how ? ["", "O que eu estava fazendo:", how] : [])].join("\r\n");
-            await writeDiagnostics(file, relato);
+            file = path.join(dir, `keryx-diagnostico-${fileStamp(new Date(meta.writtenAt || Date.now()))}.zip`);
+            fs.copyFileSync(zip, file);
             logger.info(`[keryx-relato] diagnóstico salvo em ${file}`);
         }
-        const { reportMail } = await loadSupport();
-        const mail = reportMail({ text: what, doing: how, church: String(church || "").slice(0, 120), version: app.getVersion(), os: osName(), file: file ? path.basename(file) : "" });
+        const mail = mailOf({ text: meta.text, doing: meta.doing, contact: meta.contact, church: meta.church, version: meta.version, os: meta.os, file: file ? path.basename(file) : "", code: reportCode(meta.id) });
         if (file) {
             try { shell.showItemInFolder(file); } catch { /* the toast still says where */ }
         }
@@ -455,11 +492,13 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             opened = false;
             logger.warn(`[keryx-relato] nenhum programa de e-mail abriu: ${err.message}`);
         }
+        reports.remove(meta.id);
         return { file, opened, ...mail };
     }
 
     return {
         backupNow,
+        reports,
         backupMedia,
         notifications,
         info,
@@ -502,6 +541,9 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             restoreBackup: async (event, { name }) => restoreBackup(event, name),
             diagnostics: async (event) => diagnostics(event),
             report: async (_event, args) => report(args),
+            reportMail: async (_event, args) => reportMail(args),
+            reportQueue: async () => reports.list(),
+            reportRetry: async () => { await reports.flush(); return reports.list(); },
             updateCheck: async () => { await updater.check(); return info(); },
             updateState: async () => updateState(),
             updateSetAuto: async (_event, { on }) => {

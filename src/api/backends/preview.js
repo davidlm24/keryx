@@ -10,9 +10,38 @@
 // Production builds never include this file (the branch in client.js is
 // `import.meta.env.DEV`).
 
+import { reportCode, reportMail } from "@shared/support.mjs";
+
 const API = "/__keryx/";
 const ONLY_DESKTOP = "Disponível no aplicativo do computador.";
 const unavailable = async () => ({ error: { message: ONLY_DESKTOP, status: 501 } });
+
+// Relatar um problema in the preview: nothing goes to support. The answer
+// is made up so every end of the dialog can be seen: a text with "#fila"
+// stays in a pretend queue (as offline), "#recusa" is refused, anything else
+// is sent; the e-mail reserve never opens (the dialog shows the text). Every
+// other op of the system bridge is the desktop's alone.
+const previewReports = [];
+async function previewSystem(op, args = {}) {
+    if (op === "report") {
+        const id = crypto.randomUUID();
+        await new Promise((r) => setTimeout(r, 700));
+        const text = String(args.text || "");
+        const status = text.includes("#fila") ? "queued" : text.includes("#recusa") ? "refused" : "sent";
+        if (status !== "sent") previewReports.push({ id, writtenAt: new Date().toISOString(), refused: status === "refused" ? "rate" : null, text, doing: args.doing, contact: args.contact, church: args.church });
+        return { data: { id, code: reportCode(id), status, reason: status === "refused" ? "rate" : null } };
+    }
+    if (op === "reportQueue") return { data: previewQueueList() };
+    if (op === "reportRetry") return { data: previewQueueList() };
+    if (op === "reportMail") {
+        const at = previewReports.findIndex((r) => r.id === args.id);
+        if (at < 0) return { error: { message: "Este relato já não está na fila.", status: 404 } };
+        const [r] = previewReports.splice(at, 1);
+        return { data: { file: null, opened: false, ...reportMail({ ...r, version: "prévia", code: reportCode(r.id) }) } };
+    }
+    return unavailable();
+}
+const previewQueueList = () => previewReports.map(({ id, writtenAt, refused, text }) => ({ id, writtenAt, refused, text, tries: 1, hasZip: false }));
 
 // A file the person picks (the browser's chooser): a File, or null when
 // the chooser closes without one. The input sits in the page while it is
@@ -196,7 +225,7 @@ export function createPreviewBridge() {
         },
         lyrics: { call: unavailable },
         meters: { report() {}, onLevel: () => () => {}, sendLevel() {}, onSystemLevel: () => () => {} },
-        system: { call: unavailable },
+        system: { call: previewSystem },
         // This PC's fonts, read by the preview server with the app's own
         // module (electron/systemFonts.cjs), so the dialog lists what the
         // KERYX on this computer would.

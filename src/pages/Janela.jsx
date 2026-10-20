@@ -163,7 +163,8 @@ export default function Janela() {
     const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
     // Configurações › Dados › Suporte › Relatar um problema (ReportDialog).
     const [reporting, setReporting] = useState(false);
-    const openReport = useCallback(() => setReporting(true), []);
+    // With { subject, body }: Configurações' queue tried the e-mail and no program opened.
+    const openReport = useCallback((mail) => setReporting(mail?.subject ? mail : true), []);
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
 
@@ -288,7 +289,7 @@ export default function Janela() {
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
-            <ReportDialog open={reporting} onClose={() => setReporting(false)} say={c.say} />
+            <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />
             <Toast c={c} />
             {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={() => setCtxMenu(null)} />

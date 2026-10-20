@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
-const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, powerMonitor, safeStorage, screen, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, net, powerMonitor, safeStorage, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -577,10 +577,16 @@ app.whenReady().then(async () => {
         settings.set("lastVersion", version);
         settings.set("pendingNotes", null);
     }
-    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, consoleZoom, syncInfo: () => (sync ? sync.status() : null) });
+    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, consoleZoom, net, syncInfo: () => (sync ? sync.status() : null) });
     try {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
+    // Relatar um problema: the reports a computer offline kept go now, every
+    // 10 min while any waits, and when the PC wakes (electron/reportQueue.cjs).
+    if (!SMOKE) {
+        system.reports.start().catch((err) => logger.warn(`[keryx-relato] ${err.message}`));
+        powerMonitor.on("resume", () => { system.reports.flush().catch(() => {}); });
+    }
 
     // Did the last run end normally? A crash a few minutes ago brings the
     // screens back as the audience saw them and reopens the outputs that were
