@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Btn } from "../kx";
 import Icon from "../Icon";
 import { useDialogFocus } from "../useDialogFocus";
-import { siglaProblem } from "@/lib/bibleBooks";
+import { siglaProblem } from "@/lib/bibleEditions";
 import { ownSiglaGuess, ownSizeLabel } from "@/lib/console/bibleRows";
 
 // Instalar uma edição própria… (owner 2026-10-20, the "Bíblias" mockup,
@@ -64,7 +64,7 @@ export default function OwnBibleDialog({ open, replace = null, taken = [], bible
     const ok = read && !read.refused;
     const canInstall = ok && name.trim() && !problem && rights && !busy;
     const install = async () => {
-        if (!canInstall) { setTouched(true); return; }
+        if (!canInstall) return;
         setBusy("install"); setError("");
         try {
             const res = await bible.installOwn({ token: read.token, sigla, name: name.trim(), rights, replace: replace?.id || null });
@@ -117,7 +117,7 @@ export default function OwnBibleDialog({ open, replace = null, taken = [], bible
                         </div>
                         <label className="rp-field">
                             <span>Nome</span>
-                            <input className="kx-input" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} aria-invalid={touched && !name.trim() ? "true" : undefined} />
+                            <input className="kx-input" value={name} maxLength={80} onChange={(e) => { setName(e.target.value); setTouched(true); }} aria-invalid={touched && !name.trim() ? "true" : undefined} />
                         </label>
                         <label className="rp-field ob-sigla">
                             <span>Sigla</span>
@@ -134,7 +134,7 @@ export default function OwnBibleDialog({ open, replace = null, taken = [], bible
                 )}
                 {error && <p className="ob-warn" role="alert">{error}</p>}
                 <div className="acts">
-                    <Btn kind="brand" disabled={!ok || Boolean(busy)} aria-disabled={!canInstall || undefined} onClick={install} title={ok && !rights ? "Marque que a igreja tem o direito de usar esta edição" : undefined}>{busy === "install" ? "Instalando…" : "Instalar"}</Btn>
+                    <Btn kind="brand" disabled={!canInstall} onClick={install} title={ok && !rights ? "Marque que a igreja tem o direito de usar esta edição" : undefined}>{busy === "install" ? "Instalando…" : "Instalar"}</Btn>
                     <Btn disabled={Boolean(busy)} onClick={onClose}>Cancelar</Btn>
                 </div>
             </div>

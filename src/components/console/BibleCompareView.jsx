@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Icon from "./Icon";
 import { Btn, Empty } from "./kx";
-import { editionCredit } from "@/lib/bibleBooks";
+import { editionCredit } from "@/lib/bibleEditions";
 import { useBibleEditions } from "./useBibleEditions";
 import { getChapter, installedVersions } from "@/lib/bibleText";
 

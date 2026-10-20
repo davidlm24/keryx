@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
-import { editionList } from "@/lib/bibleBooks";
+import { editionList } from "@/lib/bibleEditions";
 import { forgetInstalledVersions } from "@/lib/bibleText";
 
 const KEY = ["bible-editions"];

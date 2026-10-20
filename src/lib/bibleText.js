@@ -11,7 +11,8 @@
 
 import { keryx } from "@/api/keryxClient";
 import { ClientError } from "@/api/errors";
-import { BIBLE_VERSIONS, bibleBooks, bookNumber, editionPlan, readByPlan, editionList, missingTestament } from "@/lib/bibleBooks";
+import { BIBLE_VERSIONS, bibleBooks, bookNumber, editionPlan, readByPlan } from "@/lib/bibleBooks";
+import { editionList, missingTestament } from "@/lib/bibleEditions";
 import { searchTerms, anchorTerm, verseMatches } from "@/lib/bibleSearch";
 
 const ONLINE_CACHE_PREFIX = "bible_";

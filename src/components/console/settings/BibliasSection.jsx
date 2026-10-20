@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Btn, Empty } from "../kx";
 import Icon from "../Icon";
-import { editionCredit } from "@/lib/bibleBooks";
+import { editionCredit } from "@/lib/bibleEditions";
 import { forgetInstalledVersions } from "@/lib/bibleText";
 import { useBridge, usePoll, desktopOnly, Reading, CfgGroup } from "./parts";
 import { usePrefs, updateUser } from "@/hooks/useUser";

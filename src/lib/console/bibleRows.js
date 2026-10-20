@@ -2,7 +2,7 @@
 // the "Bíblias" mockup, b1 = grupos): the editions in three groups, each
 // row with its licence chip. Pure, so the words are tested
 // (bibleRows.test.mjs); BibliasSection draws them.
-import { siglaProblem } from "../bibleBooks.js";
+import { siglaProblem } from "../bibleEditions.js";
 
 export const BIBLE_GROUPS = [
     { id: "own", title: "Da igreja", hint: "instaladas de um arquivo seu" },

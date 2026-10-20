@@ -63,8 +63,8 @@ test("reinstalling from another file leaves none of the old file's verses", asyn
     assert.equal(installedVersions(s).BPM, 66 * 305);
 });
 
-test("siglaProblem: 2–8 letters or digits, none of the list's, none retired, the same in bibleBooks.js", async () => {
-    const books = await import(pathToFileURL(path.join(__dirname, "..", "src", "lib", "bibleBooks.js")).href);
+test("siglaProblem: 2–8 letters or digits, none of the list's, none retired, the same in bibleEditions.js", async () => {
+    const books = await import(pathToFileURL(path.join(__dirname, "..", "src", "lib", "bibleEditions.js")).href);
     const taken = [...Object.keys(SOURCES), "MINHA"];
     for (const s of ["BKJ", "bkj", " BKJ ", "B", "BKJ 1611", "BKJ-1611", "ABCDEFGHI", "NVI", "nvi", "MINHA", "BKJ1611", "AB12", "", null]) {
         assert.equal(siglaProblem(s, taken), books.siglaProblem(s, taken), String(s));

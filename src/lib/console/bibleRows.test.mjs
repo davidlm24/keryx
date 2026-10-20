@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { bibleGroups, licenceChip, editionMeta, ownSiglaGuess, ownSizeLabel } from "./bibleRows.js";
-import { BIBLE_VERSIONS, editionList } from "../bibleBooks.js";
+import { BIBLE_VERSIONS } from "../bibleBooks.js";
+import { editionList } from "../bibleEditions.js";
 
 const BKJ = { id: "own-1", sigla: "BKJ", name: "Bíblia King James Fiel 1611", format: "MySword", file_name: "bkj1611.bbl.mybible", testament: "all" };
 

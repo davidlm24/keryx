@@ -652,7 +652,12 @@ Before phase 3 nothing read the `bible_verse` table; every verse came from
   KERYX ships no Bible text. Each church downloads a version once (NVI,
   ACF, AA ≈4 MB from `thiagobodruk/biblia`, the source the web app already
   used; ARA, ARC, NAA, NTLH, KJA ≈1.6 MB zips from bolls.life, since
-  2026-10-20) or installs it from such a file; it lands in `bible_verse`
+  2026-10-20; the open editions BLIVRE, NBV, BPM and BLT as eBible.org's
+  `_vpl.zip`, credited in Configurações › Sobre) or installs it from a
+  file in any format `electron/bibleFormats.cjs` reads (USFM, VPL, OSIS,
+  Zefania, MySword, JSON; e-Sword, PDF and Word refused). A file the church
+  owns can also become an edition of its own (a sigla and name it gives,
+  a `BibleEdition` row, this computer only, never synced); it lands in `bible_verse`
   (31k verses, a couple of seconds) and works offline from then on.
   Bíblia › Mais › Bíblias instaladas, and a prompt above the verse search
   while none is installed (`BibleInstaller`, `electron/bible.cjs`).

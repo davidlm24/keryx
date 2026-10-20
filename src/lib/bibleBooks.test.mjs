@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bibleBooks, findBook, parseReference, formatReference, editionPlan, readByPlan, BIBLE_VERSIONS, bookNumber, renamedVersion, editionList, editionCredit, missingTestament, ownEdition } from "./bibleBooks.js";
+import { bibleBooks, findBook, parseReference, formatReference, editionPlan, readByPlan, BIBLE_VERSIONS, bookNumber, renamedVersion } from "./bibleBooks.js";
+import { editionList, editionCredit, missingTestament, ownEdition } from "./bibleEditions.js";
 
 const ref = (book, chapter, verseStart = null, verseEnd = verseStart) => ({ book, chapter, verseStart, verseEnd });
 

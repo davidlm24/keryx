@@ -256,7 +256,7 @@ function installedVersions(store) {
 const RETIRED = ["BKJ1611"];
 const SIGLA = /^[A-Z0-9]{2,8}$/;
 const normalizeSigla = (s) => String(s ?? "").trim().toUpperCase();
-// Must say the same as siglaProblem in src/lib/bibleBooks.js (a test checks).
+// Must say the same as siglaProblem in src/lib/bibleEditions.js (a test checks).
 // -> a sentence, or null when the sigla can be used.
 function siglaProblem(sigla, taken = []) {
     const s = normalizeSigla(sigla);

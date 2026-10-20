@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useUser } from "@/hooks/useUser";
 import { Btn } from "../kx";
 import { FormRow, useBridge, usePoll } from "./parts";
-import { BIBLE_VERSIONS, editionCredit } from "@/lib/bibleBooks";
+import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
+import { editionCredit } from "@/lib/bibleEditions";
 
 // The font's license ships in the build (public/fonts, see src/fonts.css).
 const FONT_LICENSE = "/fonts/Geist-OFL.txt";
