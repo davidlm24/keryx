@@ -9,13 +9,15 @@ import { fileURLToPath } from "node:url";
 // hue alone: gold 24 % and green 24 % over bg-2 were 1.06:1 in lightness and
 // nearly one colour to a protanope. The owner's fix splits them in lightness
 // (gold 36 %, green 16 %) and adds a gold bar on air; this keeps the numbers
-// honest when a token or a percentage changes. The washes are read from
-// console.css and the tokens from docs/design-system/tokens.css, so the test
-// follows whatever ships.
+// honest when a token or a percentage changes. The washes are tokens since
+// Rodada DS2 and are read, with the colours they mix, from
+// docs/design-system/tokens.css; the rules that wear them from console.css,
+// so the test follows whatever ships.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 
-const TOKENS = Object.fromEntries([...read("docs/design-system/tokens.css").matchAll(/(--[\w-]+):\s*(#[0-9a-f]{6})\b/gi)].map(([, k, v]) => [k, v]));
+const TOKENS_CSS = read("docs/design-system/tokens.css");
+const TOKENS = Object.fromEntries([...TOKENS_CSS.matchAll(/(--[\w-]+):\s*(#[0-9a-f]{6})\b/gi)].map(([, k, v]) => [k, v]));
 const CONSOLE = read("src/components/console/console.css");
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
@@ -25,8 +27,8 @@ const token = (name) => {
 };
 // `color-mix(in srgb, var(--a) N%, var(--b))`: a straight mix of the sRGB values.
 function wash(name) {
-    const m = CONSOLE.match(new RegExp(`${name}:\\s*color-mix\\(in srgb,\\s*var\\((--[\\w-]+)\\)\\s*([\\d.]+)%,\\s*var\\((--[\\w-]+)\\)\\)`));
-    assert.ok(m, `console.css defines ${name} as a color-mix`);
+    const m = TOKENS_CSS.match(new RegExp(`${name}:\\s*color-mix\\(in srgb,\\s*var\\((--[\\w-]+)\\)\\s*([\\d.]+)%,\\s*var\\((--[\\w-]+)\\)\\)`));
+    assert.ok(m, `tokens.css defines ${name} as a color-mix`);
     const [, a, pct, b] = m;
     const p = Number(pct) / 100;
     const ca = token(a), cb = token(b);

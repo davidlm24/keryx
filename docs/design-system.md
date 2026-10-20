@@ -5,8 +5,9 @@ The operator console's design system was made in Claude Design and lives in
 
 - `README.md` — principles, content rules (pt-BR vocabulary), colour, type,
   spacing, states, iconography, motion. Read this first.
-- `tokens.json` — the reference for every token (colour, type styles,
-  spacing, radius, shadow, timing, opacity), each with its usage.
+- `tokens.json` — the reference for every token (colour, type styles and
+  the type scale, spacing, radius, shadow, timing, opacity, layers), each
+  with its usage.
 - `tokens.css` — the same tokens as CSS custom properties plus the type-style
   classes (`.meta`, `.section`, `.ui`, `.content`, `.live-cap`, `.live-title`,
   `.next-title`, `.alert-title`, `.clock`, `.screen-*`).
@@ -24,6 +25,24 @@ step with each other; nothing generates one from another. A token change
 touches all three (and `console.css` if the console overrides it). The
 console overrides several of them on purpose (the 6 px gutter, slides and
 verses as rows, list rows as inset cards): `console.css` is what ships.
+
+## Tokens
+
+Since Rodada DS2 (owner 2026-10-20, `d6_escala` = "sete") `console.css` and
+`bundle.css` write these only as tokens; `src/lib/tokens.test.mjs` fails on a
+px font size, a raw z-index or the chrome colours typed by hand, and
+`designTokens.test.mjs` on `tokens.json` and `tokens.css` drifting apart.
+
+| Group | Tokens |
+| --- | --- |
+| Type scale | `--fs-meta` 11 · `--fs-ui` 12 · `--fs-content` 13 · `--fs-content-lg` 14 · `--fs-live` 16 · `--fs-clock` 20 · `--fs-count` 28 px. The old 9, 10 and 10.5 px are 11; 11.5 is 12; 12.5 is 13. Kept in px: the logo's K, a font specimen, the sync code. Screens size in cqw, off this scale. |
+| Heights | `--control-sm` 24 px (a header's buttons, selects and Seg; a row's hover buttons; the pills' buttons; chips) · `--band` 36 px (a band under a header) · `--row` 28 · `--row-comfortable` 32 · `--topbar` 40. |
+| Layers, inside a box | `--z-screen` 1 · `--z-mark` 2 · `--z-handle` 3 · `--z-edge` 5 · `--z-guide` 6 · `--z-hatch` 7 · `--z-frame` 8 · `--z-badge` 10 · `--z-drop` 15 · `--z-pill` 20 · `--z-ring` 21. A monitor's screen, a thumbnail, THE window and a splitter are each their own stacking context: their steps compare only inside them. |
+| Layers, the console | `--z-scrim` 27 · `--z-menubar` 28 · `--z-window-scrim` 29 · `--z-pop` 30 · `--z-window` 40 · `--z-window-over` 41 · `--z-drawer` 42 · `--z-verify` 43 · `--z-library-scrim` 44 · `--z-library` 45 · `--z-dialog` 50 · `--z-confirm-scrim` 51 · `--z-confirm` 52 · `--z-menu` 53 · `--z-menu-top` 54 · `--z-toast` 60 · `--z-drag` 70. A new layer is a name by its role, never a number. |
+| Motion | `--duration-fast` 120 ms + `--ease-out` (hover, state) · `--dur-fold` 180 ms + `--ease-fold` (a panel folding, No ar, a group, a chevron; Dock.jsx reads them). |
+| Chrome over a screen | `--chrome-on-screen` #0d0d0cd9 (the pills, the Prévia's badge, a thumbnail's mark) · `--chrome-ring` #ffffff14 (its 1 px ring). |
+| States in the lists | `--live` (the brand gold) · `--live-fg` · `--live-bg` (36 % gold over bg-2) · `--prev-bg` (16 % green over bg-2). `--live-bar` and `--next-bar` stay in console.css. |
+| Fonts | `--font-sans` / `--font-display`: Geist, then the system font. No Inter: KERYX never shipped it. |
 
 **`CLAUDE.md` wins.** It records the owner's decisions as they are made; this
 page and the README describe the look those decisions produce. Where they
