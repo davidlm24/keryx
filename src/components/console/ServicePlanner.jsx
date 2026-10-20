@@ -269,9 +269,11 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         <span className="k">Avançar sozinho</span>
                         <div className="pl-auto">
                             <Switch on={Boolean(svc.autoplay)} label="Avançar sozinho: quando o item no ar termina, o próximo vai ao ar" onChange={(on) => saveSvc({ autoplay: on }, on ? "Avançar sozinho ligado." : "Avançar sozinho desligado.")} />
-                            <Seg small label="Pausa entre itens" value={svc.autoplay_gap == null ? "" : String(svc.autoplay_gap)}
-                                options={[["", `Padrão · ${gapLabel(prefs.autoplay_gap)}`], ...GAPS.map((g) => [String(g), gapLabel(g)])]}
-                                onChange={(v) => saveSvc({ autoplay_gap: v === "" ? null : Number(v) }, v === "" ? "Pausa entre itens: a de Configurações › Culto." : `Pausa entre itens deste culto: ${gapLabel(Number(v)).toLowerCase()}.`)} />
+                            <select className="cfg-select pl-pick" aria-label="Pausa entre itens deste culto" title="Pausa entre itens: antes de o próximo item ir ao ar" value={svc.autoplay_gap == null ? "" : String(svc.autoplay_gap)}
+                                onChange={(e) => { const v = e.target.value; saveSvc({ autoplay_gap: v === "" ? null : Number(v) }, v === "" ? "Pausa entre itens: a de Configurações › Culto." : `Pausa entre itens deste culto: ${gapLabel(Number(v)).toLowerCase()}.`); }}>
+                                <option value="">Pausa padrão · {gapLabel(prefs.autoplay_gap).toLowerCase()}</option>
+                                {GAPS.map((g) => <option key={g} value={String(g)}>{g ? `Pausa de ${g} s` : "Sem pausa"}</option>)}
+                            </select>
                         </div>
                     </div>
                     </CfgGroup>

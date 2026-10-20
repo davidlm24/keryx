@@ -885,6 +885,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .rund-cd > button { height: 18px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); font: inherit; font-weight: 500; cursor: pointer; }
 .console .rund-cd > button:hover { background: var(--line-strong); }
 .console .rund-cd.is-warn { padding-right: var(--space-2); background: var(--warn-tint); color: var(--warn-fg); }
+/* A narrow Setlist keeps the next row's title in sight: "9 s · Cancelar". */
+.console .rund { container: rund / inline-size; }
+@container rund (width < 300px) { .console .rund-cd-w { display: none; } }
 .console .rund-menu-note { max-width: 260px; padding: 2px var(--space-2) var(--space-1) 32px; font-size: 11px; line-height: 1.35; color: var(--fg-3); }
 
 /* Fields (C-21, owner 2026-10-16): one look, the design system's kx-input /

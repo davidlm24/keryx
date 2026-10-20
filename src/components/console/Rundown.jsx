@@ -32,11 +32,11 @@ export function AutoplaySwitch({ on, onChange, disabled }) {
 // amber when the Setlist stopped instead (the projector window closed).
 function NextChip({ pending, onCancel }) {
     const now = useLiveNow(250, pending.kind === "count");
-    if (pending.kind !== "count") return <span className="rund-cd is-warn" title="A janela do projetor está fechada: abra a Projeção em Saídas e envie este item">Parou: projetor fechado</span>;
+    if (pending.kind !== "count") return <span className="rund-cd is-warn" title="A Setlist parou: a janela do projetor está fechada. Abra a Projeção em Saídas e envie este item">Parou<span className="rund-cd-w">: projetor fechado</span></span>;
     const left = Math.max(1, Math.ceil((pending.until - (now || keryx.live.now())) / 1000));
     return (
-        <span className="rund-cd" role="timer" aria-live="off">
-            Próximo em {left} s
+        <span className="rund-cd" role="timer" aria-live="off" title={`Próximo em ${left} s`}>
+            <span className="rund-cd-w">Próximo em </span>{left} s
             <button type="button" onClick={(e) => { e.stopPropagation(); onCancel(); }} onDoubleClick={(e) => e.stopPropagation()} title="Cancelar · Esc">Cancelar</button>
         </span>
     );
@@ -85,7 +85,8 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
     // The list follows the service: when the item on air (or in the Prévia)
     // changes, it is scrolled into view, so the next rows stay in sight.
     const listRef = sort.listProps.ref;
-    useKeepInView(listRef, airItemId ? ".is-air, .is-last" : ".is-prev", [airItemId, prevItemId]);
+    // The row counting down (the Setlist automática) stays in sight with it.
+    useKeepInView(listRef, airItemId ? ".is-air, .is-last, .has-cd" : ".is-prev", [airItemId, prevItemId, autoplay?.pending?.nextId]);
     const step = useRowStep({ ids: items.map((it) => it.id), listRef, onMove: reorder, disabled: !canReorder });
     // Ao terminar (the item's end_action): Ir para o próximo · Repetir · Parar.
     const setEnd = async (it, action) => {
@@ -100,7 +101,8 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
         return [
             "sep",
             { head: "Ao terminar", minor: true },
-            ...END_ACTIONS.map((a) => ({ label: END_LABEL[a], icon: END_ICON[a], checked: choice === a, role: "menuitemradio", onSelect: () => setEnd(it, a) })),
+            // A choice: the check in the glyph's place, as the culto of the day in Culto.
+            ...END_ACTIONS.map((a) => ({ label: END_LABEL[a], checked: choice === a, onSelect: () => setEnd(it, a) })),
             ...(alone ? [] : [
                 { node: <div className="rund-menu-note" role="note">{NO_DURATION}: fica no ar até você mandar o próximo</div> },
                 { label: "Definir duração…", icon: "clock", onSelect: () => onPlan?.(it), disabled: !onPlan },
@@ -144,6 +146,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                 return (
                     <Row
                         key={it.id}
+                        className={chip ? "has-cd" : ""}
                         icon={typeIcon(it.type)}
                         title={it.title || typeLabel(it.type)}
                         meta={[last && "último", typeLabel(it.type), it.notes].filter(Boolean).join(" · ")}
