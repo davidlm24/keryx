@@ -1643,6 +1643,13 @@ side-panel "keryx-ui"): the real store and live engine on sample data in a
 temp folder (`scripts/preview/`, `src/api/backends/preview.js`,
 docs/desktop-architecture.md 8a); outputs open as tabs from Saídas. The
 smoke and `desktop:dev` remain the truth for outputs, audio and displays. `KERYX_SCREENSHOT=<file.png>` makes a smoke run save a screenshot.
+**The soak** (`KERYX_SOAK=<minutes>` on a smoke run or the installed app
+with `KERYX_SMOKE=1`; `electron/soak.cjs`, plan and verdict in
+`soakPlan.cjs`, numbers in `perfMetrics.cjs`, all tested) plays a service
+on a loop over the outputs and writes a CSV every 30 s plus a JSON verdict
+to the data folder; the diagnostic zip carries `desempenho.json` from the
+same module. Only the owner runs it (docs/requisitos.md has the command);
+the minimum PC there stays "provisório" until its CSVs come back.
 Pure logic lives in tested modules (`src/lib/**`, `shared/`); the UI is
 covered by the smoke's in-app checks.
 

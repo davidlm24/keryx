@@ -5,6 +5,8 @@
 //   node scripts/desktop.mjs smoke   like start, but exits after the checks in electron/smoke.cjs
 //   KERYX_SMOKE=1 node scripts/desktop.mjs dev   the same checks against the dev server,
 //                                                plus the renderer adapter end to end
+//   KERYX_SOAK=<minutes> with smoke: a long service on a loop, measured to a
+//                                                CSV instead of the checks (electron/soak.cjs, docs/requisitos.md)
 // Smoke runs use a throwaway data dir, never the real database.
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
