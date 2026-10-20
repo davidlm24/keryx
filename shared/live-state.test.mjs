@@ -367,6 +367,30 @@ test("Travar telas is for the session: a restart comes back unlocked", () => {
     assert.equal(restoreState(JSON.parse(JSON.stringify(s)), T0 + 9).locked, false);
 });
 
+test("after a crash the screens come back as the audience saw them, sound still paused", () => {
+    const s = run([
+        ["content.show", { ...song, index: 2 }],
+        ["video.show", { kind: "video", url: "v" }, T0],
+        ["transport", { action: "seek", time: 12 }, T0 + 1000],
+        ["screens.lock", { locked: true }, T0 + 2000],
+    ]);
+    const saved = JSON.parse(JSON.stringify(s));
+    const back = restoreState(saved, T0 + 60_000, { afterCrash: true });
+    assert.equal(back.screen, "show", "lit, not Tela preta");
+    assert.equal(mainLayer(back), "content");
+    assert.equal(back.content.index, 2);
+    assert.equal(back.locked, true, "a lock set before the crash still holds");
+    assert.equal(back.video.playback.paused, true, "how far it played after the crash is unknown");
+    assert.equal(livePosition(back.video.playback, T0 + 999_999), 12);
+    // Tela preta or the Logo before the crash stay what they were.
+    const black = applyOp(s, "screen.set", { mode: "black" }, T0 + 3000);
+    assert.equal(restoreState(JSON.parse(JSON.stringify(black)), T0, { afterCrash: true }).screen, "black");
+    assert.equal(restoreState({ ...saved, screen: "off" }, T0, { afterCrash: true }).screen, "black", "an unknown mode is black");
+    // A normal close keeps today's rule.
+    assert.equal(restoreState(saved, T0).screen, "black");
+    assert.equal(restoreState(saved, T0, { afterCrash: false }).locked, false);
+});
+
 test("idle screen: logo or black, part of the document", () => {
     let s = emptyState(T0);
     assert.equal(s.idle, "logo");

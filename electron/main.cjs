@@ -18,6 +18,8 @@ const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
 const { remoteReads } = require("./lan.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
+const { createRunMarker } = require("./runMarker.cjs");
+const { startWatchdog } = require("./watchdog.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
@@ -98,6 +100,9 @@ let system = null;
 let network = null;
 let live = null;
 let sync = null;
+// running.json while KERYX runs (electron/runMarker.cjs): found at start, the
+// last run died instead of quitting.
+let runMarker = null;
 // The live-state rules (shared/live-state.mjs) and this computer's settings,
 // for the close guard (electron/closeGuard.cjs).
 let liveRules = null;
@@ -411,6 +416,12 @@ function createMainWindow(settings) {
         asked.then((close) => (close ? closeGuard.closeAll(others()) : false)).then((closed) => { if (closed) app.quit(); }, () => {});
     });
     mainWindow.on("closed", () => { mainWindow = null; });
+    // Windows is shutting down or logging off (it may not wait for will-quit):
+    // not a crash, so neither the watchdog nor the next start brings anything back.
+    mainWindow.on("session-end", () => {
+        if (live) live.flush();
+        if (runMarker) runMarker.clear();
+    });
     mainWindow.loadURL(appUrl + START_PATH).catch((err) => {
         // Also what a bad KERYX_START_PATH looks like (Git Bash rewrites "/Console"
         // to a Windows path; use MSYS_NO_PATHCONV=1 or "Console" without a slash).
@@ -571,10 +582,19 @@ app.whenReady().then(async () => {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
 
+    // Did the last run end normally? A crash a few minutes ago brings the
+    // screens back as the audience saw them and reopens the outputs that were
+    // open (owner 2026-10-20). A restart KERYX asked for itself (an import or
+    // a restore swapped in at this start, app.exit without will-quit) is not one.
+    const markerFile = path.join(dataDir, "running.json");
+    runMarker = createRunMarker({ file: markerFile, log: (m) => logger.warn(m) });
+    const crash = importOutcome ? null : runMarker.plan;
+    if (crash) logger.warn(`[keryx-crash] o KERYX não fechou normalmente (último sinal ${new Date(crash.diedAt).toISOString()}); ${crash.lit ? `voltando como estava, saídas: ${crash.outputs.join(", ") || "nenhuma"}` : "faz tempo: telas pretas, como num início normal"}`);
+
     // What every output shows right now (shared/live-state.mjs).
     try {
         liveRules = await loadLiveRules();
-        live = createLive({ file: path.join(dataDir, "live.json"), rules: liveRules, log: (m) => logger.warn(m) });
+        live = createLive({ file: path.join(dataDir, "live.json"), rules: liveRules, log: (m) => logger.warn(m), afterCrash: Boolean(crash && crash.lit) });
         // A live state starting empty takes the church's logo look and idle
         // screen (Configurações › Igreja and Aparência, liveSeed.cjs).
         if (live.fresh) {
@@ -586,6 +606,23 @@ app.whenReady().then(async () => {
     } catch (err) {
         fatal("KERYX não conseguiu iniciar", `Não foi possível carregar o estado da projeção: ${err && err.message}`);
         return;
+    }
+    runMarker.start(() => outputs.list().outputs.filter((o) => o.open).map((o) => o.key));
+    if (crash && crash.lit) {
+        notify({ key: "keryx-crashed", kind: "warn", title: "O KERYX fechou sozinho e abriu de novo", body: "As telas voltaram como estavam. O som e os vídeos estão pausados: dê play no player para continuar." });
+    }
+    // If main itself dies, the watchdog opens KERYX again (electron/watchdog.cjs).
+    // Only the installed app: in desktop:dev Ctrl+C would bring it back, and
+    // smoke runs manage their own windows.
+    if (app.isPackaged && !SMOKE && !process.env.KERYX_DATA_DIR) {
+        startWatchdog({
+            spawn: require("node:child_process").spawn,
+            execPath: process.execPath,
+            pid: process.pid,
+            markerFile,
+            relaunch: { command: process.execPath, args: process.argv.slice(1), cwd: process.cwd() },
+            log: (m) => logger.warn(m),
+        });
     }
 
     // The windows' own errors into the daily log (electron/rendererLog.cjs:
@@ -753,7 +790,8 @@ app.whenReady().then(async () => {
 
     const win = createMainWindow(settings);
     // Outputs set to "Abrir ao iniciar" in Telas e saídas.
-    win.once("ready-to-show", () => outputs.openAtLaunch());
+    // After a recent crash, also the ones that were open then.
+    win.once("ready-to-show", () => outputs.openAtLaunch(crash && crash.lit ? crash.outputs : []));
     if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, settings, network, live, dataDir, importOutcome });
 });
 
@@ -762,6 +800,8 @@ app.on("will-quit", () => {
     if (sync) sync.stop();
     if (network) network.stop();
     if (live) live.flush();
+    // A normal quit: nothing to recover, and the watchdog lets it go.
+    if (runMarker) runMarker.clear();
     if (system) {
         try {
             system.backupNow("ao fechar");

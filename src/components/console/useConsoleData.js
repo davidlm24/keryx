@@ -9,6 +9,7 @@ import { useUser } from "@/hooks/useUser";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { useFontRows } from "@/hooks/useFonts";
 import { isFontMedia, fontFamilies } from "@/lib/fonts";
+import { chooseService } from "@/lib/console/serviceChoice";
 
 // What the console reads: the library (songs, media, communication pieces),
 // the services and the chosen service's items, the themes. Each list follows
@@ -157,14 +158,10 @@ export function useRundown(serviceId) {
     return { services, items: items.filter((i) => i.enabled !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), loaded };
 }
 
-export function pickDefaultService(services) {
-    if (!services.length) return null;
-    // Local date: toISOString() is UTC, so after 21:00 in Brazil "today"
-    // would already be tomorrow and the evening service would be missed.
-    const d = new Date();
-    const two = (n) => String(n).padStart(2, "0");
-    const today = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
-    return services.find((s) => s.date === today) || services[0];
+// The culto on the screens, else today's, else the most recent
+// (src/lib/console/serviceChoice.js).
+export function pickDefaultService(services, live = null) {
+    return chooseService(services, live);
 }
 
 // The outputs: the windows the main process places (desktop) and the

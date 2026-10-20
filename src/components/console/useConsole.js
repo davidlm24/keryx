@@ -33,6 +33,10 @@ import { LOCKED_SAY, PENDING_SKIP, sendBlock } from "@/lib/console/sendBlock";
 // goes through callOp.
 // The theme in use, on this computer (localStorage, like the arrangement).
 export const THEME_IN_USE_KEY = "keryx.themeInUse";
+// The Prévia's stage, for a reload of this window (useConsole).
+const PREV_KEY = "keryx.console.prev";
+const readPrev = () => { try { const s = JSON.parse(sessionStorage.getItem(PREV_KEY) || "null"); return s && typeof s === "object" ? s : null; } catch { return null; } };
+const writePrev = (stage) => { try { if (stage) sessionStorage.setItem(PREV_KEY, JSON.stringify(stage)); else sessionStorage.removeItem(PREV_KEY); } catch { /* not remembered */ } };
 // The checks before a send (src/lib/console/sendBlock.js, pure).
 export { LOCKED_SAY };
 
@@ -160,7 +164,10 @@ export function useConsole() {
     // (useLiveNow: the top bar's clocks, the timers, the player, the
     // monitors' ScreenRenderer); a one-off read is keryx.live.now().
     const live = useLiveState();
-    const [prev, setPrevState] = useState(null);
+    // The Prévia survives the console's reload after a crash (sessionStorage
+    // lives as long as this window: a reopened KERYX starts empty).
+    const [prev, setPrevState] = useState(readPrev);
+    useEffect(() => { writePrev(prev); }, [prev]);
     // Media files the sync between the church's computers has not brought
     // yet: an item that needs one is not sent (src/lib/pendingMedia.js).
     const pending = usePendingMedia();

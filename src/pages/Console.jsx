@@ -392,7 +392,10 @@ export default function Console() {
     };
 
     const { services, items, loaded: rundownLoaded } = useRundown(serviceId);
-    useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
+    // Chosen once the live state is read: the culto on the screens wins (a
+    // reload or a crash mid-service keeps its Setlist; serviceChoice.js).
+    const liveLoaded = Boolean(c.live);
+    useEffect(() => { if (!serviceId && services.length && liveLoaded) setServiceId(pickDefaultService(services, keryx.live.current())?.id || null); }, [services, serviceId, liveLoaded]);
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
     const service = services.find((s) => s.id === serviceId) || null;
     // Papel de parede (owner's decisions 2026-10-12/14, src/lib/console/defaultFundo.js):
