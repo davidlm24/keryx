@@ -184,13 +184,16 @@
 .console .prog-pill .kx-meta { color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .prog-pill .prog-where { flex: none; }
 .console .prog-pill .prog-where.kx-warn { color: var(--warn-fg); }
-.console .prog-pill .prog-locked { height: 18px; padding: 0 6px; font-size: 10px; }
+.console .prog-pill .prog-locked { height: 18px; padding: 0 6px; font-size: 12px; }
 .console .prog-pill .pp-sep { flex: none; width: 1px; height: 14px; background: #ffffff26; }
 .console .prog-pill .pp-btns, .console .prog-pill .pp-screens { display: inline-flex; align-items: center; gap: 2px; flex: none; }
 .console .prog-pill .kx-btn { flex: none; width: 24px; height: 24px; padding: 0; border-radius: var(--radius-round); background: transparent; color: var(--fg-1); }
 .console .prog-pill .kx-btn:hover { background: #ffffff1f; }
 .console .prog-pill .kx-btn:active { background: #ffffff33; } /* pressed: Tela preta, Logo, Limpar answer the hand at once (POL-10) */
 .console .prog-pill .kx-btn.is-on { background: var(--bg-3); }
+/* Encerrar stands apart (Rodada DS1, d5_pilula): after its own separator, in the air's red. */
+.console .prog-pill .kx-btn.pp-end { color: var(--air-fg); }
+.console .prog-pill .pp-screens > .pp-sep { margin: 0 4px; }
 .console .prog-pill .pp-more { display: none; }
 @container prog-screen (max-width: 560px) { .console .prog-pill .prog-where { display: none; } }
 @container prog-screen (max-width: 480px) { .console .prog-pill .pp-full { display: none; } .console .prog-pill .pp-more { display: inline-flex; } }
@@ -354,16 +357,24 @@
 /* Rows (owner 2026-10-14, the small-screen review; they were cards): every
    slide in a list (the Slides column, No ar in a column) and every verse
    (Ler, Buscar) is a row with a 1 px separator, no card of its own, so a
-   short screen shows half as much again. The state is still the row's
-   background, never a border or a side bar: on air the brand's gold (the
-   rest of the console keeps red for "no ar": the Programa, Enviar ao ar),
-   the Prévia green, the next slide a step up. On air and in the Prévia at
-   once: green, the number on a gold chip. A slide keeps the editor's lines:
+   short screen shows half as much again. The state is the row's background
+   plus a bar on its left edge (Rodada DS1, owner 2026-10-20, "mix do A com
+   D"; it was the background alone, and on air and Prévia differed by hue
+   only — 1.06:1 in lightness, one colour to a protanope): on air the
+   brand's gold, a light wash (36 %) and a 3 px gold bar (the rest of the
+   console keeps red for "no ar": the Programa, Enviar ao ar); the Prévia
+   green, a dark wash (16 %: 1.56:1 against the gold, stateColors.test.mjs);
+   the next slide a 2 px grey bar and a light number. On air and in the
+   Prévia at once: green, the gold bar and the number on a gold chip. The
+   labels and numbers on a wash pass AA: fg-2 on the Prévia's, fg-1 on the
+   gold one (where fg-2 is 4.15:1).
+   The bars are box-shadows: a Windows contrast theme drops them and its
+   block at the end draws the states. A slide keeps the editor's lines:
    one line each, "…" when too long (the whole text is the tooltip and the
    Prévia); verses wrap (prose). The No ar strip (low, across the window)
    keeps its cards: there they run sideways and the card tells where a slide
    ends. */
-.console { --live: var(--brand); --live-fg: var(--brand-hover); --live-bg: color-mix(in srgb, var(--brand) 24%, var(--bg-2)); --prev-bg: color-mix(in srgb, var(--prev) 24%, var(--bg-2)); }
+.console { --live: var(--brand); --live-fg: var(--brand-hover); --live-bg: color-mix(in srgb, var(--brand) 36%, var(--bg-2)); --prev-bg: color-mix(in srgb, var(--prev) 16%, var(--bg-2)); --live-bar: inset 3px 0 0 var(--live); --next-bar: inset 2px 0 0 var(--fg-3); }
 .console .kx-cards { display: flex; flex-direction: column; gap: 0; padding: 0 0 var(--space-1); }
 /* Verses (Ler, Buscar) are cards again (owner 2026-10-14): prose reads
    better with its own box; the lists of slides are rows. */
@@ -394,19 +405,23 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* A row with a background (a state, the pointer) drops its separator. */
 .console :is(.kx-slide, .onair-card):is(.is-air, .is-prev, .is-next, :hover) { box-shadow: none; }
 .console .kx-slide-body { display: flex; flex-direction: column; min-width: 0; }
-.console .kx-slide-body .kx-slide-lab { font-size: 11px; line-height: 14px; color: var(--fg-3); margin-bottom: 2px; }
+.console .kx-slide-body .kx-slide-lab { font-size: 11px; line-height: 14px; color: var(--fg-2); margin-bottom: 2px; }
 .console .kx-ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A presentation's page (Rodada F3): its picture, 16:9 on black, and its name beside it. */
 .console .kx-slide-body.is-page { flex-direction: row; align-items: center; gap: var(--space-2); }
 .console .kx-slide-page { flex: none; width: 128px; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: 4px; }
 .console .kx-slide-body.is-page .kx-slide-lab { margin: 0; font-size: 12px; }
 .console .onair-card .kx-slide-n { font-size: 11px; color: var(--fg-3); }
-.console .kx-slide.is-next, .console .onair-card.is-next { background: var(--bg-3); }
+.console .kx-slide.is-next, .console .onair-card.is-next { box-shadow: var(--next-bar); }
+.console .is-next > .kx-slide-n { color: var(--fg-1); }
 .console .kx-slide.is-prev, .console .kx-verse.is-prev, .console .onair-card.is-prev { background: var(--prev-bg); }
-.console .is-prev > .kx-slide-n, .console .is-prev > .kx-verse-n, .console .is-prev .kx-slide-lab { color: var(--prev-fg); }
-.console .kx-slide.is-air, .console .kx-verse.is-air, .console .onair-card.is-air { background: var(--live-bg); }
-.console .is-air > .kx-slide-n, .console .is-air > .kx-verse-n, .console .is-air .kx-slide-lab { color: var(--live-fg); }
-.console .kx-slide.is-air.is-prev, .console .kx-verse.is-air.is-prev { background: var(--prev-bg); }
+.console .is-prev > .kx-slide-n, .console .is-prev > .kx-verse-n, .console .is-prev .kx-slide-lab { color: var(--fg-2); }
+.console .kx-slide.is-air, .console .kx-verse.is-air, .console .onair-card.is-air { background: var(--live-bg); box-shadow: var(--live-bar); }
+/* On the gold wash fg-1: fg-2 there is 4.15:1, under AA (stateColors.test.mjs). */
+.console .is-air > :is(.kx-slide-n, .kx-verse-n), .console .is-air .kx-slide-lab { color: var(--fg-1); }
+.console .kx-slide.is-air.is-prev, .console .kx-verse.is-air.is-prev, .console .onair-card.is-air.is-prev { background: var(--prev-bg); }
+/* The keyboard's ring on a gold wash is light (Rodada DS1, d4_foco): gold on gold vanished. */
+.kx.console :is(.kx-slide, .onair-card, .kx-verse, .sv-qrow, .sync .sync-row, .sync .sync-mk).is-air:not(.is-prev):focus-visible { outline-color: var(--fg-1); }
 .console .is-air.is-prev > .kx-slide-n, .console .is-air.is-prev > .kx-verse-n { align-self: start; height: 16px; line-height: 16px; border-radius: 4px; background: var(--live); color: var(--on-brand); text-align: center; font-weight: 500; }
 /* The Slides column's two tabs (No ar · Prévia) while the No ar module is
    not on screen and another item is prepared (SlidesPanel airTabs). */
@@ -439,7 +454,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
        as tall as the slide with the most lines (dock.js onAirHeight). */
     .console .onair-card { width: 260px; overflow: hidden; font-size: 13px; line-height: 18px; padding: 6px 10px; border-radius: var(--radius-control); background: var(--bg-2); box-shadow: none; }
     .console .onair-card:hover { background: var(--bg-3); }
-    .console .onair-card.is-next { background: var(--bg-3); }
     .console .onair-card.is-prev { background: var(--prev-bg); }
     .console .onair-card.is-air { background: var(--live-bg); }
     /* A page as tall as dock.js ONAIR_PAGE_LINES lines. */
@@ -1173,17 +1187,22 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-about b { display: block; font-size: 20px; font-weight: 600; letter-spacing: .02em; }
 .console .cfg .cfg-about span:not(.kx-mark) { color: var(--fg-2); }
 .console .cfg .cfg-license { margin: 0; width: 100%; max-height: 220px; overflow: auto; white-space: pre-wrap; font: 11px/1.5 ui-monospace, Consolas, monospace; color: var(--fg-2); background: var(--bg-0); border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); padding: var(--space-2) var(--space-3); }
-.console .sw2 { width: 28px; height: 16px; border-radius: 999px; background: var(--bg-3); position: relative; flex: none; }
-.console .sw2::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--fg-2); transition: left var(--duration-fast) var(--ease-out); }
-.console .sw2.is-on { background: var(--prev-fill); }
-/* A switch answers the pointer: its knob lights (C-57). */
+/* Switches (Rodada DS1, owner 2026-10-20, d4_switch = neutro): 32 × 20, past
+   the 24 px a pointer needs; on = a light track (fg-1) with a dark knob, so
+   "ligado" never reads as the Prévia's green. */
+.console .sw2 { width: 32px; height: 20px; border-radius: 999px; background: var(--bg-3); position: relative; flex: none; }
+.console .sw2::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--fg-2); transition: left var(--duration-fast) var(--ease-out); }
+.console .sw2.is-on { background: var(--fg-1); }
+/* A switch answers the pointer: its knob lights (C-57); on, the track dims a step. */
 .console .sw2:not(:disabled):hover::after { background: var(--fg-1); }
-.console .sw2.is-on::after { left: 14px; background: var(--on-state); }
+.console .sw2.is-on::after { left: 15px; background: var(--bg-0); }
+.console .sw2.is-on:not(:disabled):hover { background: var(--fg-2); }
+.console .sw2.is-on:not(:disabled):hover::after { background: var(--bg-0); }
 .console .sw2:disabled { opacity: var(--dim); }
 /* Saídas: a switch per local row (ligado = a janela existe); the name of an
    open output is a button that brings it forward. */
-.console .pop-outs .kx-out.has-sw { grid-template-columns: 28px 16px 1fr auto; }
-.console .pop-outs .kx-out.has-sw .sw2 { margin-top: 2px; }
+.console .pop-outs .kx-out.has-sw { grid-template-columns: 32px 16px 1fr auto; }
+.console .pop-outs .kx-out.has-sw .sw2 { margin-top: 0; }
 .console .pop-outs .kx-out-front { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .console .pop-outs .kx-out-front:hover { text-decoration: underline; text-underline-offset: 2px; }
 .console .cfg .diagram { display: flex; gap: var(--space-3); align-items: flex-end; padding: var(--space-3); flex-wrap: wrap; }
@@ -1467,8 +1486,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .sv-reveal-btn { width: 100%; justify-content: center; height: 36px; font-size: 13px; }
 .console .sv-qlist { padding-bottom: var(--space-2); }
 .console .sv-qn { flex: none; width: 20px; text-align: center; font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--fg-3); }
-.console .sv-qrow.is-air { background: color-mix(in srgb, var(--live) 24%, var(--bg-2)); }
-.console .sv-qrow.is-prev { background: color-mix(in srgb, var(--prev) 24%, var(--bg-2)); }
+.console .sv-qrow.is-air { background: var(--live-bg); }
+.console .sv-qrow.is-prev { background: var(--prev-bg); }
 .console .sv-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px; }
 .console .sv-type { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); text-align: left; font-size: 12px; line-height: 15px; }
 .console .sv-type .kx-i { color: var(--fg-3); }
@@ -1945,6 +1964,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    (forced colours) keeps the row on air, and the header's tag tells. */
 @media (forced-colors: none) {
   .console .is-covered :is(.kx-slide, .onair-card).is-air:not(.is-prev) { background: color-mix(in srgb, var(--brand) 9%, var(--bg-2)); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--live) 45%, transparent); }
   .console .is-covered :is(.kx-slide, .onair-card).is-air :is(.kx-slide-n, .kx-slide-lab),
   .console .is-covered .kx-row.is-air .kx-row-title { color: var(--fg-2); }
   .console .is-covered :is(.kx-slide, .onair-card).is-air .kx-slide-body { opacity: .7; }
@@ -1991,9 +2011,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console button.cfg-group-t { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* Switches: track and knob in the system's colours, Highlight when on. */
   .console .sw2 { border: 1px solid ButtonText; background: Canvas; }
-  .console .sw2::after { top: 1px; left: 1px; background: ButtonText; }
+  .console .sw2::after { top: 2px; left: 2px; background: ButtonText; }
   .console .sw2.is-on { border-color: Highlight; background: Highlight; }
-  .console .sw2.is-on::after { left: 13px; background: HighlightText; }
+  .console .sw2.is-on::after { left: 14px; background: HighlightText; }
   .console .sw2:disabled { border-color: GrayText; }
   .console .sw2:disabled::after { background: GrayText; }
   .console .sw2.is-on:disabled { background: GrayText; }

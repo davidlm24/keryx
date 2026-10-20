@@ -141,8 +141,10 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-row.is-prev { background: var(--prev-tint); } .kx-row.is-prev::before { background: var(--prev); }
 .kx-row.is-rh { background: var(--rh-tint); } .kx-row.is-rh::before { background: var(--rh); }
 .kx-row.is-warn::before { background: var(--warn); }
-/* Done (before the one on air): the glyph and title dim, the meta and time keep fg-3 (≥4.5:1) — still usable. */
-.kx-row.is-done :is(.kx-glyph, .kx-row-title) { opacity: var(--dim); }
+/* Done (before the one on air): only the glyph dims; the title steps down to fg-3 (6:1 on bg-1, never dimmed
+   past reading — DS1, 2026-10-20: the old opacity took it to 2.7:1), the meta and time keep fg-3. */
+.kx-row.is-done .kx-glyph { opacity: var(--dim); }
+.kx-row.is-done .kx-row-title { color: var(--fg-3); }
 .kx-row .kx-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 4px 0; }
 .kx-row .kx-row-title { font-size: 13px; line-height: 18px; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx-row.is-air .kx-row-title { color: var(--air-fg); } .kx-row.is-prev .kx-row-title { color: var(--prev-fg); }

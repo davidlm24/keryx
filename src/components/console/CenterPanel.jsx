@@ -125,7 +125,8 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
 // The actions that change what the audience sees, as glyphs (names and keys
 // in the tooltips; they act even with the screens locked): in the Programa's
 // pill, and alone in a pill on the Bíblia's No ar monitor (Rodada E1: they
-// left the top bar).
+// left the top bar). Encerrar, the one that takes everything off, stands
+// apart after a separator, in the air's red (Rodada DS1, d5_pilula).
 export function ScreenActions({ c, onEnd, className = "" }) {
     const { live } = c;
     // The keys as the church's "Teclas de uma letra" say (keys.js keyHint).
@@ -136,7 +137,8 @@ export function ScreenActions({ c, onEnd, className = "" }) {
             {btn({ className: live?.screen === "black" ? "is-on" : "", "aria-pressed": live?.screen === "black", "aria-label": "Tela preta", title: `Tela preta${k("black")} · nas telas, na hora`, onClick: () => c.toggleScreen("black") }, "black")}
             {btn({ className: live?.screen === "logo" ? "is-on" : "", "aria-pressed": live?.screen === "logo", "aria-label": "Mostrar logo", title: `Mostrar logo${k("logo")} · nas telas`, onClick: () => c.toggleScreen("logo") }, "logo")}
             {btn({ "aria-label": "Limpar texto", title: `Limpar texto${k("clear")}`, onClick: c.clearText }, "eraser")}
-            {onEnd && btn({ "aria-label": "Encerrar a projeção", title: "Encerrar a projeção (pergunta antes) · Esc encerra na hora", onClick: onEnd }, "stop")}
+            {onEnd && <span className="pp-sep" aria-hidden="true" />}
+            {onEnd && btn({ className: "pp-end", "aria-label": "Encerrar a projeção", title: "Encerrar a projeção (pergunta antes) · Esc encerra na hora", onClick: onEnd }, "stop")}
         </span>
     );
 }

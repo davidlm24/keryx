@@ -899,7 +899,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`health.onAir.short`) — **no "no ar há"** (Rodada F1) — then Voltar ao
   anterior (its popover opens above the pill), the Camadas drawer (only
   while Camadas is in the tray), Multiview and the screen actions Tela
-  preta, Logo, Limpar, Encerrar (owner's pick B). As the screen narrows
+  preta, Logo, Limpar (owner's pick B), then a separator and **Encerrar
+  apart, in `--air-fg`** (`pp-end`, icon only; Rodada DS1 — "Travado"
+  is 12 px; the Programa's menu ends with it after a separator). As the screen narrows
   (container queries on the screen, `prog-screen`) it **folds once**: at
   560 px only "2 telas" goes; at 480 every `.pp-full` button (Voltar,
   Camadas, the screen actions) goes into a "…" that opens the Programa's
@@ -985,11 +987,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and verses are rows** (owner 2026-10-14, the small-screen review; they
   were cards): in a list (the Slides column, No ar in a column, Ler,
   Buscar) each is a row with a 1 px separator and no card, so a short
-  screen shows more; the state is still the row's background, never a
-  border or a side bar — on air the brand's gold (`--live`; the rest of the
-  console keeps red for "no ar"), the Prévia green, the next slide
-  `--bg-2`/`--bg-3`; on air and in the Prévia at once, green with the
-  number on a gold chip; a note is a mark in the corner. The No ar strip
+  screen shows more; the state is the row's background **plus a 3 px gold
+  bar on air and a 2 px grey bar on the next** (Rodada DS1, owner
+  2026-10-20, "mix do A com D"; replaces "never a border or a side bar":
+  on air and Prévia differed by hue alone) — on air the brand's gold, a
+  light wash (`--live-bg` 36 %) and the `--live` bar (`--live-bar`; the
+  rest of the console keeps red for "no ar"), the Prévia a dark green wash
+  (`--prev-bg` 16 %; 1.56:1 against the gold, `stateColors.test.mjs`
+  holds ≥ 1.4 and the protan/deutan ΔE), the next slide the `fg-3` bar
+  (`--next-bar`) and an `fg-1` number; on air and in the Prévia at once,
+  green, the gold bar and the number on a gold chip; the labels and numbers
+  on a wash pass AA (`fg-2` on the Prévia's, `fg-1` on the gold one); a
+  done row dims only its glyph; a note is a mark in the corner. The bars
+  are inset box-shadows (a contrast theme drops them; its block draws the
+  states), and the keyboard's ring over a gold wash is `fg-1`, gold
+  elsewhere. **Switches** (`.sw2`, role=switch, every one: SwitchRow, the
+  Saídas rows, Avançar sozinho, Abrir ao iniciar) are 32 × 20, on = an
+  `fg-1` track with a `bg-0` knob (never the Prévia's green). The No ar strip
   (low, across the window) keeps its cards. The classes stay
   `.kx-slide`/`.kx-verse` with `is-prev`/`is-air`/`has-note` (the smoke
   reads them); No ar's are `.onair-card`, so `.kx-slide` is only the Slides

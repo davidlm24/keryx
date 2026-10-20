@@ -223,10 +223,13 @@ in the state's colour (red on air, blue locked with "Travado", amber when an
 output failed, grey "Nada no ar"), the title in that colour — only when the
 player does not already name the item (`airInPlayer`) — the slide "2/6",
 "2 telas", then Voltar ao anterior, the Camadas drawer (only while Camadas is
-in the tray), Multiview and the screen actions Tela preta, Logo, Limpar,
-Encerrar as glyphs. As the screen narrows it folds once: at 560 px "2 telas"
-goes, at 480 px the buttons go into a "…" (the Programa's menu); over the
-Multiview it is always folded. There is no "Programa" word.
+in the tray), Multiview and the screen actions Tela preta, Logo, Limpar
+as glyphs, then a separator and **Encerrar apart, in `air-fg`** (the one
+that takes everything off; Rodada DS1, `pp-end`; also in the Bíblia's No ar
+pill). "Travado" is 12 px. As the screen narrows it folds once: at 560 px
+"2 telas" goes, at 480 px the buttons go into a "…" (the Programa's menu,
+where Encerrar is last, after a separator); over the Multiview it is always
+folded. There is no "Programa" word.
 
 **The Prévia** has no card either: its caption is a badge in the screen's
 top-left corner (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia ·
@@ -398,13 +401,23 @@ open the Programa monitor draws one still frame (the air never pauses).
 - **Slides and verses are rows**, not cards: in a list (the Slides column,
   No ar in a column, the Bíblia's Ler and Buscar) each is a row with a 1 px
   separator, so a short screen shows more. The state is the row's background
-  only, never a border or a side bar: **on air, the brand's gold**
-  (`--live` = `brand`, `--live-bg` = 24 % of it over `bg-2`; the rest of the
-  console keeps `air` red for "no ar"); Prévia or selection, 24 % `prev`
-  over `bg-2`; the next slide, `bg-2`/`bg-3`; on air and in the Prévia at
-  once, the Prévia's green with the number on a `brand` chip; a note, a mark
-  in the corner. **On air and Prévia differ by colour only** here (gold and
-  green, owner 2026-10-16): no glyph is added. A slide keeps the editor's
+  **plus a bar on its left edge** (Rodada DS1, owner 2026-10-20, "mix do A
+  com D"; until then the background alone, and on air and Prévia differed by
+  hue only, 1.06:1, one colour to a protanope): **on air, the brand's gold**,
+  a light wash (`--live` = `brand`, `--live-bg` = 36 % of it over `bg-2`)
+  and a **3 px `--live` bar** (`--live-bar`; the rest of the console keeps
+  `air` red for "no ar"); Prévia or selection, a dark wash, 16 % `prev` over
+  `bg-2` (1.56:1 in lightness against the gold; `src/lib/stateColors.test.mjs`
+  holds ≥ 1.4:1 and ΔE ≥ 20 for protans and deutans); **the next slide, a 2 px
+  `fg-3` bar** (`--next-bar`) and its number in `fg-1`; on air and in the
+  Prévia at once, the Prévia's green, the gold bar and the number on a
+  `brand` chip; a note, a mark in the corner. The labels ("Verso",
+  "Refrão") and numbers on a wash pass AA: `fg-2` on the Prévia's, `fg-1`
+  on the gold one (`fg-2` there is 4.15:1); elsewhere the label is `fg-2`.
+  The bars are inset box-shadows: a Windows contrast theme drops them and
+  its own block draws the states. A row that is done (the Setlist's items
+  before the one on air) dims only its glyph; its title steps down to
+  `fg-3`, never an opacity. A slide keeps the editor's
   lines, one line each, a line too long for the column ending in "…" (the
   whole text in the tooltip); verses wrap. The No ar strip, low across the
   window, keeps its cards (`.onair-card`). The classes stay
@@ -432,7 +445,16 @@ open the Programa monitor draws one still frame (the air never pauses).
   dark ground. Rings that mean a state (focus, chosen, Prévia, on air)
   keep their colours, and the Windows contrast block is unchanged.
 - **Focus.** Buttons and other controls reached with the keyboard get the
-  2 px `brand` ring. A text field (input, select, textarea, the search)
+  2 px `brand` ring; **over a gold surface** (a row on the `--live-bg`
+  wash, the gold button) the ring is `fg-1` (Rodada DS1, `d4_foco`), since
+  gold on gold vanished.
+- **Switches** (`.sw2`, `role="switch"` + `aria-checked`: `SwitchRow` in
+  Configurações, the Saídas popover's rows, the Setlist's "Avançar sozinho",
+  Abrir ao iniciar, the aviso's sound): **32 × 20**, off a `bg-3` track with
+  an `fg-2` knob, **on an `fg-1` track with a `bg-0` knob** (Rodada DS1,
+  `d4_switch` = neutro; it was the Prévia's green, so "ligado" read as
+  "preparado"). The knob lights on hover; on, the track dims to `fg-2`.
+  Under a contrast theme the track and knob take `ButtonText` / `Highlight`. A text field (input, select, textarea, the search)
   never gets the gold ring while it holds the caret: its focus is a quiet
   inset 1 px line in `fg-3`, grey, at least 3:1 against the field (owner
   2026-10-16), so the operator sees where they type without a gold cue.
