@@ -14,6 +14,8 @@ import { LOCKED_SAY } from "./useConsole";
 import { useWinCol } from "./winLayout";
 import { useContextMenu } from "./ContextMenu";
 import { rowKey } from "@/lib/console/gridNav";
+import { keyHint } from "@/lib/console/keys";
+import { menuItem } from "@/lib/console/menuLabels";
 
 const EMPTY = [];
 const CLASSES = ["console", "bibleClasses"];
@@ -101,21 +103,21 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     // to take it out and F2 renames (gridNav.js rowKey).
     const classItems = (k) => [
         { label: "Dados da turma", icon: "edit", onSelect: () => { setClassId(k.id); setGroupOpen("school.turma", true, false); } },
-        askText && { label: "Renomear", kbd: "F2", onSelect: () => renameClass(k) },
-        { label: "Excluir turma…", icon: "trash", kbd: "Delete", onSelect: () => removeClass(k) },
+        askText && menuItem("renomear", { onSelect: () => renameClass(k) }),
+        menuItem("excluir", { label: "Excluir turma…", kbd: keyHint("delete"), onSelect: () => removeClass(k) }),
     ];
     const studentItems = (i) => [
         { label: isPresent(cls.students[i], today) ? "Desmarcar a presença de hoje" : "Marcar presença hoje", icon: "check", onSelect: () => togglePresence(i) },
-        askText && { label: "Renomear", kbd: "F2", onSelect: () => renameStudent(i) },
-        { label: "Tirar da turma…", icon: "x", kbd: "Delete", onSelect: () => removeStudent(i) },
+        askText && menuItem("renomear", { onSelect: () => renameStudent(i) }),
+        menuItem("tirar", { label: "Tirar da turma…", kbd: keyHint("delete"), onSelect: () => removeStudent(i) }),
     ];
     const materialItems = (m) => [
-        { label: "Pôr na prévia", icon: "eye", onSelect: () => prepare(m) },
-        onEditMaterial && { label: "Editar", icon: "edit", onSelect: () => onEditMaterial(m.id) },
-        askText && { label: "Renomear", kbd: "F2", onSelect: () => renameMaterial(m) },
-        onAddToSetlist && { label: "Adicionar à setlist", icon: "plus", onSelect: () => onAddToSetlist(m) },
-        { label: "Excluir…", icon: "trash", kbd: "Delete", onSelect: () => removeMaterial(m) },
-        { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => send(m) },
+        menuItem("porNaPrevia", { onSelect: () => prepare(m) }),
+        onEditMaterial && menuItem("editar", { onSelect: () => onEditMaterial(m.id) }),
+        askText && menuItem("renomear", { onSelect: () => renameMaterial(m) }),
+        onAddToSetlist && menuItem("adicionarSetlist", { onSelect: () => onAddToSetlist(m) }),
+        menuItem("excluir", { kbd: keyHint("delete"), onSelect: () => removeMaterial(m) }),
+        menuItem("enviarAoAr", { air: true, onSelect: () => send(m) }),
     ];
     const rowKeys = (e, onDelete, onRename) => {
         const k = rowKey(e);

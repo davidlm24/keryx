@@ -13,6 +13,7 @@ import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
 import { serviceTheme } from "@/lib/console/serviceLook";
 import { updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
+import { menuItem } from "@/lib/console/menuLabels";
 
 // Temas (owner's decisions 2026-10-13/14, as Holyrics' theme column; its
 // own module under Camadas since the 2026-10-14 review): the pinned themes
@@ -102,7 +103,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
         { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), `Bíblia: tema ${themeName(t)}.`) },
         { label: service ? "Usar neste culto" : "Usar hoje", disabled: cultoTheme === t.id, onSelect: () => setForCulto(t) },
         { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${named(t)} saiu do console.` : `${named(t)} fixado no console.`) },
-        { label: "Excluir…", icon: "trash", onSelect: () => removeTheme(t) },
+        menuItem("excluir", { onSelect: () => removeTheme(t) }),
     ] });
     const thumb = view.thumb === "large" ? "large" : "small";
     const names = view.names !== false;
@@ -111,7 +112,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
     // button beside it is where the 9 are pinned.
     const plusMenu = (e) => menu(e, { title: "Temas", items: [
         { label: "Novo tema…", icon: "plus", onSelect: () => newTheme(c) },
-        ...(onSettings ? [{ label: "Configurações › Temas…", icon: "sliders", onSelect: () => onSettings("temas") }] : []),
+        ...(onSettings ? [{ label: "Configurações › Temas e fundos…", icon: "sliders", onSelect: () => onSettings("temas") }] : []),
         ...(song ? [songTheme && (!current || current.id === songTheme.id)
             ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
             : { label: "Salvar tema para a música", disabled: !current, onSelect: () => saveForSong(current.id) }] : []),

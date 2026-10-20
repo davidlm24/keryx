@@ -22,6 +22,7 @@
 // { head: "text" }.
 
 import { hasUpdate } from "./updates.js";
+import { menuItem as mi } from "./menuLabels.js";
 
 const sep = { sep: true };
 const head = (text) => ({ head: text });
@@ -45,8 +46,8 @@ export function buildMenus(ctx) {
         head("Culto de hoje"),
         ...(services.length ? services.map((s) => ({ label: s.title || "Culto", kbd: date(s.date), checked: s.id === ctx.serviceId, service: true, onSelect: call("pickService", s.id) })) : [{ label: "Nenhum culto ainda", disabled: true }]),
         sep,
-        { label: "Planejar o culto", icon: "list", onSelect: call("planner", ctx.serviceId) },
-        { label: "Novo culto", icon: "plus", onSelect: call("planner", "new") },
+        mi("planejar", { onSelect: call("planner", ctx.serviceId) }),
+        mi("novoCulto", { onSelect: call("planner", "new") }),
         { label: "Modelos de culto", icon: "copy", title: "Configurações › Culto", onSelect: call("settings", "culto") },
         { label: "Exportar a setlist em PDF", icon: "download", disabled: !ctx.serviceId || !ctx.itemsCount, title: ctx.serviceId ? undefined : "Escolha um culto primeiro", onSelect: call("exportPdf") },
     ];
@@ -62,21 +63,21 @@ export function buildMenus(ctx) {
         ]
         : [{ label: "A música no ar não tem tempos marcados", disabled: true }];
     const musica = [
-        { label: "Nova música", icon: "plus", onSelect: call("newSong") },
+        mi("novaMusica", { onSelect: call("newSong") }),
         { label: "Buscar letras na internet…", icon: "search", onSelect: call("lyricsSearch") },
         { label: "Importar uma pasta…", icon: "folder", onSelect: call("importFolder") },
         sep,
         { label: "Sincronizar a música…", icon: "synced", disabled: !ctx.songId, title: ctx.songId ? "A música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("syncSong", ctx.songId) },
         { label: "Letra automática", icon: "music", sub: letra },
         sep,
-        { label: "Temas", icon: "palette", title: "Configurações › Temas e fundos", onSelect: call("settings", "temas") },
+        mi("temasEFundos", { title: "Configurações › Temas e fundos", onSelect: call("settings", "temas") }),
     ];
 
     const midia = [
         { label: "Mídia", icon: "media", onSelect: call("media") },
-        { label: "Enviar arquivos…", icon: "folder", onSelect: call("media", "upload") },
-        { label: "Link do YouTube…", icon: "youtube", onSelect: call("media", "youtube") },
-        { label: "Fundos", icon: "image", title: "Configurações › Temas e fundos", onSelect: call("settings", "fundos") },
+        mi("doComputador", { title: "Copia arquivos do computador para a Mídia", onSelect: call("media", "upload") }),
+        mi("youtube", { onSelect: call("media", "youtube") }),
+        mi("fundos", { title: "A biblioteca de fundos: imagens, vídeos, gerados e cores", onSelect: call("backgrounds") }),
         sep,
         { label: ctx.playing ? "Pausar o player" : "Tocar o player", icon: ctx.playing ? "pause" : "play", disabled: !ctx.playerOn, onSelect: call("playerToggle") },
     ];
@@ -84,9 +85,9 @@ export function buildMenus(ctx) {
     const timers = (ctx.timers || []).map((t) => ({ label: t.label, onSelect: call("timer", t.minutes) }));
     const ferramentas = [
         { label: "Avisos", icon: "megaphone", onSelect: call("notices") },
-        { label: "Novo aviso", icon: "plus", onSelect: call("newNotice") },
-        { label: "Aviso rápido…", icon: "bell", title: "Uma mensagem direto às telas", onSelect: call("quickAlert") },
-        { label: "Timers", icon: "clock", sub: timers.length ? timers : [{ label: "Nenhum timer", disabled: true }] },
+        mi("novoAviso", { onSelect: call("newNotice") }),
+        mi("avisoRapido", { title: "Uma mensagem direto às telas", onSelect: call("quickAlert") }),
+        mi("timers", { sub: timers.length ? timers : [{ label: "Nenhum timer", disabled: true }] }),
         sep,
         { label: "Escola bíblica", icon: "book", onSelect: call("school") },
         { label: "Relatórios", icon: "history", onSelect: call("reports") },
@@ -102,7 +103,7 @@ export function buildMenus(ctx) {
             title: !ctx.desktop ? DESKTOP_ONLY : u?.status === "disabled" ? "Indisponível nesta instalação" : "Procura uma versão nova do KERYX", onSelect: call("updateCheck") };
     const ajuda = [
         { label: "Primeiros passos", icon: "steps", title: "O console em sete passos, para quem está começando", onSelect: call("firstSteps") },
-        { label: "Atalhos", icon: "keyboard", kbd: ctx.helpKey || undefined, onSelect: call("shortcuts") },
+        mi("atalhos", { kbd: ctx.helpKey || undefined, onSelect: call("shortcuts") }),
         { label: "Novidades", icon: "star", title: "O que mudou nas últimas versões", onSelect: call("whatsNew") },
         sep,
         { label: "Verificar tudo", icon: "check", title: "Telas, mídias e Bíblias antes do culto", onSelect: call("verify") },
@@ -150,7 +151,7 @@ export function flattenMenus(menus, { maxServices = 5, onAllServices } = {}) {
                 for (const s of it.sub) out.push({ title: s.label, ...s, indent: true });
             } else out.push(it);
         }
-        if (cut) out.splice(lastService + 1, 0, { label: "Todos os cultos…", icon: "list", title: "Planejar o culto", onSelect: onAllServices });
+        if (cut) out.splice(lastService + 1, 0, mi("planejar", { label: "Todos os cultos…", title: "Planejar o culto", onSelect: onAllServices }));
     });
     return out;
 }

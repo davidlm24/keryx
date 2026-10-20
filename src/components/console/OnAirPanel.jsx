@@ -4,6 +4,7 @@ import { useContextMenu } from "./ContextMenu";
 import useKeepInView from "./useKeepInView";
 import { SlideText } from "./SlidesPanel";
 import { stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { menuItem } from "@/lib/console/menuLabels";
 
 // The No ar module (owner 2026-10-14, the strip under Holyrics' console):
 // the slides of what is on air, whatever the Slides column holds, so the
@@ -40,8 +41,8 @@ export default function OnAirPanel({ c }) {
                     return (
                         <button type="button" key={i} className={`onair-card kx-t ${cls}`} aria-current={i === index ? "true" : undefined} onClick={() => pick(i)} onDoubleClick={() => go(i)}
                             onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
-                                { label: "Pôr na prévia", icon: "eye", disabled: i === index, onSelect: () => pick(i) },
-                                { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
+                                menuItem("porNaPrevia", { disabled: i === index, onSelect: () => pick(i) }),
+                                menuItem("enviarAoAr", { air: true, onSelect: () => go(i) }),
                             ] })} title={`${i === index ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || sl.label || ""}`}>
                             <span className="kx-slide-n">{i + 1}</span><SrState cls={cls} />
                             <SlideText slide={sl} />

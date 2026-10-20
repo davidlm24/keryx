@@ -15,6 +15,7 @@ import { GENERATORS } from "@/lib/generators";
 import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
 import { openEditor } from "@/lib/editorWindow";
 import useSortable from "./useSortable";
+import { menuItem } from "@/lib/console/menuLabels";
 
 // Camadas: what is on air as layers of the live state — Logo (live.logo), the
 // Sobreposições (live.overlays), Texto principal (content) and Fundo
@@ -279,7 +280,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                             { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) }]
                         : [{ label: "Subir", disabled: r === 0, onSelect: () => { const next = moveOverlayRow(overlays, o.id, r - 1); if (next !== overlays) setOverlays(next); } },
                             { label: "Descer", disabled: r === ovRows.length - 1, onSelect: () => { const next = moveOverlayRow(overlays, o.id, r + 2); if (next !== overlays) setOverlays(next); } }]),
-                    { label: "Excluir…", icon: "x", onSelect: () => removeOverlay(o) },
+                    menuItem("excluir", { onSelect: () => removeOverlay(o) }),
                 ] })}
                 {...dragProps}
                 title={anchor ? "Arraste para mudar a ordem das camadas" : "Arraste para mudar quem fica por cima, entre as sobreposições"}>
@@ -325,7 +326,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                     onContextMenu={(e) => menu(e, { title: "Sobreposições", items: [
                         { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
                         { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) },
-                        { label: "Excluir todas…", icon: "x", onSelect: removeAllOverlays },
+                        menuItem("excluir", { label: "Excluir todas…", onSelect: removeAllOverlays }),
                     ] })}
                     title="Arraste para mudar a ordem das camadas — o grupo inteiro">
                     <span className="kx-glyph"><Icon name="grip" /></span>

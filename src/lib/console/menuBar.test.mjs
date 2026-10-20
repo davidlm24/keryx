@@ -12,8 +12,8 @@ test("the bar: the menus of the owner's picks, in order (Rodada D4, A; E0; M0)",
     // Where each thing lives (the artifact's table).
     for (const [id, labels] of Object.entries({
         culto: ["Planejar o culto", "Novo culto", "Modelos de culto", "Exportar a setlist em PDF"],
-        musica: ["Nova música", "Buscar letras na internet…", "Importar uma pasta…", "Sincronizar a música…", "Letra automática", "Temas"],
-        midia: ["Mídia", "Enviar arquivos…", "Link do YouTube…", "Fundos"],
+        musica: ["Nova música", "Buscar letras na internet…", "Importar uma pasta…", "Sincronizar a música…", "Letra automática", "Temas e fundos"],
+        midia: ["Mídia", "Do computador…", "Link do YouTube…", "Fundos"],
         ferramentas: ["Avisos", "Novo aviso", "Aviso rápido…", "Timers", "Escola bíblica", "Relatórios"],
         ajuda: ["Primeiros passos", "Atalhos", "Novidades", "Verificar tudo", "Salvar diagnóstico…", "Abrir a pasta de dados", "Verificar atualização", "Sobre o KERYX"],
     })) for (const l of labels) assert.ok(find(menus, id, l), `${id} › ${l}`);

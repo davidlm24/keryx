@@ -15,6 +15,8 @@ import { PENDING_SAY } from "@/lib/pendingMedia";
 import { useContextMenu } from "./ContextMenu";
 import { gridStep, columnsOf } from "@/lib/console/gridNav";
 import { mediaIcon, copyingRows } from "@/lib/console/libraryRows";
+import { keyHint } from "@/lib/console/keys";
+import { menuItem } from "@/lib/console/menuLabels";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
@@ -32,7 +34,7 @@ const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().inc
 
 // The media library as a view inside the console (canvas artboard
 // "Biblioteca de mídia"): every file in a grid or a list, by kind and
-// category; send several at once ("Enviar arquivos"), add a YouTube link,
+// category; send several at once ("Do computador"), add a YouTube link,
 // rename, recategorise, find a lost file again ("Localizar…"), take rows
 // out (the files stay in the media folder). A click selects (Ctrl/Shift
 // for more), a double click or Enter sends to air, "Tocar todos"
@@ -132,7 +134,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     };
     // Link do YouTube… (the Adicionar menu): the url comes from one question
     // (PromptDialog), not a field always on screen (Rodada C, fase b).
-    // Opened from the menu bar (Mídia › Enviar arquivos… / Link do YouTube…):
+    // Opened from the menu bar (Mídia › Do computador… / Link do YouTube…):
     // the page opens on that step, once.
     const didIntent = useRef(false);
     useEffect(() => {
@@ -177,12 +179,12 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     // A file's right-click menu (C-72), as the Biblioteca's: it acts on
     // the file under the pointer; what goes on air is last.
     const fileMenu = (m) => (e) => menu(e, { title: m.title, items: [
-        !m.missing && !m.syncing && { label: "Pôr na prévia", icon: "eye", onSelect: () => c.setPrev(stageFromMedia(m)) },
+        !m.missing && !m.syncing && menuItem("porNaPrevia", { onSelect: () => c.setPrev(stageFromMedia(m)) }),
         !m.missing && !m.syncing && m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => c.setPrev(stageFromMedia(m, { toVideo: true })) },
-        { label: "Renomear", icon: "edit", kbd: "F2", onSelect: () => { setSel([m.id]); setAnchor(m.id); setLead(m.id); setRenaming(m.id); } },
+        menuItem("renomear", { onSelect: () => { setSel([m.id]); setAnchor(m.id); setLead(m.id); setRenaming(m.id); } }),
         m.missing && !m.syncing && { label: "Localizar…", icon: "folder", onSelect: () => locate(m) },
-        { label: "Excluir…", icon: "trash", kbd: "Delete", onSelect: () => remove([m]) },
-        !m.missing && !m.syncing && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => send(m) },
+        menuItem("excluir", { kbd: keyHint("delete"), onSelect: () => remove([m]) }),
+        !m.missing && !m.syncing && menuItem("enviarAoAr", { air: true, onSelect: () => send(m) }),
     ] });
     const locate = (m) => { locating.current = m; locateRef.current?.click(); };
     const located = async (file) => {
@@ -247,7 +249,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
             actions={<span className="pl-popwrap">
                 <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn>
                 {adding && <div className="kx-pop pl-pop">
-                    <Row single icon="folder" title="Enviar arquivos…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
+                    <Row single icon="folder" title="Do computador…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
                     <Row single icon="youtube" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
                 </div>}
             </span>} />
@@ -298,7 +300,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                     </div>
                 )}
                 <div className="mv-body" onClick={(e) => { if (e.target === e.currentTarget) setSel([]); }}>
-                    {!shown.length && !copies.length && <Empty icon="media" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Enviar arquivos… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
+                    {!shown.length && !copies.length && <Empty icon="media" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Do computador… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
                     {view === "grid" && (shown.length > 0 || copies.length > 0) && (
                         <div className="mv-grid" ref={gridRef}>
                             {copies.map((p) => (

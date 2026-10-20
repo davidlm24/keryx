@@ -19,6 +19,7 @@ import { noticeLabel, noticeIcon } from "@/lib/console/notice";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { QuickAlert, ToolsPicker } from "./QuickTools";
 import { TabRow } from "./TabsPanel";
+import { menuItem } from "@/lib/console/menuLabels";
 import { setDragGhost, stageGhost } from "./dragGhost";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
@@ -164,31 +165,31 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const mediaKinds = libMediaKinds(tab, shownIds);
     const addItems = tab === "letras"
         ? [
-            { label: "Nova música…", icon: "plus", onClick: () => onEditSong?.("new") },
-            { label: "Do computador…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", onFiles: importSongFiles },
+            menuItem("novaMusica", { onClick: () => onEditSong?.("new") }),
+            menuItem("doComputador", { accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", onFiles: importSongFiles }),
             { label: "Uma pasta inteira…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", directory: true, onFiles: (files) => importSongFiles(files.filter((f) => /\.(txt|chordpro|cho|crd|pro|json)$/i.test(f.name))) },
             { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
             { label: "Exportar todas…", icon: "save", onClick: exportSongs },
         ]
         : tab === "imagens"
             ? [
-                { label: "Do computador…", icon: "folder", accept: shownIds.includes("apresentacoes") ? "image/*,.gif" : "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
+                menuItem("doComputador", { accept: shownIds.includes("apresentacoes") ? "image/*,.gif" : "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia }),
             ]
         : tab === "audios"
             ? [
-                { label: "Do computador…", icon: "folder", accept: "audio/*", onFiles: importMedia },
+                menuItem("doComputador", { accept: "audio/*", onFiles: importMedia }),
                 { label: "Uma pasta inteira…", icon: "folder", accept: "audio/*", directory: true, onFiles: (files) => importMedia(files.filter((f) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(f.name))) },
             ]
         : tab === "apresentacoes"
             ? [
-                { label: "Do computador…", icon: "folder", accept: ".pdf,.ppt,.pptx", onFiles: importMedia },
+                menuItem("doComputador", { accept: ".pdf,.ppt,.pptx", onFiles: importMedia }),
             ]
         : tab === "videos"
             ? [
-                { label: "Do computador…", icon: "folder", accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia },
-                { label: "Link do YouTube", icon: "youtube", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
+                menuItem("doComputador", { accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia }),
+                menuItem("youtube", { onClick: () => document.querySelector(".console .yt-field input")?.focus() }),
             ]
-            : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }];
+            : [menuItem("novoAviso", { onClick: () => onEditNotice?.("new") })];
 
     return (
         <>
@@ -215,13 +216,13 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                 onClick={() => onPrepare(stageFromSong(s, {}, data.themes))}
                                 onDoubleClick={onGo && (() => onGo(stageFromSong(s, {}, data.themes)))}
                                 onContextMenu={(e) => menu(e, { title: s.title, items: [
-                                    { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromSong(s, {}, data.themes)) },
-                                    onAddSong && { label: "Adicionar à setlist", icon: "plus", onSelect: () => onAddSong(s) },
-                                    onEditSong && { label: "Editar", icon: "edit", onSelect: () => onEditSong(s.id) },
-                                    { label: s.is_favorite ? "Tirar dos favoritos" : "Favoritar", icon: "star", onSelect: () => toggleFav(s) },
+                                    menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromSong(s, {}, data.themes)) }),
+                                    onAddSong && menuItem("adicionarSetlist", { onSelect: () => onAddSong(s) }),
+                                    onEditSong && menuItem("editar", { onSelect: () => onEditSong(s.id) }),
+                                    menuItem(s.is_favorite ? "tirarDosFavoritos" : "favoritar", { onSelect: () => toggleFav(s) }),
                                     dupIds?.has(s.id) && onDuplicates && { label: "Ver as repetidas…", icon: "copy", onSelect: onDuplicates },
-                                    { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Song", s, "a música", s.title, "Música excluída.") },
-                                    onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) },
+                                    menuItem("excluir", { onSelect: () => removeRow("Song", s, "a música", s.title, "Música excluída.") }),
+                                    onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) }),
                                 ] })}
                                 dragProps={dragProps(stageFromSong(s, {}, data.themes), s.duration ? mmss(s.duration) : "")}
                                 actions={<>
@@ -263,11 +264,11 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         onClick={() => onPrepare(stageFromMedia(m))}
                         onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
                         onContextMenu={(e) => menu(e, { title: m.title, items: [
-                            { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromMedia(m)) },
+                            menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromMedia(m)) }),
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
                             onOpenMedia && { label: "Abrir a Mídia", icon: "media", onSelect: () => onOpenMedia() },
-                            { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Media", m, MEDIA_WORD[m.type] || "o arquivo", m.title || "sem título", "Excluído da Mídia.") },
-                            onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
+                            menuItem("excluir", { onSelect: () => removeRow("Media", m, MEDIA_WORD[m.type] || "o arquivo", m.title || "sem título", "Excluído da Mídia.") }),
+                            onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromMedia(m)) }),
                         ] })}
                         dragProps={dragProps(stageFromMedia(m), m.duration ? mmss(m.duration) : "")}
                         {...rowProps(m)}
@@ -316,10 +317,10 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             {pieces.map((p) => (
                                 <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
                                     onContextMenu={(e) => menu(e, { title: p.title || p.text, items: [
-                                        { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromPiece(p)) },
-                                        onEditNotice && { label: "Editar", icon: "edit", onSelect: () => onEditNotice(p.id) },
-                                        { label: "Excluir…", icon: "trash", onSelect: () => removeRow("CommunicationVideo", p, "o aviso", p.title || p.text || "sem título", "Aviso excluído.") },
-                                        onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromPiece(p)) },
+                                        menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromPiece(p)) }),
+                                        onEditNotice && menuItem("editar", { onSelect: () => onEditNotice(p.id) }),
+                                        menuItem("excluir", { onSelect: () => removeRow("CommunicationVideo", p, "o aviso", p.title || p.text || "sem título", "Aviso excluído.") }),
+                                        onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromPiece(p)) }),
                                     ] })}
                                     actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label={`Editar ${p.title || p.text}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
                             ))}

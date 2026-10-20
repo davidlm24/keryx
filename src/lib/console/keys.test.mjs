@@ -228,7 +228,8 @@ test("the keys named in menus and tooltips follow the choice", () => {
     assert.equal(keyHint("search", "off"), "Ctrl+F");
     assert.equal(keyHint("help", "shift"), "?");
     assert.equal(keyHint("help", "off"), null);
-    assert.equal(keyHint("send"), null);
+    assert.equal(keyHint("send"), "Enter");
+    assert.equal(keyHint("nada"), null);
     for (const [k] of LETTER_KEYS) assert.ok(LETTER_KEYS_HINT[k], k);
 });
 
