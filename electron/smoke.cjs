@@ -942,9 +942,16 @@ async function checkConsole(webContents, { live, outputs }) {
         // A church font (Rodada HF1): a Media row of category font, made from
         // the bundled Geist woff2 under the family "Geist Smoke", is declared
         // by every window (src/hooks/useFonts.js) and loads in the console
-        // and on the projector; the PC's font list (queryLocalFonts) is
-        // offered to the console (electron/main.cjs grants it there).
-        result.localFontsApi = await js('typeof window.queryLocalFonts === "function"').catch(() => false);
+        // and on the projector; the PC's font list comes from KERYX itself
+        // (electron/systemFonts.cjs, keryx:fonts): Arial is in it on Windows,
+        // and one of its faces reads back as a font file.
+        result.systemFonts = process.platform !== "win32" || await js(`(async () => {
+            const res = await window.keryxDesktop.fonts.list();
+            const arial = (res.data || []).find((f) => f.family === "Arial");
+            if (!arial) return false;
+            const file = await window.keryxDesktop.fonts.read(arial.faces[0].id);
+            return Boolean(file.data && file.data.length > 1000);
+        })()`).catch(() => false);
         const fontRow = (await js(`(async () => {
             const url = (performance.getEntriesByType("resource").find((e) => /Geist-Variable[^/]*\\.woff2$/.test(new URL(e.name).pathname)) || {}).name;
             if (!url) return null;
@@ -2956,7 +2963,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.localFontsApi && result.churchFont && result.churchFontOutput && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
+        && result.sent && result.projected && result.projectorFont && result.systemFonts && result.churchFont && result.churchFontOutput && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
