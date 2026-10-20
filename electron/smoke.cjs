@@ -1600,15 +1600,21 @@ async function checkConsole(webContents, { live, outputs }) {
             const offSeek = live.onChange((s) => { const p = s.audio && s.audio.playback; if (p && p.position !== last) { last = p.position; seeks.push(p.position); } });
             if (bar) {
                 const x = (f) => Math.round(bar.left + bar.width * f);
+                // Hovering (Rodada N1): the tip says the moment under the
+                // pointer (a quarter of 20 s = 0:05) and nothing seeks.
+                webContents.sendInputEvent({ type: "mouseMove", x: x(0.25) - 2, y: bar.y });
                 webContents.sendInputEvent({ type: "mouseMove", x: x(0.25), y: bar.y });
+                result.seekHoverTip = await waitFor(() => js("(() => { const t = document.querySelector('.player .pl-seek .pl-tip .pl-tip-t'); return Boolean(t) && /^0:0[45]/.test(t.textContent) && Boolean(document.querySelector('.player .pl-seek .pl-hov')); })()"), 3000) && seeks.length === 0;
                 webContents.sendInputEvent({ type: "mouseDown", x: x(0.25), y: bar.y, button: "left", clickCount: 1 });
                 for (const f of [0.35, 0.5, 0.65, 0.75]) {
                     webContents.sendInputEvent({ type: "mouseMove", x: x(f), y: bar.y, modifiers: ["leftButtonDown"] });
                     await sleep(60);
                 }
-                result.seekDragFollows = await waitFor(() => js("(() => { const t = document.querySelector('.player .pl-seek .pl-tip'); return Boolean(t) && /^0:1[45]$/.test(t.textContent) && /^0:1[45]$/.test(document.querySelector('.player .pl-time').textContent); })()"), 3000) && seeks.length === 0;
+                result.seekDragFollows = await waitFor(() => js("(() => { const t = document.querySelector('.player .pl-seek .pl-tip .pl-tip-t'); return Boolean(t) && /^0:1[45]$/.test(t.textContent) && /^0:1[45]$/.test(document.querySelector('.player .pl-time').textContent); })()"), 3000) && seeks.length === 0;
                 webContents.sendInputEvent({ type: "mouseUp", x: x(0.75), y: bar.y, button: "left", clickCount: 1 });
                 await waitFor(() => seeks.length > 0, 3000);
+                // The pointer leaves the bar: the hover tip goes with it.
+                webContents.sendInputEvent({ type: "mouseMove", x: x(0.75), y: bar.y - 80 });
                 await sleep(400);
             }
             offSeek();
