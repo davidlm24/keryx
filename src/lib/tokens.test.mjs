@@ -121,3 +121,64 @@ test("the font stacks name no font KERYX does not ship", () => {
     }
     assert.doesNotMatch(read("src/components/screen/screen.css"), /"Inter"/);
 });
+
+// The literal lint (Rodada DS3): outside the token files a stylesheet names a
+// colour, a font size and a layer only through a token. The console's two
+// (console.css, bundle.css) have none left. The other surfaces keep the
+// literals they ship with, pinned value by value below, so a new one fails:
+// the audience renderer (screen.css and its parts) has its own colours, cqw
+// sizes and layer stack on purpose — console tokens never reach a projected
+// screen —, and the network pages (the screens' start page, the Companion)
+// have their own type scale, to be made tokens as docs/design-system/surfaces.md
+// says. A token's own value (tokens.json) is the only place a literal belongs.
+const COLOUR = /#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)/gi;
+const pxSize = (d) => (d.prop === "font-size" && /\dpx/.test(d.value)) || (d.prop === "font" && /(^|\s)\d+(\.\d+)?px(\/|\s|$)/.test(d.value));
+const OTHER_SHEETS = {
+    "src/components/screen/screen.css": {
+        why: "the audience renderer: the screens' own colours (never the console's tokens), cqw sizes, its layer stack",
+        colours: ["#000", "#fff", "rgba(0, 0, 0, .45)", "#26304f", "#10131f", "#06070c", "#f2c14e", "#000000b3", "rgba(0, 0, 0, .7)", "#ff6b70", "#1a1300", "#f5b83d", "rgba(0, 0, 0, .6)", "rgba(0, 0, 0, .55)", "#f4f1ea", "#000a", "#f5a524", "#e5484d", "rgba(0, 0, 0, .35)"],
+        sizes: [], z: ["20", "30", "90", "9999", "80", "70"],
+    },
+    "src/components/screen/activity.css": { why: "the audience renderer's activities (quiz cards, the right answer)", colours: ["#4fd08a", "rgba(48, 164, 108, .38)", "rgba(79, 208, 138, .35)", "#06210f", "#ff6b70"], sizes: [], z: [] },
+    "src/components/screen/layout.css": { why: "the audience renderer's designs (LayoutRenderer)", colours: ["#000000b3", "#000"], sizes: ["max(9px, 1.5cqmin)"], z: ["0", "1"] },
+    "src/components/screen/output-prefs.css": { why: "an output's own settings over the renderer", colours: [], sizes: [], z: [] },
+    "src/components/network/net.css": {
+        why: "the screens on the network: their start page, sized in cqmin/vmin with a px floor",
+        colours: ["#00000080", "#000000b3", "#000", "#000000a6", "#fff"],
+        sizes: ["max(11px, 1.4cqmin)", "max(18px, 3.2vmin)", "max(13px, 1.9vmin)", "max(13px, 1.8vmin)", "22px", "15px", "12px", "14px", "16px", "13px", "max(15px, 2.6vmin)"],
+        z: ["900", "0", "1", "10"],
+    },
+    "src/components/network/remote.css": {
+        why: "the Companion (/Remote): a touch scale of its own, not tokens yet (surfaces.md)",
+        colours: ["#000", "#000a", "#000c"],
+        sizes: ["14px", "16px", "12px", "11.5px", "13px", "11px", "17px", "10px", "15px", "28px", "10.5px", "13.5px"],
+        z: ["2", "20", "21", "30", "25"],
+    },
+};
+
+test("the console's stylesheets name no colour by hand", () => {
+    const loose = [];
+    for (const file of SHEETS) {
+        for (const d of declarations(read(file))) {
+            for (const m of d.value.match(COLOUR) || []) loose.push(`${file}:${d.line} ${d.selector} { ${d.prop}: … ${m} … }`);
+        }
+    }
+    assert.deepEqual(loose, [], "a colour is a token of tokens.json (npm run ds:tokens); a system colour (Canvas, Highlight…) only in a forced-colours block");
+});
+
+test("every component stylesheet is linted: the others keep only their pinned literals", () => {
+    const css = fs.readdirSync(path.join(root, "src"), { recursive: true }).filter((f) => f.endsWith(".css")).map((f) => path.posix.join("src", f.split(path.sep).join("/")));
+    // src/index.css is the shadcn theme (generated, HSL) and Tailwind; fonts.css only @font-face.
+    const covered = new Set([...SHEETS, ...Object.keys(OTHER_SHEETS), "src/index.css", "src/fonts.css", "src/App.css"]);
+    assert.deepEqual(css.filter((f) => !covered.has(f)), [], "a new stylesheet joins the lint (SHEETS or OTHER_SHEETS)");
+    for (const [file, kept] of Object.entries(OTHER_SHEETS)) {
+        const ds = declarations(read(file));
+        const colours = new Set(ds.flatMap((d) => d.value.match(COLOUR) || []));
+        const sizes = new Set(ds.filter(pxSize).map((d) => d.value));
+        const z = new Set(ds.filter((d) => d.prop === "z-index").map((d) => d.value));
+        for (const [what, found, allowed] of [["colour", colours, kept.colours], ["px font size", sizes, kept.sizes], ["z-index", z, kept.z]]) {
+            const extra = [...found].filter((v) => !allowed.includes(v));
+            assert.deepEqual(extra, [], `${file}: a new ${what} by hand (${kept.why}); use a token`);
+        }
+    }
+});

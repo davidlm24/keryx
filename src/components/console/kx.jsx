@@ -93,7 +93,7 @@ export function WinBar({ title, sub, tools, actions, detach }) {
     const w = useContext(WinCtx) || {};
     const onDetach = detach || w.onDetach;
     return (
-        <div className="win-bar" onDoubleClick={(e) => { if (e.target === e.currentTarget || e.target.classList?.contains("win-gap")) w.onResetSize?.(); }}>
+        <div className="win-bar kx-win-bar" onDoubleClick={(e) => { if (e.target === e.currentTarget || e.target.classList?.contains("kx-win-gap")) w.onResetSize?.(); }}>
             {w.back && (
                 <button type="button" className="kx-btn kx-btn-outline kx-btn-back kx-t" onClick={w.onBack} title={`Voltar a ${w.back} · Esc`}>
                     <Icon name="arrow-left" />{w.back}
@@ -101,9 +101,9 @@ export function WinBar({ title, sub, tools, actions, detach }) {
             )}
             {/* Where the focus lands when the page opens with the mouse, or
                 has no control (C-12): inside the window, holding no keys. */}
-            <span className="kx-section win-title" title={sub ? `${title} · ${sub}` : title} tabIndex={-1} data-live-keys="">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
-            {tools && <span className="win-tools">{tools}</span>}
-            <span className="win-gap" />
+            <span className="kx-section win-title kx-win-title" title={sub ? `${title} · ${sub}` : title} tabIndex={-1} data-live-keys="">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
+            {tools && <span className="win-tools kx-win-tools">{tools}</span>}
+            <span className="win-gap kx-win-gap" />
             {actions}
             {onDetach && <IconBtn name="external" title="Destacar em janela: esta página numa janela própria, para usar vendo outra tela" onClick={onDetach} />}
             {!w.systemFrame && <IconBtn name="x" title="Fechar · Esc" onClick={w.onCloseAll} />}

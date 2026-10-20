@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 // The design system's tokens (docs/design-system/tokens.css) share the page
 // with every other stylesheet, the shadcn theme in src/index.css included,
@@ -14,6 +15,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 const TOKENS = "docs/design-system/tokens.css";
+const { compileTokens, formatJson } = createRequire(import.meta.url)(path.join(root, "scripts/ds-tokens.cjs"));
 
 // file › selector › token: overrides on purpose, each with its reason.
 const OVERRIDES = {
@@ -72,15 +74,29 @@ test("the parser reads custom properties inside nested rules, not comments", () 
     ]);
 });
 
-test("tokens.css is the compile of tokens.json, name for name and value for value", () => {
+test("tokens.css is what npm run ds:tokens writes from tokens.json", () => {
+    // tokens.json is the one source (Rodada DS3): name for name and value for
+    // value, in its order, and nothing else (no hand-kept classes).
     const json = JSON.parse(read("docs/design-system/tokens.json"));
-    // The type scale and the layers since Rodada DS2; tokens.css is still
-    // kept by hand, so this is what holds the two together until DS3.
+    assert.equal(read(TOKENS), compileTokens(json), "tokens.css is stale: run npm run ds:tokens");
+    assert.equal(read("docs/design-system/tokens.json"), formatJson(json), "tokens.json left its layout: run npm run ds:tokens -- --format");
     const groups = [json.color, json.spacing, json.radius, json.shadow, json.timing, json.opacity, json.type.scale, json.layer];
     const expected = groups.flatMap((g) => g.tokens.map((t) => [`--${t.name}`, t.value]));
     for (const [family, value] of Object.entries(json.type.families)) expected.push([`--font-${family}`, value]);
     for (const [name, value] of expected) assert.equal(tokens.get(name), value, `${name} in tokens.css`);
     assert.equal(tokens.size, expected.length, "tokens.css defines nothing tokens.json lacks");
+});
+
+test("the tokens' usage says what a token is for, never when it was decided", () => {
+    // The history (rounds, the owner's dates) is in design-system.md › Histórico.
+    const texts = [];
+    const walk = (v, at) => {
+        if (typeof v === "string") texts.push([at, v]);
+        else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) walk(x, `${at}.${k}`);
+    };
+    walk(JSON.parse(read("docs/design-system/tokens.json")), "tokens");
+    const dated = texts.filter(([, s]) => /Rodada|owner|\b20\d\d-\d\d/i.test(s)).map(([at, s]) => `${at}: ${s}`);
+    assert.deepEqual(dated, [], "move the history to docs/design-system.md › Histórico");
 });
 
 test("the floaters' shadow has a name of its own, apart from shadcn's --popover colour", () => {

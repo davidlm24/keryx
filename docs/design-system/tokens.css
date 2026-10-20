@@ -1,4 +1,4 @@
-/* KERYX — generated from tokens.json (local compile for the canvas; the system page generates its own) */
+/* KERYX — generated from tokens.json by scripts/ds-tokens.cjs (npm run ds:tokens). Never edit by hand. */
 :root, [data-theme="dark"] {
   --bg-0: #0d0d0c;
   --bg-1: #171715;
@@ -27,6 +27,7 @@
   --live-fg: var(--brand-hover);
   --live-bg: color-mix(in srgb, var(--brand) 36%, var(--bg-2));
   --prev-bg: color-mix(in srgb, var(--prev) 16%, var(--bg-2));
+  --verse-pressed: color-mix(in srgb, var(--fg-1) 7%, var(--bg-3));
   --rh: #3b82f6;
   --rh-fg: #7fb0ff;
   --rh-fill: #2f6fe0;
@@ -46,9 +47,30 @@
   --screen-bg: #000000;
   --chrome-on-screen: #0d0d0cd9;
   --chrome-ring: #ffffff14;
+  --chrome-sep: #ffffff26;
+  --chrome-hover: #ffffff1f;
+  --chrome-pressed: #ffffff33;
+  --chrome-label: #0d0d0ccc;
+  --chrome-mark: #000000b3;
+  --scrim-dim: #0d0d0c99;
+  --swatch-ring: #ffffff2e;
+  --swatch-edge: rgba(255, 255, 255, .18);
+  --qr-ground: #fff;
+  --specimen-bg: #0a0a0a;
+  --standin-camera: linear-gradient(160deg, #3a4a5c, #1b2430 60%, #2c2418);
+  --stage-label: rgba(0, 0, 0, .5);
+  --stage-now: rgba(0, 0, 0, .55);
   --screen-fg: #ffffff;
   --shadow-popover: 0 0 0 1px #2c2b27, 0 8px 24px #00000080;
   --dialog: 0 0 0 1px #2c2b27, 0 10px 28px #00000066;
+  --live-bar: inset 3px 0 0 var(--live);
+  --next-bar: inset 2px 0 0 var(--fg-3);
+  --shadow-menu: 0 0 0 1px var(--line-overlay), 0 12px 32px #000000a6;
+  --shadow-drag: 0 0 0 1px var(--line-overlay), 0 14px 30px #000000a0;
+  --shadow-drag-land: 0 0 0 1px var(--line-overlay), 0 2px 6px #00000059;
+  --shadow-knob: 0 1px 4px #0009;
+  --shadow-peek: 0 0 0 1px color-mix(in srgb, var(--fg-1) 18%, transparent), 0 6px 18px #000a;
+  --stage-text: 0 2px 8px rgba(0, 0, 0, .9);
   --screen-text: 0 2px 12px #000000b3;
 }
 :root {
@@ -111,18 +133,3 @@
   --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Geist", system-ui, sans-serif;
 }
-.meta { font-family: var(--font-sans); font-size: 11px; line-height: 16px; font-weight: 400; }
-.section { font-family: var(--font-sans); font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.06em; }
-.ui { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 400; }
-.ui-strong { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500; }
-.content { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; }
-.content-lg { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 400; }
-.live-cap { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; }
-.live-title { font-family: var(--font-sans); font-size: 16px; line-height: 22px; font-weight: 600; }
-.next-title { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 500; }
-.alert-title { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 600; }
-.clock { font-family: var(--font-sans); font-size: 20px; line-height: 24px; font-weight: 500; }
-.countdown { font-family: var(--font-sans); font-size: 28px; line-height: 32px; font-weight: 500; }
-.screen-lyrics { font-family: var(--font-display); font-size: 56px; line-height: 1.2; font-weight: 600; }
-.screen-verse { font-family: var(--font-display); font-size: 44px; line-height: 1.3; font-weight: 500; }
-.screen-ref { font-family: var(--font-display); font-size: 26px; line-height: 1.2; font-weight: 500; letter-spacing: 0.12em; }

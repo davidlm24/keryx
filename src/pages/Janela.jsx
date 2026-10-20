@@ -273,13 +273,13 @@ export default function Janela() {
         <ReportContext.Provider value={openReport}>
         <div className="kx console janela" onClick={onMouseClick}>
             {stack.length > 0 && (
-                <div ref={boxRef} className="win-dialog is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
+                <div ref={boxRef} className="win-dialog kx-win is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
                     {stack.map((entry, i) => {
                         const active = i === stack.length - 1;
                         const page = winPage(entry, { active, escRef: winRef(entry.key), onClose: (all = false) => leaveTop(Boolean(all)) }, host);
                         return (
                             <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: null, onDetach: null, detached: true, systemFrame }}>
-                                <div className="win-page" hidden={!active}>{page}</div>
+                                <div className="win-page kx-win-page" hidden={!active}>{page}</div>
                             </WinCtx.Provider>
                         );
                     })}

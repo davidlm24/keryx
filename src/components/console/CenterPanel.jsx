@@ -101,22 +101,22 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
     const tone = projectorDown ? "warn" : locked ? "rh" : idle ? "idle" : "air";
     const said = inPlayer ? "no ar, no player" : idle ? "nada no ar" : title;
     return (
-        <div className={`prog-pill is-${tone}`} role="group" aria-label="Programa">
+        <div className={`prog-pill kx-pill is-${tone}`} role="group" aria-label="Programa">
             <span className={`kx-prog-cap prog-cap is-${tone}`} aria-label={`Programa · ${said}${locked ? " · travado" : ""}`}>
-                <i className="pp-dot" aria-hidden="true" />
-                {!inPlayer && <span className="kx-mon-t pp-title" title={shown}><ClipTitle text={shown} /></span>}
+                <i className="pp-dot kx-pill-dot" aria-hidden="true" />
+                {!inPlayer && <span className="kx-mon-t pp-title kx-pill-title" title={shown}><ClipTitle text={shown} /></span>}
                 {locked && <span className="prog-locked">Travado</span>}
                 {pos && <span className="kx-meta pp-pos">{pos}</span>}
             </span>
             {where && <span className={`kx-meta prog-where ${where.warn ? "kx-warn" : ""}`} title={`O Programa está ${where.text} agora · detalhes em Saídas`}>{where.short}</span>}
-            <span className="pp-sep pp-full" aria-hidden="true" />
-            <span className="pp-btns pp-full">
+            <span className="pp-sep kx-pill-sep pp-full" aria-hidden="true" />
+            <span className="pp-btns kx-pill-btns pp-full">
                 {btn({ className: `pp-hist ${histOpen ? "is-on" : ""}`, onClick: onHist, "aria-label": "Voltar ao anterior", "aria-expanded": histOpen, title: "Voltar ao anterior · o que esteve no ar há pouco" }, "undo")}
                 {camadas && btn({ className: `pp-camadas ${camadas.open ? "is-on" : ""}`, onClick: camadas.onToggle, "aria-label": "Camadas", "aria-expanded": camadas.open, title: "Camadas: tema, papel de parede, logo e sobreposições do que está no ar" }, "layers")}
             </span>
             {btn({ className: "pp-more", onClick: onMore, "aria-label": "Mais ações do Programa", "aria-haspopup": "menu", title: "Tela preta, logo, limpar, voltar ao anterior, Camadas e encerrar" }, "more")}
             {btn({ className: `mx-toggle ${multiviewOn ? "is-on" : ""}`, onClick: onMultiview, "aria-label": "Multiview", "aria-pressed": multiviewOn, title: multiviewOn ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar" }, "grid")}
-            <span className="pp-sep pp-full" aria-hidden="true" />
+            <span className="pp-sep kx-pill-sep pp-full" aria-hidden="true" />
             <ScreenActions c={c} onEnd={onEnd} className="pp-full" />
         </div>
     );
@@ -133,12 +133,12 @@ export function ScreenActions({ c, onEnd, className = "" }) {
     const letters = usePrefs().letter_keys;
     const k = (action) => { const h = keyHint(action, letters); return h ? ` · ${h}` : ""; };
     return (
-        <span className={`pp-screens ${className}`} role="group" aria-label="Telas: ações que mudam o que o público vê">
+        <span className={`pp-screens kx-pill-btns ${className}`} role="group" aria-label="Telas: ações que mudam o que o público vê">
             {btn({ className: live?.screen === "black" ? "is-on" : "", "aria-pressed": live?.screen === "black", "aria-label": "Tela preta", title: `Tela preta${k("black")} · nas telas, na hora`, onClick: () => c.toggleScreen("black") }, "black")}
             {btn({ className: live?.screen === "logo" ? "is-on" : "", "aria-pressed": live?.screen === "logo", "aria-label": "Mostrar logo", title: `Mostrar logo${k("logo")} · nas telas`, onClick: () => c.toggleScreen("logo") }, "logo")}
             {btn({ "aria-label": "Limpar texto", title: `Limpar texto${k("clear")}`, onClick: c.clearText }, "eraser")}
-            {onEnd && <span className="pp-sep" aria-hidden="true" />}
-            {onEnd && btn({ className: "pp-end", "aria-label": "Encerrar a projeção", title: "Encerrar a projeção (pergunta antes) · Esc encerra na hora", onClick: onEnd }, "stop")}
+            {onEnd && <span className="pp-sep kx-pill-sep" aria-hidden="true" />}
+            {onEnd && btn({ className: "pp-end kx-pill-end", "aria-label": "Encerrar a projeção", title: "Encerrar a projeção (pergunta antes) · Esc encerra na hora", onClick: onEnd }, "stop")}
         </span>
     );
 }
@@ -229,8 +229,8 @@ function PreviaPill({ prev, block, onSend }) {
     const tone = block?.code === "locked" ? "rh" : block ? "idle" : "prev";
     const why = block ? (block.code === "locked" ? "Telas travadas" : block.message) : `${label}${key ? ` · ${key}` : ""}${prev.theme ? " · o fundo do tema, sem o texto de exemplo" : ""}`;
     return (
-        <div className={`prog-pill prev-pill is-${tone}`} role="group" aria-label="Prévia" onDoubleClick={(e) => e.stopPropagation()}>
-            <i className="pp-dot" aria-hidden="true" />
+        <div className={`prog-pill kx-pill prev-pill is-${tone}`} role="group" aria-label="Prévia" onDoubleClick={(e) => e.stopPropagation()}>
+            <i className="pp-dot kx-pill-dot" aria-hidden="true" />
             <button type="button" className="kx-btn kx-t pv-send" aria-label={label} aria-disabled={block ? true : undefined} title={why} onClick={() => { if (!block) onSend?.(); }}>
                 <Icon name="play" /><span className="pv-send-l">{label}</span>
             </button>

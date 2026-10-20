@@ -81,10 +81,15 @@ test("the controls that are fills or shadows get system-colour boundaries", () =
     assert.match(ruleFor(bundle, /^\.kx-field$/), /border:\s*1px solid FieldText/);
     assert.match(ruleFor(bundle, /^\.kx-num$/), /border:\s*1px solid FieldText/, "NumBox (Rodada HF2)");
     assert.match(ruleFor(bundle, /\.kx-seg > button\.is-on/), /outline:\s*2px solid Highlight/);
-    assert.match(ruleFor(console, /^\.console \.sw2$/), /border:\s*1px solid ButtonText/);
-    assert.match(ruleFor(console, /^\.console \.sw2::after$/), /background:\s*ButtonText/);
-    assert.match(ruleFor(console, /^\.console \.sw2\.is-on$/), /background:\s*Highlight/);
-    assert.match(ruleFor(console, /^\.console \.sw2:disabled$/), /GrayText/);
+    // The switch, the check, the group, the toast and THE window are bundle.css components (Rodada DS3).
+    assert.match(ruleFor(bundle, /^\.kx \.kx-switch$/), /border:\s*1px solid ButtonText/);
+    assert.match(ruleFor(bundle, /^\.kx \.kx-switch::after$/), /background:\s*ButtonText/);
+    assert.match(ruleFor(bundle, /^\.kx \.kx-switch\.is-on$/), /background:\s*Highlight/);
+    assert.match(ruleFor(bundle, /^\.kx \.kx-switch:disabled$/), /GrayText/);
+    assert.match(ruleFor(bundle, /^\.kx \.kx-check:not/), /outline:\s*1px solid ButtonText/);
+    assert.match(ruleFor(bundle, /^\.kx button\.kx-group-t$/), /outline:\s*1px solid ButtonText/);
+    assert.match(ruleFor(bundle, /\.kx-toast, \.kx-win/), /outline:\s*1px solid CanvasText/, "floating, they lose their shadow: an edge");
+    assert.match(ruleFor(console, /:not\(\.kx-switch, :focus-visible\)/), /outline:\s*2px solid Highlight/, "a switch is not ringed as chosen");
     assert.match(ruleFor(console, /select, textarea, input/), /border:\s*1px solid FieldText/);
 });
 

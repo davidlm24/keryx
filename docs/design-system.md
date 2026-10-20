@@ -1,615 +1,604 @@
 # KERYX design system
 
-The operator console's design system was made in Claude Design and lives in
+The reference for the operator console's look: the tokens, every component
+as it ships, the behaviour rules and the layout. The system's files are in
 `docs/design-system/`:
 
-- `README.md` — principles, content rules (pt-BR vocabulary), colour, type,
-  spacing, states, iconography, motion. Read this first.
-- `tokens.json` — the reference for every token (colour, type styles and
-  the type scale, spacing, radius, shadow, timing, opacity, layers), each
-  with its usage.
-- `tokens.css` — the same tokens as CSS custom properties plus the type-style
-  classes (`.meta`, `.section`, `.ui`, `.content`, `.live-cap`, `.live-title`,
-  `.next-title`, `.alert-title`, `.clock`, `.screen-*`).
-- `components/bundle.css` — the `kx-` component stylesheet: panel, button,
-  segmented switch, field, row, tabs, monitor, status, banner, popover,
-  splitter (and `kx-gap`), slide, layer, timeline, transport, verse, book,
-  empty state, mark.
-- `components/bundle.js` — the design system's first, hand-drawn icon set
-  (the app draws Lucide since Rodada HI: `src/lib/icons.js`, see the README's
-  Iconography) (`window.KERYX.icon(name)`,
-  `KERYX.mount(root)`): bare 16 px glyphs, 1.5 stroke.
+- `README.md` — the principles, the content rules (pt-BR vocabulary), colour,
+  type, spacing, states, iconography and motion, in prose. Read it first.
+- `tokens.json` — **the one source** of every token (colour, the type styles
+  and scale, spacing, radius, shadow, timing, opacity, layers), each with what
+  it is for.
+- `tokens.css` — **generated** from `tokens.json` by `npm run ds:tokens`
+  (`scripts/ds-tokens.cjs`; `--format` also rewrites `tokens.json` in its
+  one-token-per-line layout). Never edit it by hand: `npm test` fails when it
+  is not what the script writes (`src/lib/designTokens.test.mjs`).
+- `components/bundle.css` — the `kx-` components **as they ship**, written
+  only with tokens. Each is a section below, in the file's order.
+- `surfaces.md` — the three kinds of surface (the operator console, the touch
+  Companion, the audience outputs): density, targets, type, permissions and
+  critical actions of each.
 
-`tokens.json`, `tokens.css` and `bundle.css` are edited by hand and kept in
-step with each other; nothing generates one from another. A token change
-touches all three (and `console.css` if the console overrides it). The
-console overrides several of them on purpose (the 6 px gutter, slides and
-verses as rows, list rows as inset cards): `console.css` is what ships.
-
-## Tokens
-
-Since Rodada DS2 (owner 2026-10-20, `d6_escala` = "sete") `console.css` and
-`bundle.css` write these only as tokens; `src/lib/tokens.test.mjs` fails on a
-px font size, a raw z-index or the chrome colours typed by hand, and
-`designTokens.test.mjs` on `tokens.json` and `tokens.css` drifting apart.
-
-| Group | Tokens |
-| --- | --- |
-| Type scale | `--fs-meta` 11 · `--fs-ui` 12 · `--fs-content` 13 · `--fs-content-lg` 14 · `--fs-live` 16 · `--fs-clock` 20 · `--fs-count` 28 px. The old 9, 10 and 10.5 px are 11; 11.5 is 12; 12.5 is 13. Kept in px: the logo's K, a font specimen, the sync code. Screens size in cqw, off this scale. |
-| Heights | `--control-sm` 24 px (a header's buttons, selects and Seg; a row's hover buttons; the pills' buttons; chips) · `--band` 36 px (a band under a header) · `--row` 28 · `--row-comfortable` 32 · `--topbar` 40. |
-| Layers, inside a box | `--z-screen` 1 · `--z-mark` 2 · `--z-handle` 3 · `--z-edge` 5 · `--z-guide` 6 · `--z-hatch` 7 · `--z-frame` 8 · `--z-badge` 10 · `--z-drop` 15 · `--z-pill` 20 · `--z-ring` 21. A monitor's screen, a thumbnail, THE window and a splitter are each their own stacking context: their steps compare only inside them. |
-| Layers, the console | `--z-scrim` 27 · `--z-menubar` 28 · `--z-window-scrim` 29 · `--z-pop` 30 · `--z-window` 40 · `--z-window-over` 41 · `--z-drawer` 42 · `--z-verify` 43 · `--z-library-scrim` 44 · `--z-library` 45 · `--z-dialog` 50 · `--z-confirm-scrim` 51 · `--z-confirm` 52 · `--z-menu` 53 · `--z-menu-top` 54 · `--z-toast` 60 · `--z-drag` 70. A new layer is a name by its role, never a number. |
-| Motion | `--duration-fast` 120 ms + `--ease-out` (hover, state) · `--dur-fold` 180 ms + `--ease-fold` (a panel folding, No ar, a group, a chevron; Dock.jsx reads them). |
-| Chrome over a screen | `--chrome-on-screen` #0d0d0cd9 (the pills, the Prévia's badge, a thumbnail's mark) · `--chrome-ring` #ffffff14 (its 1 px ring). |
-| States in the lists | `--live` (the brand gold) · `--live-fg` · `--live-bg` (36 % gold over bg-2) · `--prev-bg` (16 % green over bg-2). `--live-bar` and `--next-bar` stay in console.css. |
-| Fonts | `--font-sans` / `--font-display`: Geist, then the system font. No Inter: KERYX never shipped it. |
+`src/components/console/console.css` loads right after `bundle.css` and keeps
+only the console's layout (where things sit: the dock, the columns, the top
+bar's arrangement, the panels' placement) and its app-specific compositions
+(a row in Configurações, the Bíblia's cells, the player). A look that more
+than one place wears is a component here, not a rule there.
 
 **`CLAUDE.md` wins.** It records the owner's decisions as they are made; this
-page and the README describe the look those decisions produce. Where they
-disagree, `CLAUDE.md` and the running app are right and this page is stale:
-fix it. The Claude Design canvas
+page describes the look they produce. Where they disagree, `CLAUDE.md` and the
+running app are right and this page is stale: fix it. The Claude Design canvas
 (https://claude.ai/artifact/TRDHTGjQ2VCHRUWDKjpae5) is a record of the first
 design, not the specification (see Histórico).
 
+## Tokens
+
+`console.css` and `bundle.css` write a colour, a font size, a layer and a
+duration only as a token. `src/lib/tokens.test.mjs` fails on a hex or rgba
+colour, a px font size or a raw z-index in either of them, and on a new
+literal in any other component stylesheet (the audience renderer and the
+network pages keep their own, pinned value by value, with the reason).
+
+| Group | Tokens |
+| --- | --- |
+| Grounds and lines | `--bg-0` window · `--bg-1` modules · `--bg-2` fields, popovers, hover · `--bg-3` pressed, selected · `--line` hairlines · `--line-strong` the splitter on hover · `--line-overlay` the ring of what floats · `--line-soft` lines inside what floats. |
+| Text | `--fg-1` content · `--fg-2` UI labels, glyphs at rest · `--fg-3` metadata, headers, placeholders. |
+| States | `air` red (on air), `prev` green (prepared), `rh` blue (locked), `warn` amber, each as the mark, `-fg` text, `-fill` (+ `-hover`, `-pressed`) and `-tint`; `--on-state`, `--on-warn`. In the slide lists: `--live` (the brand gold), `--live-fg`, `--live-bg` (36 % gold over bg-2), `--prev-bg` (16 % green over bg-2), `--live-bar`, `--next-bar`, `--verse-pressed`. |
+| Brand | `--brand` gold (+ `-hover`, `-pressed`, `-tint`) · `--on-brand`. |
+| Over a screen | `--screen-bg` · `--screen-fg` · `--chrome-on-screen` (a pill, a badge) · `--chrome-ring` · `--chrome-sep` · `--chrome-hover` · `--chrome-pressed` · `--screen-text` (the projected text's shadow). |
+| Type scale | `--fs-meta` 11 · `--fs-ui` 12 · `--fs-content` 13 · `--fs-content-lg` 14 · `--fs-live` 16 · `--fs-clock` 20 · `--fs-count` 28 px. Kept in px: the logo's K, a font specimen, the sync code. Screens size in cqw, off this scale. |
+| Heights | `--control-sm` 24 px (a header's controls, a row's hover buttons, the pills' buttons, chips) · `--row` 28 · `--row-comfortable` 32 · `--band` 36 (a band under a header) · `--topbar` 40. |
+| Space and radius | `--space-1` 4 · `--space-2` 8 · `--space-3` 12 · `--space-4` 16 · `--space-6` 24 · `--gutter` 8 (6 in the console) · `--bar` 2 px · `--radius-control` 8 · `--radius-panel` 14 · `--radius-round`. |
+| Shadows | `--shadow-popover` (small floaters) · `--dialog` (THE window, dialogs) and the others in `tokens.json` › shadow, each one floater's. |
+| Layers, inside a box | `--z-screen` 1 · `--z-mark` 2 · `--z-handle` 3 · `--z-edge` 5 · `--z-guide` 6 · `--z-hatch` 7 · `--z-frame` 8 · `--z-badge` 10 · `--z-drop` 15 · `--z-pill` 20 · `--z-ring` 21. A monitor's screen, a thumbnail, THE window and a splitter are each their own stacking context. |
+| Layers, the console | `--z-scrim` 27 · `--z-menubar` 28 · `--z-window-scrim` 29 · `--z-pop` 30 · `--z-window` 40 · `--z-window-over` 41 · `--z-drawer` 42 · `--z-verify` 43 · `--z-library-scrim` 44 · `--z-library` 45 · `--z-dialog` 50 · `--z-confirm-scrim` 51 · `--z-confirm` 52 · `--z-menu` 53 · `--z-menu-top` 54 · `--z-toast` 60 · `--z-drag` 70. A new layer is a name by its role, never a number. |
+| Motion | `--duration-fast` 120 ms + `--ease-out` (hover, state) · `--dur-fold` 180 ms + `--ease-fold` (a fold, No ar, a group, a chevron; Dock.jsx reads them). |
+| Opacity | `--dim` 0.55 (done, hidden, disabled) · `--hatch` 0.85. |
+| Fonts | `--font-sans` / `--font-display`: Geist, then the system font. |
+
+A new token is a line in `tokens.json` with its usage (what it is for, never
+when it was decided: the test refuses a date or a round there), then
+`npm run ds:tokens`.
+
+## Components
+
+Each section: anatomy, variants, sizes, states, the tokens it uses, do and
+don't. The classes are `bundle.css`'s; where the app's elements still carry an
+older name beside the kx- one (kept for the smoke and console.css's
+compositions), it is given.
+
+### Base and type
+
+- **Anatomy.** `.kx` is the root (the console's `.kx.console`): Geist,
+  `fs-ui`, `fg-2` on `bg-0`, tabular numbers. Its reset weighs nothing
+  (`:where`), buttons keep the Windows arrow, a keyboard focus is the 2 px
+  `brand` ring inset 1 px. `kx-t` adds the 120 ms transition; reduced motion
+  removes every one. `kx-i` is a 16 px glyph, `kx-sr` text for a screen
+  reader only.
+- **Type classes.** `kx-meta` 11/16 `fg-3` (telemetry only) · `kx-section`
+  11/16 500 uppercase 0.06em (headers) · `kx-content` 13/18 · `kx-content-lg`
+  14/20 · the live steps `kx-live-cap` 12/16 600, `kx-live-title` 16/22 600,
+  `kx-next-title` 14/20 500, `kx-alert-title` 13/18 600 · `kx-clock` 20/24,
+  `kx-countdown` 28/32 · colour helpers `kx-air`, `kx-prev`, `kx-rh`,
+  `kx-warn`, `kx-dim`.
+- **Do** keep the console at 11–14 px except the live title and the clocks.
+  **Don't** set a name that is on air or prepared in `kx-meta`; don't add a
+  global, unprefixed class (`.meta`, `.content`…): there are none.
+
+### Panel
+
+- **Anatomy.** `kx-panel` (bg-1, `radius-panel`) › `kx-panel-h` (the header)
+  › `kx-panel-b` (the body, scrolls). `kx-panel-bare` has no card (the
+  Programa, the Prévia).
+- **Sizes.** The header is 32 px (28 in Compacta), one line, its text 12 px
+  from the edge, its last control 12 px from the right one, controls 24 px
+  tall and 8 px apart.
+- **States.** Folded (`FoldBtn`, see Comportamento › Folds).
+- **Tokens.** `bg-1`, `radius-panel`, `space-3`, `control-sm`.
+- **Don't** give one panel an inset of its own, put hints in a header, or let
+  a header wrap.
+
+### Button
+
+- **Variants.** Ghost `kx-btn` (28 px, `fg-2`, hover `bg-2`, pressed or
+  `is-on` `bg-3`); `kx-btn-icon` (square); `kx-btn-outline` (a `line-strong`
+  inset ring: the way back); the fills `kx-btn-prev` (*Enviar ao ar*),
+  `kx-btn-rh` (*Destravar*), `kx-btn-air` (*Encerrar*, *Excluir*) and the gold
+  `kx-btn-brand` (Salvar, Novo culto, Importar).
+- **States.** A fill steps **darker** on hover and pressed so white stays
+  above 4.5:1; disabled goes neutral (`bg-3`, `fg-3`) and never lights; on a
+  fill the focus ring is `fg-1`, 2 px outside.
+- **Sizes.** 28 px; 24 px in a row, a header, a banner or a pill (the WCAG
+  2.2 target; the glyph stays 16 px).
+- **Don't** use gold for anything live (*Enviar ao ar*, a lock, a warning),
+  or print a shortcut on a button: it lives in the tooltip.
+
+### Segmented switch
+
+- **Anatomy.** `kx-seg` (a `bg-2` track, 2 px padding) of buttons; the chosen
+  one `is-on`: `bg-3`, `fg-1`, 500 and a 1 px `fg-3` inset (≥ 3:1).
+- **Variants.** `is-small` (24 px segments; in a header or a menu heading the
+  track goes and the segments fill the 24 px); `kx-seg-mode` (state fills).
+- **Do** use it for 2–5 exclusive choices. **Don't** use it for on / off: that
+  is a switch.
+
+### Switch
+
+- **Class.** `kx-switch` (old name `.sw2`), a real button with
+  `role="switch"` and `aria-checked`: `SwitchRow`, the Saídas rows, *Avançar
+  sozinho*, *Abrir ao iniciar*, the aviso's sound.
+- **Sizes.** 32 × 20, a 14 px knob.
+- **States.** Off: a `bg-3` track, `fg-2` knob. **On: an `fg-1` track with a
+  `bg-0` knob** — never the Prévia's green, so *ligado* never reads as
+  *preparado*. Hover lights the knob; on, the track dims to `fg-2`. Disabled
+  `dim`. Contrast theme: `ButtonText` track and knob, `Highlight` when on.
+- **Tokens.** `bg-3`, `fg-1`, `fg-2`, `bg-0`, `radius-round`, `duration-fast`,
+  `dim`.
+
+### Check
+
+- **Class.** `kx-check` in a `kx-checks` row (old name `.cfg-kinds`): a 24 px
+  chip with `role="checkbox"` and the check glyph (Ajustes › Conteúdo, "O que
+  esta tela recebe").
+- **States.** Off: `bg-2`, `fg-3`, no mark. On: `bg-3`, `fg-1`, the mark and
+  a `line-strong` ring. Hover `bg-3`. Contrast theme: a `ButtonText` edge off,
+  the chosen ring on.
+- **Do** use it for a set of independent kinds shown as chips. A plain native
+  checkbox stays only where a dialog asks one question (Relatar um problema).
+
+### Field
+
+- **Variants.** `kx-input` (text, number, date, textarea), `kx-select`,
+  `kx-field` (an input with a glyph: the `Field` component) and `kx-num`
+  (`NumBox`: `− [4,8] + %`).
+- **Sizes.** 28 px; 24 px with `is-small` (Configurações' selects, inline
+  renames). `kx-num` is 24 px with 24 × 24 steppers out of the Tab order (the
+  field takes ↑/↓, Shift ×10), the unit in `fg-3`, a comma as the decimal.
+- **States.** `bg-2`; a `line` ring on hover; focus is a **quiet 1 px `fg-3`
+  outline**, never the gold ring while typing; disabled `dim`;
+  `[aria-invalid="true"]` draws it in `warn`.
+- **Do** give a new field `kx-input` / `kx-select`. The console's older field
+  classes (`pl-input`, `ed-text`, `cfg-select`…) wear the same look from one
+  `:where()` block in console.css. **Don't** name a field by its placeholder:
+  a visible label names it. A slider stays only for what is felt (opacity).
+
+### Row
+
+- **Anatomy.** `kx-row` › `kx-glyph` · `kx-row-main` (`kx-row-title`, one
+  `kx-row-meta` line) · `kx-row-time` · `kx-row-acts` (hover buttons).
+  `kx-row-1` is a one-line row.
+- **The card.** Every row (and `kx-layer`) is an **inset rounded card**: 4 px
+  in from its column (`space-1`), `radius-control`, 2 px from the next, so a
+  hover or a state fills a card, never the column edge to edge; the inset
+  comes off the left padding, so the text keeps its place.
+- **Sizes.** 28 px; 32 px in Confortável (`row-comfortable`), 14 px titles
+  up to two lines — one line ending in "…" when the row has hover buttons.
+- **States.** A 2 px bar on the left edge in the state's colour plus its 10 %
+  tint (`is-air`, `is-prev`, `is-rh`, `is-warn`); the title takes the state's
+  text colour; `is-selected` `bg-3`; hover `bg-2`; pressed `bg-3`; done
+  (`is-done`) dims only the glyph and steps the title to `fg-3`.
+- **Hover actions** never cover the middle of the row (a click there
+  prepares): glyphs only, the word kept as screen-reader text (`kx-act-l`),
+  24 px each.
+- **Don't** override the inset per list; edge to edge is only the Slides
+  column and No ar (the slide, below).
+
+### Tabs
+
+- **Anatomy.** `kx-tabs` (28 px, a `line` rule under it) of buttons; the
+  chosen one `fg-1` with a 1 px `fg-1` underline.
+- **Do** let a row that does not fit break into a second line (console.css
+  `.tabrow`); keys are `onTabsKey` + `tabStop` (roving tabindex).
+
+### Group
+
+- **Class.** `kx-group` (old name `.cfg-group`; `CfgGroup` in
+  `settings/parts.jsx`): an area of Configurações or an editor that opens and
+  closes.
+- **Anatomy.** `kx-group-h` (an h3, 28 px) › `kx-group-t` (the button: the
+  12 px `kx-group-chev` and the `kx-section` title at 600) · `kx-group-s`
+  (the one-line summary of what is chosen, only while closed) ·
+  `kx-group-acts` (actions, right); `kx-group-b` › `kx-group-in` (the body).
+- **Variants.** Folding (the chevron down when open, −90° closed) or static
+  (`fold={false}`, `.is-static`: a page's first area, the chevron's slot kept
+  so titles line up). The rare ones start closed.
+- **States.** The body folds to `0fr` in the fold's time and stays mounted
+  and inert; `.is-instant` (a search jump) and reduced motion do not ease.
+  Hover `bg-3` on the header; the focus ring inside it.
+- **Spacing.** 12 px between groups with a `line-soft` hairline.
+- **Do** put what is chosen in the summary. **Don't** put it in a header
+  hint, or colour a title gold.
+
+### Monitor
+
+- **Anatomy.** `kx-mon` › `kx-mon-cap` (an optional caption line) ·
+  `kx-mon-screen` (16:9, `screen-bg`, `radius-control`, a 1 px frame; it is
+  the output's picture and opts out of contrast themes). `kx-mon-badge` is a
+  caption inside the screen, top-left (the Prévia's "Prévia · nome · 2/6").
+- **States.** The frame in `air`, `prev`, `rh` or `warn`; the Programa has
+  **no frame while simply on air** (only locked or failing). The hatch
+  (`kx-screen-hatch`) is a file missing, coming or a PDF preparing;
+  `kx-screen-empty` nothing at all.
+- **Don't** let console tokens or styles into what the screen draws.
+
+### Pill
+
+- **Class.** `kx-pill` (old name `.prog-pill`): a monitor's caption and
+  controls inside its screen, bottom-right, over the frame and the labels.
+  The Programa, the Prévia (*Enviar ao ar*) and the Bíblia's No ar wear it.
+- **Anatomy.** `kx-pill-dot` (the state: grey idle, `is-air` red with a
+  halo, `is-prev` green, `is-rh` blue, `is-warn` amber) · the caption
+  (`kx-prog-cap`: `kx-pill-title`, fg-1 600 ending in "…"; the position and
+  "2 telas" in `kx-meta`) · `kx-pill-sep` · `kx-pill-btns` (round 24 px
+  glyph buttons, `chrome-hover` / `chrome-pressed`) · `kx-pill-end`
+  (*Encerrar*, apart after its separator, in `air-fg`).
+- **Sizes.** 32 px tall, `radius-round`, `chrome-on-screen` with a
+  `chrome-ring`.
+- **Behaviour** (console.css). It folds once as the screen narrows: at
+  560 px "2 telas" goes, at 480 px the buttons go into "…" (the Programa's
+  menu); over the Multiview it is always folded.
+- **Don't** add the word "Programa", or a title the player already shows.
+
+### Status and outputs
+
+- `kx-status`: the top bar's Saídas status (*2 telas*), a `prev` dot, amber
+  (`is-warn`) or blue (`is-rh`); a green dot never sits beside zero.
+- `kx-out`: one output in the Saídas popover (glyph, name and meta, its
+  state in words: *Conectada*, *Reconectando…*, *Desconectada às 19:42*,
+  *Fechada*), with a switch per local output (`has-sw`, console.css).
+
+### Banner
+
+- `kx-banner`: one 28 px line across the grid, tinted, a 2 px top rule in the
+  state's colour: blue `TELAS TRAVADAS — nada novo vai às telas` with
+  *Destravar*, amber for an output that failed (its title in
+  `kx-alert-title`, the detail `kx-sub`, the ways out as 24 px buttons).
+  Output banners never stack: one, "e mais N".
+
+### Popover, menu, tooltip
+
+- `kx-pop` (bg-2, `radius-panel`, `shadow-popover`: the `line-overlay` ring;
+  menus a deeper shadow) › `kx-menu-item` (28 px; its glyph `fg-2`, the
+  shortcut `kx-kbd` from `keyHint`, never typed), `kx-menu-sep`
+  (`line-soft`), `kx-menu-h` (a 24 px heading). `kx-tip` is a tooltip.
+- **Do** build every menu with `MenuList` (Menu.jsx) and the shared actions
+  with `menuItem` (`menuLabels.js`). **Don't** put `line-strong` on anything
+  that floats.
+
+### Toast
+
+- **Class.** `kx-toast` (old name `.toast`; `Toast.jsx`): one 28 px line over
+  the bottom of the console, `bg-3`, `shadow-popover`.
+- **Anatomy.** `kx-toast-t` (the text, ending in "…") · `kx-toast-act` (an
+  action, a 24 px target: *Desfazer* after Esc, its key in the tooltip).
+- **States.** Its time stands still under the pointer or the focus; a plain
+  toast waits behind *Desfazer* (`toastQueue.js`). Said by the one polite
+  live region, never by a `role="status"` that mounts with its text.
+
+### Window
+
+- **Class.** `kx-win` (old names `.win-dialog`, `.win-bar`, …): **THE
+  window**, the one floating frame over the live console whose pages are
+  Configurações, the editors and the views (`nav.js`).
+- **Anatomy.** `kx-win-bar` (40 px, a `line-soft` rule): *← Voltar* from the
+  second level (`kx-btn-back`, outlined), `kx-win-title` (gives way first),
+  `kx-win-tools`, `kx-win-gap` (a double click restores the size), the page's
+  actions, ⧉ *Destacar em janela*, the (x) *Fechar · Esc*. Then
+  `kx-win-page`, one per level, on `bg-0` (pages under the top stay mounted,
+  hidden). `kx-win-edge` × 8 resize it.
+- **Variants.** Padrão and `is-editor` (the frame eases between them);
+  `is-sized` (stretched: it follows the pointer at once); `is-detached`
+  (`/Janela`: it fills its own window, no shadow, no edges).
+- **Sizes.** At most 1240 × 800 (Editor 1360 × 860), at least 760 × 480,
+  never past the console.
+- **Tokens.** `bg-0`, `radius-panel`, `dialog`, `line-soft`, `z-window`,
+  `z-edge`, `ease-out`.
+- **Don't** open a second floating window: a page pushes a level in this one.
+
+### Splitter
+
+- `kx-split` (and `kx-split-h`): the 6 px gutter in the layout, answering the
+  pointer over 12 px, a dotted grip on hover and keyboard focus (gold dots on
+  focus); ←/→ resize in 16 px steps, a double click restores. `kx-gap` is a
+  gutter that cannot be resized. **The splitter is the gap**: never a second
+  gap beside it.
+
+### Slide
+
+- **Anatomy.** `kx-slide` › `kx-slide-n` (the number) · `kx-slide-body`
+  (`kx-slide-lab`, the part's name; `kx-ln`, one line each). `.onair-card`
+  is the same slide in the No ar module; a presentation's page is
+  `kx-slide-body.is-page` with its 128 px picture (`kx-slide-page`).
+- **The row.** Edge to edge, a 1 px `line` separator, no card; 14/20 in
+  Confortável, tighter in Compacta. A line too long ends in "…" (the whole
+  text is the tooltip and the Prévia).
+- **States.** The background plus a bar on the left edge: **on air the gold**
+  (`--live-bg` and the 3 px `--live-bar`; the rest of the console keeps
+  `air` red for "no ar"); **the Prévia** the dark green wash (`--prev-bg`;
+  1.56:1 in lightness against the gold, `stateColors.test.mjs` holds ≥ 1.4
+  and ΔE ≥ 20 for protans and deutans); **the next slide** the 2 px `fg-3`
+  `--next-bar` and an `fg-1` number; on air and in the Prévia at once, the
+  Prévia's wash, the gold bar and the number on a `live` chip. Labels and
+  numbers pass AA: `fg-2` on the Prévia's wash, `fg-1` on the gold one. A row
+  with a background drops its separator. The keys land the highlight at once;
+  only the pointer's hover eases.
+- **Contrast theme.** The bars are box-shadows and vanish: on air fills with
+  `Highlight`, the Prévia a dashed `LinkText` ring, next a dotted ring.
+- **Don't** card a slide, or tell on air from the Prévia by hue alone.
+
+### Layer
+
+- `kx-layer` (Camadas): a 26 px card (the row's inset) of eye, padlock and
+  name in a grid; `is-selected` `bg-3`, `is-hidden` the name in `fg-3`, its
+  buttons 24 × 24, an off one `dim`. The pencil (console.css) shows on hover.
+
+### Transport and meters
+
+- `kx-transport` (seek, time) and `kx-meter` (3 px bars, `prev`, `warn` from
+  −3 dBFS). The console's player is console.css's composition of these.
+
+### Verse and book
+
+- `kx-verse` (Ler, Buscar): a **card**, `bg-2`, `radius-control`, 4 px apart
+  (prose reads better in a box), the number right-aligned in 24 px, the text
+  wrapping. Its states are the slide's (the Prévia's wash; the gold wash and
+  bar on air; the number on a gold chip when both); hover `bg-3`, pressed
+  `--verse-pressed`; a note is a mark in its corner (`has-note`).
+- `kx-book`: a Bíblia cell, 36 px, `bg-2`, a 2 px bar in its group's colour
+  (`--group`), `is-selected` with a `line-strong` outline.
+
+### Empty state, mark, alert, tools, route
+
+- `kx-empty`: a glyph, a `fg-2` line and a `fg-3` line, centred.
+- `kx-mark`: the 16 px gold KERYX mark (its K is a kept px size).
+- `kx-alert`: the *Aviso rápido* while it shows — a warn bar, warn tint, its
+  time and *Tirar*; `kx-screen-alert` its bar on a monitor.
+- `kx-tools` / `kx-tool`: ghost buttons in a 2 × 2 grid (Relógio,
+  Cronômetro, Timer, Texto livre); `kx-screen-tool` the figure on a screen.
+- `kx-route`: a ghost button showing a value that opens a small menu.
+
+### Contrast themes
+
+One `@media (forced-colors: active)` block at the end of `bundle.css` (the
+components) and one at the end of `console.css` (the console's own lists, at
+its weight) give the states and the controls drawn as fills or shadows cues in
+system colours only: on air `Highlight` filling the row with `HighlightText`;
+the Prévia a 2 px dashed `LinkText` ring; next a dotted ring; chosen, pressed
+or open a 2 px `Highlight` ring; switches, checks, fields and filled buttons
+`ButtonText` / `FieldText` edges; what floats a 1 px `CanvasText` edge. A ring
+never hides the keyboard's focus ring and the normal look never changes. What
+the congregation sees opts out (`forced-color-adjust: none`: the monitors,
+the stills, every output). A new state drawn as a background gets its line
+there (`src/lib/forcedColors.test.mjs`).
+
 ## Comportamento
 
-The console is one screen, always live: no steps and no sandbox. To rehearse,
-the operator **locks the screens** (*Travar telas*, in the Saídas popover):
-the screens keep what they show, the console prepares and browses freely, and
-sending is refused until *Destravar*. **Verificar** is an overlay opened from
-the Saídas popover (and the logo's menu). The rundown is called **Setlist**.
+### Prepare, then send
 
-**Prepare, then send.** A click on a song, slide, verse, aviso or Setlist
-row only prepares it in the Prévia (green). It reaches the screens by one of:
+The console is one screen, always live: no steps and no sandbox. **A click
+prepares** a song, slide, verse, aviso or Setlist row in the Prévia (green).
+It reaches the screens by one of:
 
 | Act | Where |
 | --- | --- |
 | **Double click** on the item | Biblioteca, Setlist, slides, verses, search results, Escola bíblica materials, Mídia, the Prévia's screen |
 | **Enter** | with nothing focused (or the monitors focused): sends the Prévia / the Bíblia's selection |
 | **Ctrl+Enter** | from anywhere except a text field |
-| **Enviar ao ar** | the button where there is one: the Bíblia, the Escola bíblica, the Mídia (and the Setlist's *Ir*). The culto's Prévia has none: Enter, a double click on its screen or its right-click menu send it. The keys live in one tooltip on every send button, never printed: "Enviar ao ar · Enter (Ctrl+Enter de qualquer lugar)" (`SEND_TIP` in `src/lib/console/copy.js`) |
+| **Enviar ao ar** | the Prévia's pill, the Bíblia, the Escola bíblica, the Mídia (and the Setlist's *Ir*). The keys live in one tooltip, never printed: "Enviar ao ar · Enter (Ctrl+Enter de qualquer lugar)" (`SEND_TIP`) |
 | **Drag onto the Programa** | from the Biblioteca (onto the Prévia it prepares; onto the Setlist it adds) |
 
-A click on one control never leaves focus on it, so the next key works on the
-console. Typing never sends: in a text field every key is typing, and Esc first
-leaves the field. A control focused with Tab keeps its own Enter and Space.
+A click never leaves focus on the control it hit, so the next key works on
+the console. Typing never sends: in a text field every key is typing, and Esc
+first leaves the field. A control focused with Tab keeps its own Enter and
+Space.
 
-**Keys** (`src/lib/console/keys.js`, tested): ←/→ move the slide or verse on
-air (and step an activity's reveal before changing slide); ↑/↓ move the
-selection (green); PageUp/PageDown walk a presentation (a clicker); Space
-plays or pauses; **B** Tela preta, **L** Mostrar logo, **C** Limpar texto;
-**/** searches; **?** lists the keys. **Esc** closes the topmost thing open,
-one per press (`escapeTarget`: a right-click menu, the background library, a
-popover, then one level of THE window, then the Camadas drawer), and with
-nothing open ends the projection at once, fading out as Configurações ›
-Telas e saídas › Transições says, the player's music included (Rodada G3,
-2026-10-17). Its toast (and *Encerrar*'s) offers **Desfazer**, which puts
-back what the screens showed: the text on the same slide, media, avisos or a
-tool, the video channel, Tela preta or Logo, and the music at the second it
-stopped, paused if it was (refused while the screens are locked).
-**Transições** (Configurações › Telas e saídas): five rows, in this order —
-*Ao pausar o som* (Corte · 0,2 s · 0,4 s; Pausar e Tocar no player), *Ao
-tirar do ar* (Corte | Suave, 0,3 · 0,6 · 1 s; Esc, Limpar e Parar: a imagem
-e o som saem juntos), *Ao entrar ou trocar* (Corte | Suave, 0,3 · 0,5 · 1 s,
-Suave 0,5 s by default; what enters the screens or replaces something else —
-moving the slide stays the theme's — with *Por tipo de conteúdo* folded
-under it, a chevron with `aria-expanded`: Músicas, Bíblia, Textos e Escola
-bíblica, Apresentações (PDF), Imagens e GIFs, Vídeos e YouTube, Avisos and
-Timer, relógio, cronômetro, each Padrão | Corte | Suave, the timer Corte by
-default; Rodada G5, the kinds are `src/lib/contentKinds.js`), *Entre áudios
-e vídeos* (Corte | Suave | Tocar junto, 0,5 · 1 · 2 s) and *Tela preta e
-Logo* (a switch that follows Ao tirar do ar). The *Encerrar* button, unlike Esc, asks first.
-In the Bíblia a letter or digit opens the quick jump. A splitter or the
-player's seek bar focused with Tab keeps the arrows for itself, so resizing
-or seeking never moves what is on air.
-
-**Right click** (`ContextMenu.jsx`): songs, media, avisos, Setlist items,
-slides, verses, themes, backgrounds, the Programa and Prévia monitors and the
-Camadas layers have a menu at the pointer (a `kx-pop`, kept inside the
-window, ↑/↓ and Enter work in it). It never prepares or sends by itself;
-anything that changes what is on air (*Enviar ao ar*, *Ir para o item*,
-*Encerrar…*) is last, after a separator (`orderItems`). Text fields keep the
-system's Recortar / Copiar / Colar.
-
-**Menus** (audit C-14/C-15): every menu is one component, `MenuList` in
-`src/components/console/Menu.jsx` (the menu bar, the Menu button's popover, the logo's menu, Ver, the
-(+) menus, right-click menus, the tabs lists, the Bíblia's lists;
-`MenuButton` for a button with its menu). It takes the focus when it opens
-(its first item), ↑/↓ walk it round the ends, Home/End jump, disabled items
-are skipped, → opens a submenu and ← leaves it, Enter/Space choose, Esc and
-Tab close; one frame (`.kx-pop`) and the gold focus ring. When it closes the
-focus goes back to what opened it only if the keyboard opened and closed it
-— after a mouse open, to nothing, so the live keys work (`useFocusReturn`,
-`focusAfterClose` in `menuNav.js`). The menu bar answers **F10** or **Alt**
-alone (the focus on the bar: ←/→ walk it, ↓ or Enter opens, Esc leaves it)
-and **Alt + C/M/D/F/A** (Culto, Música, Mídia, Ferramentas, Ajuda; the letter
-underlined only while Alt is held or the bar has the keyboard). Setlist and
-planner rows move with **Alt+↑/↓** on a focused row and Subir/Descer in
-their menu, as Camadas' do (`useRowStep`). A focused select is a control,
-never text: it keeps ↑/↓, PageUp/PageDown, Space and its type-ahead letters,
-and the live keys stay the console's.
-
-**Questions.** Anything that deletes or discards asks through `useConfirm()`
-(`ConfirmDialog.jsx`), its buttons in Windows order: the action, then
-**Cancelar** on the right. **A question that cannot be taken back opens on
-Cancelar** (owner 2026-10-16, audit C-10, `focusesCancel` in
-`src/lib/console/confirm.js`): *Excluir* and *Descartar* by their verb, and
-any other action marked `danger` (Trocar o código, Juntar, Substituir,
-Voltar ao padrão, Tirar da turma), so Enter — the operator's send reflex —
-answers no and the action takes Tab or a click. The others (*Tirar da
-setlist*, *Remover saída*, *Sair…*) open on the action; *Encerrar* keeps its
-action focused, since it has Desfazer. Esc answers no before anything else.
-
-**The command palette** (`/`, the top bar's search) opens centred over the
-console, on the dimmed scrim. Enter puts the result in the Prévia and
-Shift+Enter adds it to the Setlist; it never sends. A Scripture reference
-("Jo 3:16", or the quick jump's "jo 3 16") typed in the KERYX environment
-goes to the Prévia right there: one verse is its whole chapter, as in the
-Bíblia, in the version chosen there; *Abrir na Bíblia* is the row below it.
-The Bíblia has no search field of its own: the palette opens references there
-and searches words (the text panel's Buscar mode).
-
-**What acts on the real screens at once.** Tela preta and Mostrar logo act on
-the real screens at once, locked or not. The *Aviso rápido* goes to the
-screens at once (`alert.show`). Camadas edits (logo, overlays, which layers
-show, layer order) apply as made, and *Travar telas* holds them during a
-rehearsal. Every other tool (Relógio, Cronômetro, Timer, Texto livre) is
-prepared in the Prévia like any item.
+**What acts at once.** Tela preta and Mostrar logo, locked or not; the *Aviso
+rápido* (`alert.show`); Camadas' edits. Every other tool (Relógio,
+Cronômetro, Timer, Texto livre) is prepared in the Prévia like any item.
 
 **Travar telas** is the live state's `locked` flag, set from the Saídas
 popover and enforced in the main process (`applyOp`), so outputs, network
-screens and the controle remoto obey it too. The rule: *nothing new goes onto
-the screens; anything can come off*. Tela preta, Logo, Limpar, Esc and what
-continues on its own (a playlist, a "Tocar todos" sequence) keep working.
-While locked the Programa's pill and frame are blue (`rh`, "Travado"), a
-double click or Enter gives one toast, and a blue banner says
-`TELAS TRAVADAS` with *Destravar*. A restart comes back unlocked.
+screens and the controle remoto obey it too: *nothing new goes onto the
+screens; anything can come off*. While locked the Programa's pill and frame
+are blue (`rh`, "Travado"), a send gives one toast, and the blue banner says
+`TELAS TRAVADAS` with *Destravar*. A restart comes back unlocked. Rehearsing
+is locking: there is no Ensaio.
 
-**The service clock** in the top bar counts from the service's date and
-start time, never a default hour, compact: `◷ 19:00 · 9h46` before it starts,
-`Culto 0:42:10` while it runs; the whole sentence is its tooltip, and a
-click opens *Planejar o culto*.
+### Keys
 
-**Bible editions.** The edition the operator chooses is the one used, even
-when another is installed: ARA with NVI installed is read from the internet,
-and a chapter that cannot be fetched comes from the installed edition, said
-so. On Livros' version select an amber dot marks an edition from the
-internet, missing or the preview's samples (the words in its tooltip); sample
-text is never shown in a Bible's place. Verificar says, per edition, what
-happens without internet.
+`src/lib/console/keys.js`, tested: ←/→ move the slide or verse on air (and
+step an activity's reveal first); ↑/↓ move the selection; PageUp/PageDown walk
+a presentation (a clicker); Space plays or pauses; **B** Tela preta, **L**
+Mostrar logo, **C** Limpar texto, **/** searches, **?** lists the keys (as the
+church's *Teclas de uma letra* say). **Esc** closes the topmost thing open,
+one per press (`escapeTarget`: a right-click menu, the background library, a
+popover, one level of THE window, the Camadas drawer) and with nothing open
+ends at once, fading out as Transições says, the music included; its toast
+offers **Desfazer** (also Ctrl+Z), which puts back what was on air and the
+music at the second it stopped. *Encerrar* asks first. In the Bíblia a letter
+or digit opens the quick jump. A splitter or the seek bar focused with Tab
+keeps the arrows, so resizing or seeking never moves what is on air. A
+focused select is a control, never text: it keeps ↑/↓, PageUp/PageDown, Space
+and its type-ahead.
+
+**Transições** (Configurações › Telas e saídas): *Ao pausar o som* (Corte ·
+0,2 s · 0,4 s), *Ao tirar do ar* (Corte | Suave, 0,3 · 0,6 · 1 s), *Ao entrar
+ou trocar* (Corte | Suave, 0,3 · 0,5 · 1 s, Suave 0,5 s by default, with *Por
+tipo de conteúdo* folded under it: the kinds of `src/lib/contentKinds.js`),
+*Entre áudios e vídeos* (Corte | Suave | Tocar junto) and *Tela preta e Logo*.
+
+### Menus, right click and questions
+
+- **Menus**: one component, `MenuList` (Menu.jsx): it takes the focus when it
+  opens, ↑/↓ walk it round the ends, Home/End jump, → opens a submenu and ←
+  leaves it, Enter/Space choose, Esc and Tab close. The focus goes back to
+  the opener only after a keyboard open. The menu bar answers **F10** or
+  **Alt** alone and **Alt + C/M/D/F/A**. One name, one icon, one key per
+  action in every menu (`MENU_LABELS`).
+- **Right click** (`ContextMenu.jsx`): songs, media, avisos, Setlist items,
+  slides, verses, themes, backgrounds, the monitors and the layers have a
+  menu at the pointer. It never prepares or sends by itself; anything that
+  changes what is on air is last, after a separator (`orderItems`).
+- **Questions**: anything that deletes or discards asks through
+  `useConfirm()`, the action then **Cancelar** on the right (Windows order).
+  A question that cannot be taken back (*Excluir*, *Descartar*, any `danger`
+  action) **opens on Cancelar** (`focusesCancel`), so Enter answers no; the
+  others open on the action; *Encerrar* keeps its action focused (it has
+  Desfazer). Esc answers no first.
+- **The command palette** (`/`): Enter prepares, Shift+Enter adds to the
+  Setlist, never sends. A reference ("Jo 3:16", "jo 3 16") goes to the Prévia
+  as its whole chapter.
+
+### Focus, cursor, screen readers
+
+- **Focus**: the 2 px `brand` ring for controls reached with the keyboard;
+  `fg-1` over gold (a row on the gold wash, the gold button); a field holding
+  the caret has only its quiet `fg-3` line. Behind THE window the console is
+  `inert`; Tab stays in the window or dialog on top (`useDialogFocus`).
+- **Cursor**: buttons keep the Windows arrow; the hand is for links; fields
+  the text cursor; splitters and edges their resize cursors.
+- **Screen readers**: a state drawn as a background is also `aria-current`
+  plus words in a `kx-sr` span ("no ar", "na prévia"). A `Row` with actions
+  is a `listitem` with sibling buttons named by their target. `Panel` is a
+  region titled by a level-2 heading; the dock is the page's `<main>`. Toasts
+  and what goes on air are said by one polite region (`useLiveRegion`).
+
+### Density, folds and dragging
+
+- **Density** (Ver › Densidade, per computer): **Automática** by default —
+  Compacta when the grid is under 820 px tall, else Confortável.
+  **Confortável**: 32 px rows, 14 px titles up to two lines, 32 px headers.
+  **Compacta**: 28 px single lines, 28 px headers (`panelHead`). Controls do
+  not change.
+- **Folds**: every panel but the Programa, the Prévia, the player and the
+  Bíblia's panels has a chevron right of its header's + (`FoldBtn`). Down a
+  column a folded panel is its header; across a row a 28 px strip with its
+  name standing (`writing-mode: vertical-rl`), a button that opens it. A
+  split keeps one panel open (the last chevron is inert, "Um painel da coluna
+  fica sempre aberto"). A fold takes `--dur-fold`; none with reduced motion.
+- **Dragging in a list** (`useSortable` + `dragGhost.js`): the pointer
+  carries a card the row's size (`bg-3`, its icon in `brand`, lifted); a gold
+  slot lights where it lands (`brand` 16 % over `bg-1`, a 60 % inset line);
+  the rows around glide 180 ms and the card settles into the slot. Reduced
+  motion: the same states, no animation.
+- **Everything that floats has one soft edge**: THE window, the dialogs, the
+  palette, the background library, every menu and popover, tooltips, toasts
+  and the dragged card are ringed in `line-overlay`; the lines inside them
+  are `line-soft`. Rings that mean a state keep their colours.
+
+### Live information
+
+- The service clock counts from the service's date and time, never a default
+  hour (`◷ 19:00 · 9h46`, `Culto 0:42:10`), the sentence in its tooltip.
+- Output health (`outputs.js`) decides the Saídas status, the popover's rows,
+  the pill's "2 telas" and the banner; a screen that left stays
+  *Desconectada* or *Fechada* until it returns or the operator says
+  *Esquecer*.
+- **Bible editions**: the edition chosen is the one used; read from the
+  internet when it is not installed, an installed one standing in, said so.
+  An amber dot on Livros' select marks an edition from the internet, missing
+  or the preview's samples.
 
 ## Layout
 
 **The top bar** (40 px, on `bg-0`, no panel), one line at every width. Left:
 the logo (its menu is the app's: Configurações, Saídas, Sobre o KERYX,
-Atualizar agora when due), then **KERYX | BÍBLIA** (bold caps, no icons, a
-gold underline on the one on screen — places, not commands), a divider, then
-the menu bar: Culto, Música, Mídia, Ferramentas and Ajuda (`MenuBar.jsx`,
-model in `src/lib/console/menuBar.js`). Where the bar does not fit it is
-replaced by a **☰ Menu** button (same container query) whose popover stacks
-the menus, all open, submenus inline (`flattenMenus`). Right, compact: the
-search (at most 320 px), the service clock, the clock, the Saídas status
-("2 telas", the full label in its tooltip), **Ver** (the panels glyph, `panels`) and the bell.
-There is no Telas menu and no screen-action chip in the top bar: the screen
-actions live in the Programa's pill. A new top-level action goes in the menu
-bar's model, not as another icon.
+Atualizar agora when due), then **KERYX | BÍBLIA** (bold caps, a gold
+underline on the one on screen — places, not commands), a divider, the menu
+bar (Culto, Música, Mídia, Ferramentas, Ajuda; `menuBar.js`). Under 1240 px a
+**☰ Menu** button replaces the bar, its popover the bar's menus stacked
+(`flattenMenus`). Right, compact: the search (≤ 320 px), the service clock,
+the clock, the Saídas status, **Ver** (the `panels` glyph) and the bell. The
+screen actions live in the Programa's pill; a new top-level action goes in
+the menu bar's model, never as another icon.
 
-**Each environment is a dock** (`src/lib/console/dock.js`, tested; drawn by
-`Dock.jsx`): a tree of splits and tab groups the operator arranges in
-**Ver › Editar disposição** — drag a module by its name to a side of another
-(splits) or its middle (tabs), a click on the name opens "Mover para…", ×
-puts it in the tray. While editing, a neutral banner under the top bar
-(Tamanhos: Livre | Por %, Salvar como…, Restaurar posições, Concluir; Esc
-concludes), every splitter shows its side's size in % (a click lets one type
-it), and the panels' content is veiled so a click never prepares or sends.
-Arrangements can be saved by name (Ver › Disposição; Padrão is the console's
-own). The tray, the folds and the arrangements are this computer's. Never
-place a column by hand in `Console.jsx` or `BibleEnv.jsx`: a new module is an
-entry in dock.js `MODULES` and in `modulePanels`.
+**Each environment is a dock** (`dock.js`, tested; `Dock.jsx`): splits and
+tab groups the operator arranges in **Ver › Editar disposição** (drag a
+module by its name to a side or the middle of another, "Mover para…", × to
+the tray; every splitter shows its %, Tamanhos: Livre | Por %), with named
+arrangements per environment. Never place a column by hand: a new module is
+an entry in `MODULES` and in `modulePanels`.
 
-**The culto's default dock**, by width tier measured on the console grid
-(wide ≥ 1400 px, medium ≥ 1100 px, narrow below, down to the 960 × 600
-window minimum; one arrangement kept per tier, `switchTier`):
-
-- **Wide:** four columns. Biblioteca and Slides are whole columns; the
-  centre is the **Programa** on top (the monitor or the Multiview, and the
-  player under it, always visible) and one row under it ending at the
-  centre's edge — the **Prévia** (44 % of the centre at first; its width is
-  the operator's) and the **Painel** (Notas, Aviso rápido, Timers,
-  Ferramentas, Esteve no ar). The right column is **Camadas, Temas and the
-  Setlist**, full height. The **No ar** strip runs under the Biblioteca, the
-  Slides and the centre, the Setlist's column reaching the bottom beside it
-  (Editar disposição › No ar can put it under every column).
-- **Medium:** no right column: Camadas is a drawer from the Programa's pill,
-  the Setlist sits beside the Prévia, No ar starts in the tray.
-- **Narrow:** also the Biblioteca over the Slides in one column.
+**The culto's default dock** by width tier (one arrangement kept per tier):
+- **Wide** (≥ 1400 px): Biblioteca | Slides | the centre — the Programa with
+  the player under it, then the Prévia (44 %) and the Painel (Notas, Aviso
+  rápido, Timers, Ferramentas, Esteve no ar) — | Camadas, Temas, Setlist;
+  No ar along the bottom beside the Setlist's column.
+- **Medium** (≥ 1100 px): no right column; Camadas a drawer from the pill,
+  the Setlist beside the Prévia, No ar in the tray.
+- **Narrow**: also the Biblioteca over the Slides.
 
 The Programa, the Prévia and the Setlist never go to the tray. The Slides
-column has a 300 px minimum and the Biblioteca 260 px; a tab row that does
-not fit breaks into a second line.
+column is at least 300 px, the Biblioteca 260. **One gutter: 6 px**
+(`.console` sets `--gutter`): the splitter is the gap, here and in the pages
+of THE window (`.win-body`).
 
-**One gutter: 6 px.** `.console` sets `--gutter` to 6 px (the token says 8;
-the console uses the narrowest everywhere, owner's call), and rows and stacks
-use `gap: 0`: **the splitter is the gap**. Two cards stacked without a
-splitter keep the gutter as a margin; never add a second gap beside a
-splitter. A gap a locked module would own is a `.dock-gap` with no handle.
-Pages of THE window follow the same rule (6 px between panels, `.win-body`).
-
-**The Programa** has no card and no header (`Panel bare`): its screen's top
-lines up with the panels beside it, and its caption and controls are **one
-pill inside the screen, bottom-right** (`ProgramaPill`, `.prog-pill`): a dot
-in the state's colour (red on air, blue locked with "Travado", amber when an
-output failed, grey "Nada no ar"), the title in that colour — only when the
-player does not already name the item (`airInPlayer`) — the slide "2/6",
-"2 telas", then Voltar ao anterior, the Camadas drawer (only while Camadas is
-in the tray), Multiview and the screen actions Tela preta, Logo, Limpar
-as glyphs, then a separator and **Encerrar apart, in `air-fg`** (the one
-that takes everything off; Rodada DS1, `pp-end`; also in the Bíblia's No ar
-pill). "Travado" is 12 px. As the screen narrows it folds once: at 560 px
-"2 telas" goes, at 480 px the buttons go into a "…" (the Programa's menu,
-where Encerrar is last, after a separator); over the Multiview it is always
-folded. There is no "Programa" word.
-
-**The Prévia** has no card either: its caption is a badge in the screen's
-top-left corner (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia ·
-travado" while locked) and it has no send button.
+**The Programa** has no card and no header: its pill (above) is its caption
+and controls. **The Prévia** has no card either: its badge top-left, its pill
+(*Enviar ao ar*, "Usar o tema" for a theme's example) bottom-right, the "não
+vai mostrar" lines stacked above the pill.
 
 **The player** sits under the Programa, always visible, dimmed while idle
-(its icon only, no placeholder words), in two rows (64 px; the slot is
-`PLAYER_SLOT` 72 px, so starting a video never moves the monitors). Row 1 is
-what plays: the file icon, the title (at most 28 % of the row and 260 px,
-ending in "…"; the whole title is its tooltip), "n/m" in a list, the elapsed
-time, the progress bar (it drags, one seek on release; Tab focuses it and
-←/→ step 5 s; hovering it shows a light band and a tip with the time, the
-slide there and a 160 × 90 picture: a frame for a video file, the cover for
-a YouTube link, none for audio) and the remaining time.
-Row 2 is the controls: ⏮ −10 ⏯ +10 ⏭, the eye
-("Tirar o vídeo · o som continua"; pressed and red while the video plays as
-sound only), Parar, the layer switch, the letra automática chip, the volume
-and the L/R meters (green, amber from −3 dBFS). Where the sound goes is the
-mute's tooltip; only "Projetor fechado" shows, an amber status chip (not a
-button) with an amber dot on the speaker. It
-narrows with container queries; Tocar, the eye, Parar and the mute always
-stay.
+(its icon only), in two rows (the slot is 72 px, so starting a video never
+moves the monitors): what plays (icon, title up to `min(28cqw, 260px)`, n/m,
+times, the seek bar that drags and previews the moment under the pointer)
+and the controls (⏮ −10 ⏯ +10 ⏭, the eye, Parar, the layer switch, the letra
+automática, the volume and the meters). Only "Projetor fechado" shows where
+the sound goes, as an amber status chip.
 
-**Slides and No ar.** The Slides column is the item in hand: the Prévia's
-slides whenever it holds an item, else what is on air. **No ar** is always
-what is on air, one row of cards while it is low (at least 104 px, as tall as
-its slide with the most lines) or a list in a column. It exists only while
-lyrics are on air (a song, a passage, free text, an Escola material, a
-presentation's pages, not covered by Tela preta, the Logo, a timer, an aviso,
-a picture or a video); otherwise it folds away and the rest takes its room.
-It is pinned to its band at the bottom. With No ar off screen and lyrics on
-air while another item is in the Prévia, the Slides column has two tabs,
-No ar · Prévia.
+**Slides and No ar.** The Slides column is the item in hand (the Prévia's
+slides, else what is on air). **No ar** is always what is on air, one row of
+cards while low or a list in a column, and exists only while lyrics are on
+air; otherwise it folds away. With No ar off screen the Slides column has two
+tabs, No ar · Prévia.
 
-**Multiview** (the Programa's pill or right-click menu) splits the Programa's
-16:9 into four 16:9 quadrants, 2 px `line` between them, in the same place
-and size. Each quadrant is one output showing what is on air its own way; its
-label sits on the image, bottom left, as on a broadcast multiviewer: a `bg-0`
-chip at 82 %, the output's glyph and name (a click picks the output) and
-where it is on screen (`fg-2`; `fg-3` with no screen open; `warn-fg` for a
-problem). Under 200 px a quadrant keeps only the name.
+**Multiview** splits the Programa's 16:9 into four outputs, 2 px `line`
+between them, each labelled bottom-left like a broadcast multiviewer.
 
-**Camadas** edits no look: the layers come first (Texto principal, Fundo,
-Logo, the overlays), each with an eye, a padlock, a pencil on hover; the
-settings under the list stay folded until a pencil opens them. Its header's
-**+** has two items only, Sobreposição de texto (up to 5) and Logo da igreja.
-The Fundo's pencil opens a menu whose title names whose background is on
-screen and offers "Trocar o papel de parede…". Text look is edited only in
-the Editor de temas. **Temas** (right under Camadas) is its 9 slots of
-themes as small screens, 3 a row; a click makes a theme the theme in use.
-Both are as tall as what they hold (`Measure` → `locked`).
+**Camadas** edits no look: the layers first (eye, padlock, pencil), the
+settings folded until a pencil opens them; its + has two items (Sobreposição
+de texto, Logo da igreja). **Temas** is its 9 slots of themes as small
+screens. Both are as tall as what they hold.
 
-**The Bíblia** is the console's second environment, a dock of its own
-(Livros, Capítulos, Versículos, Texto, No ar; the text and No ar never
-leave), three columns at first:
-- **Livros · Capítulos · Versículos**: Livros' header holds the version, Abrev
-  | Nomes, the install + and a view menu (Tema da Bíblia…, cell size); then
-  Livros (the 66, coloured by group), Capítulos (as tall as its cells, up to
-  40 % of the column) and Versículos (cells: a click selects as clicking the
-  text does — Ctrl adds, Shift ranges, a double click projects).
-- **Texto**: a header with the chapter, Selecionar todos, Limpar seleção and
-  Ler | Comparar; under it a 36 px band with the Recentes, Favoritos and
-  Anotações dropdowns, their counts inside the lists; then the verses.
-- **No ar**: no header — the screen on top with the Programa's pill, icons
-  only (the state's dot, Tela preta, Logo, Limpar, Encerrar), then
-  Selecionado. The Bíblia has no Prévia, and its No ar never folds away.
+**The Bíblia** is the second environment, a dock of its own (Livros,
+Capítulos, Versículos, Texto, No ar): Livros' header holds the version, Abrev
+| Nomes, the install + and a view menu; Texto's header the chapter, two icons
+and Ler | Comparar, a 36 px band of Recentes, Favoritos and Anotações under
+it; No ar has no header, its screen and the pill's screen actions.
 
-**THE window.** Configurações, the song editor, Sincronizar, the planner, the
-media library, the aviso editor, the Escola bíblica, Relatórios and the
-theme and screen editors are pages of **one floating window over the live
-console** (`.win-dialog` on a `.win-scrim`; `WinBar`: the ← Voltar chip from
-level 2, the title, the page's tools, ⧉ Destacar em janela, the (x)
-"Fechar · Esc"). Opening from inside navigates in the same window; Esc, the
-Voltar chip or the scrim pop one level, the (x) closes the stack. Two sizes
-(Padrão, and `.is-editor`), resized by its edges and corners (min 760 × 480),
-columns inside resized by splitters as in the console. ⧉ moves the page to a
-window of its own (`/Janela`), the same frame filling it. While the window is
-open the Programa monitor draws one still frame (the air never pauses).
-
-## How the app uses it
-
-- `tokens.css` is loaded by the console (`src/pages/Console.jsx`), and its
-  components in `src/components/console/` follow `bundle.css` class by class
-  (`kx-panel`, `kx-row`, `kx-mon`, …), with `console.css` over it. Tailwind
-  carries the shadcn theme for the pages outside the console
-  (`src/components/ui/`, the error and network pages); it is not built from
-  `tokens.json`.
-- Fonts: Geist, shipped with the app (variable woff2 in `src/assets/fonts/`,
-  `@font-face` in `src/fonts.css`, SIL OFL 1.1 in `public/fonts/`), with
-  Inter/system fallback; `tnum` everywhere. Nothing is fetched from the
-  internet: the console, the output windows and the network screens load
-  the same file, so projected lines break in the same places. It is also
-  the "Sem serifa" of every theme (`FONT_MAP.sans`).
-- Live information has its own type steps: `live-cap` 12/16 600 for a
-  monitor's state word (the Prévia's badge, a captioned `Monitor`'s word),
-  `live-title` 16/22 600 for what is on air where a monitor carries a
-  caption, `next-title` 14/20 500 for what is prepared, `alert-title`
-  13/18 600 for an output failure. `meta` (11 px) is telemetry only, never a
-  live or prepared item's name.
-- **Density** (Ver › Densidade, saved with the layout per computer):
-  **Automática** is the default (`shownDensity`): Compacta when the console's
-  grid is under 820 px tall (a notebook), else Confortável. **Confortável**:
-  32 px list rows (`row-comfortable`), 14 px titles up to two lines — one
-  line, ending in "…", on a row with hover buttons (Rodada G1: the buttons
-  took the room and the title wrapped, growing the row) — and 32 px
-  panel headers. **Compacta**: 28 px single lines and 28 px panel headers
-  (`panelHead`, which the locked heights follow). A chosen density wins;
-  controls do not change.
-- **One padding rule for panels**: a panel's header is one line, 32 px
-  (28 in Compacta), its text 12 px (`space-3`) from the panel's edge and its
-  last button 12 px from the right one (the first row under a header starts
-  4 px below it); its controls (buttons, selects, Seg) are 24 px tall and
-  8 px apart, as in the windows' bar (`.win-bar`). Whatever has a box of its
-  own — list cards, the Bíblia's cells, the Temas tiles, the search field,
-  tabs, the No ar agora monitor — sits 4 px (`space-1`) in from the column,
-  with its text at 12 px; listheads and sub-titles (Selecionado, a Temas
-  heading inside Camadas) at 12 px; a band under a header (the Biblioteca's
-  search row, the Bíblia's Recentes/Favoritos/Anotações) is 36 px, its
-  controls 28 px, 4 px in and 4 px apart, with a 1 px `line` under it. A
-  header never wraps into a taller block, and a panel carries no text it
-  does not need: no hints in headers, counts inside the lists they count. No
-  panel gets an inset of its own. A listhead never repeats the page title
-  and its "· hint" is never in caps.
-- **Folding a panel**: every panel but the Programa, the Prévia, the player
-  and the Bíblia's panels has a chevron right of its header's + (`FoldBtn`;
-  "Dobrar" / "Abrir"). Folded down a column, the panel is its header and its
-  neighbours take the room; folded across a row, a 28 px strip on `bg-1`:
-  the chevron at the header's height over the module's name standing up
-  (`writing-mode: vertical-rl`, the `section` style), the whole strip a
-  button that opens it (hover `bg-2`). A split always keeps one panel open:
-  the last one's chevron stays, at `dim`, inert, with the tooltip "Um painel
-  da coluna fica sempre aberto". Folds are this computer's and survive a
-  restart; while editing the arrangement every panel is open. **A fold takes
-  180 ms** (owner 2026-10-16), the same for No ar folding away; none with
-  reduced motion.
-- **Grupos** (Rodada H0, owner 2026-10-19; `CfgGroup`, `.cfg-group`): the
-  areas of Configurações and the editors open and close. The header is an
-  h3 28 px tall whose button holds a 12 px chevron (down open, turned −90°
-  closed) and the 11 px `kx-section` title; while closed a one-line
-  `kx-meta` summary says what is chosen ("Tirar Suave 0,6 s · Entrar Suave
-  0,5 s · Áudios Corte"), gone when open; the group's actions sit at the
-  right. The body folds to nothing in 180 ms (`--fold-ms`, the panels'
-  ease), stays mounted and inert; none with reduced motion, none when a
-  search jump opens it. Groups are 12 px apart with a hairline; a page's
-  first area is the same heading without the chevron (static, the chevron's
-  slot kept so titles line up), and only the areas after it, or the rare
-  ones, fold. Hover `bg-3` on the header, the focus ring inside it. The
-  title is the console's grey caption at weight 600 (never gold: gold is the
-  brand and what is live). State is the closed summary, never a header hint;
-  a page's groups run identity first, then what changes most, then the rare
-  (Rodada H1, every Configurações section). **The window's other pages**
-  (Rodada H4) use it too, its CSS scoped under `.console` (not `.cfg`):
-  the Editor de música (Dados · Notas · Cifra separada · Tema desta música ·
-  Tema por parte), Planejar o culto (Dados · Papel de parede e tema), the
-  Aviso (Tipo · Texto na tela · Fundo) and the Escola bíblica's "Dados da
-  turma"; ids `<página>.<grupo>`, summaries in
-  `src/lib/console/pageGroups.js`. Mídia, Relatórios and Sincronizar keep
-  no groups: only the panel rhythm (a 36 px band, 4 px in and apart; cards
-  12 px apart).
-- **Os cinco blocos dos Ajustes** (Rodada H2, owner 2026-10-19; Editor da tela › Ajustes, `settings/ajustes/`): the output's settings are five `CfgGroup`s in this order — Destino (first, `fold={false}`: where the screen is and its name), Conteúdo (what it receives), Aparência, Comportamento (closed) and Diagnóstico (closed, read-only) — each with its one-line summary while closed (`ajustesSummaries.js`), the group ids `editor.<bloco>` (this computer's open/closed state like any group). The rule's list ("O que esta tela recebe") is one set of toggle chips under three small headings (Textos · Mídia · Ferramentas e avisos) and "Por cima de tudo", with the shortcut chips above (the one that matches is pressed, "Personalizado" a dashed chip when none does); chips take the same look as the old Mostrar's (`.cfg-kinds`, `.cfg-rule-prof`), and the Prévia's warning (`.kx-prev-warn`) and the Multiview label's rule chip (`.mx-rule`) use the console's amber and grey.
-- **List rows are inset cards**: every `kx-row` and `kx-layer` in the
-  console (Biblioteca, Setlist, the tabs panel, Camadas, Configurações' menu,
-  the views) sits 4 px in from its column with `radius-control` and 2 px
-  between rows, so the hover and the states fill a card, never the column
-  edge to edge; the inset comes off the left padding, so the text keeps its
-  place. One rule in `console.css`; don't override it per list. A list goes
-  edge to edge only when the owner asks for it (the Slides column and No ar,
-  to gain room).
-- **Slides and verses are rows**, not cards: in a list (the Slides column,
-  No ar in a column, the Bíblia's Ler and Buscar) each is a row with a 1 px
-  separator, so a short screen shows more. The state is the row's background
-  **plus a bar on its left edge** (Rodada DS1, owner 2026-10-20, "mix do A
-  com D"; until then the background alone, and on air and Prévia differed by
-  hue only, 1.06:1, one colour to a protanope): **on air, the brand's gold**,
-  a light wash (`--live` = `brand`, `--live-bg` = 36 % of it over `bg-2`)
-  and a **3 px `--live` bar** (`--live-bar`; the rest of the console keeps
-  `air` red for "no ar"); Prévia or selection, a dark wash, 16 % `prev` over
-  `bg-2` (1.56:1 in lightness against the gold; `src/lib/stateColors.test.mjs`
-  holds ≥ 1.4:1 and ΔE ≥ 20 for protans and deutans); **the next slide, a 2 px
-  `fg-3` bar** (`--next-bar`) and its number in `fg-1`; on air and in the
-  Prévia at once, the Prévia's green, the gold bar and the number on a
-  `brand` chip; a note, a mark in the corner. The labels ("Verso",
-  "Refrão") and numbers on a wash pass AA: `fg-2` on the Prévia's, `fg-1`
-  on the gold one (`fg-2` there is 4.15:1); elsewhere the label is `fg-2`.
-  The bars are inset box-shadows: a Windows contrast theme drops them and
-  its own block draws the states. A row that is done (the Setlist's items
-  before the one on air) dims only its glyph; its title steps down to
-  `fg-3`, never an opacity. A slide keeps the editor's
-  lines, one line each, a line too long for the column ending in "…" (the
-  whole text in the tooltip); verses wrap. The No ar strip, low across the
-  window, keeps its cards (`.onair-card`). The classes stay
-  `.kx-slide`/`.kx-verse` with `is-prev`/`is-air`/`has-note`.
-- **Dragging in a list** (the Setlist, the planner, Camadas, the Editor's
-  elements; `useSortable` + `dragGhost.js`): the pointer carries a card the
-  size of the row, `bg-3`, its icon in `brand`, title and time, lifted
-  (scale 1.03, a deep shadow). Where it will land a slot lights up: a
-  card-shaped placeholder, `brand` at 16 % over `bg-1` with an inset line of
-  `brand` at 60 % — the dragged row itself, moved there, or a placeholder of
-  a row's height for a drop from elsewhere. The rows around it glide
-  (180 ms, `ease-out`); on the drop the card settles into the slot (180 ms)
-  before the list re-renders. A drop onto the Prévia or the Programa lets the
-  card fade. Reduced motion: the same states, no animation.
-- **Everything that floats has one soft edge** (owner 2026-10-20, Rodada N4,
-  "Suave"): THE window, the dialogs (ConfirmDialog, PromptDialog, Encerrar),
-  the palette, the background library, every menu and popover (`kx-pop`:
-  the (+) menus, the right click, the menu bar, the Menu button, Ver, the
-  tabs' chooser, the Bíblia's lists), tooltips, toasts and the dragged card
-  are ringed in `--line-overlay` (`#2c2b27`, darker than `line`), through
-  `--shadow-popover` and `--dialog`; the shadow gives the depth. Lines
-  inside them (menu separators, the window's bar, a dialog's header and
-  footer, the library's side and footer) are `--line-soft` (`line` at
-  60 %). Never `line-strong` on something that floats: it glowed on the
-  dark ground. Rings that mean a state (focus, chosen, Prévia, on air)
-  keep their colours, and the Windows contrast block is unchanged.
-- **Focus.** Buttons and other controls reached with the keyboard get the
-  2 px `brand` ring; **over a gold surface** (a row on the `--live-bg`
-  wash, the gold button) the ring is `fg-1` (Rodada DS1, `d4_foco`), since
-  gold on gold vanished.
-- **Switches** (`.sw2`, `role="switch"` + `aria-checked`: `SwitchRow` in
-  Configurações, the Saídas popover's rows, the Setlist's "Avançar sozinho",
-  Abrir ao iniciar, the aviso's sound): **32 × 20**, off a `bg-3` track with
-  an `fg-2` knob, **on an `fg-1` track with a `bg-0` knob** (Rodada DS1,
-  `d4_switch` = neutro; it was the Prévia's green, so "ligado" read as
-  "preparado"). The knob lights on hover; on, the track dims to `fg-2`.
-  Under a contrast theme the track and knob take `ButtonText` / `Highlight`. A text field (input, select, textarea, the search)
-  never gets the gold ring while it holds the caret: its focus is a quiet
-  inset 1 px line in `fg-3`, grey, at least 3:1 against the field (owner
-  2026-10-16), so the operator sees where they type without a gold cue.
-- **Fields** (audit C-21): one look for every text field and select,
-  `kx-input` / `kx-select` (and `kx-field`, an input with a glyph — the
-  `Field` component) in `bundle.css`: 28 px, **24 px with `is-small`**
-  (Configurações' selects, inline renames, the planner's service pick),
-  `bg-2`, a 1 px `line` line on hover (`line-strong` until Rodada N4), and focus as the quiet 1 px
-  `fg-3` line (5.5:1 on `bg-2`, 4.9:1 on `bg-3`, ≥ 3:1 as WCAG 1.4.11 asks).
-  It is an outline, so a Windows contrast theme keeps it. Disabled dims
-  (`--dim`); `[aria-invalid="true"]` (and the Sincronizar time's `is-bad`)
-  draws the line in `warn`. Textareas are `kx-input` with their own height.
-  The console's older field classes (`pl-input`, `ed-text`, `cfg-select`,
-  `cfg-inline`, `pl-pick`, `fg-input`, `mv-rename`, `qt-min`, `sync-time`,
-  the notes, the Camadas and Bíblia version selects) wear it from one
-  `:where()` block in `console.css` and keep only their width or ground; a
-  new field takes `kx-input` / `kx-select`, never a class of its own. Big
-  search fields keep their size (the palette 40 px, the lyrics search
-  36 px, the quick jump 40 px) and the same states.
-- **Numbers** (Rodada HF2): a number with steps is `NumBox` (kx.jsx,
-  `kx-num` in `bundle.css`): `− [4,8] + %`, 24 px tall, the field's `bg-2`
-  and quiet focus, the steppers 24 × 24 (out of the Tab order: the field
-  takes ↑/↓, Shift ×10), the unit after the + in `fg-3`, a comma as the
-  decimal point. Typing commits on Enter or when the field loses focus,
-  clamped and rounded to the step. Presets that are only shortcuts sit
-  beside it as a `Seg` that writes the number and is pressed when it is
-  equal (the Editor de temas' Tamanho: `NumBox` 1–12 % + PP…GGG). A
-  slider stays for what is felt rather than read (opacity, the dim).
-  The Editor de temas' form is `CfgGroup`s since the Rodada HF3 (ids
-  `tema.<grupo>`; summaries `fontSummary`…`transitionSummary` in themes.js):
-  Nome e padrão (plain heading: Nome, Tema padrão, Comentário, Título do
-  item), Fonte and Fundo open, Cor e efeito, Caixa do texto, Posição and
-  Transição closed with a summary ("Bebas Neue · 4,8 % · negrito"). The
-  Fonte rows: Fonte (FontPicker and
-  its note), Tamanho, Estilo (N and I toggles, 24 px, `aria-pressed`, and
-  Maiúsculas), Entrelinhas (0,9–2, "1,22 = normal"), Espaçamento
-  (−0,10–0,50 em); Contorno (0–8 px and its colour) sits under Efeito e
-  cor, Comentário under the name.
-- **Live fill buttons** (audit C-22): *Enviar ao ar* (`kx-btn-prev`),
-  *Destravar* (`kx-btn-rh`) and *Encerrar* / *Excluir* (`kx-btn-air`) step
-  **darker** on hover and when pressed (`--prev-fill-hover`/`-pressed`,
-  `--rh-fill-…`, `--air-fill-…`: white stays 5.6–7.4:1; a lighter shade
-  would drop under 4.5:1). Disabled goes neutral like the gold button
-  (`bg-3`, `fg-3`) and never lights on hover; the focus ring is the gold
-  button's (light `fg-1`, 2 px outside the fill). *Destravar* on the lock
-  banner is 24 px, like every banner button.
-- **Cursor.** Buttons keep the Windows arrow cursor (owner 2026-10-16), as
-  in a desktop program; the pointer hand is for links only. Text fields
-  show the text cursor, splitters and window edges their resize cursors.
-- **Windows contrast themes** (audit C-05): under forced colours Chromium
-  repaints backgrounds and borders in the system's colours and drops
-  shadows, so the states (all of them backgrounds) and the controls drawn
-  with fills or shadows would vanish. One `@media (forced-colors: active)`
-  block at the end of `bundle.css` (and the console's at the end of
-  `console.css`) gives them cues in system colours only: on air,
-  `Highlight` fills the row with `HighlightText` (still the row's
-  background); Prévia, a 2 px dashed `LinkText` ring; next, a 2 px dotted
-  ring; chosen, pressed or open (`is-on`, `is-selected`, Seg, tabs), a 2 px
-  `Highlight` ring; switches, fields and outline or filled buttons get
-  `ButtonText` / `FieldText` borders, panels and popovers a 1 px edge. A
-  ring never replaces the keyboard's focus ring, and the normal look does
-  not change. The monitors (`.kx-mon-screen`, `.kx-pip`, `.cfg-prev`) and
-  every output opt out (`forced-color-adjust: none`): what the congregation
-  sees keeps its own colours. A new state or control drawn as a background
-  gets its line there (`src/lib/forcedColors.test.mjs`).
-- Output health (`src/lib/console/outputs.js`, tested) decides the Saídas
-  status in the top bar, the popover's rows, the pill's "2 telas" and the
-  banner, from what the main process reports and a memory of the session: a
-  screen that was there and left stays *Desconectada* or *Fechada* until it
-  returns or the operator says *Esquecer*.
-- Projected screens are not styled by these tokens: they use the church's
-  themes and backgrounds (user data) and only the `screen-*` styles.
-- **Screen readers** (audit batch 4, 2026-10-16; kx.jsx). A state shown by a
-  background (on air, Prévia) is also `aria-current` plus words in a
-  `.kx-sr` span ("no ar", "na prévia": `stateWords`/`SrState`), never a
-  glyph — the owner keeps on air vs Prévia colour only. A `Row` with actions
-  is a `listitem` (its list `role="list"`) with sibling buttons named by
-  their target ("Ir para João 3:16-17", "Ocultar o Fundo"); without actions
-  it is one button. `Panel` is a region whose title is a level-2 heading; the
-  dock is the page's `<main>`. Toasts and what goes on air are said by one
-  always-mounted polite region (`useLiveRegion`), never by a `role="status"`
-  that mounts with its text. A field or `Seg` beside a visible label is named
-  by it (`label`, or `FormRow`'s `RowLabel`), never by its placeholder.
-  `Seg`'s chosen option has a 1 px `fg-3` inset (≥3:1) besides its fill; a
-  done Setlist row dims its glyph and title only, its meta and time stay
-  `fg-3`.
+**THE window** (the Window component): its pages navigate in place; Esc, the
+Voltar chip or the scrim pop one level, the (x) closes the stack; ⧉ moves a
+page to `/Janela`. While it is open the Programa draws one still frame (the
+air never pauses).
 
 ## Outputs and screens on the network
 
-The outputs are Projeção, Letras, Vídeo, **Avisos** (the output of the
-avisos in sequence, page `/CommunicationProjection`; owner 2026-10-16, it was
-called "Comunicação"), Palco, Tela do pastor and Transmissão. They render the
-live state with `ScreenRenderer`; the Projeção has no click-to-advance (owner
-2026-10-16): only the console, its keys, the outputs' own keys and the
-controle remoto move a slide.
-
-**Each screen owns its design** (`OutputPref.design`): the Editor de telas, a
-page of THE window, edits one screen's design on a canvas drawn by the
-renderer itself (what is on air, or an example), with the brand colour for
-the selection, its eight handles and the magnet's guide lines, and that
-screen's settings beside it. Clicking a screen is already editing it: with no
-design of its own the canvas opens seeded with the page's ready drawing, and
-nothing is saved without "Salvar a tela". Every screen is landscape (16:9),
-the Pastor's included. Elements hidden right now (by their rule, or with
-nothing to say) are drawn at 35 % with a dashed outline so they can still be
-picked. In a public output the **Projeção** element is the output's own view
-(Mostrar, theme, scale), and a design with a timer element takes the tool out
-of it, so the timer sits in a corner over the words.
+The outputs are Projeção, Letras, Vídeo, **Avisos**, Palco, Tela do pastor and
+Transmissão (`surfaces.md` › Saída de audiência). They render the live state
+with `ScreenRenderer`; no output advances on a click. **Each screen owns its
+design** (`OutputPref.design`), edited in the Editor de telas on a canvas the
+renderer draws, with that screen's settings beside it; every screen is
+landscape (16:9).
 
 **Screens on the network** (`src/components/network/net.css`): `bg-0`
-ground, Geist, tokens, sized in container units so a phone, an upright
-tablet and a 4K TV get the same layout in proportion. Letras and Vídeo are
-views of the live state; waiting, they show the live idle look, never a page
-of their own. Palco: title, Tom / BPM / time chips, the slide large, the
-cifra beside it (under it when upright), the next slide, slide dots (red = on
-air). Tela do pastor: the projected image as the projector draws it, the
-clock, how long the service has run, and the next items of the Setlist. The
-start page groups the screens (Público, Palco, Transmissão) as cards and
-offers the last one used (gold, the one ordinary action). Connection, said
-once for every page but Transmissão (`NetStatus`): a full screen while it has
-never connected (*Conectando ao KERYX…*), then an amber chip over the last
-image while it reconnects (*Reconectando… tentativa N*).
+ground, Geist, sized in container units so a phone, an upright tablet and a
+4K TV get the same layout in proportion. Palco: title, Tom / BPM / time
+chips, the slide large, the cifra, the next slide. Tela do pastor: the
+projected image, the clock, the service's time and the next items. The start
+page groups the screens (Público, Palco, Transmissão). Connection is said
+once (`NetStatus`): a full screen while it has never connected, then an
+amber chip over the last image while it reconnects.
 
 **The Aviso rápido** is one bar on every screen, in each screen's look
-(`AlertBar`): by default an amber band across the top (the Palco's at the
-bottom); each output picks position, style, colours, size and entrance in
-the Editor's Ajustes › Aviso rápido.
+(`AlertBar`): an amber band across the top by default (the Palco's at the
+bottom); each output picks its position, style, colours, size and entrance.
 
 ## What the canvas does not cover
 
 Views the app has and the canvas never drew; they follow this system but were
-designed in the app: THE window and its pages (the song editor, Sincronizar,
-the service planner, the media library, the aviso editor, Escola bíblica,
-Relatórios, Configurações, the Editor de temas and the Editor de telas), the
-background library, the dock and Editar disposição, the Temas panel, the
-player's two rows and the Bíblia's dock.
+designed in the app: THE window and its pages, the background library, the
+dock and Editar disposição, the Temas panel, the player's two rows, the
+Bíblia's dock, the pills, the groups, the switch and the check.
 
 ## Histórico
 
@@ -634,22 +623,52 @@ Kept so old commits and the canvas make sense; none of this is a rule.
   *em N telas*); the pill replaced it in Rodada E1.
 - **2026-10-10 — Camadas' look controls** (Opacidade, Largura, Caixa,
   Escurecer, Desfoque…) and **2026-10-12 — Fundos gerados' sliders in
-  Camadas** moved out on 2026-10-14: Camadas edits no look, a picture's dim,
-  blur, fit and position are its own (the library), generators are edited in
-  the library's Gerados.
+  Camadas** moved out on 2026-10-14: Camadas edits no look.
 - **2026-10-12 — Editar layout**: columns and stacked cards moved by grips
   (`layout.order`/`layout.stacks`, `arrange.js`, now only read to build a
   first dock). The free dock and Editar disposição replaced it on 2026-10-13.
-  The live column of then (Programa, player slot, Prévia with *Enviar ao ar*,
-  a Próximo line, a "Depois" list, 8 px gaps) is gone, and so is the 36 px
-  one-row player.
 - **2026-10-12 — Layouts das telas**: designs as a catalogue assigned to
-  screens (*Usar em…*, Ajustes › Layout). Since 2026-10-13 each screen owns
-  its design.
+  screens (*Usar em…*). Since 2026-10-13 each screen owns its design.
 - **2026-10-13/14 — slides and verses as cards** with a 2 px side bar, then
-  as cards without it; rows since the small-screen review of 2026-10-14.
+  as cards without it; rows since the small-screen review of 2026-10-14
+  (verses cards again the same day). **List rows became inset rounded cards**
+  (owner 2026-10-14); the old square, edge-to-edge row and the red on-air
+  slide went from `bundle.css` in Rodada DS3.
+- **2026-10-14 — the floating dialogs' shadow** (`dialog`, owner); its ring
+  softened in Rodada N4.
 - **Until 2026-10-14 — Configurações › Aparência** held the church's slide
-  transition and the backgrounds; it is gone (Culto, Temas e fundos, Telas e
-  saídas). The slide-to-slide transition is the theme's.
-- **Until 2026-10-14 — the full-screen views** had a *Console* back button
-  (`BackBtn`); THE window and its WinBar replaced them (Rodada C).
+  transition and the backgrounds; it is gone. **The full-screen views** had a
+  *Console* back button; THE window and its WinBar replaced them (Rodada C,
+  2026-10-14: "uma janela, com Voltar"); edges and corners in Rodada D3,
+  Destacar em janela in Rodada F5.
+- **2026-10-16** (owner): buttons keep the Windows arrow; a field's focus is
+  the quiet `fg-3` line; folds take 180 ms (Rodada F4); every panel folds;
+  the contrast-theme blocks (audit C-05); questions that cannot be taken back
+  open on Cancelar (audit C-10); the Programa lost its header for the pill
+  (Rodada E1); dragging in a list carries a card (Rodada E2).
+- **2026-10-19 — Rodada H0/H1/H2/H4**: the groups that open and close
+  (`CfgGroup`; the title at 600, grey, never gold), every Configurações
+  section regrouped, the Editor da tela's five blocks, the window's other
+  pages. **Rodada G1**: hover buttons are glyphs only; a row with them is one
+  line. **Rodada HI**: Lucide replaced the hand-drawn icon set (`bundle.js`,
+  removed in Rodada DS3). **Rodada HF2/HF3**: `NumBox`; the Editor de temas in
+  groups.
+- **2026-10-20 — Rodada N4** ("Suave"): one soft ring on everything that
+  floats (`line-overlay`, `line-soft`); `line-strong` had glowed on the dark
+  ground. **Rodada N5**: the Prévia's pill with *Enviar ao ar*.
+- **2026-10-20 — Rodada DS1** ("mix do A com D"): on air and Prévia in the
+  lists had differed by hue alone (gold 24 % and green 24 %, 1.06:1 in
+  lightness, one colour to a protanope); the gold went to 36 % with a 3 px
+  bar, the green to 16 %, the next slide got its grey bar; the switch went
+  neutral (it was the Prévia's green, so *ligado* read as *preparado*);
+  Encerrar stands apart in the pill; the keyboard's ring over gold is light.
+- **2026-10-20 — Rodada DS2** (`d6_escala` = "sete"): the type scale of seven
+  sizes (the old 9, 10 and 10.5 px went to 11, 11.5 to 12, 12.5 to 13) and the
+  named layers replaced 13 hand-typed sizes and 29 z-index numbers.
+- **2026-10-20 — Rodada DS3** (`d7_fonte` = "sim", nothing changes on
+  screen): `tokens.json` became the one source (`npm run ds:tokens`), the
+  window, toast, switch, check, pill and group moved from `console.css` into
+  `bundle.css` as kx- components, the shipped slides, verses and rows replaced
+  the stale ones, the literal lint, this page as a reference and
+  `surfaces.md`. Until then `tokens.json`, `tokens.css` and `bundle.css` were
+  kept in step by hand and `console.css` was what shipped.
