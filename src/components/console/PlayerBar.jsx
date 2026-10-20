@@ -6,7 +6,7 @@ import { useLiveNow } from "@/hooks/useLiveState";
 import { playerLayers, playerLayer, playerOp, videoSwap, LAYER_LABEL, clock, followsItem, followLabel, followAction, followTicks, clockLength, seekAt, SEEK_KEY_SECONDS } from "@/lib/console/player";
 import { levelsNow, useReportedDuration, useMeterFeed } from "./meterStore";
 import { useFramePreview } from "./useFramePreview";
-import { slideNameAt, tipLeft, FRAME_W, FRAME_H } from "@/lib/console/seekPreview";
+import { slideNameAt, tipLeft, tipPicture, FRAME_W, FRAME_H } from "@/lib/console/seekPreview";
 
 const HOT = 0.95; // about -3 dBFS
 const FALL_PER_FRAME = 0.035;
@@ -135,15 +135,17 @@ const SEEK_KEYS = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 };
 // The pointer over the bar without a press (Rodada N1, as on YouTube): the
 // tip says the moment under it — the time, the slide of the letra automática
 // there (`ticks`) and, for a video of the computer (`frames`), a frame of
-// the file (useFramePreview: an element of its own, never the one on air) —
-// and a light band runs up to it. Nothing seeks until a press; the tip goes
+// the file (useFramePreview: an element of its own, never the one on air),
+// for a YouTube link its cover, fixed (`cover`; gone when it cannot load,
+// offline) — and a light band runs up to it. Nothing seeks until a press; the tip goes
 // when the pointer leaves. While the hand holds the bar the tip follows the
 // thumb as before. Nothing at all while the length is unknown.
-function Seek({ value, duration, can, scrubbing, ticks, frames, onScrub, onSeek }) {
+function Seek({ value, duration, can, scrubbing, ticks, frames, cover, onScrub, onSeek }) {
     const held = useRef(false);
     const tipRef = useRef(null);
     const [hover, setHover] = useState(null); // { x, w, t }: the pointer, in the bar's px
     const preview = useFramePreview(frames, Boolean(frames));
+    const [coverFailed, setCoverFailed] = useState(null); // the cover that could not load
     const at = (e) => seekAt(e.clientX, e.currentTarget.getBoundingClientRect(), duration);
     const pointAt = (e) => {
         const box = e.currentTarget.getBoundingClientRect();
@@ -161,6 +163,7 @@ function Seek({ value, duration, can, scrubbing, ticks, frames, onScrub, onSeek 
     const showTip = Boolean(duration) && (scrubbing || hover) && tipT != null;
     const slide = showTip ? slideNameAt(ticks, tipT) : null;
     const showFrame = showTip && Boolean(frames) && !preview.failed;
+    const showCover = showTip && !frames && Boolean(cover) && coverFailed !== cover;
     const { show } = preview;
     // Placed after it renders (its width is the frame's or its words'), kept
     // inside the bar; the frame asked for the same second.
@@ -201,8 +204,9 @@ function Seek({ value, duration, can, scrubbing, ticks, frames, onScrub, onSeek 
             {ticks.map((t) => <span key={t.i} className="pl-tick" style={{ left: `${t.pct}%` }} title={`Slide ${t.label}`} />)}
             <b style={{ left: `${pct}%` }} />
             {showTip && (
-                <span className={`pl-tip ${showFrame ? "has-frame" : ""}`} ref={tipRef} aria-hidden="true">
+                <span className={`pl-tip ${showFrame || showCover ? "has-frame" : ""}`} ref={tipRef} aria-hidden="true">
                     {showFrame && <canvas ref={preview.canvasRef} width={FRAME_W} height={FRAME_H} />}
+                    {showCover && <img className="pl-tip-cover" src={cover} alt="" width={FRAME_W} height={FRAME_H} draggable={false} onError={() => setCoverFailed(cover)} />}
                     <em className="pl-tip-t">{clock(tipT)}{slide && <span className="pl-tip-sl"> · {slide}</span>}</em>
                 </span>
             )}
@@ -279,9 +283,9 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
     const soundOnly = swap?.action === "showVideo";
     const where = layer === "video" ? (videoScreens || "telas de vídeo") : layer === "media" ? "Projetor" : layer === "audio" ? "Computador do projetor" : "";
     const silent = (layer === "audio" || layer === "media") && !projectorOpen;
-    // The hover tip's frames: a video file only (YouTube gives none, an
-    // audio file has no picture: those get the time and the slide).
-    const frames = media?.kind === "video" && media.url ? media.url : null;
+    // The hover tip's picture (tipPicture): a video file's frames, a YouTube
+    // link's cover, nothing for an audio file (the time and the slide).
+    const picture = tipPicture(media);
 
     // Two rows (owner 2026-10-16, Rodada F1): what plays (its icon, title
     // and place in the list), the time and the progress bar on the first;
@@ -300,7 +304,7 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
                     {listPos && <span className="pl-n">{listPos}</span>}
                 </span>
                 <span className="kx-time pl-time">{clock(shownPos)}</span>
-                <Seek value={shownPos} duration={duration} can={canSeek} scrubbing={Boolean(scrub?.held)} ticks={ticks} frames={frames}
+                <Seek value={shownPos} duration={duration} can={canSeek} scrubbing={Boolean(scrub?.held)} ticks={ticks} frames={picture?.frames || null} cover={picture?.cover || null}
                     onScrub={(t) => setScrub(t == null ? null : { t, held: true })} onSeek={seekTo} />
                 <span className="kx-time pl-left" title="Tempo restante · duração">{duration ? `-${clock(Math.max(0, duration - shownPos))}` : "--:--"}<small>{duration ? clock(duration) : ""}</small></span>
             </div>

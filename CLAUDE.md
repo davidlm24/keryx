@@ -848,7 +848,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`useFramePreview`: one detached muted `<video>` per file, made on the
   first hover, one seek in flight, an LRU of 40 bitmaps — **never the
   pool's element**, which plays on air; helpers `src/lib/console/seekPreview.js`,
-  tested); YouTube and audio get the time and the slide only. Nothing
+  tested); a YouTube link shows its cover, fixed (`media.poster`, else
+  YouTube's hqdefault: `tipPicture`; owner's mark n2_youtube = capa), an
+  audio file the time and the slide only. Nothing
   seeks until a press. **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
   capture, a 16 px hit area, a time tip over the thumb): while the hand
   holds it only the console moves, and the screens get **one seek, on

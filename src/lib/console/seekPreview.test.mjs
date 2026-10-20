@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { quantise, frameKey, slideNameAt, tipLeft, containBox, makeLru, FRAME_W, FRAME_H } from "./seekPreview.js";
+import { quantise, frameKey, slideNameAt, tipLeft, containBox, makeLru, tipPicture, FRAME_W, FRAME_H } from "./seekPreview.js";
 import { followTicks } from "./player.js";
 
 test("one frame per second of the file", () => {
@@ -13,6 +13,16 @@ test("one frame per second of the file", () => {
     assert.equal(frameKey("/media/a.mp4", 12), "/media/a.mp4#12");
     assert.notEqual(frameKey("/media/a.mp4", 12), frameKey("/media/b.mp4", 12));
     assert.deepEqual([FRAME_W, FRAME_H], [160, 90], "n2_tamanho: 160 × 90");
+});
+
+test("what picture the tip shows: frames, the cover, or none", () => {
+    assert.deepEqual(tipPicture({ kind: "video", url: "/media/a.mp4" }), { frames: "/media/a.mp4" });
+    assert.deepEqual(tipPicture({ kind: "youtube", url: "https://youtu.be/dQw4w9WgXcQ" }), { cover: "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg" }, "n2_youtube = capa");
+    assert.deepEqual(tipPicture({ kind: "youtube", url: "https://youtu.be/dQw4w9WgXcQ", poster: "/media/capa.jpg" }), { cover: "/media/capa.jpg" }, "the item's own still wins");
+    assert.equal(tipPicture({ kind: "youtube", url: "https://example.com/x" }), null, "not a YouTube address");
+    assert.equal(tipPicture({ kind: "audio", url: "/media/a.mp3" }), null, "an audio file: the time and the slide only");
+    assert.equal(tipPicture({ kind: "clock" }), null);
+    assert.equal(tipPicture(null), null);
 });
 
 test("the slide under the pointer: the last mark at or before it", () => {

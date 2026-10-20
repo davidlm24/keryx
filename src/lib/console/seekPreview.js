@@ -1,9 +1,12 @@
 // The player's progress bar shows the moment under the pointer, as on
 // YouTube (owner 2026-10-20, Rodada N1): the time, the slide of the letra
-// automática there and, for a video of the computer, a frame of the file.
-// The frames come from an element of the console's own, never the one on
-// air (useFramePreview.js); this is the arithmetic. Plain JS, no imports,
-// so node --test can check it.
+// automática there and, for a video of the computer, a frame of the file;
+// a YouTube link shows its cover, fixed (n2_youtube = "capa": no frames can
+// be taken from it); an audio file, the time and the slide only. The frames
+// come from an element of the console's own, never the one on air
+// (useFramePreview.js); this is the arithmetic. Plain JS (one import with
+// none of its own), so node --test can check it.
+import { getYouTubeThumbnail } from "../../utils/youtube.js";
 
 // The frame's size on the tip (n2_tamanho: 160 × 90).
 export const FRAME_W = 160;
@@ -16,6 +19,19 @@ export const FRAME_CACHE = 40;
 export function quantise(t, step = 1) {
     if (!Number.isFinite(t) || t <= 0) return 0;
     return Math.floor(t / step) * step;
+}
+
+// The picture the hover tip shows for an item: "frames" for a video of the
+// computer (useFramePreview), the cover for a YouTube link (its poster, else
+// YouTube's own hqdefault, which needs the internet), nothing for the rest.
+export function tipPicture(item) {
+    if (!item?.url) return null;
+    if (item.kind === "video") return { frames: item.url };
+    if (item.kind === "youtube") {
+        const cover = item.poster || getYouTubeThumbnail(item.url);
+        return cover ? { cover } : null;
+    }
+    return null;
 }
 
 // A frame's key in the cache: the file and its second.

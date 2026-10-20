@@ -239,7 +239,8 @@ what plays: the file icon, the title (at most 28 % of the row and 260 px,
 ending in "…"; the whole title is its tooltip), "n/m" in a list, the elapsed
 time, the progress bar (it drags, one seek on release; Tab focuses it and
 ←/→ step 5 s; hovering it shows a light band and a tip with the time, the
-slide there and, for a video file, a 160 × 90 frame) and the remaining time.
+slide there and a 160 × 90 picture: a frame for a video file, the cover for
+a YouTube link, none for audio) and the remaining time.
 Row 2 is the controls: ⏮ −10 ⏯ +10 ⏭, the eye
 ("Tirar o vídeo · o som continua"; pressed and red while the video plays as
 sound only), Parar, the layer switch, the letra automática chip, the volume

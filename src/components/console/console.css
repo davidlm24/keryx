@@ -804,12 +804,13 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .player .pl-seek:focus-visible { outline: var(--bar) solid var(--brand); outline-offset: 2px; }
 /* The moment under the pointer (Rodada N1, as on YouTube): a light band up
    to it, and over it a tip with the time, the slide of the letra automática
-   there and, for a video of the computer, a 160 × 90 frame of the file. The
+   there and, for a video of the computer, a 160 × 90 frame of the file (a
+   YouTube link: its cover, fixed). The
    tip is placed in px by PlayerBar (tipLeft: always inside the bar). */
 .console .player .pl-seek > .pl-hov { position: absolute; left: 0; top: 5px; height: 6px; border-radius: 3px 0 0 3px; background: color-mix(in srgb, var(--fg-1) 16%, transparent); pointer-events: none; }
 .console .player .pl-seek > .pl-tip { position: absolute; bottom: calc(100% + 1px); z-index: 30; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
 .console .player .pl-seek > .pl-tip.has-frame { bottom: calc(100% + 4px); }
-.console .player .pl-tip canvas { display: block; width: 160px; height: 90px; border-radius: 6px; background: #000; box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg-1) 18%, transparent), 0 6px 18px #000a; }
+.console .player .pl-tip :is(canvas, .pl-tip-cover) { display: block; width: 160px; height: 90px; object-fit: cover; border-radius: 6px; background: #000; box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg-1) 18%, transparent), 0 6px 18px #000a; }
 .console .player .pl-tip-t { padding: 0 5px; border-radius: 4px; background: var(--fg-1); color: var(--bg-0); font: 600 10px/14px var(--font-sans); font-style: normal; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .console .player .pl-tip-sl { font-weight: 500; opacity: .75; }
 /* Só o som (Rodada F1): while a video plays as sound only, the eye is red. */
