@@ -170,6 +170,10 @@
       "type": "string",
       "description": "N\u00famero CCLI da m\u00fasica (para licenciamento)"
     },
+    "copyright": {
+      "type": "string",
+      "description": "Direitos autorais da m\u00fasica como vieram do arquivo importado (OpenLyrics, ChordPro\u2026), para os cr\u00e9ditos e os relat\u00f3rios"
+    },
     "is_favorite": {
       "type": "boolean",
       "default": false,

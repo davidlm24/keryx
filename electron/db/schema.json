@@ -1767,6 +1767,9 @@
         "ccli_number": {
           "type": "text"
         },
+        "copyright": {
+          "type": "text"
+        },
         "is_favorite": {
           "type": "boolean",
           "default": false
