@@ -586,7 +586,10 @@ test("a newer version's fields: kept by the older computer, never erased by its 
     assert.equal(old.parkedCount(), 1);
 
     // The older computer edits the song: its line does not carry the field,
-    // and the newer computer keeps it.
+    // and the newer computer keeps it. The edit comes a millisecond later at
+    // least: in the same one, last-edit-wins breaks the tie by the computers'
+    // random ids, and half the fast runs (CI) kept the newer's title.
+    for (const t = Date.now(); Date.now() === t;) { /* the next millisecond */ }
     old.call("Song", "update", [song.id, { title: "Hino (editado)" }]);
     newer.applyRemote(old.outbox());
     const there = newer.call("Song", "get", [song.id]);
