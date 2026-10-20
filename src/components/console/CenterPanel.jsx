@@ -20,6 +20,7 @@ import { usePrefs } from "@/hooks/useUser";
 import ClipTitle from "./ClipTitle";
 import { retryPages, usePagesProgress } from "@/hooks/usePagesBackfill";
 import { presentationPreviewStatus } from "@/lib/presentation";
+import { sendBlock } from "@/lib/console/sendBlock";
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -209,17 +210,48 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     );
 }
 
+// The Prévia's pill (owner 2026-10-20, Rodada N5: "dentro, com o mesmo
+// style que a pílula na tela principal"): the Programa pill's look in the
+// screen's bottom-right corner, a dot in the Prévia's green (blue locked,
+// grey while it cannot go) and the one button that sends, the same `onSend`
+// as Enter and the double click. A theme's example only uses the theme (its
+// background, never the example text: useConsole's send), so there it says
+// "Usar o tema". While it cannot go the button stays (aria-disabled, so its
+// tooltip still says why) and does nothing. On a narrow Prévia only the
+// glyph remains (console.css, prev-screen). A double click on it is not the
+// screen's: one send, never two.
+function PreviaPill({ prev, block, onSend }) {
+    const letters = usePrefs().letter_keys;
+    const key = keyHint("send", letters);
+    const label = prev.theme ? "Usar o tema" : "Enviar ao ar";
+    const tone = block?.code === "locked" ? "rh" : block ? "idle" : "prev";
+    const why = block ? (block.code === "locked" ? "Telas travadas" : block.message) : `${label}${key ? ` · ${key}` : ""}${prev.theme ? " · o fundo do tema, sem o texto de exemplo" : ""}`;
+    return (
+        <div className={`prog-pill prev-pill is-${tone}`} role="group" aria-label="Prévia" onDoubleClick={(e) => e.stopPropagation()}>
+            <i className="pp-dot" aria-hidden="true" />
+            <button type="button" className="kx-btn kx-t pv-send" aria-label={label} aria-disabled={block ? true : undefined} title={why} onClick={() => { if (!block) onSend?.(); }}>
+                <Icon name="play" /><span className="pv-send-l">{label}</span>
+            </button>
+        </div>
+    );
+}
+
 // The Prévia module: the prepared stage as Projeção will show it, the
 // screen itself the box (no card, owner 2026-10-14) with its caption as a
 // badge inside it; under it, what sending will do when it is not obvious and
 // the teacher notes — unless the Notas tab is on screen (`notesInTab`).
-// Enter, a double click on it or its right-click menu send (no button, owner
-// 2026-10-14). Where it goes is the dock's (Dock.jsx).
+// An Enviar ao ar pill inside the screen, bottom-right, in the Programa
+// pill's style (owner 2026-10-20, Rodada N5; PreviaPill), plus Enter, a
+// double click on it or its right-click menu send. Where it goes is the
+// dock's (Dock.jsx).
 export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notesInTab = false, className = "" }) {
     // A file the sync has not brought yet: said over the Prévia, not drawn broken.
     const pending = usePendingMedia();
     const { cur, prev, locked, stamp } = c;
     const pagesProgress = usePagesProgress(prev?.args?.id);
+    // Why the Prévia cannot go now (the same checks as send: locked, a file
+    // still coming or missing, a PDF whose pages are being made), or null.
+    const block = prev ? sendBlock(prev, { locked, pending, progress: pagesProgress }) : null;
     const blockedMessage = presentationPreviewStatus(prev, pagesProgress);
     // Built with a time fixed per prepared stage, never the ticking clock:
     // a new startedAt each second replayed the slide's transition (the
@@ -260,9 +292,14 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
                 {prevCap}
                 {dropOn && <div className="kx-drop-hint"><span>Solte para preparar</span></div>}
                 {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
-                {prev && notShowing.length > 0 && (
-                    <div className="kx-prev-warn" role="status">
-                        {notShowing.map((o) => <span key={o.page}><Icon name="warn" size={12} />A saída <b>{o.name}</b> não vai mostrar {o.kind}</span>)}
+                {prev && (
+                    <div className="prev-foot">
+                        {notShowing.length > 0 && (
+                            <div className="kx-prev-warn" role="status">
+                                {notShowing.map((o) => <span key={o.page}><Icon name="warn" size={12} />A saída <b>{o.name}</b> não vai mostrar {o.kind}</span>)}
+                            </div>
+                        )}
+                        <PreviaPill prev={prev} block={block} onSend={onSend} />
                     </div>
                 )}
                 {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="volume" /> Áudio · {prev.title || "sem título"}</div>}

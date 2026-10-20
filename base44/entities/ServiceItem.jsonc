@@ -57,7 +57,17 @@
     "autoAdvance": {
       "type": "boolean",
       "default": false,
-      "description": "Avancar automaticamente para o proximo item quando a duracao terminar"
+      "description": "Legado: avancar sozinho ao terminar (lido como end_action next; Rodada N2 usa end_action)"
+    },
+    "end_action": {
+      "type": "string",
+      "enum": [
+        "",
+        "next",
+        "loop",
+        "stop"
+      ],
+      "description": "Setlist automatica (Rodada N2): o que o item faz ao terminar com Avancar sozinho ligado. next = vai para o proximo, loop = repete, stop = para. Vazio = next"
     },
     "enabled": {
       "type": "boolean",

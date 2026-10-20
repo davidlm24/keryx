@@ -69,7 +69,7 @@ export default function RemoteView() {
             )}
             <div className="rm-body">
                 {shown === "live" && <LiveTab live={live} state={state} caps={caps} c={c} />}
-                {shown === "setlist" && <SetlistTab live={live} state={state} c={c} />}
+                {shown === "setlist" && <SetlistTab live={live} state={state} c={c} onRefresh={refresh} />}
                 {shown === "media" && <MediaTab c={c} setGate={setGate} />}
                 {shown === "bible" && <BibleTab state={state} c={c} />}
                 {shown === "more" && <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />}

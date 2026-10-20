@@ -171,6 +171,21 @@ export function createPreviewBridge() {
         lyrics: { call: unavailable },
         meters: { report() {}, onLevel: () => () => {}, sendLevel() {}, onSystemLevel: () => () => {} },
         system: { call: unavailable },
+        // This PC's fonts, read by the preview server with the app's own
+        // module (electron/systemFonts.cjs), so the dialog lists what the
+        // KERYX on this computer would.
+        fonts: {
+            list: () => request("fonts"),
+            async read(id) {
+                try {
+                    const res = await fetch(`${API}font?id=${encodeURIComponent(id || "")}`);
+                    if (!res.ok) return (await res.json().catch(() => null)) || { error: { message: `HTTP ${res.status}`, status: res.status } };
+                    return { data: new Uint8Array(await res.arrayBuffer()) };
+                } catch {
+                    return { error: { message: "A prévia não respondeu: o servidor do npm run dev está ligado?", status: 0 } };
+                }
+            },
+        },
         media: {
             async importFile(file) {
                 return request(`media?name=${encodeURIComponent(file.name || "arquivo")}`, { method: "POST", raw: new Uint8Array(await file.arrayBuffer()) });

@@ -6,6 +6,8 @@
 //   keryx:config        sync    { mediaBaseUrl, mediaImportMaxBytes }
 //   keryx:displays:*    invoke  list / set / open / close / identify for output windows
 //   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter
+//   keryx:fonts         invoke  { op: list | read, id } the PC's installed fonts (systemFonts.cjs): the
+//                               families with their faces, or one face's file as bytes
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
 //   keryx:sync          invoke  { op, args } sync between the church's computers (syncControl.cjs)
@@ -22,6 +24,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { BrowserWindow, dialog, ipcMain } = require("electron");
 const bible = require("./bible.cjs");
+const { createSystemFonts } = require("./systemFonts.cjs");
 const { importMedia, MAX_IMPORT_BYTES } = require("./mediaImport.cjs");
 
 function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
@@ -128,6 +131,16 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
             return { error: { message: err.message, status: err.status || 500 } };
         }
     };
+    // The PC's fonts for the Editor de temas' "Do computador…" (owner
+    // 2026-10-20, as Holyrics lists them): read here, from the font folders,
+    // so no Chromium permission is involved. A face's file goes back as
+    // bytes, and the page copies it into the library like any upload.
+    const systemFonts = createSystemFonts();
+    ipcMain.handle("keryx:fonts", bibleOp(async (_e, { op, id }) => {
+        if (op === "list") return systemFonts.list();
+        if (op === "read") return new Uint8Array(await systemFonts.read(id));
+        throw Object.assign(new Error("Operação de fontes desconhecida."), { status: 400 });
+    }));
     ipcMain.handle("keryx:bible:status", bibleOp(() => bible.installedVersions(store)));
     ipcMain.handle("keryx:bible:online-chapter", bibleOp((_e, args) => bible.fetchOnlineChapter(args)));
     ipcMain.handle("keryx:bible:install", bibleOp((_e, { version }) => bible.installFromSource(store, version)));

@@ -85,7 +85,7 @@ test("letra automática: the chip, its click, the ticks (Rodada D4)", async () =
     assert.equal(followAction({ ...audio, paused: true }), "resume");
     assert.equal(followAction(null), null);
     const slides = [{ text: "a" }, { text: "b", start: 10, label: "Verso" }, { text: "c", start: 50 }];
-    assert.deepEqual(followTicks(slides, audio, 100), [{ i: 1, pct: 10, label: "2 · Verso · 0:10" }, { i: 2, pct: 50, label: "3 · 0:50" }]);
+    assert.deepEqual(followTicks(slides, audio, 100), [{ i: 1, pct: 10, label: "2 · Verso · 0:10", t: 10, name: "Verso" }, { i: 2, pct: 50, label: "3 · 0:50", t: 50, name: "Slide 3" }]);
     // Re-synced 20 s ahead: the marks come in 20 s earlier on the media's bar.
     assert.deepEqual(followTicks(slides, { ...audio, offset: 20 }, 100).map((t) => t.pct), [30]);
     assert.deepEqual(followTicks(slides, audio, 0), []);

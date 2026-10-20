@@ -265,6 +265,16 @@ export const REMOTE_HANDLERS = {
             return ok(remoteSay("lock", args.locked ? "telas travadas" : "telas destravadas"));
         },
     },
+    // Setlist automática (Rodada N2): the culto's switch, as the Setlist's header.
+    "setlist.autoplay": {
+        run: async ({ d, args }) => {
+            if (!d.service?.id) return fail("nothing", "Nenhum culto escolhido no console.");
+            const word = args.on ? "avançar sozinho ligado" : "avançar sozinho desligado";
+            if (Boolean(d.service.autoplay) === args.on) return ok(remoteSay("setlist.autoplay", word));
+            await d.setAutoplay(args.on);
+            return ok(remoteSay("setlist.autoplay", word));
+        },
+    },
 };
 
 async function step({ d, live, action }) {
@@ -300,6 +310,7 @@ const thrown = (err) => {
 //   prefs, playerPick, reportedDuration(layer, url), app(), bible() → { version, installed }
 //   callOp, liveOp, clearText, say, end({ by }) → whether Desfazer is offered, undo() → whether it ran
 //   sendStage(stage, { keepPrev, why }) → true when it went; buildStage(item, index)
+//   setAutoplay(on)   the culto's Avançar sozinho (Service.autoplay)
 //   referenceVerses(ref, version?) → { version, verses }
 //   stages: { song, media, piece, material, verses, tool }   the stage builders (stage.js)
 export function createRemoteRunner(deps) {

@@ -35,6 +35,8 @@ export function useRemote({ c, data, service, items, rows, airItemId, airNow, ne
         // Desfazer as the console's Ctrl+Z: the toast's own, when it has one.
         undo: () => { const a = c.toastAction; if (!a?.undo) return false; a.run(); return true; },
         sendStage, buildStage, referenceVerses, stages: STAGES,
+        // The culto's Avançar sozinho, written without a toast of its own (the runner says it).
+        setAutoplay: (on) => keryx.entities.Service.update(service.id, { autoplay: Boolean(on) }),
     };
     useEffect(() => {
         const remote = window.keryxDesktop?.remote;

@@ -132,6 +132,8 @@ export function remoteState({
         bible: bible ? { version: String(bible.version || ""), installed: [...(bible.installed || [])] } : null,
         timers: timers.slice(0, limits.timers).map((t) => ({ id: String(t.id || `min-${t.minutes}`), minutes: t.minutes })),
         alerts: alerts.slice(0, limits.alerts).map((a) => ({ id: a.id, message: String(a.message || "").slice(0, limits.alertMessage) })),
+        // The culto's Avançar sozinho (Setlist automática, Rodada N2).
+        autoplay: Boolean(service?.autoplay),
     };
     const svc = service ? { id: service.id || null, title: service.title || "", date: service.date || null } : null;
     const make = () => ({

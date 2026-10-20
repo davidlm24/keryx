@@ -117,6 +117,11 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         exportFile: (json, name) => ipcRenderer.invoke("keryx:displays:export-file", { json, name }),
         importFile: () => ipcRenderer.invoke("keryx:displays:import-file"),
     },
+    // The PC's installed fonts (electron/systemFonts.cjs), for the Editor de temas.
+    fonts: {
+        list: () => ipcRenderer.invoke("keryx:fonts", { op: "list" }),
+        read: (id) => ipcRenderer.invoke("keryx:fonts", { op: "read", id }),
+    },
     bible: {
         status: () => ipcRenderer.invoke("keryx:bible:status"),
         // One chapter from bolls.life (electron/bible.cjs): its edition code, the book 1–66, the chapter.
@@ -170,6 +175,9 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
             return () => levelListeners.delete(listener);
         },
     },
+    // This window's errors into the daily log (src/lib/rendererLog.js; main
+    // limits and writes them, electron/rendererLog.cjs).
+    log: (entry) => ipcRenderer.send("keryx:log", entry),
     system: {
         call: (op, args) => ipcRenderer.invoke("keryx:system", { op, args }),
         onUpdate(listener) {

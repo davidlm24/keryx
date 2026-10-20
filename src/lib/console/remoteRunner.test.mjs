@@ -402,3 +402,13 @@ test("the deps are read per command: the latest state wins", async () => {
     d = fakeConsole();
     assert.equal((await runner.run({ action: "next" })).ok, true);
 });
+
+test("setlist.autoplay: the culto's switch, locked too; no culto, 409", async () => {
+    const d = lock(fakeConsole());
+    d.setAutoplay = async (on) => { d.calls.push(["setAutoplay", on]); d.service = { ...d.service, autoplay: on }; };
+    assert.deepEqual(await run(d, "setlist.autoplay", { on: true }), { ok: true, message: "Celular: avançar sozinho ligado." });
+    assert.equal((await run(d, "setlist.autoplay", { on: true })).ok, true, "on again changes nothing");
+    assert.equal((await run(d, "setlist.autoplay", { on: false })).message, "Celular: avançar sozinho desligado.");
+    assert.deepEqual(d.calls, [["setAutoplay", true], ["setAutoplay", false]]);
+    assert.equal((await run(fakeConsole({ service: null }), "setlist.autoplay", { on: true })).code, "nothing");
+});

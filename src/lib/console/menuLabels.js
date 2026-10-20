@@ -37,6 +37,8 @@ export const MENU_LABELS = {
     timers: { label: "Timers", icon: "clock" },
     // Help
     atalhos: { label: "Atalhos", icon: "keyboard", key: "help" },
+    // Ajuda and Configurações › Dados › Suporte (it asks what happened first)
+    relatar: { label: "Relatar um problema…", icon: "help" },
     // Rows and slides
     porNaPrevia: { label: "Pôr na prévia", icon: "eye" },
     enviarAoAr: { label: "Enviar ao ar", icon: "play", key: "send" },

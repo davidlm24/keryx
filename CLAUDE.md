@@ -647,9 +647,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Rodada M0; Alt+A): Primeiros passos (a dialog, `firstSteps.js`, tested:
   seven steps, each with the button that opens what it names, keys per Teclas
   de uma letra), Atalhos, Novidades · Verificar tudo, Salvar diagnóstico…,
-  Abrir a pasta de dados (the `system` bridge's `diagnostics`/`openDataDir`,
+  Relatar um problema…, Abrir a pasta de dados (the `system` bridge's `diagnostics`/`openDataDir`,
   as in Backup e atualizações; off in the browser preview) · Atualizar agora
   while an update is due, else Verificar atualização, and Sobre o KERYX.
+  **Relatar um problema…** (Rodada N3; also Configurações › Dados ›
+  Suporte): `ReportDialog.jsx` asks what happened; main (`system` op
+  `report`) saves the diagnostic zip with `relato.txt` in Downloads, shows
+  it and opens the mailto to `SUPPORT_EMAIL` (`shared/support.mjs`, the one
+  place for the address; the page never opens a mailto), and without an
+  e-mail program (or in the preview) the dialog shows the address and the
+  text with Copiar. The windows' own errors (onerror, unhandledrejection,
+  console.error) reach the daily log as `[renderer:<page>]` over `keryx:log`
+  (`src/lib/rendererLog.js` → `electron/rendererLog.cjs`, 20 a minute per
+  window, 2 kB each; never from a network screen).
   **The logo's menu is the app's** (owner 2026-10-19, Rodada M0 "app"):
   Configurações, Saídas, Sobre o KERYX and Atualizar agora when due; never a
   page of the content (those are the bar's). **Under 1240 px the
@@ -827,15 +837,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Programa on top (CenterPanel: the monitor or the Multiview, and the
   player **always visible**, dimmed while idle — only its icon then, **no
   placeholder words** — **in two rows** (Rodada F1, owner 2026-10-16): the
-  first is what plays (the file icon, the title — floor `min(110px, 34cqw)`,
-  cap 46cqw — and "n/m" in a list; **no kind word**, the icon says it), the
+  first is what plays (the file icon, the title — a small floor, **cap
+  `min(28cqw, 260px)`** (Rodada N1, owner 2026-10-20: the bar keeps at least
+  half the row), the whole title its tooltip — and "n/m" in a list; **no
+  kind word**, the icon says it), the
   elapsed time, the progress bar and the remaining time; the second is the
   controls: ⏮ −10 ⏯ +10 ⏭, the eye, Parar, the layer switch (2+ layers), the
-  letra automática, where the sound goes, then the volume and the meters;
+  letra automática, then the volume and the meters. **Where the sound goes
+  is not on the row** (Rodada N1, owner's pick A): it is the mute's tooltip
+  ("Mudo · o som sai: Projetor"); only the projector window closed shows,
+  as an amber status chip "Projetor fechado" (`.pl-closed`, `role=status`,
+  not a button) plus an amber dot on the speaker;
   64 px, `.pslot` and dock.js `PLAYER_SLOT` 72; narrowing folds row 2 (the
-  volume %, −10/+10, the where/chip labels down to icons, a narrower volume,
-  then the meters and where; Tocar, the eye, Parar and the mute always
-  stay). **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
+  volume %, −10/+10, the chip labels down to icons, a narrower volume,
+  then the meters; Tocar, the eye, Parar and the mute always
+  stay). **Hovering the progress bar shows the moment** (Rodada N1, as on
+  YouTube): a light band up to the pointer and a tip with the time, the
+  slide of the letra automática there (`slideNameAt`, from `followTicks`)
+  and, for a video of the computer, a 160 × 90 frame of the file
+  (`useFramePreview`: one detached muted `<video>` per file, made on the
+  first hover, one seek in flight, an LRU of 40 bitmaps — **never the
+  pool's element**, which plays on air; helpers `src/lib/console/seekPreview.js`,
+  tested); a YouTube link shows its cover, fixed (`media.poster`, else
+  YouTube's hqdefault: `tipPicture`; owner's mark n2_youtube = capa), an
+  audio file the time and the slide only. Nothing
+  seeks until a press. **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
   capture, a 16 px hit area, a time tip over the thumb): while the hand
   holds it only the console moves, and the screens get **one seek, on
   release** (`seekAt` in player.js, tested), so the letra automática never
@@ -883,9 +909,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the header it lost pays for the player's second row;
   the Prévia is its screen, its caption a badge inside the top-left corner
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
-  locked), and **no Enviar ao ar button** — Enter, a double click on it
-  or its right-click menu send (the Bíblia, the Escola bíblica and the
-  Mídia keep theirs). Camadas in the tray is a drawer opened from the
+  locked), and **an Enviar ao ar pill inside the screen, bottom-right, in
+  the Programa pill's style** (owner 2026-10-20, Rodada N5; `PreviaPill`,
+  `.prog-pill.prev-pill`: a green dot and the button, "Usar o tema" for a
+  theme's example, aria-disabled with the reason in its tooltip while
+  `sendBlock` refuses — locked, a PDF preparing, a file coming or missing;
+  only its glyph on a narrow Prévia, `prev-screen`; the "não vai mostrar"
+  lines stack above it in `.prev-foot`), plus Enter, a double click or its
+  right-click menu (the Bíblia, the Escola bíblica and the Mídia keep
+  their own buttons). The smoke reads the Programa's pill as
+  `.prog-pill:not(.prev-pill)`. Camadas in the tray is a drawer opened from the
   Programa's pill (or its "…"). The old `order`/`stacks`/widths are only read to build the first
   dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca have
   their chooser in the panel's header**, at the level of the title like every
@@ -1057,7 +1090,25 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   background (theirs, not the Fundo's; ScreenRenderer's Background). The rundown is called
   **"Setlist"** in the UI; its right click (and Planejar) has "Tirar da
   setlist…" / "Tirar a seção…" (`setlistActions.js`: asks with
-  `useConfirm`, then renumbers from the store; 0.2.19). Output windows are never background (occlusion
+  `useConfirm`, then renumbers from the store; 0.2.19). **Setlist automática**
+  (owner 2026-10-20, Rodada N2): "Avançar sozinho" in the Setlist's header
+  is the culto's switch (`Service.autoplay`, synced); with it on, the item on
+  air that ends does what its "Ao terminar" says (`ServiceItem.end_action`:
+  next — the default, "" and the old `autoAdvance` too — loop or stop; the
+  row's menu and Planejar o culto): the next playable item (sections and
+  disabled ones skipped) goes on air after the pause (`Service.autoplay_gap`,
+  else Configurações › Culto's `User.autoplay_gap`, 5 s), counted down on its
+  row and in a toast with Cancelar. "Ended" is `itemEnded`
+  (`src/lib/console/autoplay.js`, tested): a file's end as an output reports
+  it (`live.ended`: `media.clear`/`video.clear` with `ended`, a list past its
+  last item, `audio.ended` for a single file — never Esc, Limpar or Parar),
+  or played to its length; anything else its `duration` while on air (none:
+  never, "Sem duração" in the menu). `useSetlistAutoplay` (console only,
+  never /Janela) watches every 250 ms and sends as the console's own send
+  (`keepPrev`); Esc cancels the countdown first (`escapeTarget` "countdown"),
+  and so does any send meanwhile; locked it refuses and says so, and with
+  the projector window closed and something to hear it stops (amber).
+  Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
@@ -1125,10 +1176,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `pc_arquivo`): a theme's `font_family` is a KERYX key (`FONT_MAP`: sans =
   Geist, the other seven the device's fonts, "· do aparelho") or the
   **family name of a font the church brought in** — from the PC's installed
-  fonts (Local Font Access, `window.queryLocalFonts`, the "Fontes do
-  computador" dialog, `editor/LocalFontsDialog.jsx`; it needs a click, so
-  the list is read as the dialog opens) or from a font file (.ttf/.otf/
-  .woff2/.woff). Either way the file is **copied into the media library**
+  fonts (the "Fontes do computador" dialog, `editor/LocalFontsDialog.jsx`)
+  or from a font file (.ttf/.otf/.woff2/.woff). **KERYX lists the PC's
+  fonts itself, as Holyrics does** (owner 2026-10-20): the main process
+  reads `%WINDIR%Fonts` and the per-user
+  `%LOCALAPPDATA%MicrosoftWindowsFonts` (`electron/systemFonts.cjs`,
+  tested; IPC `keryx:fonts` list/read, `integrations.Core.SystemFonts` /
+  `SystemFontFile`; the preview server serves the same module), only the
+  table directory, `name` and OS/2 of each file: a family is the Windows
+  family (nameID 1, so "Segoe UI Semibold" is its own entry), a face its
+  style (nameID 2), a `.ttc` collection's face is cut out into a font of
+  its own when read, a face whose licence forbids embedding (fsType
+  restricted) is listed but never copied, and a face is read only by an id
+  from the last scan. No page uses Local Font Access: the `local-fonts`
+  permission is refused everywhere (main.cjs). Either way the file is **copied into the media library**
   (`UploadFile`, as bytes) as **Media rows of category `font`, one per
   face** (Regular, Bold, Italic, Bold Italic at most; `Media.font = {
   family, weight, style, face, origin }`, `title` = the family), so it syncs
@@ -1146,11 +1207,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   also `FontSelect` in the aviso and song editors) and Configurações ›
   Temas e fundos › **Fontes da igreja** (Excluir… via useConfirm, refused
   while a theme names the family). A font dropped in the Mídia is refused
-  (`mediaTypeOf` "font", `FONTS_IN_EDITOR_HINT`); a `.ttc` collection is
-  refused by the copy (`COLLECTION_HINT`), 20 MB is the cap. The
-  `local-fonts` permission is granted only to `/Console` and `/Janela`
-  from the app's origin (`setPermissionCheckHandler` /
-  `setPermissionRequestHandler` in main.cjs), never to an output. Verificar
+  (`mediaTypeOf` "font", `FONTS_IN_EDITOR_HINT`); a `.ttc` file picked
+  with "Arquivo de fonte…" is refused by the copy (`COLLECTION_HINT`), 20 MB
+  is the cap. Verificar
   says per church font whether it is copied, still coming (Baixando…) or
   gone. `useFitWidth` re-measures on `document.fonts` `loadingdone`, so a
   font that arrives late re-fits the line.
@@ -1224,7 +1283,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   not have) reads only `/api/live`, `/media`, `User` `get` and its own
   event stream (User, live and `hb` frames; `/api/screens` is 401); taps
   past a burst of 10 / 8 a second, or 4 waiting per phone (8 in all), get
-  429/503 (`createRemoteGate`); every stream gets an `hb` every 10 s
+  429/503 (`createRemoteGate`); `setlist.autoplay { on }` (T) is the Setlist's
+  "Avançar sozinho" and `state.autoplay` its value (Rodada N2); every stream gets an `hb` every 10 s
   (`connection.lastEventAt()` in network.js) and is dropped past 256 kB
   unread; reads are never logged. Under `npm run dev` the `/Remote` tab
   works too: `scripts/preview/server.cjs` checks its commands the same
