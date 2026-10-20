@@ -235,12 +235,18 @@ travado" while locked) and it has no send button.
 **The player** sits under the Programa, always visible, dimmed while idle
 (its icon only, no placeholder words), in two rows (64 px; the slot is
 `PLAYER_SLOT` 72 px, so starting a video never moves the monitors). Row 1 is
-what plays: the file icon, the title, "n/m" in a list, the elapsed time, the
-progress bar (it drags, one seek on release; Tab focuses it and ←/→ step
-5 s) and the remaining time. Row 2 is the controls: ⏮ −10 ⏯ +10 ⏭, the eye
+what plays: the file icon, the title (at most 28 % of the row and 260 px,
+ending in "…"; the whole title is its tooltip), "n/m" in a list, the elapsed
+time, the progress bar (it drags, one seek on release; Tab focuses it and
+←/→ step 5 s; hovering it shows a light band and a tip with the time, the
+slide there and a 160 × 90 picture: a frame for a video file, the cover for
+a YouTube link, none for audio) and the remaining time.
+Row 2 is the controls: ⏮ −10 ⏯ +10 ⏭, the eye
 ("Tirar o vídeo · o som continua"; pressed and red while the video plays as
-sound only), Parar, the layer switch, the letra automática chip, where the
-sound goes, the volume and the L/R meters (green, amber from −3 dBFS). It
+sound only), Parar, the layer switch, the letra automática chip, the volume
+and the L/R meters (green, amber from −3 dBFS). Where the sound goes is the
+mute's tooltip; only "Projetor fechado" shows, an amber status chip (not a
+button) with an amber dot on the speaker. It
 narrows with container queries; Tocar, the eye, Parar and the mute always
 stay.
 
@@ -413,6 +419,18 @@ open the Programa monitor draws one still frame (the air never pauses).
   (180 ms, `ease-out`); on the drop the card settles into the slot (180 ms)
   before the list re-renders. A drop onto the Prévia or the Programa lets the
   card fade. Reduced motion: the same states, no animation.
+- **Everything that floats has one soft edge** (owner 2026-10-20, Rodada N4,
+  "Suave"): THE window, the dialogs (ConfirmDialog, PromptDialog, Encerrar),
+  the palette, the background library, every menu and popover (`kx-pop`:
+  the (+) menus, the right click, the menu bar, the Menu button, Ver, the
+  tabs' chooser, the Bíblia's lists), tooltips, toasts and the dragged card
+  are ringed in `--line-overlay` (`#2c2b27`, darker than `line`), through
+  `--shadow-popover` and `--dialog`; the shadow gives the depth. Lines
+  inside them (menu separators, the window's bar, a dialog's header and
+  footer, the library's side and footer) are `--line-soft` (`line` at
+  60 %). Never `line-strong` on something that floats: it glowed on the
+  dark ground. Rings that mean a state (focus, chosen, Prévia, on air)
+  keep their colours, and the Windows contrast block is unchanged.
 - **Focus.** Buttons and other controls reached with the keyboard get the
   2 px `brand` ring. A text field (input, select, textarea, the search)
   never gets the gold ring while it holds the caret: its focus is a quiet
@@ -422,7 +440,7 @@ open the Programa monitor draws one still frame (the air never pauses).
   `kx-input` / `kx-select` (and `kx-field`, an input with a glyph — the
   `Field` component) in `bundle.css`: 28 px, **24 px with `is-small`**
   (Configurações' selects, inline renames, the planner's service pick),
-  `bg-2`, a 1 px `line-strong` line on hover, and focus as the quiet 1 px
+  `bg-2`, a 1 px `line` line on hover (`line-strong` until Rodada N4), and focus as the quiet 1 px
   `fg-3` line (5.5:1 on `bg-2`, 4.9:1 on `bg-3`, ≥ 3:1 as WCAG 1.4.11 asks).
   It is an outline, so a Windows contrast theme keeps it. Disabled dims
   (`--dim`); `[aria-invalid="true"]` (and the Sincronizar time's `is-bad`)

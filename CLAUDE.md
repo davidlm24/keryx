@@ -837,15 +837,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Programa on top (CenterPanel: the monitor or the Multiview, and the
   player **always visible**, dimmed while idle — only its icon then, **no
   placeholder words** — **in two rows** (Rodada F1, owner 2026-10-16): the
-  first is what plays (the file icon, the title — floor `min(110px, 34cqw)`,
-  cap 46cqw — and "n/m" in a list; **no kind word**, the icon says it), the
+  first is what plays (the file icon, the title — a small floor, **cap
+  `min(28cqw, 260px)`** (Rodada N1, owner 2026-10-20: the bar keeps at least
+  half the row), the whole title its tooltip — and "n/m" in a list; **no
+  kind word**, the icon says it), the
   elapsed time, the progress bar and the remaining time; the second is the
   controls: ⏮ −10 ⏯ +10 ⏭, the eye, Parar, the layer switch (2+ layers), the
-  letra automática, where the sound goes, then the volume and the meters;
+  letra automática, then the volume and the meters. **Where the sound goes
+  is not on the row** (Rodada N1, owner's pick A): it is the mute's tooltip
+  ("Mudo · o som sai: Projetor"); only the projector window closed shows,
+  as an amber status chip "Projetor fechado" (`.pl-closed`, `role=status`,
+  not a button) plus an amber dot on the speaker;
   64 px, `.pslot` and dock.js `PLAYER_SLOT` 72; narrowing folds row 2 (the
-  volume %, −10/+10, the where/chip labels down to icons, a narrower volume,
-  then the meters and where; Tocar, the eye, Parar and the mute always
-  stay). **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
+  volume %, −10/+10, the chip labels down to icons, a narrower volume,
+  then the meters; Tocar, the eye, Parar and the mute always
+  stay). **Hovering the progress bar shows the moment** (Rodada N1, as on
+  YouTube): a light band up to the pointer and a tip with the time, the
+  slide of the letra automática there (`slideNameAt`, from `followTicks`)
+  and, for a video of the computer, a 160 × 90 frame of the file
+  (`useFramePreview`: one detached muted `<video>` per file, made on the
+  first hover, one seek in flight, an LRU of 40 bitmaps — **never the
+  pool's element**, which plays on air; helpers `src/lib/console/seekPreview.js`,
+  tested); a YouTube link shows its cover, fixed (`media.poster`, else
+  YouTube's hqdefault: `tipPicture`; owner's mark n2_youtube = capa), an
+  audio file the time and the slide only. Nothing
+  seeks until a press. **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
   capture, a 16 px hit area, a time tip over the thumb): while the hand
   holds it only the console moves, and the screens get **one seek, on
   release** (`seekAt` in player.js, tested), so the letra automática never
@@ -893,9 +909,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the header it lost pays for the player's second row;
   the Prévia is its screen, its caption a badge inside the top-left corner
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
-  locked), and **no Enviar ao ar button** — Enter, a double click on it
-  or its right-click menu send (the Bíblia, the Escola bíblica and the
-  Mídia keep theirs). Camadas in the tray is a drawer opened from the
+  locked), and **an Enviar ao ar pill inside the screen, bottom-right, in
+  the Programa pill's style** (owner 2026-10-20, Rodada N5; `PreviaPill`,
+  `.prog-pill.prev-pill`: a green dot and the button, "Usar o tema" for a
+  theme's example, aria-disabled with the reason in its tooltip while
+  `sendBlock` refuses — locked, a PDF preparing, a file coming or missing;
+  only its glyph on a narrow Prévia, `prev-screen`; the "não vai mostrar"
+  lines stack above it in `.prev-foot`), plus Enter, a double click or its
+  right-click menu (the Bíblia, the Escola bíblica and the Mídia keep
+  their own buttons). The smoke reads the Programa's pill as
+  `.prog-pill:not(.prev-pill)`. Camadas in the tray is a drawer opened from the
   Programa's pill (or its "…"). The old `order`/`stacks`/widths are only read to build the first
   dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca have
   their chooser in the panel's header**, at the level of the title like every

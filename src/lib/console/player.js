@@ -120,7 +120,8 @@ export function followTicks(slides, follow, duration) {
         if (!Number.isFinite(it?.start)) return [];
         const t = it.start - off;
         if (t < 0 || t > duration) return [];
-        return [{ i, pct: Math.round((t / duration) * 10000) / 100, label: `${i + 1}${it.label ? ` · ${it.label}` : ""} · ${clock(t)}` }];
+        // t and name: the slide the bar's hover tip names (seekPreview.js).
+        return [{ i, pct: Math.round((t / duration) * 10000) / 100, label: `${i + 1}${it.label ? ` · ${it.label}` : ""} · ${clock(t)}`, t, name: it.label || `Slide ${i + 1}` }];
     });
 }
 
