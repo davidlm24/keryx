@@ -75,7 +75,7 @@ export const SETTINGS_INDEX = [
     e("biblia", "Bíblias instaladas", "baixar versões para usar sem internet; a versão em uso na Bíblia",
         ["versão em uso", "usar esta", "versão padrão", "tornar padrão","baixar", "instalar", "sem internet", "offline", "do arquivo", "NVI", "ARA", "ACF", "ARC", "NAA", "NTLH", "AA", "BKJ1611"]),
 
-    e("culto", "Planejamento", "o dia, o horário e a duração padrão do culto e a previsão do fim", ["dia", "horário", "duração", "previsão", "setlist", "novo culto"]),
+    e("culto", "Planejamento", "o dia, o horário e a duração padrão do culto, a previsão do fim e a pausa entre itens", ["dia", "horário", "duração", "previsão", "setlist", "novo culto", "pausa"]),
     e("culto", "Fora do ar", "o que as telas mostram sem nada no ar e depois do Esc", ["papel de parede", "fora do ar", "esc", "espera", "aparência"]),
     e("culto", "Qualquer outro culto", "o papel de parede dos cultos sem um próprio (era o Fundo padrão de Aparência)", ["papel de parede", "fundo padrão", "fundo de espera", "wallpaper", "imagem", "esc", "igreja", "aparência"]),
     e("culto", "Sem papel de parede", "as telas mostram a tela ociosa; leva ao Editor de telas", ["ociosa", "tela ociosa", "nada no ar"]),
@@ -85,6 +85,7 @@ export const SETTINGS_INDEX = [
     e("culto", "Modelos de culto", "renomear, excluir e o visual (papel de parede e tema) que cada modelo traz ao culto", ["modelo", "template", "setlist", "visual", "visual do culto", "tema do culto", "fundo do culto", "papel de parede"]),
     e("culto", "Equipe de louvor", "os músicos e cantores para escalar no culto", ["equipe", "músicos", "louvor", "vocal", "banda", "membro"]),
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
+    e("culto", "Pausa entre itens", "com Avançar sozinho ligado, quanto a Setlist espera antes de mandar o próximo", ["avançar sozinho", "setlist automática", "pausa", "próximo", "automático", "segundos", "contagem"]),
 
     e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas, No ar e Setlist · deste computador", ["biblioteca", "slides", "camadas", "temas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "automática, confortável ou compacta · da igreja, viaja no backup", ["automática", "compacta", "confortável", "linhas", "altura", "notebook", "tela pequena"]),

@@ -5,7 +5,8 @@
 // pt-BR message, ready for a toast.
 //
 // Outputs read the document with useLiveState(); they do not call this,
-// except to report that a playlist item ended (media.advance).
+// except to report that an item ended (media.advance, audio.ended, a clear
+// with `ended`).
 
 import { keryx } from "@/api/keryxClient";
 
@@ -36,6 +37,8 @@ export const projection = {
     showAudio: op("audio.show"),
     showAudioPlaylist: (items, index = 0) => keryx.live.call("audio.playlist", { items, index }),
     advanceAudio: (fromIndex) => keryx.live.call("audio.advance", { fromIndex }),
+    // A single file played out: only marked (live.ended, the Setlist automática).
+    audioEnded: (url) => keryx.live.call("audio.ended", { url }),
     clearAudio: op("audio.clear"),
     // Anterior / Próximo in a media or audio list.
     playlistGoTo: (layer, index) => keryx.live.call("playlist.goTo", { layer, index }),

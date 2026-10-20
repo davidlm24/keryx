@@ -246,6 +246,13 @@
       "label": "travar telas",
       "ops": ["screens.lock"],
       "args": { "locked": { "type": "bool", "required": true } }
+    },
+    "setlist.autoplay": {
+      "kind": "T",
+      "cap": "setlist",
+      "label": "avançar sozinho",
+      "args": { "on": { "type": "bool", "required": true } },
+      "$comment": "Setlist automática (Rodada N2): the culto's switch (Service.autoplay), as the Setlist header's. It writes the culto, never the live state (no ops), so it works locked; the console's own watcher then sends nothing while locked. No culto chosen: 409 nothing."
     }
   },
   "results": {
@@ -266,7 +273,8 @@
       "truncated": "bool: items stopped at limits.items",
       "bible": "{ version, installed: str[] }",
       "timers": "[<= limits.timers] the timers prontos { id, minutes }: 5, 10, 15, 30 and 60 min, then the church's TimerPreset rows (timerPresets.js)",
-      "alerts": "[<= limits.alerts] { id, message (<= limits.alertMessage) }: the AlertPreset rows"
+      "alerts": "[<= limits.alerts] { id, message (<= limits.alertMessage) }: the AlertPreset rows",
+      "autoplay": "bool: the culto's Avançar sozinho is on (Setlist automática, Rodada N2; setlist.autoplay turns it)"
     },
     "library": {
       "tab": "songs | media | pieces | materials",

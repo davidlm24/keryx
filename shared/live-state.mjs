@@ -200,6 +200,12 @@ export function emptyState(now = Date.now()) {
         // that change's updatedAt, so an output knows the fade is this
         // change's. null: a cut.
         fade: null,
+        // The last medium that reached its end by itself, as an output
+        // reported it (Setlist automática, Rodada N2): { layer, id, url, at }.
+        // A single video cleared at its end, a list past its last item, a
+        // single audio file played out. Esc, Limpar and Parar never set it,
+        // so the console tells "it ended" from "someone took it off".
+        ended: null,
     };
 }
 
@@ -210,7 +216,7 @@ export function emptyState(now = Date.now()) {
 export const WHILE_LOCKED = new Set([
     "screens.lock", "screen.set", "idle.set", "idle.look", "session.end", "layers.hide", "layers.lock", "background.default",
     "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "text.clear", "alert.clear", "background.clear",
-    "media.advance", "audio.advance", "communication.advance", "media.toAudio",
+    "media.advance", "audio.advance", "communication.advance", "media.toAudio", "audio.ended",
 ]);
 
 // -- Checking what pages send -------------------------------------------------
@@ -415,6 +421,9 @@ function audioItem(value) {
     oneOf(kind, ["audio", "video"], "Tipo de áudio");
     return mediaItem({ ...value, kind });
 }
+
+// The `ended` mark (emptyState) of an item that reached its end now.
+const endedMark = (layer, item, now) => ({ ended: { layer, id: item?.id || null, url: item?.url || null, at: now } });
 
 // A playback that starts now: from the top and playing, or (Desfazer of
 // Esc, Rodada G3) from `position`, paused or not, its volume rising from 0
@@ -776,12 +785,14 @@ const OPS = {
         const media = need(s.media, "em reprodução");
         if (!media.playlist || Number(fromIndex) !== media.playlistIndex) return null;
         const i = (media.playlistIndex + 1) % media.playlist.length;
-        return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) }, fade: exitFade(fade, now) };
+        // Back to the first: the list went past its last item (ended).
+        return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) }, fade: exitFade(fade, now), ...(i === 0 ? endedMark("media", media, now) : {}) };
     },
     // Parar in the player: `fade` as Esc's (Ao tirar do ar, Rodada G3); a
     // single video that ends by itself is cleared by the projector with the
-    // same fade (LiveMediaView, Rodada G4).
-    "media.clear": (s, a, now) => (s.media ? { ...remember(s, now, "media"), media: null, fade: exitFade(a.fade, now) } : null),
+    // same fade (LiveMediaView, Rodada G4) and says so (`ended`: the
+    // Setlist automática's "it ended", never Parar's).
+    "media.clear": (s, a, now) => (s.media ? { ...remember(s, now, "media"), media: null, fade: exitFade(a.fade, now), ...(a.ended === true ? endedMark("media", s.media, now) : {}) } : null),
 
     // The video channel: video screens and tablets (VideoProjection). It does
     // not cover the main projector.
@@ -789,7 +800,7 @@ const OPS = {
         const video = { ...mediaItem(a), shownAt: now, playback: playbackFor(a, now) };
         return { ...hush(s, "video", video, a.transition, now), video, fade: exitFade(a.fade, now) };
     },
-    "video.clear": (s, a, now) => (s.video ? { video: null, fade: exitFade(a.fade, now) } : null),
+    "video.clear": (s, a, now) => (s.video ? { video: null, fade: exitFade(a.fade, now), ...(a.ended === true ? endedMark("video", s.video, now) : {}) } : null),
 
     // The audio channel (see emptyState): one file or a list, a video file
     // used for its sound included. `position`, `paused`, `fadeIn`: where and
@@ -810,8 +821,17 @@ const OPS = {
         if (!audio.playlist || Number(fromIndex) !== audio.playlistIndex) return null;
         const i = audio.playlistIndex + 1;
         // The end of the list: it stops there (music does not wrap by itself).
-        if (i >= audio.playlist.length) return { audio: { ...audio, playback: ramped({ ...audio.playback, paused: true, position: livePosition(audio.playback, now), at: now }, null) } };
+        if (i >= audio.playlist.length) return { audio: { ...audio, playback: ramped({ ...audio.playback, paused: true, position: livePosition(audio.playback, now), at: now }, null) }, ...endedMark("audio", audio, now) };
         return { audio: { ...audio, ...audio.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, audio.playback.volume) } };
+    },
+    // A single audio file played out (the projector reports it; several
+    // reports of the same end change nothing). It keeps its place, as
+    // before: only `ended` says so (Setlist automática, Rodada N2).
+    "audio.ended": (s, { url }, now) => {
+        const audio = s.audio;
+        if (!audio || audio.playlist || audio.url !== url) return null;
+        if (s.ended?.layer === "audio" && s.ended.url === url && s.ended.at >= audio.shownAt) return null;
+        return endedMark("audio", audio, now);
     },
     // Parar: the music stops, fading out over `fade` ms (live.leaving).
     "audio.clear": (s, a, now) => (s.audio ? { audio: null, ...leave(s, ["audio"], exitFade(a.fade, now)?.ms, now) } : null),

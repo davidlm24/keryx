@@ -115,6 +115,15 @@
       "type": "string",
       "description": "Notas gerais do culto"
     },
+    "autoplay": {
+      "type": "boolean",
+      "default": false,
+      "description": "Setlist automatica (Rodada N2): Avancar sozinho, o interruptor do cabecalho da Setlist. Ligado, quando o item no ar termina, o proximo vai ao ar depois da pausa"
+    },
+    "autoplay_gap": {
+      "type": "integer",
+      "description": "Setlist automatica: pausa entre itens deste culto em segundos (0, 3, 5 ou 10). Nulo = a da igreja (User.autoplay_gap)"
+    },
     "operator_notes": {
       "type": "string",
       "description": "Notas livres do operador no console (aba Notas): so no console, fora do PDF; vao com o culto e o backup"

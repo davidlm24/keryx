@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
-import { Btn, Field } from "../kx";
+import { Btn, Field, Seg } from "../kx";
 import Icon from "../Icon";
 import { FormRow, Switch, CfgGroup } from "./parts";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
@@ -15,6 +15,7 @@ import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
 import { openEditor } from "@/lib/editorWindow";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 import { wallpaperSummary, templatesSummary, teamSummary } from "@/lib/console/cfgSummaries";
+import { GAPS, gapLabel } from "@/lib/console/autoplay";
 
 // The two lists this section edits, with the planner's query keys: a change
 // here reaches the planner (and back) through each table's realtime.
@@ -90,6 +91,13 @@ export default function CultoSection({ c }) {
                 <FormRow k="Previsão do culto">
                     <Switch on={forecast} onChange={(on) => save({ show_forecast: on }, on ? "Previsão do fim e atraso ligados." : "Previsão desligada.")} label="Mostrar a previsão do fim do culto e o atraso" />
                     <span className="kx-meta">"termina ~" e o atraso na barra do topo</span>
+                </FormRow>
+                {/* Setlist automática (Rodada N2): the church's pause; a culto may
+                    keep its own (Planejar o culto, Service.autoplay_gap). */}
+                <FormRow k="Pausa entre itens">
+                    <Seg small label="Pausa entre itens" value={String(prefs.autoplay_gap)} options={GAPS.map((g) => [String(g), gapLabel(g)])}
+                        onChange={(v) => save({ autoplay_gap: Number(v) }, Number(v) ? `Pausa entre itens: ${v} s.` : "Sem pausa entre itens: o próximo entra assim que o item termina.")} />
+                    <span className="kx-meta">com Avançar sozinho ligado (Setlist), antes de o próximo item ir ao ar</span>
                 </FormRow>
             </div>
             </CfgGroup>

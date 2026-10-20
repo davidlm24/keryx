@@ -811,8 +811,10 @@ function churchInABox(mediaDir) {
             id: ids.service, title: "Culto de domingo", date: "2026-10-25", time: "19:00",
             background: { kind: "image", value: file("Service.background", ".jpg") },
             standby_background: file("Service.standby_background", ".jpg"),
+            // Setlist automática (Rodada N2): the switch and the pause travel with the culto.
+            autoplay: true, autoplay_gap: 3,
         }],
-        ServiceItem: [{ serviceId: ids.service, order: 1, type: "SONG", title: "Grande é o Senhor", contentId: ids.song }],
+        ServiceItem: [{ serviceId: ids.service, order: 1, type: "SONG", title: "Grande é o Senhor", contentId: ids.song, end_action: "loop" }],
         ServiceTemplate: [{ name: "Domingo à noite", background: { kind: "video", value: file("ServiceTemplate.background", ".mp4") }, items: [{ type: "SECTION", title: "Louvor" }] }],
         Song: [
             {

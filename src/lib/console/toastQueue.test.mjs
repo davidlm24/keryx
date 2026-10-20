@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pushToast, nextToast, toastMs, emptyToasts, TOAST_QUEUE } from "./toastQueue.js";
+import { pushToast, nextToast, dropToast, toastMs, emptyToasts, TOAST_QUEUE } from "./toastQueue.js";
 
 const undo = { label: "Desfazer", run: () => {} };
 
@@ -36,4 +36,14 @@ test("the newest action takes the place; the queue keeps its last few", () => {
     s = pushToast(s, { id: 2, text: "Celular: projeção encerrada.", action: undo });
     assert.equal(s.cur.id, 2);
     assert.equal(s.queue.length, TOAST_QUEUE);
+});
+
+test("replace and dropToast: the Setlist automática's countdown answered another way (Rodada N2)", () => {
+    const count = pushToast(emptyToasts, { id: 1, text: "Próximo em 5 s: Abertura", action: { label: "Cancelar" }, ms: 5000 });
+    assert.equal(count.cur.ms, 5000, "it lasts its pause");
+    assert.equal(pushToast(count, { id: 2, text: "Cancelado" }).cur.id, 1, "a plain toast waits behind it");
+    assert.equal(pushToast(count, { id: 2, text: "Cancelado", replace: true }).cur.id, 2, "unless it answers it");
+    assert.equal(dropToast(count, "Próximo em 5 s: Abertura").cur, null);
+    assert.equal(dropToast(count, "outro"), count);
+    assert.equal(dropToast(emptyToasts, "x"), emptyToasts);
 });
