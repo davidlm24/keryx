@@ -2,7 +2,7 @@
    and for the console's monitors, sized in container units so a preview is
    the output scaled down. Console tokens never appear here. */
 .ks { position: relative; overflow: hidden; background: #000; color: #fff; isolation: isolate;
-  font-family: "Geist", "Inter", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  font-family: "Geist", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .ks.ks-fill { position: fixed; inset: 0; container-type: size; }
 .ks.ks-box { width: 100%; aspect-ratio: 16 / 9; container-type: inline-size; }
 .ks-layer { position: absolute; inset: 0; }
@@ -122,7 +122,7 @@
    band across the top, exactly as the Projeção drew it. A type "alert"
    stays red whatever the colours. */
 .ks-alert { position: absolute; z-index: 90; left: 0; right: 0; top: 0; box-sizing: border-box; min-height: 6cqw; display: flex; align-items: center; justify-content: center; padding: 1cqw 3cqw;
-  background: var(--ka-bg, #f5a524); color: var(--ka-fg, #1a1300); font-family: "Geist", "Inter", system-ui, sans-serif; font-size: 2.8cqw; line-height: 1.2; font-weight: 600; text-align: center; white-space: pre-wrap; pointer-events: none; }
+  background: var(--ka-bg, #f5a524); color: var(--ka-fg, #1a1300); font-family: "Geist", system-ui, sans-serif; font-size: 2.8cqw; line-height: 1.2; font-weight: 600; text-align: center; white-space: pre-wrap; pointer-events: none; }
 .ks-alert.ks-alert-alert { background: #e5484d; color: #fff; }
 .ks-alert.is-size-s { min-height: 4.6cqw; padding: .7cqw 2.4cqw; font-size: 2.1cqw; }
 .ks-alert.is-size-l { min-height: 7.8cqw; padding: 1.3cqw 3.6cqw; font-size: 3.7cqw; }

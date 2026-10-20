@@ -382,7 +382,7 @@ function useDockEase(box, frame, editing) {
         }
         if (!easesBetween(was, now) || editing || reduced() || performance.now() - born.current < SETTLE_MS) return;
         const css = getComputedStyle(root);
-        const ms = parseFloat(css.getPropertyValue("--fold-ms")) || 180;
+        const ms = parseFloat(css.getPropertyValue("--dur-fold")) || 180;
         const curve = css.getPropertyValue("--ease-fold").trim() || "cubic-bezier(0.32, 0.72, 0, 1)";
         for (const el of cells) {
             const k = el.dataset.ease;

@@ -90,10 +90,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   12 px from the right one (symmetric, owner 2026-10-16 after the Bíblia
   review; the first row under a header — cells, a list — starts 4 px
   below it); a header's controls (buttons, selects, Seg) are 24 px tall
-  and **8 px apart, as in the windows' bar** (`.win-bar`; owner
-  2026-10-16, in both environments); a band under a header (the
+  (`--control-sm`) and **8 px apart, as in the windows' bar** (`.win-bar`;
+  owner 2026-10-16, in both environments); a band under a header (the
   Biblioteca's search row, the Bíblia's Recentes/Favoritos/Anotações) is
-  36 px, its controls 28, 4 px in and 4 px apart; anything with a box
+  36 px (`--band`), its controls 28, 4 px in and 4 px apart (font sizes,
+  layers, heights, the fold's motion and the chrome over a screen are
+  tokens since Rodada DS2: docs/design-system.md › Tokens, guarded by
+  `src/lib/tokens.test.mjs`); anything with a box
   of its own — list cards, verse cards, the cells of Livros/Capítulos/
   Versículos, the Temas tiles, the search field, tabs, the No ar agora
   monitor — sits 4 px

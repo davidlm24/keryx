@@ -7,7 +7,7 @@
 
 :root { color-scheme: dark; }
 .kx, .kx * { box-sizing: border-box; }
-.kx { font-family: var(--font-sans); font-size: 12px; line-height: 16px; color: var(--fg-2); background: var(--bg-0);
+.kx { font-family: var(--font-sans); font-size: var(--fs-ui); line-height: 16px; color: var(--fg-2); background: var(--bg-0);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; -webkit-font-smoothing: antialiased; }
 /* The reset weighs nothing (:where), so every kx- class below keeps its own padding, fill and colour. */
 :where(.kx) :where(button, input) { font: inherit; color: inherit; font-variant-numeric: inherit; }
@@ -24,21 +24,21 @@
 .kx-t { transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .kx *, .kx-t { transition: none !important; animation: none !important; } }
 .kx-i { flex: none; display: inline-block; vertical-align: -3px; }
-.kx-meta { font-size: 11px; line-height: 16px; color: var(--fg-3); }
+.kx-meta { font-size: var(--fs-meta); line-height: 16px; color: var(--fg-3); }
 /* Said to a screen reader, never shown: a state in words, the live region. */
 .kx-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
-.kx-section { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
-.kx-content { font-size: 13px; line-height: 18px; color: var(--fg-1); }
-.kx-content-lg { font-size: 14px; line-height: 20px; color: var(--fg-1); }
+.kx-section { font-size: var(--fs-meta); line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
+.kx-content { font-size: var(--fs-content); line-height: 18px; color: var(--fg-1); }
+.kx-content-lg { font-size: var(--fs-content-lg); line-height: 20px; color: var(--fg-1); }
 /* Live information gets its own steps (the rest of the console stays 11-14px):
    the state word, what is on air (once per screen), what is prepared / next,
    what failed. 11px (meta) is for telemetry only. */
-.kx-live-cap { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.kx-live-title { font-size: 16px; line-height: 22px; font-weight: 600; color: var(--fg-1); }
-.kx-next-title { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--fg-1); }
-.kx-alert-title { font-size: 13px; line-height: 18px; font-weight: 600; }
-.kx-clock { font-size: 20px; line-height: 24px; font-weight: 500; color: var(--fg-2); }
-.kx-countdown { font-size: 28px; line-height: 32px; font-weight: 500; color: var(--fg-1); }
+.kx-live-cap { font-size: var(--fs-ui); line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.kx-live-title { font-size: var(--fs-live); line-height: 22px; font-weight: 600; color: var(--fg-1); }
+.kx-next-title { font-size: var(--fs-content-lg); line-height: 20px; font-weight: 500; color: var(--fg-1); }
+.kx-alert-title { font-size: var(--fs-content); line-height: 18px; font-weight: 600; }
+.kx-clock { font-size: var(--fs-clock); line-height: 24px; font-weight: 500; color: var(--fg-2); }
+.kx-countdown { font-size: var(--fs-count); line-height: 32px; font-weight: 500; color: var(--fg-1); }
 .kx-air { color: var(--air-fg); } .kx-prev { color: var(--prev-fg); } .kx-rh { color: var(--rh-fg); } .kx-warn { color: var(--warn-fg); }
 .kx-dim { opacity: var(--dim); }
 
@@ -56,7 +56,7 @@
 
 /* ---- Button: ghost by default, 28px. Fills: the state buttons (prev, rh, air) and the gold one for ordinary primary actions. ---- */
 .kx-btn { height: var(--row); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control);
-  color: var(--fg-2); white-space: nowrap; font-size: 12px; line-height: 16px; }
+  color: var(--fg-2); white-space: nowrap; font-size: var(--fs-ui); line-height: 16px; }
 .kx-btn:hover { background: var(--bg-2); color: var(--fg-1); }
 .kx-btn:active, .kx-btn[aria-expanded="true"], .kx-btn.is-on { background: var(--bg-3); color: var(--fg-1); }
 .kx-btn:disabled { opacity: var(--dim); background: none; color: var(--fg-2); }
@@ -86,7 +86,7 @@
 
 /* ---- Segmented switch ---- */
 .kx-seg { height: var(--row); display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--radius-control); background: var(--bg-2); }
-.kx-seg > button { height: 24px; padding: 0 10px; border-radius: calc(var(--radius-control) - 2px); color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; }
+.kx-seg > button { height: var(--control-sm); padding: 0 10px; border-radius: calc(var(--radius-control) - 2px); color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; }
 .kx-seg > button:hover { color: var(--fg-1); }
 .kx-seg > button.is-on { background: var(--bg-3); color: var(--fg-1); font-weight: 500; box-shadow: inset 0 0 0 1px var(--fg-3); }
 .kx-seg.kx-seg-mode > button.is-on[data-mode="live"] { background: var(--air-fill); color: var(--on-state); }
@@ -94,8 +94,8 @@
 /* Seg small (forms, menus, the console's own Segs): 24 px segments, the console's target, in a 28 px track.
    In a header or a menu's 24 px heading row (controls 24 px tall) the track goes and the segments fill the 24 px. */
 .kx-seg.is-small { height: var(--row); padding: 2px; }
-.kx-seg.is-small > button { height: 24px; padding: 0 8px; font-size: 11px; }
-:is(.kx-panel-h, .win-bar, .kx-menu-h) .kx-seg.is-small { height: 24px; padding: 0; }
+.kx-seg.is-small > button { height: var(--control-sm); padding: 0 8px; font-size: var(--fs-meta); }
+:is(.kx-panel-h, .win-bar, .kx-menu-h) .kx-seg.is-small { height: var(--control-sm); padding: 0; }
 .kx-dot { width: 6px; height: 6px; border-radius: var(--radius-round); background: currentColor; flex: none; display: inline-block; }
 
 /* ---- Fields: kx-input (text, number, date, textarea), kx-select, and kx-field (an input with a glyph) ----
@@ -103,8 +103,8 @@
    (5.5:1 on bg-2, 4.9:1 on bg-3), never the gold ring while typing. An outline, so forced colours keep it.
    Disabled dims; [aria-invalid="true"] draws the line in warn (focus included). */
 .kx-input, .kx-select { height: var(--row); min-width: 0; box-sizing: border-box; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control);
-  background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 12px; line-height: 16px; color-scheme: dark; outline: none; }
-:is(.kx-input, .kx-select).is-small { height: 24px; padding: 0 6px; }
+  background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: var(--fs-ui); line-height: 16px; color-scheme: dark; outline: none; }
+:is(.kx-input, .kx-select).is-small { height: var(--control-sm); padding: 0 6px; }
 textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px; resize: vertical; }
 .kx-input::placeholder { color: var(--fg-3); }
 :is(.kx-input, .kx-select):hover:not(:disabled, :focus-visible, [aria-invalid="true"]) { box-shadow: inset 0 0 0 1px var(--line); }
@@ -119,18 +119,18 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-field input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; padding: 0; color: var(--fg-1); }
 .kx .kx-field input:focus-visible { outline: 0; }
 .kx-field input::placeholder { color: var(--fg-3); }
-.kx-field kbd { font: inherit; font-size: 11px; color: var(--fg-3); }
+.kx-field kbd { font: inherit; font-size: var(--fs-meta); color: var(--fg-3); }
 /* kx-num (NumBox, Rodada HF2): − [number] + unit, 24px, the field's look; the steppers are 24×24 and dim at the ends. */
-.kx-num { height: 24px; display: inline-flex; align-items: center; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-1); flex: none; }
+.kx-num { height: var(--control-sm); display: inline-flex; align-items: center; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-1); flex: none; }
 .kx-num:hover:not(.is-disabled, :focus-within) { box-shadow: inset 0 0 0 1px var(--line); }
 .kx-num:focus-within { outline: 1px solid var(--fg-3); outline-offset: -1px; }
 .kx-num.is-disabled { opacity: var(--dim); }
-.kx-num > button { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg-2); border-radius: var(--radius-control); flex: none; }
+.kx-num > button { width: var(--control-sm); height: var(--control-sm); display: inline-flex; align-items: center; justify-content: center; color: var(--fg-2); border-radius: var(--radius-control); flex: none; }
 .kx-num > button:hover:not(:disabled) { color: var(--fg-1); background: var(--bg-3); }
 .kx-num > button:disabled { opacity: var(--dim); }
-.kx-num input { width: auto; min-width: 0; height: 24px; padding: 0 2px; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; outline: 0; }
+.kx-num input { width: auto; min-width: 0; height: var(--control-sm); padding: 0 2px; border: 0; background: none; color: inherit; font: inherit; font-size: var(--fs-ui); font-variant-numeric: tabular-nums; text-align: right; outline: 0; }
 .kx .kx-num input:focus-visible { outline: 0; }
-.kx-num-u { font-size: 11px; color: var(--fg-3); padding-right: 6px; }
+.kx-num-u { font-size: var(--fs-meta); color: var(--fg-3); padding-right: 6px; }
 
 /* ---- Row (list item): title + one grey line. State = 2px bar on the left edge + 10% tint. Never a badge. ---- */
 .kx-row { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 0 var(--space-2) 0 var(--space-3); width: 100%; text-align: left; border-radius: 0; color: var(--fg-1); }
@@ -146,11 +146,11 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-row.is-done .kx-glyph { opacity: var(--dim); }
 .kx-row.is-done .kx-row-title { color: var(--fg-3); }
 .kx-row .kx-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 4px 0; }
-.kx-row .kx-row-title { font-size: 13px; line-height: 18px; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-row .kx-row-title { font-size: var(--fs-content); line-height: 18px; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx-row.is-air .kx-row-title { color: var(--air-fg); } .kx-row.is-prev .kx-row-title { color: var(--prev-fg); }
-.kx-row .kx-row-meta { font-size: 11px; line-height: 14px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kx-row.kx-row-1 .kx-row-main { padding: 0; } .kx-row.kx-row-1 .kx-row-title { font-size: 12px; line-height: 16px; }
-.kx-row .kx-row-time { font-size: 11px; color: var(--fg-3); flex: none; min-width: 36px; text-align: right; }
+.kx-row .kx-row-meta { font-size: var(--fs-meta); line-height: 14px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-row.kx-row-1 .kx-row-main { padding: 0; } .kx-row.kx-row-1 .kx-row-title { font-size: var(--fs-ui); line-height: 16px; }
+.kx-row .kx-row-time { font-size: var(--fs-meta); color: var(--fg-3); flex: none; min-width: 36px; text-align: right; }
 .kx-row .kx-row-acts { display: none; gap: 2px; flex: none; }
 .kx-row:hover .kx-row-acts, .kx-row:focus-within .kx-row-acts { display: inline-flex; }
 .kx-row:hover .kx-row-time.kx-hide-on-hover { display: none; }
@@ -160,7 +160,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-row .kx-act-i { display: none; }
 @container kx-acts (max-width: 299px) { .kx-row .kx-act-i { display: inline-flex; } .kx-row .kx-act-l { display: none; } .kx-row .kx-btn:has(.kx-act-i) { width: 24px; padding: 0; } }
 /* 24 px: the minimum pointer target (WCAG 2.2), the glyph stays 16 px. */
-.kx-row .kx-btn { height: 24px; min-width: 24px; padding: 0 4px; font-size: 11px; }
+.kx-row .kx-btn { height: var(--control-sm); min-width: var(--control-sm); padding: 0 4px; font-size: var(--fs-meta); }
 .kx-row .kx-btn.kx-btn-icon { width: 24px; }
 .kx-row .kx-glyph { color: var(--fg-3); flex: none; display: inline-flex; }
 
@@ -187,9 +187,9 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-mon-cap .kx-mon-t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx-mon-cap .kx-meta { flex: none; white-space: nowrap; }
 /* A caption inside the screen, top-left (the Prévia's "Prévia · nome · 2/6"); it never takes a click. */
-.kx-mon-badge { position: absolute; top: var(--space-2); left: var(--space-2); z-index: 201; display: flex; align-items: center; gap: 6px; max-width: calc(100% - 2 * var(--space-2)); height: 22px; padding: 0 var(--space-2); border-radius: 6px; background: #0d0d0cd9; box-shadow: 0 0 0 1px #ffffff14; font-family: var(--font-sans); color: var(--fg-1); pointer-events: none; }
-.kx-mon-badge .kx-live-cap { font-size: 11px; }
-.kx-mon-badge .kx-mon-t { font-size: 12px; line-height: 16px; font-weight: 500; }
+.kx-mon-badge { position: absolute; top: var(--space-2); left: var(--space-2); z-index: var(--z-badge); display: flex; align-items: center; gap: 6px; max-width: calc(100% - 2 * var(--space-2)); height: 22px; padding: 0 var(--space-2); border-radius: 6px; background: var(--chrome-on-screen); box-shadow: 0 0 0 1px var(--chrome-ring); font-family: var(--font-sans); color: var(--fg-1); pointer-events: none; }
+.kx-mon-badge .kx-live-cap { font-size: var(--fs-meta); }
+.kx-mon-badge .kx-mon-t { font-size: var(--fs-ui); line-height: 16px; font-weight: 500; }
 .kx-screen-bg { position: absolute; inset: 0; }
 .kx-screen-txt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 8cqw 10cqw; gap: 2cqw; }
 .kx-screen-lyrics { font-size: 5.2cqw; line-height: 1.2; font-weight: 600; white-space: pre-line; text-shadow: var(--screen-text); }
@@ -197,13 +197,13 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-screen-verse sup { font-size: .6em; opacity: .7; margin-right: .3em; }
 .kx-screen-ref { font-size: 2.4cqw; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .85; text-shadow: var(--screen-text); }
 .kx-screen-logo { position: absolute; right: 3cqw; bottom: 3cqw; width: 7cqw; height: 7cqw; }
-.kx-screen-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-3); font-family: var(--font-sans); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+.kx-screen-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-3); font-family: var(--font-sans); font-size: var(--fs-meta); letter-spacing: .06em; text-transform: uppercase;
   background: repeating-linear-gradient(135deg, transparent 0 10px, var(--bg-1) 10px 11px); }
-.kx-screen-hatch { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; gap: 4px; color: var(--warn-fg); font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500;
-  background: repeating-linear-gradient(135deg, var(--warn-tint) 0 12px, #0d0d0cd9 12px 24px); opacity: var(--hatch); }
-.kx-screen-hatch small { display: block; font-weight: 400; font-size: 11px; color: var(--fg-2); }
+.kx-screen-hatch { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; gap: 4px; color: var(--warn-fg); font-family: var(--font-sans); font-size: var(--fs-ui); line-height: 16px; font-weight: 500;
+  background: repeating-linear-gradient(135deg, var(--warn-tint) 0 12px, var(--chrome-on-screen) 12px 24px); opacity: var(--hatch); }
+.kx-screen-hatch small { display: block; font-weight: 400; font-size: var(--fs-meta); color: var(--fg-2); }
 .kx-pip { position: absolute; right: 2cqw; bottom: 2cqw; width: 28cqw; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px var(--air); background: var(--screen-bg); container-type: inline-size; }
-.kx-pip-cap { position: absolute; left: 0; top: 0; z-index: 2; padding: 0 5px; height: 14px; display: flex; align-items: center; background: var(--air-fill); color: var(--on-state); font-family: var(--font-sans); font-size: 9px; letter-spacing: .06em; font-weight: 500; }
+.kx-pip-cap { position: absolute; left: 0; top: 0; z-index: var(--z-mark); padding: 0 5px; height: 14px; display: flex; align-items: center; background: var(--air-fill); color: var(--on-state); font-family: var(--font-sans); font-size: var(--fs-meta); letter-spacing: .06em; font-weight: 500; }
 
 /* ---- Status (Saídas) ---- */
 .kx-status { height: var(--row); display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); font-weight: 500; }
@@ -212,32 +212,32 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-status.is-warn { color: var(--warn-fg); } .kx-status.is-warn .kx-dot { background: var(--warn); }
 .kx-status.is-rh { color: var(--rh-fg); } .kx-status.is-rh .kx-dot { background: var(--rh); }
 .kx-out { display: grid; grid-template-columns: 16px 1fr auto; gap: var(--space-2); align-items: center; min-height: 36px; padding: 0 var(--space-2); }
-.kx-out .kx-out-name { font-size: 12px; color: var(--fg-1); line-height: 16px; }
-.kx-out .kx-out-meta { font-size: 11px; color: var(--fg-3); line-height: 14px; }
-.kx-out .kx-out-st { font-size: 11px; display: inline-flex; align-items: center; gap: 6px; color: var(--prev-fg); }
+.kx-out .kx-out-name { font-size: var(--fs-ui); color: var(--fg-1); line-height: 16px; }
+.kx-out .kx-out-meta { font-size: var(--fs-meta); color: var(--fg-3); line-height: 14px; }
+.kx-out .kx-out-st { font-size: var(--fs-meta); display: inline-flex; align-items: center; gap: 6px; color: var(--prev-fg); }
 .kx-out.is-warn .kx-out-st { color: var(--warn-fg); } .kx-out.is-warn .kx-glyph { color: var(--warn); }
 .kx-out.is-off .kx-out-st { color: var(--fg-3); }
 .kx-out.is-rh .kx-out-st { color: var(--rh-fg); }
 
 /* ---- Banner: one thin line across the grid. The colour is the state's tint + a 2px top rule. ---- */
-.kx-banner { height: var(--row); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3); border-radius: var(--radius-control); font-size: 12px; font-weight: 500; }
+.kx-banner { height: var(--row); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3); border-radius: var(--radius-control); font-size: var(--fs-ui); font-weight: 500; }
 .kx-banner span.kx-sub { font-weight: 400; color: var(--fg-2); }
 .kx-banner .kx-spacer { flex: 1; }
 .kx-banner.is-rh { background: var(--rh-tint); color: var(--rh-fg); box-shadow: inset 0 var(--bar) 0 var(--rh); }
 .kx-banner.is-warn { background: var(--warn-tint); color: var(--warn-fg); box-shadow: inset 0 var(--bar) 0 var(--warn); }
-.kx-banner .kx-btn { height: 24px; padding: 0 var(--space-2); }
+.kx-banner .kx-btn { height: var(--control-sm); padding: 0 var(--space-2); }
 
 /* ---- Popover, menu, tooltip ---- */
 .kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 6px; min-width: 180px; }
 .kx-menu-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; height: var(--row); padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-1); text-align: left; }
 .kx-menu-item:hover { background: var(--bg-3); }
-.kx-menu-item .kx-kbd { margin-left: auto; color: var(--fg-3); font-size: 11px; }
+.kx-menu-item .kx-kbd { margin-left: auto; color: var(--fg-3); font-size: var(--fs-meta); }
 .kx-menu-item .kx-glyph { color: var(--fg-2); display: inline-flex; width: 16px; justify-content: center; }
 .kx-menu-item.is-checked .kx-glyph { color: var(--fg-1); }
 .kx-menu-sep { height: 1px; background: var(--line-soft); margin: var(--space-1) 0; }
 .kx-menu-h { height: 24px; display: flex; align-items: center; padding: 0 var(--space-2); }
-.kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; }
-.kx-tip .kx-kbd { color: var(--fg-3); font-size: 11px; }
+.kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; }
+.kx-tip .kx-kbd { color: var(--fg-3); font-size: var(--fs-meta); }
 
 /* ---- Splitter: invisible until hover ---- */
 /* A fixed gutter between two modules that cannot be resized (no grip, no cursor). */
@@ -245,7 +245,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 /* The splitter takes the 6 px gutter in the layout but answers the pointer
    over 12 px (padding pulled back by margins), and shows a grip on hover and
    on keyboard focus so it can be found without knowing it is there. */
-.kx-split { position: relative; z-index: 2; flex: none; width: var(--gutter); cursor: col-resize; box-sizing: content-box; padding: 0 3px; margin: 0 -3px; outline: none; }
+.kx-split { position: relative; z-index: var(--z-mark); flex: none; width: var(--gutter); cursor: col-resize; box-sizing: content-box; padding: 0 3px; margin: 0 -3px; outline: none; }
 .kx-split.kx-split-h { width: auto; height: var(--gutter); cursor: row-resize; padding: 3px 0; margin: -3px 0; }
 .kx-split::before { content: ""; position: absolute; left: 50%; top: 50%; width: 2px; height: 24px; margin: -12px 0 0 -1px; border-radius: 1px;
   background: radial-gradient(circle, var(--fg-3) 1px, transparent 1.5px) 0 0 / 2px 6px; opacity: 0; transition: opacity var(--duration-fast) var(--ease-out); pointer-events: none; }
@@ -255,11 +255,11 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-split:focus-visible::before { background-image: radial-gradient(circle, var(--brand) 1px, transparent 1.5px); }
 
 /* ---- Slide (slides column) ---- */
-.kx-slide { position: relative; display: grid; grid-template-columns: 20px 1fr; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: 13px; line-height: 18px; white-space: pre-line; }
+.kx-slide { position: relative; display: grid; grid-template-columns: 20px 1fr; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: var(--fs-content); line-height: 18px; white-space: pre-line; }
 .kx-slide::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
 .kx-slide:hover { background: var(--bg-2); }
-.kx-slide .kx-slide-n { font-size: 11px; color: var(--fg-3); line-height: 18px; }
-.kx-slide .kx-slide-lab { font-size: 11px; color: var(--fg-3); line-height: 14px; margin-bottom: 2px; }
+.kx-slide .kx-slide-n { font-size: var(--fs-meta); color: var(--fg-3); line-height: 18px; }
+.kx-slide .kx-slide-lab { font-size: var(--fs-meta); color: var(--fg-3); line-height: 14px; margin-bottom: 2px; }
 .kx-slide.is-air { background: var(--air-tint); } .kx-slide.is-air::before { background: var(--air); } .kx-slide.is-air .kx-slide-n { color: var(--air-fg); }
 .kx-slide.is-prev { background: var(--prev-tint); } .kx-slide.is-prev::before { background: var(--prev); } .kx-slide.is-prev .kx-slide-n { color: var(--prev-fg); }
 .kx-slide.is-next::before { background: var(--line-strong); }
@@ -270,37 +270,37 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-layer:hover { background: var(--bg-2); }
 .kx-layer.is-selected { background: var(--bg-3); }
 .kx-layer .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; }
-.kx-layer .kx-btn { height: 24px; width: 24px; padding: 0; color: var(--fg-2); }
+.kx-layer .kx-btn { height: var(--control-sm); width: var(--control-sm); padding: 0; color: var(--fg-2); }
 .kx-layer .kx-btn.is-off { color: var(--fg-3); opacity: var(--dim); }
 .kx-layer.is-hidden .kx-layer-name { color: var(--fg-3); }
-.kx-layer .kx-layer-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-layer .kx-layer-name { font-size: var(--fs-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---- Transport + meters: appear only while audio plays ---- */
 .kx-transport { height: var(--row); display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1); }
 .kx-transport .kx-seek { flex: 1; height: 2px; background: var(--bg-3); border-radius: 1px; position: relative; min-width: 80px; }
 .kx-transport .kx-seek > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--fg-2); border-radius: 1px; }
 .kx-transport .kx-seek > b { position: absolute; top: -4px; width: 10px; height: 10px; margin-left: -5px; border-radius: var(--radius-round); background: var(--fg-1); }
-.kx-transport .kx-time { font-size: 11px; color: var(--fg-3); min-width: 72px; }
+.kx-transport .kx-time { font-size: var(--fs-meta); color: var(--fg-3); min-width: 72px; }
 .kx-meter { display: inline-flex; gap: 2px; align-items: flex-end; height: 16px; }
 .kx-meter > i { width: 3px; height: 100%; background: var(--bg-3); position: relative; overflow: hidden; border-radius: 1px; }
 .kx-meter > i > b { position: absolute; left: 0; right: 0; bottom: 0; background: var(--prev); }
 .kx-meter > i > b.is-hot { background: var(--warn); }
 
 /* ---- Verse (Bíblia reading view) ---- */
-.kx-verse { display: grid; grid-template-columns: 24px 1fr; gap: var(--space-2); padding: 3px var(--space-3) 3px 10px; width: 100%; text-align: left; font-size: 14px; line-height: 20px; color: var(--fg-1); position: relative; }
+.kx-verse { display: grid; grid-template-columns: 24px 1fr; gap: var(--space-2); padding: 3px var(--space-3) 3px 10px; width: 100%; text-align: left; font-size: var(--fs-content-lg); line-height: 20px; color: var(--fg-1); position: relative; }
 .kx-verse::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
-.kx-verse .kx-verse-n { font-size: 11px; color: var(--fg-3); line-height: 20px; text-align: right; }
+.kx-verse .kx-verse-n { font-size: var(--fs-meta); color: var(--fg-3); line-height: 20px; text-align: right; }
 .kx-verse:hover { background: var(--bg-2); }
 .kx-verse.is-prev { background: var(--prev-tint); } .kx-verse.is-prev::before { background: var(--prev); } .kx-verse.is-prev .kx-verse-n { color: var(--prev-fg); }
 .kx-verse.is-air::before { background: var(--air); } .kx-verse.is-air .kx-verse-n { color: var(--air-fg); }
-.kx-book { height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-1); font-size: 12px; font-weight: 500; line-height: 14px; background: var(--bg-2); position: relative; }
-.kx-book small { font-size: 9px; font-weight: 400; color: var(--fg-3); letter-spacing: .04em; }
+.kx-book { height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-1); font-size: var(--fs-ui); font-weight: 500; line-height: 14px; background: var(--bg-2); position: relative; }
+.kx-book small { font-size: var(--fs-meta); font-weight: 400; color: var(--fg-3); letter-spacing: .04em; }
 .kx-book::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: var(--radius-control) 0 0 var(--radius-control); background: var(--group, var(--line-strong)); }
 .kx-book:hover { background: var(--bg-3); }
 .kx-book.is-selected { background: var(--bg-3); outline: 1px solid var(--line-strong); outline-offset: -1px; }
 
 /* ---- Empty state ---- */
-.kx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); padding: var(--space-6) var(--space-4); text-align: center; color: var(--fg-3); font-size: 12px; line-height: 16px; }
+.kx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); padding: var(--space-6) var(--space-4); text-align: center; color: var(--fg-3); font-size: var(--fs-ui); line-height: 16px; }
 .kx-empty .kx-empty-t { color: var(--fg-2); }
 .kx-empty .kx-glyph { color: var(--fg-3); margin-bottom: var(--space-1); }
 
@@ -309,11 +309,11 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-mark::after { content: "K"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--on-brand); font-family: var(--font-display); font-weight: 600; font-size: 10px; line-height: 1; }
 
 /* ---- Alert (Alerta rápido): the one thing that bypasses Prévia. A warn line in the console, a thin amber bar on the screen. ---- */
-.kx-alert { position: relative; display: flex; align-items: center; gap: var(--space-2); height: var(--row); padding: 0 var(--space-1) 0 var(--space-3); background: var(--warn-tint); color: var(--warn-fg); font-size: 12px; }
+.kx-alert { position: relative; display: flex; align-items: center; gap: var(--space-2); height: var(--row); padding: 0 var(--space-1) 0 var(--space-3); background: var(--warn-tint); color: var(--warn-fg); font-size: var(--fs-ui); }
 .kx-alert::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: var(--warn); }
 .kx-alert .kx-alert-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kx-alert .kx-btn { height: 22px; padding: 0 6px; color: var(--fg-1); }
-.kx-screen-alert { position: absolute; left: 0; right: 0; top: 0; z-index: 6; height: 7cqw; display: flex; align-items: center; justify-content: center; padding: 0 3cqw; background: var(--warn); color: var(--on-warn); font-family: var(--font-sans); font-size: 2.6cqw; font-weight: 500; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-screen-alert { position: absolute; left: 0; right: 0; top: 0; z-index: var(--z-guide); height: 7cqw; display: flex; align-items: center; justify-content: center; padding: 0 3cqw; background: var(--warn); color: var(--on-warn); font-family: var(--font-sans); font-size: 2.6cqw; font-weight: 500; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---- Tools (Relógio, Cronômetro, Timer, Texto livre): ghost buttons in a 2×2 grid; on screen a countdown-style figure with a label. ---- */
 .kx-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); padding: 0 var(--space-3); }
@@ -329,7 +329,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-route { position: relative; display: inline-flex; }
 .kx-route > .kx-btn { height: 22px; padding: 0 6px; gap: 4px; }
 .kx-route > .kx-btn .kx-meta { color: var(--fg-3); }
-.kx-route > .kx-pop { position: absolute; left: 0; top: 24px; z-index: 8; width: 168px; }
+.kx-route > .kx-pop { position: absolute; left: 0; top: 24px; z-index: var(--z-pop); width: 168px; }
 .kx-route.kx-route-right > .kx-pop { left: auto; right: 0; }
 .kx-out .kx-route { margin-top: 2px; }
 .kx-out.is-tall { min-height: 56px; align-items: start; padding-top: 6px; }

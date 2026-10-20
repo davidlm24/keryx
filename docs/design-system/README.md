@@ -33,7 +33,7 @@ Projected screens are a different world: `screen-bg` black, `screen-fg` white te
 
 ## Typography
 
-One family, `sans` (Geist, Inter as fallback, shipped with the app, never loaded from the internet, with `tnum`). Twelve console styles, three screen styles:
+One family, `sans` (Geist, shipped with the app, never loaded from the internet, with `tnum`; the system font only if it ever failed to load). Seven sizes, the `fs-*` tokens (Rodada DS2): 11, 12, 13, 14, 16, 20 and 28 px. Twelve console styles, three screen styles:
 - **Everyday:** `meta` 11/16 for telemetry (times, counts, key, length: never the name of an item that is on air or prepared); `section` 11/16 500 uppercase with 0.06em tracking for module headers; `ui` 12/16 and `ui-strong` 12/16 500 for controls; `content` 13/18 for titles in lists; `content-lg` 14/20 for slide and verse text.
 - **Live information** (it gets its own steps so it can be found at a glance): `live-cap` 12/16 600 for a monitor's state word (the Prévia's badge), in the state's colour; `live-title` 16/22 600 for what is on air where a monitor carries a caption, once per screen; `next-title` 14/20 500 for what is prepared; `alert-title` 13/18 600 for what failed in an output banner.
 - **Time:** `clock` 20/24 and `countdown` 28/32.

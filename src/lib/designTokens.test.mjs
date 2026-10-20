@@ -74,7 +74,9 @@ test("the parser reads custom properties inside nested rules, not comments", () 
 
 test("tokens.css is the compile of tokens.json, name for name and value for value", () => {
     const json = JSON.parse(read("docs/design-system/tokens.json"));
-    const groups = [json.color, json.spacing, json.radius, json.shadow, json.timing, json.opacity];
+    // The type scale and the layers since Rodada DS2; tokens.css is still
+    // kept by hand, so this is what holds the two together until DS3.
+    const groups = [json.color, json.spacing, json.radius, json.shadow, json.timing, json.opacity, json.type.scale, json.layer];
     const expected = groups.flatMap((g) => g.tokens.map((t) => [`--${t.name}`, t.value]));
     for (const [family, value] of Object.entries(json.type.families)) expected.push([`--font-${family}`, value]);
     for (const [name, value] of expected) assert.equal(tokens.get(name), value, `${name} in tokens.css`);
