@@ -1418,7 +1418,7 @@ export default function Console() {
                 to leave, exactly as Esc does; the bar's (x) closes all. */}
             {winOpen && <div className="scrim is-dim win-scrim" onClick={() => winEsc("esc")} />}
             {winOpen && (
-                <div ref={winDialogRef} style={winStyle} className={`win-dialog ${winKind === "editor" ? "is-editor" : ""} ${winRect ? "is-sized" : ""}`} role="dialog" aria-modal="true" aria-label={PAGE_TITLES[winTop.page]}>
+                <div ref={winDialogRef} style={winStyle} className={`win-dialog kx-win ${winKind === "editor" ? "is-editor" : ""} ${winRect ? "is-sized" : ""}`} role="dialog" aria-modal="true" aria-label={PAGE_TITLES[winTop.page]}>
                     <WinEdges dialogRef={winDialogRef} onRect={setWinRect} onDone={(r) => setWinState((st) => withSize(st, winKind, { w: r.w, h: r.h }))} />
                     {win.map((entry, i) => {
                         const active = i === win.length - 1;
@@ -1427,7 +1427,7 @@ export default function Console() {
                         const canDetach = active && Boolean(detachSpec(win, { section: cfg, serviceId }));
                         return (
                             <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: resetWinSize, onDetach: canDetach ? detachTop : null }}>
-                                <div className="win-page" hidden={!active}>{page}</div>
+                                <div className="win-page kx-win-page" hidden={!active}>{page}</div>
                             </WinCtx.Provider>
                         );
                     })}

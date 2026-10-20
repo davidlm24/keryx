@@ -11,14 +11,14 @@ import { fileURLToPath } from "node:url";
 // (gold 36 %, green 16 %) and adds a gold bar on air; this keeps the numbers
 // honest when a token or a percentage changes. The washes are tokens since
 // Rodada DS2 and are read, with the colours they mix, from
-// docs/design-system/tokens.css; the rules that wear them from console.css,
-// so the test follows whatever ships.
+// docs/design-system/tokens.css; the rules that wear them from bundle.css
+// (the slide's component since Rodada DS3), so the test follows what ships.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 
 const TOKENS_CSS = read("docs/design-system/tokens.css");
 const TOKENS = Object.fromEntries([...TOKENS_CSS.matchAll(/(--[\w-]+):\s*(#[0-9a-f]{6})\b/gi)].map(([, k, v]) => [k, v]));
-const CONSOLE = read("src/components/console/console.css");
+const BUNDLE = read("docs/design-system/components/bundle.css");
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 const token = (name) => {
@@ -83,13 +83,13 @@ test("the labels and numbers on the washes pass AA", () => {
     aa(fg1, air, "fg-1 on the on-air wash");
     // fg-2 on the gold wash is 4.15:1 at 36 %: the console draws the label
     // and the number there in fg-1. Pin the rule so nobody puts fg-2 back.
-    assert.match(CONSOLE, /\.is-air > :is\(\.kx-slide-n, \.kx-verse-n\), \.console \.is-air \.kx-slide-lab \{ color: var\(--fg-1\); \}/);
-    assert.match(CONSOLE, /\.is-prev > \.kx-slide-n, \.console \.is-prev > \.kx-verse-n, \.console \.is-prev \.kx-slide-lab \{ color: var\(--fg-2\); \}/);
+    assert.match(BUNDLE, /\.is-air > :is\(\.kx-slide-n, \.kx-verse-n\), \.kx \.is-air \.kx-slide-lab \{ color: var\(--fg-1\); \}/);
+    assert.match(BUNDLE, /\.is-prev > \.kx-slide-n, \.kx \.is-prev > \.kx-verse-n, \.kx \.is-prev \.kx-slide-lab \{ color: var\(--fg-2\); \}/);
 });
 
 test("on air carries a bar that does not depend on colour, the next slide its own", () => {
-    assert.match(CONSOLE, /--live-bar:\s*inset 3px 0 0 var\(--live\)/);
-    assert.match(CONSOLE, /--next-bar:\s*inset 2px 0 0 var\(--fg-3\)/);
-    assert.match(CONSOLE, /\.console \.kx-slide\.is-air, \.console \.kx-verse\.is-air, \.console \.onair-card\.is-air \{ background: var\(--live-bg\); box-shadow: var\(--live-bar\); \}/);
-    assert.match(CONSOLE, /\.console \.kx-slide\.is-next, \.console \.onair-card\.is-next \{ box-shadow: var\(--next-bar\); \}/);
+    assert.match(TOKENS_CSS, /--live-bar:\s*inset 3px 0 0 var\(--live\)/);
+    assert.match(TOKENS_CSS, /--next-bar:\s*inset 2px 0 0 var\(--fg-3\)/);
+    assert.match(BUNDLE, /\.kx \.kx-slide\.is-air, \.kx \.kx-verse\.is-air, \.kx \.onair-card\.is-air \{ background: var\(--live-bg\); box-shadow: var\(--live-bar\); \}/);
+    assert.match(BUNDLE, /\.kx :is\(\.kx-slide, \.onair-card\)\.is-next \{ box-shadow: var\(--next-bar\); \}/);
 });

@@ -11,7 +11,7 @@ const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4
 // One checkbox of the rule's list (the same look as the old Mostrar's).
 function Kind({ on, label, hint, onChange }) {
     return (
-        <button type="button" role="checkbox" aria-checked={on} className={`kx-t ${on ? "is-on" : ""}`} title={hint} onClick={() => onChange(!on)}>
+        <button type="button" role="checkbox" aria-checked={on} className={`kx-check kx-t ${on ? "is-on" : ""}`} title={hint} onClick={() => onChange(!on)}>
             <Icon name="check" size={12} />{label}
         </button>
     );
@@ -53,7 +53,7 @@ export default function ConteudoBlock({ ctx }) {
                     {RULE_GROUPS.map((g) => (
                         <div key={g} className="cfg-rule-g">
                             <span className="kx-section">{g}</span>
-                            <div className="cfg-kinds" role="group" aria-label={g}>
+                            <div className="cfg-kinds kx-checks" role="group" aria-label={g}>
                                 {RULE_KINDS.filter((k) => k.group === g).map((k) => (
                                     <Kind key={k.id} on={has(k.id)} label={k.label} hint={has(k.id) ? `${label} recebe ${k.label.toLowerCase()} · clique para tirar` : `${label} não recebe ${k.label.toLowerCase()} · clique para receber`} onChange={(on) => toggle(k.id, on)} />
                                 ))}
@@ -62,7 +62,7 @@ export default function ConteudoBlock({ ctx }) {
                     ))}
                     <div className="cfg-rule-g">
                         <span className="kx-section">Por cima de tudo</span>
-                        <div className="cfg-kinds" role="group" aria-label="Por cima de tudo">
+                        <div className="cfg-kinds kx-checks" role="group" aria-label="Por cima de tudo">
                             <Kind on={rule.top.alert} label="Aviso rápido" hint="A barra do Aviso rápido por cima do que estiver na tela" onChange={(on) => setRule({ top: { alert: on } })} />
                             <Kind on={rule.top.logo} label="Logo no canto" hint="A camada Logo do console, no canto desta tela" onChange={(on) => setRule({ top: { logo: on } })} />
                         </div>

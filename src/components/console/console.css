@@ -1,6 +1,10 @@
-/* The console's layout: modules on a grid with splitters, the top bar, the
-   monitors. Everything else (rows, buttons, fields, monitors' look) comes
-   from the design system: docs/design-system/components/bundle.css. */
+/* The console's layout and its app-specific compositions: the dock and its
+   modules, the top bar's arrangement, where each panel and monitor sits, and
+   the looks only one place of the app wears. Every component (rows, slides,
+   buttons, fields, monitors, the pill, THE window, the toast, the switch, the
+   check, the groups) is the design system's, docs/design-system/components/
+   bundle.css, which loads just before this file; colours, sizes and layers are
+   tokens only (src/lib/tokens.test.mjs). */
 .console { --gutter: 6px; position: fixed; inset: 0; display: flex; flex-direction: column; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); color: var(--fg-2); user-select: none; outline: 0; } /* one gutter between every container (owner: use the narrowest everywhere) */
 /* Windows draws the window buttons over the page (titleBarOverlay in
    electron/main.cjs) and reports the strip they occupy: that strip is the
@@ -124,7 +128,7 @@
    the design system's --shadow-popover (owner 2026-10-14, who liked the
    framed menus of the proposal), on the soft --line-overlay ring of
    everything that floats (Rodada N4). */
-.console .kx-pop { box-shadow: 0 0 0 1px var(--line-overlay), 0 12px 32px #000000a6; }
+.console .kx-pop { box-shadow: var(--shadow-menu); }
 /* The right-click menu opens at the pointer, over the row it acts on: a
    fainter ring and a smaller, lighter shadow than the other menus' frame
    (owner 2026-10-16, Rodada E0), so it does not stamp a hard box there. */
@@ -140,7 +144,7 @@
 .console .kx-menu-l2 { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .console .kx-menu-l2 > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .scrim { position: absolute; inset: 0; z-index: var(--z-scrim); }
-.console .scrim.is-dim { background: #0d0d0c99; }
+.console .scrim.is-dim { background: var(--scrim-dim); }
 /* Every floating dialog (Configurações, the background library, the internet
    lyrics, confirm/prompt, the palette) wears --dialog: the menus' ring at 60%
    — visible but quieter — with a lighter shadow (owner 2026-10-14). */
@@ -164,36 +168,10 @@
 .console .liveblock > * { flex: none; }
 /* A header whose caption is a control of its own (the Editor da tela's tabs). */
 .console .kx-panel-h .kx-panel-cap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-2); }
-/* The Programa's pill (ProgramaPill, Rodada E1): its caption and controls
-   inside the screen, bottom-right, over the frame (::after, z 200), the
-   Multiview's labels (201) and the drop hint (210); it takes the clicks the
-   screen never does. As the screen narrows it gives way before the title
-   does, folding ONCE (Rodada F1: the "…" never beside the buttons it holds):
-   at 560 px only "2 telas" goes; at 480 every button but Multiview (.pp-full:
-   Voltar ao anterior, Camadas and the screen actions; the keys B, L, C and
-   Esc stay) goes into the "…", the Programa's menu; on a tiny screen the
-   title goes. */
 .console .prog .kx-mon-screen { container-name: prog-screen; }
-.console .prog-pill { position: absolute; right: var(--space-2); bottom: var(--space-2); z-index: var(--z-pill); display: flex; align-items: center; gap: 6px; max-width: calc(100% - 2 * var(--space-2)); height: 32px; box-sizing: border-box; padding: 0 4px 0 10px; border-radius: var(--radius-round); background: var(--chrome-on-screen); box-shadow: 0 0 0 1px var(--chrome-ring); font-family: var(--font-sans); color: var(--fg-2); white-space: nowrap; pointer-events: auto; }
-.console .prog-pill .kx-prog-cap { flex: 0 1 auto; gap: 6px; }
-.console .prog-pill .pp-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3); }
-.console .prog-pill.is-air .pp-dot { background: var(--air-fg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--air) 30%, transparent); }
-.console .prog-pill.is-rh .pp-dot { background: var(--rh-fg); }
-.console .prog-pill.is-warn .pp-dot { background: var(--warn-fg); }
-.console .prog-pill .pp-title { max-width: 46cqw; font-size: var(--fs-content); line-height: 16px; font-weight: 600; color: var(--fg-1); } /* a long title ends in "…" (its whole name in the tooltip) and never stretches the pill across the lyrics; 46 % so two similar names still differ on a notebook (C-17) */
-.console .prog-pill .kx-meta { color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .prog-pill .prog-where { flex: none; }
 .console .prog-pill .prog-where.kx-warn { color: var(--warn-fg); }
 .console .prog-pill .prog-locked { height: 18px; padding: 0 6px; font-size: var(--fs-ui); }
-.console .prog-pill .pp-sep { flex: none; width: 1px; height: 14px; background: #ffffff26; }
-.console .prog-pill .pp-btns, .console .prog-pill .pp-screens { display: inline-flex; align-items: center; gap: 2px; flex: none; }
-.console .prog-pill .kx-btn { flex: none; width: var(--control-sm); height: var(--control-sm); padding: 0; border-radius: var(--radius-round); background: transparent; color: var(--fg-1); }
-.console .prog-pill .kx-btn:hover { background: #ffffff1f; }
-.console .prog-pill .kx-btn:active { background: #ffffff33; } /* pressed: Tela preta, Logo, Limpar answer the hand at once (POL-10) */
-.console .prog-pill .kx-btn.is-on { background: var(--bg-3); }
-/* Encerrar stands apart (Rodada DS1, d5_pilula): after its own separator, in the air's red. */
-.console .prog-pill .kx-btn.pp-end { color: var(--air-fg); }
-.console .prog-pill .pp-screens > .pp-sep { margin: 0 4px; }
 .console .prog-pill .pp-more { display: none; }
 @container prog-screen (max-width: 560px) { .console .prog-pill .prog-where { display: none; } }
 @container prog-screen (max-width: 480px) { .console .prog-pill .pp-full { display: none; } .console .prog-pill .pp-more { display: inline-flex; } }
@@ -215,8 +193,6 @@
    above the pill where the Prévia is tall enough; on a small one it stays in
    the middle, under the caption badge, as before. */
 @container prev-screen (min-width: 340px) { .console .prev-panel .kx-mon-screen > .kx-screen-hatch { box-sizing: border-box; padding: var(--space-1) var(--space-1) 40px; } }
-.console .prev-pill.is-prev .pp-dot { background: var(--prev-fg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--prev) 30%, transparent); }
-.console .prev-pill.is-rh .pp-dot { background: var(--rh-fg); }
 .console .prev-pill .pv-send { width: auto; min-width: 0; gap: 6px; padding: 0 10px 0 6px; font: 600 var(--fs-content)/16px var(--font-sans); }
 .console .prev-pill .pv-send-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .console .prev-pill .pv-send[aria-disabled="true"] { color: var(--fg-3); cursor: not-allowed; }
@@ -224,14 +200,6 @@
 @container prev-screen (max-width: 200px) { .console .prev-pill .pv-send { width: 24px; padding: 0; } .console .prev-pill .pv-send-l { display: none; } }
 /* The Bíblia's No ar monitor: the screen actions alone, in the same pill. */
 .console .scr-pill { padding: 0 4px; }
-.kx-prog-cap { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.kx-prog-cap .kx-live-cap { flex: none; color: var(--fg-3); }
-.kx-prog-cap .kx-mon-t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kx-prog-cap .kx-meta { flex: none; white-space: nowrap; }
-.kx-prog-cap.is-air .kx-live-cap { color: var(--air-fg); }
-.kx-prog-cap.is-rh .kx-live-cap { color: var(--rh-fg); }
-.kx-prog-cap.is-warn .kx-live-cap { color: var(--warn-fg); }
-.kx-prog-cap.is-idle .kx-mon-t { color: var(--fg-2); font-weight: 500; }
 /* The Programa's title carries the state (no "Programa" word, owner 2026-10-14). */
 .prog-cap.is-air .kx-mon-t { color: var(--air-fg); }
 .prog-cap.is-warn .kx-mon-t { color: var(--warn-fg); }
@@ -315,26 +283,16 @@
 /* The player's slot is always there (two rows, Rodada E1); idle, the player dims. */
 .console .pslot { height: 64px; }
 .console .pslot .player.is-idle { opacity: .55; }
-/* Density (Ver › Densidade). Confortável: 32 px rows, 14 px titles that may
-   take two lines (long Portuguese names stay readable); the slides' text at
-   14 px. Compacta keeps the 28 px single lines. Controls stay as they are;
-   panel headers are 32 px, 28 in Compacta (below). */
-.console.is-comfortable .kx-row { min-height: var(--row-comfortable); }
-.console.is-comfortable .kx-row .kx-row-title { font-size: var(--fs-content-lg); line-height: 20px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.console.is-comfortable .kx-row:not(.kx-row-1) .kx-row-main { padding: 6px 0; }
-.console.is-comfortable .kx-row.kx-row-1 .kx-row-title { font-size: var(--fs-content); line-height: 18px; -webkit-line-clamp: 1; }
 /* A row with hover buttons keeps its title on ONE line, ending in "…"
    (owner, Rodada G1: the buttons took 76–150 px and the title wrapped,
    growing the card). The whole title is its tooltip. Every list alike:
    the Biblioteca, the Setlist, the search palette, the Mídia, the planner
    (its item rows too, whose buttons are in the details they open). */
 .console.is-comfortable :is(.kx-row:has(> .kx-row-acts), .kx-row.pl-item) .kx-row-title { display: block; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: unset; }
-.console.is-comfortable .kx-slide { font-size: var(--fs-content-lg); line-height: 20px; padding-top: 6px; padding-bottom: 6px; }
 /* Compacta (chosen, or Automática on a short grid): panel headers of 28 px
    (Console.jsx panelHead keeps the locked heights in step) and slide rows a
    little tighter. */
 .console.is-compact .kx-panel-h { height: 28px; }
-.console.is-compact .kx-slide { padding-top: 3px; padding-bottom: 3px; }
 /* Live controls: bigger targets than the dense lists (an occasional
    volunteer under pressure). Rows stay 28 px; these are 36 px. */
 .console .kx-btn-live { height: 32px; padding: 0 var(--space-3); }
@@ -354,76 +312,15 @@
 .console .slidesnav-lab { display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--space-1) 0 var(--space-2); font-size: var(--fs-ui); color: var(--fg-2); }
 .console .slidesnav-air > .kx-meta { padding-left: var(--space-1); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .slidesnav .kx-btn-icon.kx-btn-live { width: 32px; padding: 0; }
-/* Rows (owner 2026-10-14, the small-screen review; they were cards): every
-   slide in a list (the Slides column, No ar in a column) and every verse
-   (Ler, Buscar) is a row with a 1 px separator, no card of its own, so a
-   short screen shows half as much again. The state is the row's background
-   plus a bar on its left edge (Rodada DS1, owner 2026-10-20, "mix do A com
-   D"; it was the background alone, and on air and Prévia differed by hue
-   only — 1.06:1 in lightness, one colour to a protanope): on air the
-   brand's gold, a light wash (36 %) and a 3 px gold bar (the rest of the
-   console keeps red for "no ar": the Programa, Enviar ao ar); the Prévia
-   green, a dark wash (16 %: 1.56:1 against the gold, stateColors.test.mjs);
-   the next slide a 2 px grey bar and a light number. On air and in the
-   Prévia at once: green, the gold bar and the number on a gold chip. The
-   labels and numbers on a wash pass AA: fg-2 on the Prévia's, fg-1 on the
-   gold one (where fg-2 is 4.15:1).
-   The bars are box-shadows: a Windows contrast theme drops them and its
-   block at the end draws the states. A slide keeps the editor's lines:
-   one line each, "…" when too long (the whole text is the tooltip and the
-   Prévia); verses wrap (prose). The No ar strip (low, across the window)
-   keeps its cards: there they run sideways and the card tells where a slide
-   ends. */
-/* --live, --live-fg, --live-bg and --prev-bg are tokens (tokens.css, Rodada DS2); the bars stay here. */
-.console { --live-bar: inset 3px 0 0 var(--live); --next-bar: inset 2px 0 0 var(--fg-3); }
 .console .kx-cards { display: flex; flex-direction: column; gap: 0; padding: 0 0 var(--space-1); }
-/* Verses (Ler, Buscar) are cards again (owner 2026-10-14): prose reads
-   better with its own box; the lists of slides are rows. */
 .console .reading, .console .bs-list { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1); }
-.console .onair-card { position: relative; display: grid; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: var(--fs-content); line-height: 18px; }
-.console .kx-slide, .console .onair-card { grid-template-columns: 20px minmax(0, 1fr); white-space: normal; }
-/* Rows edge to edge (owner 2026-10-14): no radius, the separator and the
-   state's background run from one edge of the column to the other. */
-.console .kx-slide, .console .onair-card { flex: none; border-radius: 0; background: none; box-shadow: inset 0 -1px 0 var(--line); padding-top: 5px; padding-bottom: 5px; }
-.console .kx-verse { flex: none; border-radius: var(--radius-control); background: var(--bg-2); padding-left: var(--space-2); }
-.console .kx-slide::before, .console .kx-verse::before { content: none; }
-.console .kx-slide:hover, .console .onair-card:hover { background: var(--bg-2); }
-.console .kx-verse:hover { background: var(--bg-3); }
-/* The keys move these states hundreds of times a service (↑/↓ the Prévia,
-   ←/→ the air): the highlight lands with the key, only the pointer's hover
-   eases in (POL-08). */
-.console :is(.kx-slide, .onair-card, .kx-verse).kx-t { transition: none; }
-.console :is(.kx-slide, .onair-card, .kx-verse).kx-t:hover:not(.is-prev, .is-air, .is-next) { transition: background-color var(--duration-fast) var(--ease-out); }
 /* While the keys walk the list (Dock.jsx sets data-keying until the pointer
    moves), the row that scrolls under a resting pointer shows no hover: a grey
    row one step from the next slide's would read as a second "next" (POL-09). */
 html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { background: none; box-shadow: inset 0 -1px 0 var(--line); }
-/* Pressed (POL-10): a row, a slide, a verse or a theme answers the hand on
-   press, before the click prepares it; a state (Prévia, no ar) keeps its colour. */
-.console :is(.kx-row, .kx-slide, .onair-card, .kx-layer):active:not(.is-prev, .is-air) { background: var(--bg-3); }
-.console .kx-verse:active:not(.is-prev, .is-air) { background: color-mix(in srgb, var(--fg-1) 7%, var(--bg-3)); }
 .console .fg-tile:active .fg-img { filter: brightness(.85); }
-/* A row with a background (a state, the pointer) drops its separator. */
-.console :is(.kx-slide, .onair-card):is(.is-air, .is-prev, .is-next, :hover) { box-shadow: none; }
-.console .kx-slide-body { display: flex; flex-direction: column; min-width: 0; }
-.console .kx-slide-body .kx-slide-lab { font-size: var(--fs-meta); line-height: 14px; color: var(--fg-2); margin-bottom: 2px; }
-.console .kx-ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* A presentation's page (Rodada F3): its picture, 16:9 on black, and its name beside it. */
-.console .kx-slide-body.is-page { flex-direction: row; align-items: center; gap: var(--space-2); }
-.console .kx-slide-page { flex: none; width: 128px; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: 4px; }
-.console .kx-slide-body.is-page .kx-slide-lab { margin: 0; font-size: var(--fs-ui); }
-.console .onair-card .kx-slide-n { font-size: var(--fs-meta); color: var(--fg-3); }
-.console .kx-slide.is-next, .console .onair-card.is-next { box-shadow: var(--next-bar); }
-.console .is-next > .kx-slide-n { color: var(--fg-1); }
-.console .kx-slide.is-prev, .console .kx-verse.is-prev, .console .onair-card.is-prev { background: var(--prev-bg); }
-.console .is-prev > .kx-slide-n, .console .is-prev > .kx-verse-n, .console .is-prev .kx-slide-lab { color: var(--fg-2); }
-.console .kx-slide.is-air, .console .kx-verse.is-air, .console .onair-card.is-air { background: var(--live-bg); box-shadow: var(--live-bar); }
-/* On the gold wash fg-1: fg-2 there is 4.15:1, under AA (stateColors.test.mjs). */
-.console .is-air > :is(.kx-slide-n, .kx-verse-n), .console .is-air .kx-slide-lab { color: var(--fg-1); }
-.console .kx-slide.is-air.is-prev, .console .kx-verse.is-air.is-prev, .console .onair-card.is-air.is-prev { background: var(--prev-bg); }
 /* The keyboard's ring on a gold wash is light (Rodada DS1, d4_foco): gold on gold vanished. */
 .kx.console :is(.kx-slide, .onair-card, .kx-verse, .sv-qrow, .sync .sync-row, .sync .sync-mk).is-air:not(.is-prev):focus-visible { outline-color: var(--fg-1); }
-.console .is-air.is-prev > .kx-slide-n, .console .is-air.is-prev > .kx-verse-n { align-self: start; height: 16px; line-height: 16px; border-radius: 4px; background: var(--live); color: var(--on-brand); text-align: center; font-weight: 500; }
 /* The Slides column's two tabs (No ar · Prévia) while the No ar module is
    not on screen and another item is prepared (SlidesPanel airTabs). */
 .console .slides-tabs { padding: 0 var(--space-1); }
@@ -602,7 +499,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .dock-hint-label { position: fixed; z-index: var(--z-menu); pointer-events: none; padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 var(--fs-meta)/16px var(--font-sans); white-space: nowrap; }
 .console .dock-ghost { position: fixed; z-index: var(--z-menu-top); pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font: 500 var(--fs-ui)/16px var(--font-sans); }
 /* A media row's picture on hover (Library.jsx MediaPeek): beside the Biblioteca, 16:9, never under the mouse */
-.console .media-peek { position: fixed; z-index: var(--z-confirm); pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: var(--shadow-popover); outline: 1px solid var(--line); }
+.console .media-peek { position: fixed; z-index: var(--z-confirm); pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: var(--screen-bg); box-shadow: var(--shadow-popover); outline: 1px solid var(--line); }
 .console .media-peek img { width: 100%; height: 100%; object-fit: contain; display: block; }
 /* The Bíblia in three columns (owner layout 2026-10-12): Livro, Capítulo
    and Versículo stacked, the chosen text, what is on air. Their order and the
@@ -709,9 +606,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .listhead .kx-section { font-size: var(--fs-meta); color: var(--fg-3); }
 .console .listhead .kx-count, .console .listhead .kx-section .kx-count { text-transform: none; letter-spacing: normal; font-weight: 400; }
 .console .kx-tabs .grow { flex: 1; }
-.console .toast { position: absolute; z-index: var(--z-toast); left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
-.console .kx-row .kx-row-acts .kx-btn { color: var(--fg-1); }
-.console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
 /* Dragging in a list (owner 2026-10-15, Rodada D; Rodada E2, 2026-10-16:
    "a slight card highlight where it will drop"): where the card will land a
    slot lights up in gold — the dragged row itself, moved there with its
@@ -737,27 +631,16 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    fades (.is-gone). Built on <body>, outside .console, so it reads the
    tokens from :root. */
 .drag-card { position: fixed; left: 0; top: 0; z-index: var(--z-drag); pointer-events: none; will-change: transform; }
-.drag-card-in { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 100%; padding: 0 var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font: 500 var(--fs-content)/18px var(--font-sans); white-space: nowrap; box-shadow: 0 0 0 1px var(--line-overlay), 0 14px 30px #000000a0; transform: scale(1.03); transition: transform 120ms var(--ease-out), box-shadow 180ms var(--ease-out); animation: kx-lift 120ms var(--ease-out); }
+.drag-card-in { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 100%; padding: 0 var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font: 500 var(--fs-content)/18px var(--font-sans); white-space: nowrap; box-shadow: var(--shadow-drag); transform: scale(1.03); transition: transform 120ms var(--ease-out), box-shadow 180ms var(--ease-out); animation: kx-lift 120ms var(--ease-out); }
 @keyframes kx-lift { from { transform: none; box-shadow: 0 0 0 1px var(--line-overlay); } }
 .drag-card-in .kx-i { flex: none; color: var(--brand); }
 .drag-card-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .drag-card-time { flex: none; color: var(--fg-3); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
 .drag-card.is-land { transition: transform 180ms var(--ease-out), width 180ms var(--ease-out), height 180ms var(--ease-out); }
-.drag-card.is-land .drag-card-in { transform: none; box-shadow: 0 0 0 1px var(--line-overlay), 0 2px 6px #00000059; }
+.drag-card.is-land .drag-card-in { transform: none; box-shadow: var(--shadow-drag-land); }
 .drag-card.is-gone { opacity: 0; transition: opacity 120ms var(--ease-out); }
 .drag-card.is-gone .drag-card-in { transform: scale(0.96); }
 @media (prefers-reduced-motion: reduce) { .drag-card, .drag-card-in { transition: none !important; animation: none !important; } }
-/* UI rule (owner 2026-10-14): every list row in the console — Biblioteca,
-   Setlist, the tabs panel, Camadas, Configurações' menu, the views — is a
-   rounded card set in from its column, like the verses: the hover and the
-   states fill a card, never the column edge to edge. Only a list the owner
-   asked to keep edge to edge (the Slides column and No ar, to gain room)
-   differs, and those are .kx-slide/.onair-card, not these. The 2 px
-   between cards keeps two highlighted rows apart; the inset comes off the
-   left padding, so the text stays where it was (in line with listheads). */
-.console :is(.kx-row, .kx-layer) { width: auto; margin: 1px var(--space-1); border-radius: var(--radius-control); overflow: clip; }
-.console .kx-row { padding-left: var(--space-2); }
-.console .kx-layer { padding-left: var(--space-2); height: calc(var(--row) - 2px); }
 /* A measured module (Camadas, Temas) counts its cards' margins: without
    this the first and last card's margin collapse out of the box, the
    height comes out 2 px short and the panel scrolls. The layer cards give
@@ -834,7 +717,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .player .pl-seek::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 6px; border-radius: 3px; background: var(--bg-3); }
 .console .player .pl-seek > i { position: absolute; left: 0; top: 5px; height: 6px; background: var(--fg-2); border-radius: 3px; }
 .console .player .pl-seek.is-live > i { background: var(--air); }
-.console .player .pl-seek > b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-round); background: var(--fg-1); box-shadow: 0 1px 4px #0009; opacity: 0; transition: opacity .12s; pointer-events: none; }
+.console .player .pl-seek > b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-round); background: var(--fg-1); box-shadow: var(--shadow-knob); opacity: 0; transition: opacity .12s; pointer-events: none; }
 .console .player .pl-seek.is-can:is(:hover, :focus-visible, .is-drag) > b { opacity: 1; }
 .console .player .pl-seek:focus-visible { outline: var(--bar) solid var(--brand); outline-offset: 2px; }
 /* The moment under the pointer (Rodada N1, as on YouTube): a light band up
@@ -845,7 +728,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .player .pl-seek > .pl-hov { position: absolute; left: 0; top: 5px; height: 6px; border-radius: 3px 0 0 3px; background: color-mix(in srgb, var(--fg-1) 16%, transparent); pointer-events: none; }
 .console .player .pl-seek > .pl-tip { position: absolute; bottom: calc(100% + 1px); z-index: var(--z-pop); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
 .console .player .pl-seek > .pl-tip.has-frame { bottom: calc(100% + 4px); }
-.console .player .pl-tip :is(canvas, .pl-tip-cover) { display: block; width: 160px; height: 90px; object-fit: cover; border-radius: 6px; background: #000; box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg-1) 18%, transparent), 0 6px 18px #000a; }
+.console .player .pl-tip :is(canvas, .pl-tip-cover) { display: block; width: 160px; height: 90px; object-fit: cover; border-radius: 6px; background: var(--screen-bg); box-shadow: var(--shadow-peek); }
 .console .player .pl-tip-t { padding: 0 5px; border-radius: 4px; background: var(--fg-1); color: var(--bg-0); font: 600 var(--fs-meta)/14px var(--font-sans); font-style: normal; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .console .player .pl-tip-sl { font-weight: 500; opacity: .75; }
 /* Só o som (Rodada F1): while a video plays as sound only, the eye is red. */
@@ -1013,37 +896,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line-soft); flex: none; font-size: var(--fs-ui); }
 .console .lyr-legal { max-width: 360px; }
 
-/* ---------- A janela (Rodada C, owner 2026-10-14: "uma janela, com Voltar") ---------- */
-/* Configurações, the six views and the two editors are pages of ONE
-   floating window with the Configurações frame (src/lib/console/nav.js):
-   the bar — ← Voltar from level 2 (the title of where it came from), the
-   page's title, its tools and actions, the (x) "Fechar · Esc" — then the
-   page's body on the console's ground (--bg-0), so its panels read as
-   panels. Two sizes, Padrão and Editor (.is-editor, the theme and screen
-   editors), and moving between pages animates the frame between them.
-   Under the library (37) and the confirm question (44); Esc reaches the
-   TOP page through the console (keys.js ESC_ORDER "window"), never a
-   listener of its own. Pages under the top stay mounted, hidden, so
-   Voltar finds them as they were (scroll, search, section). */
 .console .win-scrim { z-index: var(--z-window-scrim); }
 .console .scrim.over-win { z-index: var(--z-window-over); } /* a popover opened over the window backdrops above it */
-.console .win-dialog { position: absolute; z-index: var(--z-window); left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(var(--win-w, 1240px), calc(100% - 32px)); height: min(var(--win-h, 800px), calc(100% - var(--pop-top) - 16px)); display: flex; flex-direction: column; background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; transition: width .2s var(--ease-out), height .2s var(--ease-out); }
-.console .win-dialog.is-editor { width: min(var(--win-w, 1360px), calc(100% - 24px)); height: min(var(--win-h, 860px), calc(100% - var(--pop-top) - 12px)); }
-/* Stretched by its edges and corners (Rodada D3, winLayout.jsx WinEdges):
-   while it is somewhere of its own, it follows the pointer at once. */
-.console .win-dialog.is-sized { transition: none; }
-.console .win-edge { position: absolute; z-index: var(--z-edge); touch-action: none; }
-.console .win-edge.is-n, .console .win-edge.is-s { left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
-.console .win-edge.is-e, .console .win-edge.is-w { top: 10px; bottom: 10px; width: 5px; cursor: ew-resize; }
-.console .win-edge.is-n { top: 0; } .console .win-edge.is-s { bottom: 0; }
-.console .win-edge.is-e { right: 0; } .console .win-edge.is-w { left: 0; }
-.console .win-edge.is-ne, .console .win-edge.is-nw, .console .win-edge.is-se, .console .win-edge.is-sw { width: 12px; height: 12px; }
-.console .win-edge.is-ne { top: 0; right: 0; cursor: nesw-resize; } .console .win-edge.is-sw { bottom: 0; left: 0; cursor: nesw-resize; }
-.console .win-edge.is-nw { top: 0; left: 0; cursor: nwse-resize; } .console .win-edge.is-se { bottom: 0; right: 0; cursor: nwse-resize; }
-.console .win-page { flex: 1; min-height: 0; display: flex; flex-direction: column; animation: win-page-in .12s var(--ease-out); }
-.console .win-page[hidden] { display: none; }
-@keyframes win-page-in { from { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .console .win-dialog { transition: none; } .console .win-page { animation: none; } }
 /* A page detached into a window of its own (/Janela, src/pages/Janela.jsx;
    Rodada F5): the same frame, filling that window — no scrim, no shadow,
    no edges (the system window resizes); the dialogs a page opens sit
@@ -1055,16 +909,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    where nothing changes). */
 .console.janela .win-bar { -webkit-app-region: drag; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 6px); }
 .console.janela .win-bar :is(button, input, select, textarea, a, [role], .win-tools) { -webkit-app-region: no-drag; }
-.console .win-dialog.is-detached { position: relative; left: auto; top: auto; transform: none; width: auto; height: auto; flex: 1; min-height: 0; border-radius: 0; box-shadow: none; transition: none; }
-/* The bar: the Configurações header, now every page's. */
-.console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line-soft); }
-/* The title gives way first (an ellipsis; its whole text is the page) so the
-   tools and actions never leave the bar (D5: Relatórios at 960 px). */
-.console .win-bar .win-title { flex: 0 1 auto; color: var(--fg-1); font-size: var(--fs-ui); min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console .win-bar .win-title:focus { outline: none; } /* the focus parks here (C-12); it is not a control */
-.console .win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
-.console .win-bar .win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
-.console .win-bar .win-gap { flex: 1; }
 /* The page's body: its columns, as the floating views always drew them.
    One form grid for every window page (Rodada C, fase c): the label
    column is --win-label everywhere (.pl-frm, .nv-frm, .sv-frm, the song
@@ -1108,36 +952,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .frm .cfg-subrows { grid-column: 1 / -1; display: grid; align-items: center; gap: var(--space-1) var(--space-3); margin: 0 0 0 calc(140px + var(--space-3)); padding: var(--space-1) var(--space-3); background: var(--bg-2); border-radius: var(--radius-control); grid-template-columns: 180px 1fr; }
 .console .nv-scroll.cfg .frm .cfg-disc, .console .nv-scroll.cfg .frm .cfg-subrows { margin-left: 0; }
 @media (prefers-reduced-motion: reduce) { .console .cfg .frm .cfg-disc .kx-i { transition: none; } }
-/* Grupos que abrem e fecham (Rodada H0, owner 2026-10-19; CfgGroup in
-   settings/parts.jsx): an h3 header 28 px tall whose button carries the
-   chevron (turned −90° while closed) and the 11 px .kx-section title, the
-   one-line summary of what is chosen while closed, the actions on the
-   right; the body always mounted, folded to 0fr and hidden (inert) when
-   closed, 180 ms like every fold — none with reduced motion, none for a
-   search jump (.is-instant). A static group (fold={false}) keeps the
-   chevron's slot empty so every title lines up. Groups are 12 px apart
-   with a hairline between them (the panel rule's spacing), and a listhead
-   inside one keeps the same 12 px. */
-.console .cfg-group { display: flex; flex-direction: column; min-width: 0; }
-.console .cfg-group + .cfg-group, .console .listhead + .cfg-group, .console .cfg-group + .listhead { margin-top: var(--space-3); }
-.console .cfg-group + .cfg-group { border-top: 1px solid var(--line-soft); padding-top: var(--space-1); }
-.console .cfg-group-h { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); margin: 0; padding: 0 var(--space-3) 0 var(--space-1); min-width: 0; font: inherit; }
-.console .cfg-group-t { display: inline-flex; align-items: center; gap: var(--space-1); height: var(--control-sm); max-width: 100%; min-width: 0; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
-.console button.cfg-group-t { cursor: pointer; }
-.console button.cfg-group-t:hover { background: var(--bg-3); }
-.console button.cfg-group-t:hover .kx-section { color: var(--fg-1); }
-.console button.cfg-group-t:focus-visible { outline: 2px solid var(--rh, var(--brand)); outline-offset: -2px; }
-/* The group's title is bolder than a plain sub-title (owner 2026-10-19: 600,
-   the console's grey caption, not gold; gold stays for the brand and what is live). */
-.console .cfg-group-t .kx-section { font-size: var(--fs-meta); font-weight: 600; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.console .cfg-group-chev { flex: none; width: 12px; height: 12px; color: var(--fg-3); transition: transform var(--dur-fold) var(--ease-fold); }
-.console .cfg-group:not(.is-open) .cfg-group-chev { transform: rotate(-90deg); }
-.console .cfg-group-s { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.console .cfg-group-acts { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); flex: none; }
-.console .cfg-group-b { display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows var(--dur-fold) var(--ease-fold), visibility 0s; }
-.console .cfg-group:not(.is-open) > .cfg-group-b { grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows var(--dur-fold) var(--ease-fold), visibility 0s var(--dur-fold); }
-.console .cfg-group.is-instant > .cfg-group-b, .console .cfg-group.is-instant .cfg-group-chev { transition: none; }
-.console .cfg-group-in { min-height: 0; min-width: 0; overflow: hidden; }
+.console .listhead + .cfg-group, .console .cfg-group + .listhead { margin-top: var(--space-3); }
 .console .cfg-group-in > .listhead:not(:first-child) { margin-top: var(--space-3); }
 /* A search jump lands with room above the row (C-87 neighbour: scroll-margin). */
 .console .cfg [data-cfg-k] { scroll-margin-block: var(--space-3); }
@@ -1147,7 +962,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Configurações' sub-titles read at 11 px (C-31, partial): the listhead's
    10 px stays for the console's lists. */
 .console .cfg .listhead .kx-section { font-size: var(--fs-meta); }
-@media (prefers-reduced-motion: reduce) { .console .cfg-group-b, .console .cfg-group:not(.is-open) > .cfg-group-b, .console .cfg-group-chev { transition: none; } }
 /* Configurações › Sincronização (SyncSection.jsx). */
 .console .cfg .cfg-sync-intro { max-width: 62ch; margin: var(--space-2) var(--space-3) var(--space-1); color: var(--fg-2); font-size: var(--fs-ui); line-height: 1.55; }
 .console .cfg .cfg-sync-intro b { color: var(--fg-1); font-weight: 600; }
@@ -1188,18 +1002,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-about b { display: block; font-size: var(--fs-clock); font-weight: 600; letter-spacing: .02em; }
 .console .cfg .cfg-about span:not(.kx-mark) { color: var(--fg-2); }
 .console .cfg .cfg-license { margin: 0; width: 100%; max-height: 220px; overflow: auto; white-space: pre-wrap; font: var(--fs-meta)/1.5 ui-monospace, Consolas, monospace; color: var(--fg-2); background: var(--bg-0); border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); padding: var(--space-2) var(--space-3); }
-/* Switches (Rodada DS1, owner 2026-10-20, d4_switch = neutro): 32 × 20, past
-   the 24 px a pointer needs; on = a light track (fg-1) with a dark knob, so
-   "ligado" never reads as the Prévia's green. */
-.console .sw2 { width: 32px; height: 20px; border-radius: 999px; background: var(--bg-3); position: relative; flex: none; }
-.console .sw2::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--fg-2); transition: left var(--duration-fast) var(--ease-out); }
-.console .sw2.is-on { background: var(--fg-1); }
-/* A switch answers the pointer: its knob lights (C-57); on, the track dims a step. */
-.console .sw2:not(:disabled):hover::after { background: var(--fg-1); }
-.console .sw2.is-on::after { left: 15px; background: var(--bg-0); }
-.console .sw2.is-on:not(:disabled):hover { background: var(--fg-2); }
-.console .sw2.is-on:not(:disabled):hover::after { background: var(--bg-0); }
-.console .sw2:disabled { opacity: var(--dim); }
 /* Saídas: a switch per local row (ligado = a janela existe); the name of an
    open output is a button that brings it forward. */
 .console .pop-outs .kx-out.has-sw { grid-template-columns: 32px 16px 1fr auto; }
@@ -1219,7 +1021,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-acts { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
 .console .cfg .cfg-pin { letter-spacing: .2em; color: var(--fg-1); }
 .console .cfg .cfg-qr { display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-3); align-items: flex-start; flex-wrap: wrap; }
-.console .cfg .cfg-qr-box { background: #fff; padding: 8px; border-radius: var(--radius-control); line-height: 0; }
+.console .cfg .cfg-qr-box { background: var(--qr-ground); padding: 8px; border-radius: var(--radius-control); line-height: 0; }
 .console .cfg .cfg-qr-list { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .console .cfg .cfg-url { display: flex; align-items: center; gap: var(--space-1); }
 .console .cfg .cfg-url code { font: inherit; font-size: var(--fs-ui); color: var(--fg-2); user-select: text; }
@@ -1258,7 +1060,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .ed-text { width: 100%; font-size: var(--fs-content); line-height: 19px; padding: var(--space-2); resize: none; user-select: text; }
 .console .ed-mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: var(--fs-ui); line-height: 17px; }
 .console .swatches { display: flex; gap: var(--space-1); align-items: center; }
-.console .swatches button { width: 20px; height: 20px; border-radius: var(--radius-round); box-shadow: inset 0 0 0 1px #ffffff2e; }
+.console .swatches button { width: 20px; height: 20px; border-radius: var(--radius-round); box-shadow: inset 0 0 0 1px var(--swatch-ring); }
 .console .swatches button.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
 .console .ed-color { width: 24px; height: 22px; padding: 0; border: 0; background: none; }
 .console .ed-tools { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; padding: 0 var(--space-2) var(--space-1); }
@@ -1274,19 +1076,19 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* P | M | G in the Slides header (M by default). */
 .console .ed-thumbs.is-s { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
 .console .ed-thumbs.is-l { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
-.console .ed-th { position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; container-type: inline-size; background: #000; padding: 0; }
+.console .ed-th { position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; container-type: inline-size; background: var(--screen-bg); padding: 0; }
 .console .ed-th > .ks-box { width: 100%; pointer-events: none; }
 .console .ed-th::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--line); border-radius: inherit; pointer-events: none; z-index: var(--z-ring); }
 .console .ed-th:hover::after { border-color: var(--line-strong); }
 .console .ed-th.is-sel::after { border: 2px solid var(--prev); }
 .console .ed-th.is-next::after { border: 2px solid var(--rh); }
-.console .ed-th .n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: var(--fs-meta); line-height: 12px; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 4px 0 0; z-index: var(--z-badge); }
-.console .ed-th .lab { position: absolute; left: 0; top: 0; padding: 1px 5px; font-size: var(--fs-meta); letter-spacing: .05em; text-transform: uppercase; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 0 4px 0; z-index: var(--z-badge); }
+.console .ed-th .n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: var(--fs-meta); line-height: 12px; color: var(--fg-2); background: var(--chrome-label); border-radius: 0 4px 0 0; z-index: var(--z-badge); }
+.console .ed-th .lab { position: absolute; left: 0; top: 0; padding: 1px 5px; font-size: var(--fs-meta); letter-spacing: .05em; text-transform: uppercase; color: var(--fg-2); background: var(--chrome-label); border-radius: 0 0 4px 0; z-index: var(--z-badge); }
 /* Lines and characters of the slide; amber when a line will wrap on screen. */
-.console .ed-th .fit { position: absolute; right: 0; bottom: 0; padding: 1px 5px; font-size: var(--fs-meta); line-height: 12px; color: var(--fg-2); background: #0d0d0ccc; border-radius: 4px 0 0 0; z-index: var(--z-badge); font-variant-numeric: tabular-nums; }
+.console .ed-th .fit { position: absolute; right: 0; bottom: 0; padding: 1px 5px; font-size: var(--fs-meta); line-height: 12px; color: var(--fg-2); background: var(--chrome-label); border-radius: 4px 0 0 0; z-index: var(--z-badge); font-variant-numeric: tabular-nums; }
 .console .ed-th .fit.is-warn { color: var(--warn-fg); }
 .console .ed-media { flex: 0 1 260px; min-width: 160px; display: flex; flex-direction: column; gap: var(--space-1); }
-.console .ed-media video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--radius-control); }
+.console .ed-media video { width: 100%; aspect-ratio: 16 / 9; background: var(--screen-bg); border-radius: var(--radius-control); }
 .console .ed-media audio { width: 100%; }
 /* What the marks do (Rodada D4: they are made in Sincronizar). */
 .console .ed-syncstat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-1); }
@@ -1353,7 +1155,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .mv-body { flex: 1; min-height: 0; overflow: auto; }
 .console .mv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3) var(--space-2); padding: var(--space-2); }
 .console .mv-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.console .mv-th { position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: var(--radius-control); overflow: hidden; background: var(--screen-bg, #000); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; color: var(--fg-2); padding: 0; }
+.console .mv-th { position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: var(--radius-control); overflow: hidden; background: var(--screen-bg); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; color: var(--fg-2); padding: 0; }
 .console .mv-th img, .console .mv-th video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .console .mv-th audio { display: none; }
 .console .mv-th:hover { box-shadow: 0 0 0 1px var(--line-strong); }
@@ -1363,8 +1165,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .mv-th.is-sel.is-warn { box-shadow: 0 0 0 2px var(--prev), 0 0 0 3px var(--warn); }
 .console .mv-th-t { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 4px; font-size: var(--fs-ui); color: var(--fg-3); }
 .console .mv-th-t.is-warn { color: var(--warn-fg, var(--warn)); font-weight: 500; }
-.console .mv-lab { position: absolute; left: 0; top: 0; padding: 1px 5px; font-size: var(--fs-meta); letter-spacing: .05em; text-transform: uppercase; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 0 4px 0; }
-.console .mv-n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: var(--fs-meta); line-height: 12px; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 4px 0 0; font-variant-numeric: tabular-nums; }
+.console .mv-lab { position: absolute; left: 0; top: 0; padding: 1px 5px; font-size: var(--fs-meta); letter-spacing: .05em; text-transform: uppercase; color: var(--fg-2); background: var(--chrome-label); border-radius: 0 0 4px 0; }
+.console .mv-n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: var(--fs-meta); line-height: 12px; color: var(--fg-2); background: var(--chrome-label); border-radius: 0 4px 0 0; font-variant-numeric: tabular-nums; }
 .console .mv-title { font-size: var(--fs-ui); color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .mv-sub { font-size: var(--fs-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .kx-pages-meta { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 16px; }
@@ -1503,7 +1305,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .sv-q-sub .kx-field { height: 26px; min-width: 0; }
 .console .sv-words { display: flex; flex-wrap: wrap; gap: 3px; padding-left: 22px; }
 .console .sv-word { padding: 1px 6px; border-radius: 6px; background: var(--bg-1); color: var(--fg-2); font-size: var(--fs-ui); line-height: 20px; }
-.console .sv-word.is-on { background: var(--brand); color: var(--on-brand, #20180c); font-weight: 600; }
+.console .sv-word.is-on { background: var(--brand); color: var(--on-brand); font-weight: 600; }
 .console .sv-q textarea.ed-text { min-height: 52px; }
 .console .sv-tf { padding-left: 22px; }
 .console .sv-imgs { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
@@ -1570,9 +1372,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Telas na rede: each screen with its own address (OBS needs Transmissão's). */
 .console .cfg .cfg-screen { cursor: default; }
 .console .cfg .cfg-screen .cfg-screen-url { font: inherit; font-size: var(--fs-ui); color: var(--fg-2); user-select: text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
-/* A toast with an action (Desfazer after Esc): the button is a 24 px target. */
-.console .toast .toast-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.console .toast .toast-act { height: var(--control-sm); margin-right: calc(-1 * var(--space-2)); padding: 0 var(--space-2); color: var(--fg-1); font-weight: 500; }
 
 /* Camadas › Fundo: a clip tile (name + film glyph; no frame grab needed). */
 .console .lyr-vtile { display: inline-flex; align-items: center; gap: 4px; min-width: 0; height: var(--control-sm); padding: 0 6px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-meta); }
@@ -1584,7 +1383,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    in a container, so cqmin/cqw sizes apply as on the output itself. */
 .console .cfg .cfg-outprefs .cfg-outprefs-form { flex: 1 1 auto; min-width: 0; }
 .console .cfg .cfg-prevcol { flex: none; width: 340px; display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-2) var(--space-2) 0; }
-.console .cfg .cfg-prev { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: inset 0 0 0 1px var(--line); container-type: size; isolation: isolate; contain: layout paint; }
+.console .cfg .cfg-prev { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: var(--screen-bg); box-shadow: inset 0 0 0 1px var(--line); container-type: size; isolation: isolate; contain: layout paint; }
 /* contain: layout makes this box the containing block of the renderer's fixed
    root (.ks-fill): without it the sample escaped to the dialog (its transform). */
 .console .cfg .cfg-prev .cfg-prev-fill { position: absolute; inset: 0; }
@@ -1618,13 +1417,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-auto-l .kx-i { flex: none; margin-top: 2px; color: var(--prev-fg, var(--prev)); }
 /* Diagnóstico: read-only values. */
 .console .cfg .cfg-diag-v { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; color: var(--fg-2); }
-/* Mostrar (the old one, now the rule's list): one toggle per kind; on = received. */
-.console .cfg .cfg-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
-.console .cfg .cfg-kinds button { height: var(--control-sm); padding: 0 8px 0 6px; display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-3); font-size: var(--fs-ui); }
-.console .cfg .cfg-kinds button .kx-i { visibility: hidden; }
-.console .cfg .cfg-kinds button:hover { background: var(--bg-3); color: var(--fg-1); }
-.console .cfg .cfg-kinds button.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
-.console .cfg .cfg-kinds button.is-on .kx-i { visibility: visible; }
 /* Ajustes › Aviso rápido (Rodada E3): a sub-title across the form's two
    columns, the listhead's look, with its note and "Ver exemplo". */
 .console .cfg .frm .cfg-frm-head { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); margin-top: var(--space-1); min-width: 0; }
@@ -1634,7 +1426,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Configurações' sliders and sample screens (Fundos, Gerados, a tema's length). */
 .console .ap-range { width: 180px; accent-color: var(--brand); } /* one slider accent, gold: green is the Prévia's colour (POL-13) */
 .console .ap-ms { min-width: 64px; font-variant-numeric: tabular-nums; }
-.console .ap-sample { width: 240px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; container-type: inline-size; background: #000; box-shadow: inset 0 0 0 1px var(--line); }
+.console .ap-sample { width: 240px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; container-type: inline-size; background: var(--screen-bg); box-shadow: inset 0 0 0 1px var(--line); }
 .console .ap-sample > .ks-box { width: 100%; }
 
 /* Aparência › Fundos: filters, the gallery and one background's settings. */
@@ -1672,7 +1464,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .shortcuts .shortcuts-d { color: var(--fg-2); }
 .console .cfg .cfg-shortcuts { padding: var(--space-2) var(--space-3) var(--space-3); }
 /* Transmissão's preview: the band over a stand-in camera. */
-.console .cfg .cfg-prev-stream { background: linear-gradient(160deg, #3a4a5c, #1b2430 60%, #2c2418); }
+.console .cfg .cfg-prev-stream { background: var(--standin-camera); }
 /* Novidades: the release notes after an update. */
 .console .dialog.wn { width: min(560px, calc(100% - 32px)); }
 /* Ajuda › Relatar um problema (ReportDialog.jsx): two fields, the
@@ -1778,13 +1570,13 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .lib-thumb > .ks-box { width: 100%; }
 .console .lib-gen { padding: 0; grid-template-columns: 96px minmax(0, 1fr); border-top: 0; }
 .console .lib-colors { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-.console .lib-swatch { width: 48px; height: 32px; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); }
+.console .lib-swatch { width: 48px; height: 32px; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--swatch-edge); }
 .console .lib-swatch.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
 /* Tiles answer the pointer (C-57): a Temas tile dresses the air on one
    click, so the background library's tiles and swatches, the generators
    and their presets all show a --line-strong ring before it. */
 .console .fg-tile:not(.is-on):hover .fg-img { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px var(--line-strong); }
-.console .lib-swatch:not(.is-on):hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18), 0 0 0 2px var(--line-strong); }
+.console .lib-swatch:not(.is-on):hover { box-shadow: inset 0 0 0 1px var(--swatch-edge), 0 0 0 2px var(--line-strong); }
 .console .lyr-gen:not(.is-on):hover { color: var(--fg-1); box-shadow: 0 0 0 2px var(--line-strong); }
 .console .lyr-preset:not(.is-on):hover { color: var(--fg-1); box-shadow: 0 0 0 1px var(--line-strong); }
 /* No image drags out of the console (C-58): the browser's ghost, and a
@@ -1814,7 +1606,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* A theme saved without a background (from before the rule): its mark on
    the thumbnail — a dot in the Temas panel, a label where thumbs are big. */
 .console .nobg-mark { position: absolute; top: 3px; right: 3px; z-index: var(--z-mark); width: 14px; height: 14px; border-radius: 50%; background: var(--warn); color: var(--on-warn); display: grid; place-items: center; pointer-events: none; }
-.console .nobg-label { position: absolute; left: 4px; bottom: 4px; z-index: var(--z-mark); padding: 0 5px; border-radius: 3px; background: #000000b3; color: var(--warn-fg); font-size: var(--fs-meta); line-height: 16px; pointer-events: none; }
+.console .nobg-label { position: absolute; left: 4px; bottom: 4px; z-index: var(--z-mark); padding: 0 5px; border-radius: 3px; background: var(--chrome-mark); color: var(--warn-fg); font-size: var(--fs-meta); line-height: 16px; pointer-events: none; }
 .console .bgchip-l { font-size: var(--fs-ui); color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* A file the sync between the church's computers has not brought yet
    (SyncWait in library/BackgroundLibrary.jsx): said in place of the picture. */
@@ -1890,7 +1682,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .font-dialog .fd-name { flex: 1; min-width: 0; font-size: var(--fs-live); line-height: 22px; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .font-dialog .fd-faces { flex: none; font-size: var(--fs-meta); }
 .console .font-dialog .fd-empty { padding: var(--space-3) var(--space-2); }
-.console .font-dialog .fd-preview { min-height: 56px; display: flex; align-items: center; justify-content: center; padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: #0a0a0a; color: #fff; font-size: 30px; line-height: 1.15; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.console .font-dialog .fd-preview { min-height: 56px; display: flex; align-items: center; justify-content: center; padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--specimen-bg); color: var(--screen-fg); font-size: 30px; line-height: 1.15; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .console .font-dialog .fd-licence { margin: 0; font-size: var(--fs-meta); line-height: 15px; }
 .console .le-font-note { font-size: var(--fs-meta); margin-top: -2px; }
 /* The Estilo row's N and I (Rodada HF2): 24 × 24 toggles, the letter drawn as it does. */
@@ -1916,12 +1708,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The media big with the slide that plays over it, the time line with one
    marker per slide, the slides with their times on the right. Gold = the
    slide playing now (as on air), green = the next one Espaço marks. */
-.console .sync .sync-stage { position: relative; flex: 1 1 0; min-height: 160px; width: 100%; background: #000; border-radius: var(--radius-control); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.console .sync .sync-stage { position: relative; flex: 1 1 0; min-height: 160px; width: 100%; background: var(--screen-bg); border-radius: var(--radius-control); overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .console .sync .sync-stage > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.console .sync .sync-lyric { position: relative; z-index: var(--z-screen); max-width: 86%; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: #fff; font-size: clamp(14px, 2.4vw, 28px); line-height: 1.25; font-weight: 600; text-shadow: 0 2px 8px rgba(0, 0, 0, .9); }
+.console .sync .sync-lyric { position: relative; z-index: var(--z-screen); max-width: 86%; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: var(--screen-fg); font-size: clamp(14px, 2.4vw, 28px); line-height: 1.25; font-weight: 600; text-shadow: var(--stage-text); }
 .console .sync .sync-stage.is-video .sync-lyric { align-self: flex-end; margin-bottom: 6%; }
-.console .sync .sync-src { position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-meta); color: var(--fg-2); background: rgba(0, 0, 0, .5); padding: 2px 8px; border-radius: 10px; }
-.console .sync .sync-now { position: absolute; right: 8px; top: 8px; z-index: var(--z-screen); font-size: var(--fs-meta); color: var(--live-fg); background: rgba(0, 0, 0, .55); padding: 2px 8px; border-radius: 10px; }
+.console .sync .sync-src { position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-meta); color: var(--fg-2); background: var(--stage-label); padding: 2px 8px; border-radius: 10px; }
+.console .sync .sync-now { position: absolute; right: 8px; top: 8px; z-index: var(--z-screen); font-size: var(--fs-meta); color: var(--live-fg); background: var(--stage-now); padding: 2px 8px; border-radius: 10px; }
 .console .sync .sync-ctl { flex: none; display: flex; align-items: center; gap: 2px; }
 .console .sync .sync-skip { height: var(--row); padding: 0 6px; font-size: var(--fs-meta); font-variant-numeric: tabular-nums; color: var(--fg-2); }
 .console .sync .sync-play { width: 32px; height: 32px; background: var(--bg-3); color: var(--fg-1); }
@@ -1987,7 +1779,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
 @media (forced-colors: active) {
   /* Floating surfaces lose their shadow: an edge instead. */
-  .console :is(.pop, .kx-pop, .ctx-menu, .dialog, .palette, .toast, .qj, .verif-overlay, .addmenu-pop, .lyr, .win-dialog, .pl-pop, .lib-dialog, .media-peek) { outline: 1px solid CanvasText; }
+  .console :is(.pop, .kx-pop, .ctx-menu, .dialog, .palette, .qj, .verif-overlay, .addmenu-pop, .lyr, .pl-pop, .lib-dialog, .media-peek) { outline: 1px solid CanvasText; }
   /* Slides, No ar cards, verses, Setlist, Biblioteca and Mídia rows, the
      Bíblia's verse cells and Comparar, the Escola's questions, Sincronizar.
      :is(.is-air, .is-air.is-prev) weighs as much as the both-states rules
@@ -2002,23 +1794,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console :is(.kx-slide, .onair-card).is-next:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
   .console .mv-th.is-air { outline: 3px solid Highlight; outline-offset: 2px; }
   /* Chosen or pressed: tabs, chips, cells, tiles, Seg, an open menu… */
-  .console :is(.is-on, .is-sel, .is-selected):not(.sw2, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
+  .console :is(.is-on, .is-sel, .is-selected):not(.kx-switch, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
   .console .envtabs > button.is-on::after { background: Highlight; }
   /* The Bíblia's cells are boxes. */
   .console :is(.bgrid .kx-book, .chapters button, .verse-cells button):not(:focus-visible, .is-on, .is-selected, .is-prev) { outline: 1px solid ButtonText; outline-offset: -1px; }
-  /* The rule's shortcuts and kinds (Ajustes › Conteúdo) are buttons too. */
-  .console .cfg :is(.cfg-rule-prof, .cfg-kinds button):not(.is-on, :focus-visible) { outline: 1px solid ButtonText; outline-offset: -1px; }
-  /* A group's header that opens and closes (CfgGroup) is a button. */
-  .console button.cfg-group-t { outline: 1px solid ButtonText; outline-offset: -1px; }
-  /* Switches: track and knob in the system's colours, Highlight when on. */
-  .console .sw2 { border: 1px solid ButtonText; background: Canvas; }
-  .console .sw2::after { top: 2px; left: 2px; background: ButtonText; }
-  .console .sw2.is-on { border-color: Highlight; background: Highlight; }
-  .console .sw2.is-on::after { left: 14px; background: HighlightText; }
-  .console .sw2:disabled { border-color: GrayText; }
-  .console .sw2:disabled::after { background: GrayText; }
-  .console .sw2.is-on:disabled { background: GrayText; }
-  .console .sw2.is-on:disabled::after { background: Canvas; }
+  /* The rule's shortcuts (Ajustes › Conteúdo) are buttons too; its kinds are kx-check (bundle.css). */
+  .console .cfg .cfg-rule-prof:not(.is-on, :focus-visible) { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* Fields get a boundary and a focus ring (an input inside a .kx-field or
      the quick jump takes its box's). */
   .console :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])):not(:is(.kx-field, .qj-input) *), .console .qj-input { border: 1px solid FieldText; }

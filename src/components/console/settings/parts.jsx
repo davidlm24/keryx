@@ -55,9 +55,9 @@ export function usePoll(fn, ms) {
     return [data, refresh, set, error];
 }
 
-// An on/off switch (design: .sw2), a real button.
+// An on/off switch (design system: kx-switch; .sw2 is its old name), a real button.
 export function Switch({ on, onChange, label, disabled }) {
-    return <button type="button" className={`sw2 kx-t ${on ? "is-on" : ""}`} role="switch" aria-checked={Boolean(on)} aria-label={label} title={label} disabled={disabled} onClick={() => onChange(!on)} />;
+    return <button type="button" className={`sw2 kx-switch kx-t ${on ? "is-on" : ""}`} role="switch" aria-checked={Boolean(on)} aria-label={label} title={label} disabled={disabled} onClick={() => onChange(!on)} />;
 }
 
 // The search's jump (SettingsView): `pending` is the label it is looking for
@@ -170,20 +170,20 @@ export function CfgGroup({ id, k, title = k, summary = "", actions = null, defau
     }, [instant]);
     const showSummary = fold && !open && Boolean(summary);
     return (
-        <section className={`cfg-group ${shown ? "is-open" : ""} ${instant ? "is-instant" : ""} ${fold ? "" : "is-static"} ${className}`} data-cfg-group={id}>
-            <h3 className="cfg-group-h">
+        <section className={`cfg-group kx-group ${shown ? "is-open" : ""} ${instant ? "is-instant" : ""} ${fold ? "" : "is-static"} ${className}`} data-cfg-group={id}>
+            <h3 className="cfg-group-h kx-group-h">
                 {fold ? (
-                    <CfgKey k={k} as="button" type="button" className="cfg-group-t kx-t" aria-expanded={open} aria-controls={bodyId} aria-describedby={showSummary ? sumId : undefined} onClick={() => setOpen(!open)}>
-                        <Icon name="chevron-down" size={12} className="cfg-group-chev" /><span className="kx-section">{title}</span>
+                    <CfgKey k={k} as="button" type="button" className="cfg-group-t kx-group-t kx-t" aria-expanded={open} aria-controls={bodyId} aria-describedby={showSummary ? sumId : undefined} onClick={() => setOpen(!open)}>
+                        <Icon name="chevron-down" size={12} className="cfg-group-chev kx-group-chev" /><span className="kx-section">{title}</span>
                     </CfgKey>
                 ) : (
-                    <CfgKey k={k} className="cfg-group-t"><span className="cfg-group-chev" aria-hidden="true" /><span className="kx-section">{title}</span></CfgKey>
+                    <CfgKey k={k} className="cfg-group-t kx-group-t"><span className="cfg-group-chev kx-group-chev" aria-hidden="true" /><span className="kx-section">{title}</span></CfgKey>
                 )}
-                {showSummary ? <span id={sumId} className="kx-meta cfg-group-s">{summary}</span> : null}
-                {actions ? <span className="cfg-group-acts">{actions}</span> : null}
+                {showSummary ? <span id={sumId} className="kx-meta cfg-group-s kx-group-s">{summary}</span> : null}
+                {actions ? <span className="cfg-group-acts kx-group-acts">{actions}</span> : null}
             </h3>
-            <div id={bodyId} ref={body} className="cfg-group-b" inert={shown ? undefined : ""}>
-                <div className="cfg-group-in">{children}</div>
+            <div id={bodyId} ref={body} className="cfg-group-b kx-group-b" inert={shown ? undefined : ""}>
+                <div className="cfg-group-in kx-group-in">{children}</div>
             </div>
         </section>
     );

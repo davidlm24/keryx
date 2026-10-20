@@ -1,9 +1,12 @@
-/* Geist is not fetched here: the app ships it (src/fonts.css, @font-face over a
-   bundled woff2), so the console looks the same offline.
-   KERYX — component stylesheet. Every colour, size and radius is a token from tokens.json (tokens.css loads first).
-   Rules of the console: colour means state; 28px rows; 2px state bar + 10% tint on a highlighted row; bare glyphs;
-   one 120ms ease-out; no shadows inside panels. Gold (brand) marks identity, focus and ordinary primary actions,
-   never a live state. Class prefix: kx- */
+/* KERYX — the design system's components, as they ship (docs/design-system.md is their reference, in this order).
+   Every colour, size, radius, layer and duration is a token (tokens.css, generated from tokens.json, loads first);
+   src/lib/tokens.test.mjs refuses a hex colour, a px font size or a raw z-index here. Class prefix: kx-.
+   The console's root is `.kx.console` (Console.jsx, Janela.jsx): a component written `.kx .kx-x` weighs what the
+   app's `.console .x` did, so console.css (which loads next) composes on top of it at the same weight.
+   console.css keeps only the console's layout and its app-specific compositions.
+   Old names: the app's elements carry the kx- class beside the name they had (win-dialog, win-bar, sw2, prog-pill,
+   pp-*, toast, cfg-group*, cfg-kinds): the smoke and the compositions in console.css still read those.
+   Geist is not fetched here: the app ships it (src/fonts.css, @font-face over a bundled woff2). */
 
 :root { color-scheme: dark; }
 .kx, .kx * { box-sizing: border-box; }
@@ -95,8 +98,29 @@
    In a header or a menu's 24 px heading row (controls 24 px tall) the track goes and the segments fill the 24 px. */
 .kx-seg.is-small { height: var(--row); padding: 2px; }
 .kx-seg.is-small > button { height: var(--control-sm); padding: 0 8px; font-size: var(--fs-meta); }
-:is(.kx-panel-h, .win-bar, .kx-menu-h) .kx-seg.is-small { height: var(--control-sm); padding: 0; }
+:is(.kx-panel-h, .kx-win-bar, .kx-menu-h) .kx-seg.is-small { height: var(--control-sm); padding: 0; }
 .kx-dot { width: 6px; height: 6px; border-radius: var(--radius-round); background: currentColor; flex: none; display: inline-block; }
+
+/* ---- Switch (kx-switch; the app's old name .sw2): on / off, a real button with role=switch ----
+   32 × 20, past the 24 px a pointer needs; on = a light track (fg-1) with a dark knob, so "ligado" never reads
+   as the Prévia's green. The knob lights under the pointer; on, the track dims a step. */
+.kx .kx-switch { width: 32px; height: 20px; border-radius: var(--radius-round); background: var(--bg-3); position: relative; flex: none; }
+.kx .kx-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--fg-2); transition: left var(--duration-fast) var(--ease-out); }
+.kx .kx-switch.is-on { background: var(--fg-1); }
+.kx .kx-switch:not(:disabled):hover::after { background: var(--fg-1); }
+.kx .kx-switch.is-on::after { left: 15px; background: var(--bg-0); }
+.kx .kx-switch.is-on:not(:disabled):hover { background: var(--fg-2); }
+.kx .kx-switch.is-on:not(:disabled):hover::after { background: var(--bg-0); }
+.kx .kx-switch:disabled { opacity: var(--dim); }
+
+/* ---- Check (kx-check in a kx-checks row; the app's Ajustes › Conteúdo): a 24 px chip with role=checkbox ----
+   Off: bg-2, fg-3, no mark. On: bg-3, fg-1, the check glyph and a line-strong ring. Several in a wrapping row. */
+.kx .kx-checks { display: flex; flex-wrap: wrap; gap: 4px; }
+.kx .kx-check { height: var(--control-sm); padding: 0 8px 0 6px; display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-3); font-size: var(--fs-ui); }
+.kx .kx-check .kx-i { visibility: hidden; }
+.kx .kx-check:hover { background: var(--bg-3); color: var(--fg-1); }
+.kx .kx-check.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.kx .kx-check.is-on .kx-i { visibility: visible; }
 
 /* ---- Fields: kx-input (text, number, date, textarea), kx-select, and kx-field (an input with a glyph) ----
    One look: 28px (24 with is-small), bg-2, a line on hover, and a QUIET focus: a 1px fg-3 line
@@ -120,7 +144,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-field input:focus-visible { outline: 0; }
 .kx-field input::placeholder { color: var(--fg-3); }
 .kx-field kbd { font: inherit; font-size: var(--fs-meta); color: var(--fg-3); }
-/* kx-num (NumBox, Rodada HF2): − [number] + unit, 24px, the field's look; the steppers are 24×24 and dim at the ends. */
+/* kx-num (NumBox): − [number] + unit, 24px, the field's look; the steppers are 24×24 and dim at the ends. */
 .kx-num { height: var(--control-sm); display: inline-flex; align-items: center; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-1); flex: none; }
 .kx-num:hover:not(.is-disabled, :focus-within) { box-shadow: inset 0 0 0 1px var(--line); }
 .kx-num:focus-within { outline: 1px solid var(--fg-3); outline-offset: -1px; }
@@ -132,8 +156,11 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-num input:focus-visible { outline: 0; }
 .kx-num-u { font-size: var(--fs-meta); color: var(--fg-3); padding-right: 6px; }
 
-/* ---- Row (list item): title + one grey line. State = 2px bar on the left edge + 10% tint. Never a badge. ---- */
-.kx-row { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 0 var(--space-2) 0 var(--space-3); width: 100%; text-align: left; border-radius: 0; color: var(--fg-1); }
+/* ---- Row (list item): title + one grey line. State = 2px bar on the left edge + 10% tint. Never a badge. ----
+   Every row is an inset rounded card: 4 px in from its column, 2 px from the next, so the hover and the states
+   fill a card, never the column edge to edge (only the Slides column and No ar run edge to edge: kx-slide).
+   The inset comes off the left padding, so the text stays in line with the listheads. */
+.kx-row { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 0 var(--space-2); text-align: left; color: var(--fg-1); }
 .kx-row::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
 .kx-row:hover { background: var(--bg-2); }
 .kx-row.is-selected { background: var(--bg-3); }
@@ -142,7 +169,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-row.is-rh { background: var(--rh-tint); } .kx-row.is-rh::before { background: var(--rh); }
 .kx-row.is-warn::before { background: var(--warn); }
 /* Done (before the one on air): only the glyph dims; the title steps down to fg-3 (6:1 on bg-1, never dimmed
-   past reading — DS1, 2026-10-20: the old opacity took it to 2.7:1), the meta and time keep fg-3. */
+   past reading), the meta and time keep fg-3. */
 .kx-row.is-done .kx-glyph { opacity: var(--dim); }
 .kx-row.is-done .kx-row-title { color: var(--fg-3); }
 .kx-row .kx-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 4px 0; }
@@ -163,6 +190,17 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-row .kx-btn { height: var(--control-sm); min-width: var(--control-sm); padding: 0 4px; font-size: var(--fs-meta); }
 .kx-row .kx-btn.kx-btn-icon { width: 24px; }
 .kx-row .kx-glyph { color: var(--fg-3); flex: none; display: inline-flex; }
+/* Density (Ver › Densidade). Confortável: 32 px rows, 14 px titles that may take two lines (long Portuguese
+   names stay readable); Compacta keeps the 28 px single lines. */
+.kx.is-comfortable .kx-row { min-height: var(--row-comfortable); }
+.kx.is-comfortable .kx-row .kx-row-title { font-size: var(--fs-content-lg); line-height: 20px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.kx.is-comfortable .kx-row:not(.kx-row-1) .kx-row-main { padding: 6px 0; }
+.kx.is-comfortable .kx-row.kx-row-1 .kx-row-title { font-size: var(--fs-content); line-height: 18px; -webkit-line-clamp: 1; }
+.kx .kx-row .kx-row-acts .kx-btn { color: var(--fg-1); }
+.kx .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
+.kx :is(.kx-row, .kx-layer) { width: auto; margin: 1px var(--space-1); border-radius: var(--radius-control); overflow: clip; }
+.kx .kx-row { padding-left: var(--space-2); }
+.kx .kx-layer { padding-left: var(--space-2); height: calc(var(--row) - 2px); }
 
 /* ---- Tabs (library) ---- */
 .kx-tabs { height: var(--row); display: flex; align-items: stretch; gap: 0; padding: 0 var(--space-1); border-bottom: 1px solid var(--line); }
@@ -170,6 +208,33 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-tabs > button:hover { color: var(--fg-2); }
 .kx-tabs > button.is-on { color: var(--fg-1); }
 .kx-tabs > button.is-on::after { content: ""; position: absolute; left: var(--space-2); right: var(--space-2); bottom: -1px; height: 1px; background: var(--fg-1); }
+
+/* ---- Group (kx-group; the app's CfgGroup, settings/parts.jsx, old name .cfg-group): an area that opens and closes ----
+   An h3 header (kx-group-h) 28 px tall whose button (kx-group-t) carries the chevron (kx-group-chev, turned −90°
+   while closed) and the 11 px .kx-section title at 600; the one-line summary of what is chosen (kx-group-s) only
+   while closed; the actions (kx-group-acts) on the right. The body (kx-group-b › kx-group-in) is always mounted,
+   folded to 0fr and hidden (inert) when closed, in the fold's time — none with reduced motion, none for a search
+   jump (.is-instant). A static group (fold={false}, .is-static) keeps the chevron's slot empty so every title lines
+   up. Groups are 12 px apart with a soft hairline between them. */
+.kx .kx-group { display: flex; flex-direction: column; min-width: 0; }
+.kx .kx-group + .kx-group { margin-top: var(--space-3); }
+.kx .kx-group + .kx-group { border-top: 1px solid var(--line-soft); padding-top: var(--space-1); }
+.kx .kx-group-h { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); margin: 0; padding: 0 var(--space-3) 0 var(--space-1); min-width: 0; font: inherit; }
+.kx .kx-group-t { display: inline-flex; align-items: center; gap: var(--space-1); height: var(--control-sm); max-width: 100%; min-width: 0; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
+.kx button.kx-group-t { cursor: pointer; }
+.kx button.kx-group-t:hover { background: var(--bg-3); }
+.kx button.kx-group-t:hover .kx-section { color: var(--fg-1); }
+.kx button.kx-group-t:focus-visible { outline: 2px solid var(--rh, var(--brand)); outline-offset: -2px; }
+.kx .kx-group-t .kx-section { font-size: var(--fs-meta); font-weight: 600; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx .kx-group-chev { flex: none; width: 12px; height: 12px; color: var(--fg-3); transition: transform var(--dur-fold) var(--ease-fold); }
+.kx .kx-group:not(.is-open) .kx-group-chev { transform: rotate(-90deg); }
+.kx .kx-group-s { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx .kx-group-acts { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); flex: none; }
+.kx .kx-group-b { display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows var(--dur-fold) var(--ease-fold), visibility 0s; }
+.kx .kx-group:not(.is-open) > .kx-group-b { grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows var(--dur-fold) var(--ease-fold), visibility 0s var(--dur-fold); }
+.kx .kx-group.is-instant > .kx-group-b, .kx .kx-group.is-instant .kx-group-chev { transition: none; }
+.kx .kx-group-in { min-height: 0; min-width: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .kx .kx-group-b, .kx .kx-group:not(.is-open) > .kx-group-b, .kx .kx-group-chev { transition: none; } }
 
 /* ---- Monitor: a 16:9 screen with a 1px state frame and a caption line. ---- */
 .kx-mon { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
@@ -205,6 +270,39 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-pip { position: absolute; right: 2cqw; bottom: 2cqw; width: 28cqw; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px var(--air); background: var(--screen-bg); container-type: inline-size; }
 .kx-pip-cap { position: absolute; left: 0; top: 0; z-index: var(--z-mark); padding: 0 5px; height: 14px; display: flex; align-items: center; background: var(--air-fill); color: var(--on-state); font-family: var(--font-sans); font-size: var(--fs-meta); letter-spacing: .06em; font-weight: 500; }
 
+/* ---- Pill (kx-pill; the app's old name .prog-pill): a monitor's caption and controls inside its screen ----
+   Bottom-right, over the frame, the Multiview's labels and the drop hint; it takes the clicks the screen never
+   does. Anatomy: the state's dot (kx-pill-dot: grey idle, is-air red, is-prev green, is-rh blue, is-warn amber),
+   the title (kx-pill-title, fg-1 600, ends in "…"), telemetry (.kx-meta), separators (kx-pill-sep), groups of
+   round 24 px glyph buttons (kx-pill-btns) and Encerrar apart in the air's red (kx-pill-end). The Programa, the
+   Prévia (Enviar ao ar) and the Bíblia's No ar wear it; how it folds as the screen narrows is console.css's. */
+.kx .kx-pill { position: absolute; right: var(--space-2); bottom: var(--space-2); z-index: var(--z-pill); display: flex; align-items: center; gap: 6px; max-width: calc(100% - 2 * var(--space-2)); height: 32px; box-sizing: border-box; padding: 0 4px 0 10px; border-radius: var(--radius-round); background: var(--chrome-on-screen); box-shadow: 0 0 0 1px var(--chrome-ring); font-family: var(--font-sans); color: var(--fg-2); white-space: nowrap; pointer-events: auto; }
+.kx .kx-pill .kx-prog-cap { flex: 0 1 auto; gap: 6px; }
+.kx .kx-pill .kx-pill-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3); }
+.kx .kx-pill.is-air .kx-pill-dot { background: var(--air-fg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--air) 30%, transparent); }
+.kx .kx-pill.is-rh .kx-pill-dot { background: var(--rh-fg); }
+.kx .kx-pill.is-warn .kx-pill-dot { background: var(--warn-fg); }
+.kx .kx-pill .kx-pill-title { max-width: 46cqw; font-size: var(--fs-content); line-height: 16px; font-weight: 600; color: var(--fg-1); } /* a long title ends in "…" (its whole name in the tooltip) and never stretches the pill across the lyrics; 46 % so two similar names still differ on a notebook */
+.kx .kx-pill .kx-meta { color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.kx .kx-pill .kx-pill-sep { flex: none; width: 1px; height: 14px; background: var(--chrome-sep); }
+.kx .kx-pill .kx-pill-btns { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.kx .kx-pill .kx-btn { flex: none; width: var(--control-sm); height: var(--control-sm); padding: 0; border-radius: var(--radius-round); background: transparent; color: var(--fg-1); }
+.kx .kx-pill .kx-btn:hover { background: var(--chrome-hover); }
+.kx .kx-pill .kx-btn:active { background: var(--chrome-pressed); } /* pressed: Tela preta, Logo, Limpar answer the hand at once */
+.kx .kx-pill .kx-btn.is-on { background: var(--bg-3); }
+.kx .kx-pill .kx-btn.kx-pill-end { color: var(--air-fg); }
+.kx .kx-pill .kx-pill-btns > .kx-pill-sep { margin: 0 4px; }
+.kx .kx-pill.is-prev .kx-pill-dot { background: var(--prev-fg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--prev) 30%, transparent); }
+/* The caption of a monitor (the Programa's pill, the Prévia's badge): the state word, the title, telemetry. */
+.kx-prog-cap { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.kx-prog-cap .kx-live-cap { flex: none; color: var(--fg-3); }
+.kx-prog-cap .kx-mon-t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-prog-cap .kx-meta { flex: none; white-space: nowrap; }
+.kx-prog-cap.is-air .kx-live-cap { color: var(--air-fg); }
+.kx-prog-cap.is-rh .kx-live-cap { color: var(--rh-fg); }
+.kx-prog-cap.is-warn .kx-live-cap { color: var(--warn-fg); }
+.kx-prog-cap.is-idle .kx-mon-t { color: var(--fg-2); font-weight: 500; }
+
 /* ---- Status (Saídas) ---- */
 .kx-status { height: var(--row); display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); font-weight: 500; }
 .kx-status:hover { background: var(--bg-2); color: var(--fg-1); }
@@ -239,6 +337,45 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; }
 .kx-tip .kx-kbd { color: var(--fg-3); font-size: var(--fs-meta); }
 
+/* ---- Toast (kx-toast; the app's old name .toast; Toast.jsx): one line over the bottom of the console ----
+   28 px, bg-3, the floaters' shadow; its text (kx-toast-t) ends in "…"; an action (kx-toast-act: Desfazer after
+   Esc, its key in the tooltip) is a 24 px target at its right. Its time stands still under the pointer or the
+   focus (toastQueue.js). */
+.kx .kx-toast { position: absolute; z-index: var(--z-toast); left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
+.kx .kx-toast .kx-toast-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kx .kx-toast .kx-toast-act { height: var(--control-sm); margin-right: calc(-1 * var(--space-2)); padding: 0 var(--space-2); color: var(--fg-1); font-weight: 500; }
+
+/* ---- Window (kx-win; the app's old names .win-dialog, .win-bar…): THE window, one floating frame over the console ----
+   Configurações, the views and the editors are its pages (src/lib/console/nav.js). The bar (kx-win-bar, 40 px):
+   ← Voltar from level 2 (kx-btn-back), the page's title (kx-win-title, gives way first), its tools (kx-win-tools),
+   a gap (kx-win-gap; a double click there restores the size), the actions, ⧉ Destacar and the (x). Then the page
+   (kx-win-page) on the console's ground, so its panels read as panels. Two sizes, Padrão and Editor (.is-editor),
+   the frame easing between them; stretched by its 4 edges and 4 corners (kx-win-edge, winLayout.jsx), and then
+   it follows the pointer at once (.is-sized). Detached (/Janela, .is-detached) it fills its own window: no
+   shadow, no edges. Pages under the top stay mounted, hidden, so Voltar finds them as they were. */
+.kx .kx-win { position: absolute; z-index: var(--z-window); left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(var(--win-w, 1240px), calc(100% - 32px)); height: min(var(--win-h, 800px), calc(100% - var(--pop-top) - 16px)); display: flex; flex-direction: column; background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; transition: width .2s var(--ease-out), height .2s var(--ease-out); }
+.kx .kx-win.is-editor { width: min(var(--win-w, 1360px), calc(100% - 24px)); height: min(var(--win-h, 860px), calc(100% - var(--pop-top) - 12px)); }
+.kx .kx-win.is-sized { transition: none; }
+.kx .kx-win-edge { position: absolute; z-index: var(--z-edge); touch-action: none; }
+.kx .kx-win-edge.is-n, .kx .kx-win-edge.is-s { left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
+.kx .kx-win-edge.is-e, .kx .kx-win-edge.is-w { top: 10px; bottom: 10px; width: 5px; cursor: ew-resize; }
+.kx .kx-win-edge.is-n { top: 0; } .kx .kx-win-edge.is-s { bottom: 0; }
+.kx .kx-win-edge.is-e { right: 0; } .kx .kx-win-edge.is-w { left: 0; }
+.kx .kx-win-edge.is-ne, .kx .kx-win-edge.is-nw, .kx .kx-win-edge.is-se, .kx .kx-win-edge.is-sw { width: 12px; height: 12px; }
+.kx .kx-win-edge.is-ne { top: 0; right: 0; cursor: nesw-resize; } .kx .kx-win-edge.is-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.kx .kx-win-edge.is-nw { top: 0; left: 0; cursor: nwse-resize; } .kx .kx-win-edge.is-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.kx .kx-win-page { flex: 1; min-height: 0; display: flex; flex-direction: column; animation: kx-win-page-in .12s var(--ease-out); }
+.kx .kx-win-page[hidden] { display: none; }
+@keyframes kx-win-page-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .kx .kx-win { transition: none; } .kx .kx-win-page { animation: none; } }
+.kx .kx-win.is-detached { position: relative; left: auto; top: auto; transform: none; width: auto; height: auto; flex: 1; min-height: 0; border-radius: 0; box-shadow: none; transition: none; }
+.kx .kx-win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line-soft); }
+.kx .kx-win-bar .kx-win-title { flex: 0 1 auto; color: var(--fg-1); font-size: var(--fs-ui); min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kx .kx-win-bar .kx-win-title:focus { outline: none; } /* the focus parks here; it is not a control */
+.kx .kx-win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
+.kx .kx-win-bar .kx-win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
+.kx .kx-win-bar .kx-win-gap { flex: 1; }
+
 /* ---- Splitter: invisible until hover ---- */
 /* A fixed gutter between two modules that cannot be resized (no grip, no cursor). */
 .kx-gap { flex: none; width: var(--gutter); }
@@ -254,19 +391,51 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 /* Only the grip, no line: the dots are brand-coloured on keyboard focus. */
 .kx-split:focus-visible::before { background-image: radial-gradient(circle, var(--brand) 1px, transparent 1.5px); }
 
-/* ---- Slide (slides column) ---- */
-.kx-slide { position: relative; display: grid; grid-template-columns: 20px 1fr; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: var(--fs-content); line-height: 18px; white-space: pre-line; }
-.kx-slide::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
-.kx-slide:hover { background: var(--bg-2); }
+/* ---- Slide (the Slides column; .onair-card is the same slide in the No ar module) ----
+   A row edge to edge with a 1 px separator, no card. The state is the row's background plus a bar on its left
+   edge: on air the gold wash (live-bg) and a 3 px gold bar (live-bar); the Prévia the green wash (prev-bg); the
+   next slide a 2 px grey bar (next-bar) and an fg-1 number. On air and in the Prévia at once: the Prévia's wash,
+   the gold bar, the number on a gold chip. Labels and numbers on a wash pass AA: fg-2 on the Prévia's, fg-1 on
+   the gold one. The bars are box-shadows: a contrast theme drops them and the forced-colours blocks draw the
+   states. A slide keeps the editor's lines, one line each, ending in "…" (kx-ln); the keys move these states
+   hundreds of times a service, so the highlight lands with the key and only the pointer's hover eases in. */
 .kx-slide .kx-slide-n { font-size: var(--fs-meta); color: var(--fg-3); line-height: 18px; }
 .kx-slide .kx-slide-lab { font-size: var(--fs-meta); color: var(--fg-3); line-height: 14px; margin-bottom: 2px; }
-.kx-slide.is-air { background: var(--air-tint); } .kx-slide.is-air::before { background: var(--air); } .kx-slide.is-air .kx-slide-n { color: var(--air-fg); }
-.kx-slide.is-prev { background: var(--prev-tint); } .kx-slide.is-prev::before { background: var(--prev); } .kx-slide.is-prev .kx-slide-n { color: var(--prev-fg); }
-.kx-slide.is-next::before { background: var(--line-strong); }
-.kx-slide.is-next .kx-slide-n { color: var(--fg-2); }
+.kx.is-comfortable .kx-slide { font-size: var(--fs-content-lg); line-height: 20px; padding-top: 6px; padding-bottom: 6px; }
+.kx.is-compact .kx-slide { padding-top: 3px; padding-bottom: 3px; }
+.kx :is(.kx-slide, .onair-card) { position: relative; display: grid; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: var(--fs-content); line-height: 18px; }
+.kx :is(.kx-slide, .onair-card) { grid-template-columns: 20px minmax(0, 1fr); white-space: normal; }
+.kx :is(.kx-slide, .onair-card) { flex: none; border-radius: 0; background: none; box-shadow: inset 0 -1px 0 var(--line); padding-top: 5px; padding-bottom: 5px; }
+.kx .kx-verse { flex: none; border-radius: var(--radius-control); background: var(--bg-2); padding-left: var(--space-2); }
+.kx :is(.kx-slide, .onair-card):hover { background: var(--bg-2); }
+.kx .kx-verse:hover { background: var(--bg-3); }
+.kx :is(.kx-slide, .onair-card, .kx-verse).kx-t { transition: none; }
+.kx :is(.kx-slide, .onair-card, .kx-verse).kx-t:hover:not(.is-prev, .is-air, .is-next) { transition: background-color var(--duration-fast) var(--ease-out); }
+/* Pressed: a row, a slide, a verse answers the hand on press, before the click prepares it; a state keeps its colour. */
+.kx :is(.kx-row, .kx-slide, .onair-card, .kx-layer):active:not(.is-prev, .is-air) { background: var(--bg-3); }
+.kx .kx-verse:active:not(.is-prev, .is-air) { background: var(--verse-pressed); }
+/* A row with a background (a state, the pointer) drops its separator. */
+.kx :is(.kx-slide, .onair-card):is(.is-air, .is-prev, .is-next, :hover) { box-shadow: none; }
+.kx .kx-slide-body { display: flex; flex-direction: column; min-width: 0; }
+.kx .kx-slide-body .kx-slide-lab { font-size: var(--fs-meta); line-height: 14px; color: var(--fg-2); margin-bottom: 2px; }
+.kx .kx-ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A presentation's page: its picture, 16:9 on black, and its name beside it. */
+.kx .kx-slide-body.is-page { flex-direction: row; align-items: center; gap: var(--space-2); }
+.kx .kx-slide-page { flex: none; width: 128px; aspect-ratio: 16 / 9; object-fit: contain; background: var(--screen-bg); border-radius: 4px; }
+.kx .kx-slide-body.is-page .kx-slide-lab { margin: 0; font-size: var(--fs-ui); }
+.kx .onair-card .kx-slide-n { font-size: var(--fs-meta); color: var(--fg-3); }
+.kx :is(.kx-slide, .onair-card).is-next { box-shadow: var(--next-bar); }
+.kx .is-next > .kx-slide-n { color: var(--fg-1); }
+.kx .kx-slide.is-prev, .kx .kx-verse.is-prev, .kx .onair-card.is-prev { background: var(--prev-bg); }
+.kx .is-prev > .kx-slide-n, .kx .is-prev > .kx-verse-n, .kx .is-prev .kx-slide-lab { color: var(--fg-2); }
+.kx .kx-slide.is-air, .kx .kx-verse.is-air, .kx .onair-card.is-air { background: var(--live-bg); box-shadow: var(--live-bar); }
+/* On the gold wash fg-1: fg-2 there is 4.15:1, under AA (stateColors.test.mjs). */
+.kx .is-air > :is(.kx-slide-n, .kx-verse-n), .kx .is-air .kx-slide-lab { color: var(--fg-1); }
+.kx .kx-slide.is-air.is-prev, .kx .kx-verse.is-air.is-prev, .kx .onair-card.is-air.is-prev { background: var(--prev-bg); }
+.kx .is-air.is-prev > .kx-slide-n, .kx .is-air.is-prev > .kx-verse-n { align-self: start; height: 16px; line-height: 16px; border-radius: 4px; background: var(--live); color: var(--on-brand); text-align: center; font-weight: 500; }
 
 /* ---- Layer row (Camadas) ---- */
-.kx-layer { display: grid; grid-template-columns: 16px 20px 20px 1fr; gap: var(--space-1); align-items: center; height: var(--row); padding: 0 var(--space-3) 0 var(--space-2); width: 100%; text-align: left; color: var(--fg-1); }
+.kx-layer { display: grid; grid-template-columns: 16px 20px 20px 1fr; gap: var(--space-1); align-items: center; padding: 0 var(--space-3) 0 var(--space-2); text-align: left; color: var(--fg-1); }
 .kx-layer:hover { background: var(--bg-2); }
 .kx-layer.is-selected { background: var(--bg-3); }
 .kx-layer .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; }
@@ -286,13 +455,11 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-meter > i > b { position: absolute; left: 0; right: 0; bottom: 0; background: var(--prev); }
 .kx-meter > i > b.is-hot { background: var(--warn); }
 
-/* ---- Verse (Bíblia reading view) ---- */
+/* ---- Verse (Bíblia: Ler, Buscar): a card with a 4 px gap, since prose reads better in a box of its own ----
+   The states are the slide's (above): the Prévia's wash, the gold wash and bar on air, the number on a gold chip
+   when both. The number (kx-verse-n) right-aligned in a 24 px column; the text wraps. */
 .kx-verse { display: grid; grid-template-columns: 24px 1fr; gap: var(--space-2); padding: 3px var(--space-3) 3px 10px; width: 100%; text-align: left; font-size: var(--fs-content-lg); line-height: 20px; color: var(--fg-1); position: relative; }
-.kx-verse::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
 .kx-verse .kx-verse-n { font-size: var(--fs-meta); color: var(--fg-3); line-height: 20px; text-align: right; }
-.kx-verse:hover { background: var(--bg-2); }
-.kx-verse.is-prev { background: var(--prev-tint); } .kx-verse.is-prev::before { background: var(--prev); } .kx-verse.is-prev .kx-verse-n { color: var(--prev-fg); }
-.kx-verse.is-air::before { background: var(--air); } .kx-verse.is-air .kx-verse-n { color: var(--air-fg); }
 .kx-book { height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-1); font-size: var(--fs-ui); font-weight: 500; line-height: 14px; background: var(--bg-2); position: relative; }
 .kx-book small { font-size: var(--fs-meta); font-weight: 400; color: var(--fg-3); letter-spacing: .04em; }
 .kx-book::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: var(--radius-control) 0 0 var(--radius-control); background: var(--group, var(--line-strong)); }
@@ -334,22 +501,37 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-out .kx-route { margin-top: 2px; }
 .kx-out.is-tall { min-height: 56px; align-items: start; padding-top: 6px; }
 
-/* ---- Windows contrast themes (forced colours; design audit C-05, 2026-10-16) ----
+/* ---- Windows contrast themes (forced colours) ----
    Under a contrast theme Chromium repaints every background and border in the system's colours and drops every
    shadow, so the states that are a background (on air, Prévia, next, chosen) and the controls drawn with fills or
    shadows would vanish. Only there they get cues in system colours; the normal look never changes. The states keep
    one language: on air = the system's selection (Highlight) filling the row, still its background; Prévia = a dashed
    ring; next = a dotted ring; chosen = a solid Highlight ring. A monitor's screen is the output's picture: it keeps
-   its own colours, frame included, as the outputs do (screen.css). */
+   its own colours, frame included, as the outputs do (screen.css). The console's lists of its own (verse cells,
+   the Escola's questions, Sincronizar) carry the same cues in console.css's block. */
 .kx-mon-screen, .kx-pip { forced-color-adjust: none; }
 @media (forced-colors: active) {
   .kx-panel:not(.kx-panel-bare) { outline: 1px solid CanvasText; outline-offset: -1px; }
   .kx-pop, .kx-tip { outline: 1px solid CanvasText; }
+  .kx :is(.kx-toast, .kx-win) { outline: 1px solid CanvasText; }
   .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand) { border: 1px solid ButtonText; }
   .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand):disabled { border-color: GrayText; }
   .kx-btn.is-on, .kx-tool.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
   .kx-seg { outline: 1px solid ButtonText; outline-offset: -1px; }
   .kx-seg > button.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* Switches: track and knob in the system's colours, Highlight when on. */
+  .kx .kx-switch { border: 1px solid ButtonText; background: Canvas; }
+  .kx .kx-switch::after { top: 2px; left: 2px; background: ButtonText; }
+  .kx .kx-switch.is-on { border-color: Highlight; background: Highlight; }
+  .kx .kx-switch.is-on::after { left: 14px; background: HighlightText; }
+  .kx .kx-switch:disabled { border-color: GrayText; }
+  .kx .kx-switch:disabled::after { background: GrayText; }
+  .kx .kx-switch.is-on:disabled { background: GrayText; }
+  .kx .kx-switch.is-on:disabled::after { background: Canvas; }
+  /* A check is a button; on, the chosen ring (console.css's .is-on rule). */
+  .kx .kx-check:not(.is-on, :focus-visible) { outline: 1px solid ButtonText; outline-offset: -1px; }
+  /* A group's header that opens and closes is a button. */
+  .kx button.kx-group-t { outline: 1px solid ButtonText; outline-offset: -1px; }
   .kx-field { border: 1px solid FieldText; }
   .kx-num { border: 1px solid FieldText; }
   .kx-tabs > button.is-on::after { height: 2px; background: Highlight; }

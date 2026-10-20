@@ -17,6 +17,7 @@
     "desktop:smoke": "vite build && node scripts/desktop.mjs smoke",
     "test": "node --test electron/**/*.test.cjs scripts/**/*.test.cjs src/**/*.test.mjs shared/**/*.test.mjs",
     "db:schema": "node scripts/gen-sqlite-schema.mjs",
+    "ds:tokens": "node scripts/ds-tokens.cjs",
     "dist": "vite build && electron-builder --win --publish never",
     "dist:dir": "vite build && electron-builder --win --dir --publish never"
   },

@@ -160,7 +160,7 @@
 
 /* The Aviso rápido as the projector draws it (the amber band, ALERT_DEFAULTS). */
 .rm-alert-prev { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; background: #000; overflow: hidden; container-type: inline-size; }
-.rm-alert-band { position: absolute; left: 0; right: 0; top: 0; padding: 1cqw 3cqw; min-height: 9cqw; display: flex; align-items: center; justify-content: center; text-align: center; background: #f5a524; color: #1a1300; font-weight: 600; font-size: 4.2cqw; line-height: 1.25; overflow-wrap: anywhere; }
+.rm-alert-band { position: absolute; left: 0; right: 0; top: 0; padding: 1cqw 3cqw; min-height: 9cqw; display: flex; align-items: center; justify-content: center; text-align: center; background: var(--warn); color: var(--on-warn); font-weight: 600; font-size: 4.2cqw; line-height: 1.25; overflow-wrap: anywhere; }
 
 /* Sheets from the bottom (Slides, Aviso, Timer), and Travar toques. */
 .rm-scrim { position: fixed; inset: 0; z-index: 20; background: #000a; }
