@@ -1,0 +1,124 @@
+aviso-1240x800-compacta.png: 4018 px, 1 regions: 924,426 78x96
+aviso-1240x800-confortavel.png: 4018 px, 1 regions: 924,426 78x96
+aviso-960x600-compacta.png: 1705 px, 1 regions: 750,318 48x66
+aviso-960x600-confortavel.png: 1705 px, 1 regions: 750,318 48x66
+biblia-1240x800-compacta.png: 38 px, 1 regions: 1026,42 12x12
+biblia-1240x800-confortavel.png: identical
+biblia-960x600-compacta.png: no channel off by more than 24 (6 px off by 1–24)
+biblia-960x600-confortavel.png: identical
+busca-1240x800-compacta.png: identical
+busca-1240x800-confortavel.png: identical
+busca-960x600-compacta.png: no channel off by more than 24 (3 px off by 1–24)
+busca-960x600-confortavel.png: no channel off by more than 24 (3 px off by 1–24)
+cfg-backup-1240x800-compacta.png: identical
+cfg-backup-1240x800-confortavel.png: no channel off by more than 24 (31 px off by 1–24)
+cfg-backup-960x600-compacta.png: no channel off by more than 24 (47 px off by 1–24)
+cfg-backup-960x600-confortavel.png: no channel off by more than 24 (27 px off by 1–24)
+cfg-biblia-1240x800-compacta.png: no channel off by more than 24 (37 px off by 1–24)
+cfg-biblia-1240x800-confortavel.png: identical
+cfg-biblia-960x600-compacta.png: no channel off by more than 24 (27 px off by 1–24)
+cfg-biblia-960x600-confortavel.png: no channel off by more than 24 (27 px off by 1–24)
+cfg-console-1240x800-compacta.png: no channel off by more than 24 (37 px off by 1–24)
+cfg-console-1240x800-confortavel.png: no channel off by more than 24 (31 px off by 1–24)
+cfg-console-960x600-compacta.png: no channel off by more than 24 (47 px off by 1–24)
+cfg-console-960x600-confortavel.png: identical
+cfg-culto-1240x800-compacta.png: no channel off by more than 24 (31 px off by 1–24)
+cfg-culto-1240x800-confortavel.png: no channel off by more than 24 (31 px off by 1–24)
+cfg-culto-960x600-compacta.png: identical
+cfg-culto-960x600-confortavel.png: no channel off by more than 24 (20 px off by 1–24)
+cfg-igreja-1240x800-compacta.png: 46 px, 1 regions: 1026,36 12x18
+cfg-igreja-1240x800-confortavel.png: no channel off by more than 24 (32 px off by 1–24)
+cfg-igreja-960x600-compacta.png: no channel off by more than 24 (47 px off by 1–24)
+cfg-igreja-960x600-confortavel.png: identical
+cfg-rede-1240x800-compacta.png: no channel off by more than 24 (31 px off by 1–24)
+cfg-rede-1240x800-confortavel.png: no channel off by more than 24 (11 px off by 1–24)
+cfg-rede-960x600-compacta.png: identical
+cfg-rede-960x600-confortavel.png: no channel off by more than 24 (40 px off by 1–24)
+cfg-sincronizacao-1240x800-compacta.png: no channel off by more than 24 (31 px off by 1–24)
+cfg-sincronizacao-1240x800-confortavel.png: no channel off by more than 24 (31 px off by 1–24)
+cfg-sincronizacao-960x600-compacta.png: no channel off by more than 24 (27 px off by 1–24)
+cfg-sincronizacao-960x600-confortavel.png: no channel off by more than 24 (27 px off by 1–24)
+cfg-sobre-1240x800-compacta.png: no channel off by more than 24 (31 px off by 1–24)
+cfg-sobre-1240x800-confortavel.png: identical
+cfg-sobre-960x600-compacta.png: identical
+cfg-sobre-960x600-confortavel.png: no channel off by more than 24 (13 px off by 1–24)
+cfg-telas-1240x800-compacta.png: no channel off by more than 24 (36 px off by 1–24)
+cfg-telas-1240x800-confortavel.png: no channel off by more than 24 (36 px off by 1–24)
+cfg-telas-960x600-compacta.png: no channel off by more than 24 (20 px off by 1–24)
+cfg-telas-960x600-confortavel.png: no channel off by more than 24 (47 px off by 1–24)
+cfg-temas-1240x800-compacta.png: no channel off by more than 24 (10 px off by 1–24)
+cfg-temas-1240x800-confortavel.png: no channel off by more than 24 (20 px off by 1–24)
+cfg-temas-960x600-compacta.png: no channel off by more than 24 (27 px off by 1–24)
+cfg-temas-960x600-confortavel.png: no channel off by more than 24 (7 px off by 1–24)
+console-1240x800-compacta.png: identical
+console-1240x800-confortavel.png: identical
+console-960x600-compacta.png: identical
+console-960x600-confortavel.png: identical
+escola-1240x800-compacta.png: identical
+escola-1240x800-confortavel.png: no channel off by more than 24 (16 px off by 1–24)
+escola-960x600-compacta.png: no channel off by more than 24 (47 px off by 1–24)
+escola-960x600-confortavel.png: no channel off by more than 24 (27 px off by 1–24)
+material-1240x800-compacta.png: no channel off by more than 24 (26 px off by 1–24)
+material-1240x800-confortavel.png: no channel off by more than 24 (26 px off by 1–24)
+material-960x600-compacta.png: 16 px, 1 regions: 216,348 6x18
+material-960x600-confortavel.png: no channel off by more than 24 (7 px off by 1–24)
+menubar-1240x800-compacta.png: identical
+menubar-1240x800-confortavel.png: identical
+menubar-960x600-compacta.png: no channel off by more than 24 (15 px off by 1–24)
+menubar-960x600-confortavel.png: identical
+midia-1240x800-compacta.png: no channel off by more than 24 (6 px off by 1–24)
+midia-1240x800-confortavel.png: no channel off by more than 24 (10 px off by 1–24)
+midia-960x600-compacta.png: no channel off by more than 24 (20 px off by 1–24)
+midia-960x600-confortavel.png: identical
+multiview-1240x800-compacta.png: 15 px, 1 regions: 858,282 6x12
+multiview-1240x800-confortavel.png: identical
+multiview-960x600-compacta.png: identical
+multiview-960x600-confortavel.png: identical
+musica-1240x800-compacta.png: no channel off by more than 24 (13 px off by 1–24)
+musica-1240x800-confortavel.png: no channel off by more than 24 (11 px off by 1–24)
+musica-960x600-compacta.png: no channel off by more than 24 (40 px off by 1–24)
+musica-960x600-confortavel.png: identical
+planejar-1240x800-compacta.png: no channel off by more than 24 (32 px off by 1–24)
+planejar-1240x800-confortavel.png: no channel off by more than 24 (41 px off by 1–24)
+planejar-960x600-compacta.png: identical
+planejar-960x600-confortavel.png: 55 px, 1 regions: 738,36 18x18
+programa-menu-1240x800-compacta.png: identical
+programa-menu-1240x800-confortavel.png: no channel off by more than 24 (31 px off by 1–24)
+programa-menu-960x600-compacta.png: identical
+programa-menu-960x600-confortavel.png: identical
+relatorios-1240x800-compacta.png: no channel off by more than 24 (36 px off by 1–24)
+relatorios-1240x800-confortavel.png: no channel off by more than 24 (31 px off by 1–24)
+relatorios-960x600-compacta.png: identical
+relatorios-960x600-confortavel.png: no channel off by more than 24 (20 px off by 1–24)
+saidas-1240x800-compacta.png: identical
+saidas-1240x800-confortavel.png: identical
+saidas-960x600-compacta.png: identical
+saidas-960x600-confortavel.png: identical
+sincronizar-1240x800-compacta.png: identical
+sincronizar-1240x800-confortavel.png: identical
+sincronizar-960x600-compacta.png: identical
+sincronizar-960x600-confortavel.png: identical
+tela-palco-1240x800-compacta.png: no channel off by more than 24 (5 px off by 1–24)
+tela-palco-1240x800-confortavel.png: no channel off by more than 24 (15 px off by 1–24)
+tela-palco-960x600-compacta.png: no channel off by more than 24 (29 px off by 1–24)
+tela-palco-960x600-confortavel.png: 3 px, 1 regions: 858,240 12x6
+tela-projecao-1240x800-compacta.png: no channel off by more than 24 (15 px off by 1–24)
+tela-projecao-1240x800-confortavel.png: no channel off by more than 24 (12 px off by 1–24)
+tela-projecao-960x600-compacta.png: no channel off by more than 24 (12 px off by 1–24)
+tela-projecao-960x600-confortavel.png: identical
+tema-1240x800-compacta.png: no channel off by more than 24 (43 px off by 1–24)
+tema-1240x800-confortavel.png: no channel off by more than 24 (33 px off by 1–24)
+tema-960x600-compacta.png: identical
+tema-960x600-confortavel.png: identical
+toast-1240x800-compacta.png: identical
+toast-1240x800-confortavel.png: identical
+toast-960x600-compacta.png: identical
+toast-960x600-confortavel.png: no channel off by more than 24 (4 px off by 1–24)
+travada-1240x800-compacta.png: no channel off by more than 24 (31 px off by 1–24)
+travada-1240x800-confortavel.png: no channel off by more than 24 (31 px off by 1–24)
+travada-960x600-compacta.png: identical
+travada-960x600-confortavel.png: no channel off by more than 24 (32 px off by 1–24)
+ver-1240x800-compacta.png: identical
+ver-1240x800-confortavel.png: identical
+ver-960x600-compacta.png: identical
+ver-960x600-confortavel.png: identical

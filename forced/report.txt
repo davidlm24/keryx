@@ -1,0 +1,24 @@
+biblia-1240x800-compacta.png: no channel off by more than 24 (12 px off by 1–24)
+biblia-1240x800-confortavel.png: no channel off by more than 24 (12 px off by 1–24)
+cfg-biblia-1240x800-compacta.png: no channel off by more than 24 (2 px off by 1–24)
+cfg-biblia-1240x800-confortavel.png: identical
+cfg-console-1240x800-compacta.png: no channel off by more than 24 (2 px off by 1–24)
+cfg-console-1240x800-confortavel.png: no channel off by more than 24 (2 px off by 1–24)
+cfg-telas-1240x800-compacta.png: 6 px, 2 regions: 1170,456 6x12 | 336,666 6x6
+cfg-telas-1240x800-confortavel.png: identical
+cfg-temas-1240x800-compacta.png: identical
+cfg-temas-1240x800-confortavel.png: identical
+console-1240x800-compacta.png: identical
+console-1240x800-confortavel.png: no channel off by more than 24 (6 px off by 1–24)
+musica-1240x800-compacta.png: no channel off by more than 24 (2 px off by 1–24)
+musica-1240x800-confortavel.png: no channel off by more than 24 (2 px off by 1–24)
+programa-menu-1240x800-compacta.png: no channel off by more than 24 (13 px off by 1–24)
+programa-menu-1240x800-confortavel.png: identical
+saidas-1240x800-compacta.png: no channel off by more than 24 (6 px off by 1–24)
+saidas-1240x800-confortavel.png: no channel off by more than 24 (6 px off by 1–24)
+tela-projecao-1240x800-compacta.png: identical
+tela-projecao-1240x800-confortavel.png: no channel off by more than 24 (14 px off by 1–24)
+toast-1240x800-compacta.png: no channel off by more than 24 (6 px off by 1–24)
+toast-1240x800-confortavel.png: no channel off by more than 24 (13 px off by 1–24)
+travada-1240x800-compacta.png: identical
+travada-1240x800-confortavel.png: identical

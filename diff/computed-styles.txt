@@ -1,0 +1,217 @@
+aviso-1240x800-compacta: 800 elements, 2 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+   ~ div:0>div:0>div:0 |ks-bg-img
+aviso-1240x800-confortavel: 800 elements, 2 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+   ~ div:0>div:0>div:0 |ks-bg-img
+aviso-960x600-compacta: 743 elements, 2 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+   ~ div:0>div:0>div:0 |ks-bg-img
+aviso-960x600-confortavel: 743 elements, 2 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+   ~ div:0>div:0>div:0 |ks-bg-img
+biblia-1240x800-compacta: 396 elements, 0 differ, 0 only before, 0 only after
+biblia-1240x800-confortavel: 396 elements, 0 differ, 0 only before, 0 only after
+biblia-960x600-compacta: 396 elements, 0 differ, 0 only before, 0 only after
+biblia-960x600-confortavel: 396 elements, 0 differ, 0 only before, 0 only after
+busca-1240x800-compacta: 813 elements, 0 differ, 0 only before, 0 only after
+busca-1240x800-confortavel: 813 elements, 0 differ, 0 only before, 0 only after
+busca-960x600-compacta: 902 elements, 0 differ, 0 only before, 0 only after
+busca-960x600-confortavel: 902 elements, 0 differ, 0 only before, 0 only after
+cfg-backup-1240x800-compacta: 724 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-backup-1240x800-confortavel: 724 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-backup-960x600-compacta: 667 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-backup-960x600-confortavel: 667 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-biblia-1240x800-compacta: 873 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-biblia-1240x800-confortavel: 873 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-biblia-960x600-compacta: 816 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-biblia-960x600-confortavel: 816 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-console-1240x800-compacta: 848 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-console-1240x800-confortavel: 848 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-console-960x600-compacta: 791 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-console-960x600-confortavel: 791 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-culto-1240x800-compacta: 822 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-culto-1240x800-confortavel: 822 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-culto-960x600-compacta: 765 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-culto-960x600-confortavel: 765 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-igreja-1240x800-compacta: 752 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-igreja-1240x800-confortavel: 752 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-igreja-960x600-compacta: 695 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-igreja-960x600-confortavel: 695 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-rede-1240x800-compacta: 780 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-rede-1240x800-confortavel: 780 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-rede-960x600-compacta: 723 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-rede-960x600-confortavel: 723 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-sincronizacao-1240x800-compacta: 745 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-sincronizacao-1240x800-confortavel: 745 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-sincronizacao-960x600-compacta: 688 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-sincronizacao-960x600-confortavel: 688 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-sobre-1240x800-compacta: 745 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-sobre-1240x800-confortavel: 745 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-sobre-960x600-compacta: 688 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-sobre-960x600-confortavel: 688 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-telas-1240x800-compacta: 1034 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-telas-1240x800-confortavel: 1034 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-telas-960x600-compacta: 977 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-telas-960x600-confortavel: 977 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-temas-1240x800-compacta: 876 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-temas-1240x800-confortavel: 876 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-temas-960x600-compacta: 819 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-temas-960x600-confortavel: 819 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+console-1240x800-compacta: 581 elements, 0 differ, 0 only before, 0 only after
+console-1240x800-confortavel: 581 elements, 0 differ, 0 only before, 0 only after
+console-960x600-compacta: 670 elements, 0 differ, 0 only before, 0 only after
+console-960x600-confortavel: 670 elements, 0 differ, 0 only before, 0 only after
+escola-1240x800-compacta: 815 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+escola-1240x800-confortavel: 815 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+escola-960x600-compacta: 758 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+escola-960x600-confortavel: 758 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+material-1240x800-compacta: 712 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+material-1240x800-confortavel: 712 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+material-960x600-compacta: 655 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+material-960x600-confortavel: 655 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+menubar-1240x800-compacta: 799 elements, 0 differ, 0 only before, 0 only after
+menubar-1240x800-confortavel: 799 elements, 0 differ, 0 only before, 0 only after
+menubar-960x600-compacta: 888 elements, 0 differ, 0 only before, 0 only after
+menubar-960x600-confortavel: 888 elements, 0 differ, 0 only before, 0 only after
+midia-1240x800-compacta: 670 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+midia-1240x800-confortavel: 670 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+midia-960x600-compacta: 613 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+midia-960x600-confortavel: 613 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+multiview-1240x800-compacta: 646 elements, 0 differ, 0 only before, 0 only after
+multiview-1240x800-confortavel: 646 elements, 0 differ, 0 only before, 0 only after
+multiview-960x600-compacta: 561 elements, 0 differ, 0 only before, 0 only after
+multiview-960x600-confortavel: 561 elements, 0 differ, 0 only before, 0 only after
+musica-1240x800-compacta: 923 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+musica-1240x800-confortavel: 923 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+musica-960x600-compacta: 731 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+musica-960x600-confortavel: 731 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+planejar-1240x800-compacta: 948 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+planejar-1240x800-confortavel: 948 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+planejar-960x600-compacta: 891 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+planejar-960x600-confortavel: 891 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+programa-menu-1240x800-compacta: 613 elements, 0 differ, 0 only before, 0 only after
+programa-menu-1240x800-confortavel: 613 elements, 0 differ, 0 only before, 0 only after
+programa-menu-960x600-compacta: 702 elements, 0 differ, 0 only before, 0 only after
+programa-menu-960x600-confortavel: 702 elements, 0 differ, 0 only before, 0 only after
+relatorios-1240x800-compacta: 900 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+relatorios-1240x800-confortavel: 810 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+relatorios-960x600-compacta: 888 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+relatorios-960x600-confortavel: 798 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+saidas-1240x800-compacta: 673 elements, 0 differ, 0 only before, 0 only after
+saidas-1240x800-confortavel: 673 elements, 0 differ, 0 only before, 0 only after
+saidas-960x600-compacta: 762 elements, 0 differ, 0 only before, 0 only after
+saidas-960x600-confortavel: 762 elements, 0 differ, 0 only before, 0 only after
+sincronizar-1240x800-compacta: 969 elements, 2 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+   ~ div:1>div:4>div:9 |win-page
+sincronizar-1240x800-confortavel: 969 elements, 2 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+   ~ div:1>div:4>div:9 |win-page
+sincronizar-960x600-compacta: 912 elements, 2 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+   ~ div:1>div:4>div:9 |win-page
+sincronizar-960x600-confortavel: 912 elements, 2 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+   ~ div:1>div:4>div:9 |win-page
+tela-palco-1240x800-compacta: 1134 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tela-palco-1240x800-confortavel: 1134 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tela-palco-960x600-compacta: 1077 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tela-palco-960x600-confortavel: 1077 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tela-projecao-1240x800-compacta: 865 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tela-projecao-1240x800-confortavel: 865 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tela-projecao-960x600-compacta: 808 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tela-projecao-960x600-confortavel: 808 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tema-1240x800-compacta: 877 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tema-1240x800-confortavel: 877 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tema-960x600-compacta: 820 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tema-960x600-confortavel: 820 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+toast-1240x800-compacta: 530 elements, 0 differ, 0 only before, 0 only after
+toast-1240x800-confortavel: 530 elements, 0 differ, 0 only before, 0 only after
+toast-960x600-compacta: 591 elements, 0 differ, 0 only before, 0 only after
+toast-960x600-confortavel: 591 elements, 0 differ, 0 only before, 0 only after
+travada-1240x800-compacta: 565 elements, 0 differ, 0 only before, 0 only after
+travada-1240x800-confortavel: 565 elements, 0 differ, 0 only before, 0 only after
+travada-960x600-compacta: 654 elements, 0 differ, 0 only before, 0 only after
+travada-960x600-confortavel: 654 elements, 0 differ, 0 only before, 0 only after
+ver-1240x800-compacta: 621 elements, 0 differ, 0 only before, 0 only after
+ver-1240x800-confortavel: 621 elements, 0 differ, 0 only before, 0 only after
+ver-960x600-compacta: 710 elements, 0 differ, 0 only before, 0 only after
+ver-960x600-confortavel: 710 elements, 0 differ, 0 only before, 0 only after
+TOTAL 92

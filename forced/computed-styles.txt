@@ -1,0 +1,37 @@
+biblia-1240x800-compacta: 396 elements, 0 differ, 0 only before, 0 only after
+biblia-1240x800-confortavel: 396 elements, 0 differ, 0 only before, 0 only after
+cfg-biblia-1240x800-compacta: 814 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-biblia-1240x800-confortavel: 814 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-console-1240x800-compacta: 789 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-console-1240x800-confortavel: 789 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-telas-1240x800-compacta: 975 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-telas-1240x800-confortavel: 975 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-temas-1240x800-compacta: 817 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+cfg-temas-1240x800-confortavel: 817 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+console-1240x800-compacta: 581 elements, 0 differ, 0 only before, 0 only after
+console-1240x800-confortavel: 581 elements, 0 differ, 0 only before, 0 only after
+musica-1240x800-compacta: 864 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+musica-1240x800-confortavel: 864 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+programa-menu-1240x800-compacta: 613 elements, 0 differ, 0 only before, 0 only after
+programa-menu-1240x800-confortavel: 613 elements, 0 differ, 0 only before, 0 only after
+saidas-1240x800-compacta: 673 elements, 0 differ, 0 only before, 0 only after
+saidas-1240x800-confortavel: 673 elements, 0 differ, 0 only before, 0 only after
+tela-projecao-1240x800-compacta: 806 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+tela-projecao-1240x800-confortavel: 806 elements, 1 differ, 0 only before, 0 only after
+   ~ div:1>div:4>div:8 |win-page
+toast-1240x800-compacta: 530 elements, 0 differ, 0 only before, 0 only after
+toast-1240x800-confortavel: 530 elements, 0 differ, 0 only before, 0 only after
+travada-1240x800-compacta: 565 elements, 0 differ, 0 only before, 0 only after
+travada-1240x800-confortavel: 565 elements, 0 differ, 0 only before, 0 only after
+TOTAL 12
