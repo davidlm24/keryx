@@ -477,7 +477,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   writes 100 per `bulkCreate` and closes on the toast; `importPlan` in
   songImport.js, tested; `useImportSongs()` is the console's door), and the
   owner's rule (2026-10-20): KERYX ships no lyrics, and no parser of another
-  program ships without a real export file in `songFormats/fixtures/`;
+  program ships without a real export file in `songFormats/fixtures/`
+  (2026-10-21: only Holyrics; EasyWorship and ProPresenter are not planned);
   the search row is Buscar · ☆ · (+) Adicionar; **the Biblioteca's header
   holds the doors** (owner's pick, Rodada H, H1): its title, "Abrir a
   Biblioteca de mídia" (the Mídia page, every tab), the chooser of what
