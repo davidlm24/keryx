@@ -2041,7 +2041,8 @@ async function checkConsole(webContents, { live, outputs }) {
         const ctxShape = ctxOpened ? await js(`(() => {
             const m = document.querySelector(".console .ctx-menu");
             const kids = [...m.children].filter((k) => !k.classList.contains("kx-menu-h"));
-            const labels = kids.map((k) => (k.getAttribute("role") === "separator" ? "|" : k.textContent.trim()));
+            // The label alone: an item may carry its key hint ("Enter") in the same button (Rodada M1).
+            const labels = kids.map((k) => (k.getAttribute("role") === "separator" ? "|" : (k.querySelector(".kx-menu-l, .kx-menu-l2 > span") || k).textContent.trim()));
             const r = m.getBoundingClientRect();
             return { labels, inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight };
         })()`) : null;
