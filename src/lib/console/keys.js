@@ -189,7 +189,10 @@ export const SHORTCUTS = shortcutsFor("on");
 // before it would end the projection. The background library opens from a
 // popover or any window page, always on top: it closes right after a
 // right-click menu (and the "Excluir?" question, which is over everything).
-export const ESC_ORDER = ["menu", "confirm", "library", "popover", "window", "drawer", "edit"];
+// "countdown" (the Setlist automática's "Próximo em 5 s", Rodada N2) is
+// cancelled before anything on the console itself, so Esc never ends the
+// air while the next item is about to go.
+export const ESC_ORDER = ["menu", "confirm", "library", "popover", "window", "countdown", "drawer", "edit"];
 export function escapeTarget(layers = {}) {
     return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
 }

@@ -45,7 +45,7 @@ export default function Projection() {
     const playsAudio = keryx.isDesktop && !keryx.isNetworkScreen;
     const audioPlayer = audio && playsAudio ? (
         <div className="hidden" aria-hidden="true">
-            <LiveVideo item={audio} meter="audio" onEnded={() => { if (audio.playlist) projection.advanceAudio(audioIndex).catch(() => {}); }} />
+            <LiveVideo item={audio} meter="audio" onEnded={() => { (audio.playlist ? projection.advanceAudio(audioIndex) : projection.audioEnded(audio.url)).catch(() => {}); }} />
         </div>
     ) : null;
     // One sound at a time (Transições): what a new sound stopped on the audio

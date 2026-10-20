@@ -31,7 +31,9 @@ import SlidesPanel, { handTitle, handIsPrev } from "@/components/console/SlidesP
 import OnAirPanel, { onAirCount } from "@/components/console/OnAirPanel";
 import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaPill } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
-import Rundown, { plannedTimes } from "@/components/console/Rundown";
+import Rundown, { plannedTimes, AutoplaySwitch } from "@/components/console/Rundown";
+import { useSetlistAutoplay } from "@/components/console/useSetlistAutoplay";
+import { endsByItself, AUTOPLAY_SAY } from "@/lib/console/autoplay";
 import Layers from "@/components/console/Layers";
 import PromptDialog from "@/components/console/PromptDialog";
 import { timerChoices, minutesLabel } from "@/lib/console/timerPresets";
@@ -78,7 +80,7 @@ import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, isSection, total, itemOnAir } from "@/lib/console/setlist";
+import { plan, playableItems, total, itemOnAir } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { readChapter } from "@/lib/bibleText";
@@ -439,9 +441,10 @@ export default function Console() {
     const airNow = itemOnAir(c.cur, items);
     const prevItemId = c.prev?.args?.ref?.serviceItemId || null;
     const airIdx = items.findIndex((i) => i.id === airItemId);
-    // Sections (Pré-culto, Culto…) are headers: never prepared, never next.
+    // Sections (Pré-culto, Culto…) are headers and disabled items are
+    // skipped: never prepared, never next (the phone's "Próximo" too).
     const playable = useMemo(() => playableItems(items), [items]);
-    const nextItem = (airIdx >= 0 ? items.slice(airIdx + 1) : items).find((i) => !isSection(i)) || null;
+    const nextItem = (airIdx >= 0 ? playableItems(items.slice(airIdx + 1)) : playable)[0] || null;
     const setPlan = useMemo(() => plan(service, items), [service, items]);
 
     // A rundown item as a stage: the row it points at, with the item's id in ref.
@@ -527,6 +530,12 @@ export default function Console() {
         try { const stage = await buildStage(item, index); c.setPrev(stage); await sendStage(stage); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c, sendStage]);
 
+    // Setlist automática (Rodada N2, useSetlistAutoplay.js): with the culto's
+    // switch on, the item on air that ends sends the next one (after the
+    // pause, its countdown on the next row). Only this console runs it.
+    const autoplay = useSetlistAutoplay({ c, service, items, songs: data.songs, prefs, projectorOpen: projector ? projector.open !== false : true, buildStage, sendStage });
+    const endsAlone = useCallback((it) => endsByItself(it, String(it.type || "").toUpperCase() === "SONG" ? data.songs.find((x) => x.id === it.contentId) : null), [data.songs]);
+
     // No service chosen: the first item added starts today's setlist, a draft
     // service the operator can rename later in Cultos.
     const ensureService = useCallback(async () => {
@@ -541,6 +550,15 @@ export default function Console() {
         c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
         return row.id;
     }, [serviceId, c]);
+    // "Avançar sozinho" (the Setlist's header): the culto's switch; with no
+    // culto, today's draft starts.
+    const setAutoplay = useCallback(async (on) => {
+        try {
+            const sid = serviceId || await ensureService();
+            await keryx.entities.Service.update(sid, { autoplay: Boolean(on) });
+            c.say(on ? AUTOPLAY_SAY.on : AUTOPLAY_SAY.off);
+        } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
+    }, [serviceId, ensureService, c]);
 
     // Today's papel de parede, the ONE live door (Rodada B 2026-10-14,
     // "Papel de parede × Tema": the Programa's header button is gone):
@@ -804,7 +822,7 @@ export default function Console() {
                 // "window": Esc goes to the TOP page's registered request
                 // (nav.js), which pops one level — "← Voltar" — or, at the
                 // first, closes; an unsaved guard may ask instead.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, window: winOpen, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
@@ -812,6 +830,7 @@ export default function Console() {
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "window") winEsc("esc");
+                    else if (top === "countdown") autoplay.cancel();
                     else if (top === "drawer") setDrawer(false);
                     else if (top === "edit") setEditing(false);
                     return;
@@ -860,7 +879,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, letters]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, letters, autoplay]);
     useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -1049,9 +1068,10 @@ export default function Console() {
         ] });
     };
     const setlistPanel = (
-        <Panel title="Setlist" className={coverCls} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
-            actions={<>{coverTag}<IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
+        <Panel title="Setlist" className={`setlist-panel ${coverCls}`} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+            actions={<>{coverTag}<AutoplaySwitch on={Boolean(service?.autoplay)} onChange={setAutoplay} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+            <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
+                autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes

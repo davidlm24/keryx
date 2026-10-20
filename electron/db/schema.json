@@ -1511,6 +1511,13 @@
         "notes": {
           "type": "text"
         },
+        "autoplay": {
+          "type": "boolean",
+          "default": false
+        },
+        "autoplay_gap": {
+          "type": "integer"
+        },
         "operator_notes": {
           "type": "text"
         },
@@ -1567,6 +1574,9 @@
         "autoAdvance": {
           "type": "boolean",
           "default": false
+        },
+        "end_action": {
+          "type": "text"
         },
         "enabled": {
           "type": "boolean",
@@ -1853,6 +1863,9 @@
           "type": "integer"
         },
         "duration_song": {
+          "type": "integer"
+        },
+        "autoplay_gap": {
           "type": "integer"
         },
         "duration_other": {

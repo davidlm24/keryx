@@ -1154,3 +1154,34 @@ test("enter fade (Rodada G5): each show op stores and clamps its fade; locked is
     const moved = applyOp(sent, "content.goTo", { index: 2, fade: 500 }, T0 + 200);
     assert.deepEqual(moved.fade, { ms: 500, at: T0 + 100 }, "goTo takes no fade");
 });
+
+// Setlist automática (Rodada N2): `ended` says a medium reached its end by
+// itself, as an output reported it — never Esc, Limpar or Parar.
+test("ended: a medium that played out is marked, a medium taken off is not", () => {
+    assert.equal(emptyState(T0).ended, null);
+    const clip = { ...CLIP, id: "m1" };
+    const media = run([["media.show", clip, T0]]);
+    const out = applyOp(media, "media.clear", { ended: true, fade: 300 }, T0 + 50);
+    assert.deepEqual(out.ended, { layer: "media", id: "m1", url: clip.url, at: T0 + 50 });
+    assert.equal(applyOp(media, "media.clear", { fade: 300 }, T0 + 50).ended, null, "Parar");
+    assert.equal(applyOp(media, "clear", {}, T0 + 50).ended, null, "Esc");
+    const video = applyOp(run([["video.show", clip, T0]]), "video.clear", { ended: true }, T0 + 9);
+    assert.equal(video.ended.layer, "video");
+    // A list: past its last item (back to the first), not on the way.
+    const list = run([["media.playlist", { items: [{ kind: "image", url: "keryx-media://a.jpg", id: "a" }, { kind: "image", url: "keryx-media://b.jpg", id: "b" }] }, T0]]);
+    const second = applyOp(list, "media.advance", { fromIndex: 0 }, T0 + 1);
+    assert.equal(second.ended, null);
+    assert.deepEqual(applyOp(second, "media.advance", { fromIndex: 1 }, T0 + 2).ended, { layer: "media", id: "b", url: "keryx-media://b.jpg", at: T0 + 2 });
+    // Music: a list stops at its end; a single file stays where it is, marked.
+    const tracks = run([["audio.playlist", { items: [MUSIC] }, T0]]);
+    assert.equal(applyOp(tracks, "audio.advance", { fromIndex: 0 }, T0 + 3).ended.layer, "audio");
+    const one = run([["audio.show", MUSIC, T0]]);
+    const played = applyOp(one, "audio.ended", { url: MUSIC.url }, T0 + 4);
+    assert.deepEqual([played.audio, played.ended.layer, played.ended.at], [one.audio, "audio", T0 + 4]);
+    assert.equal(applyOp(played, "audio.ended", { url: MUSIC.url }, T0 + 5), played, "a second report changes nothing");
+    assert.equal(applyOp(one, "audio.ended", { url: "keryx-media://other.mp3" }, T0 + 4), one, "another file");
+    assert.equal(applyOp(tracks, "audio.ended", { url: MUSIC.url }, T0 + 4), tracks, "a list ends by audio.advance");
+    // It works locked: it puts nothing on air.
+    assert.ok(WHILE_LOCKED.has("audio.ended"));
+    assert.equal(applyOp(applyOp(one, "screens.lock", { locked: true }, T0), "audio.ended", { url: MUSIC.url }, T0 + 4).ended.layer, "audio");
+});

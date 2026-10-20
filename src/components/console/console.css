@@ -868,6 +868,24 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    "último" in its meta, never the red of the air; the Prévia's green wins. */
 .console .rund .kx-row.is-last:not(.is-prev)::before { background: var(--fg-3); }
 .console .rund .kx-row.is-last .kx-row-meta { color: var(--fg-2); }
+/* Setlist automática (owner 2026-10-20, Rodada N2): "Avançar sozinho" in the
+   header (24 px, like every header control; the word goes first when the
+   header is narrow, the switch stays), the mark of what the item on air does
+   at its end, and the countdown on the next row ("Próximo em 5 s · Cancelar";
+   amber when it stopped instead). */
+.console .setlist-panel > .kx-panel-h { container: setlist-h / inline-size; }
+.console .rund-auto { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-1); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: 500 12px/1 var(--font-sans); white-space: nowrap; cursor: pointer; }
+.console .rund-auto:not(:disabled):hover { background: var(--bg-3); color: var(--fg-1); }
+.console .rund-auto[aria-checked="true"] { color: var(--fg-1); }
+.console .rund-auto:disabled { opacity: var(--dim); cursor: default; }
+@container setlist-h (width < 300px) { .console .rund-auto-l { display: none; } }
+.console .rund-end { flex: none; display: inline-grid; place-items: center; width: 16px; color: var(--fg-3); }
+.console .rund .kx-row.is-air .rund-end { color: inherit; }
+.console .rund-cd { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: 22px; padding: 0 2px 0 var(--space-2); border-radius: var(--radius-round); background: var(--brand-tint); color: var(--brand); font-size: 11px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.console .rund-cd > button { height: 18px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); font: inherit; font-weight: 500; cursor: pointer; }
+.console .rund-cd > button:hover { background: var(--line-strong); }
+.console .rund-cd.is-warn { padding-right: var(--space-2); background: var(--warn-tint); color: var(--warn-fg); }
+.console .rund-menu-note { max-width: 260px; padding: 2px var(--space-2) var(--space-1) 32px; font-size: 11px; line-height: 1.35; color: var(--fg-3); }
 
 /* Fields (C-21, owner 2026-10-16): one look, the design system's kx-input /
    kx-select / kx-field (bundle.css) — 28 px, 24 small, a line on hover, a
@@ -1223,6 +1241,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .pl-frm { display: grid; grid-template-columns: var(--win-label, 96px) 1fr; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-2); }
 .console .pl-frm .k { font-size: 11px; color: var(--fg-3); }
 .console .pl-frm .kx-field { min-width: 0; }
+.console .pl-auto { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); min-width: 0; }
 .console .pl-input { width: 100%; }
 .console .pl-dur { width: 80px; font-variant-numeric: tabular-nums; }
 .console .pl-pick { max-width: 210px; }
@@ -1927,6 +1946,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
   .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
   .console .topbar .tb-bell-dot { background: Highlight; }
+  /* The Setlist automática's countdown and its stop (Rodada N2). */
+  .console .rund-cd { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .console .rund-cd > button { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* A row's copy or pages bar (Rodada H, HB). */
   .console .kx-row-progress::before { background: CanvasText; }
   .console .kx-row-progress > b { background: Highlight; }

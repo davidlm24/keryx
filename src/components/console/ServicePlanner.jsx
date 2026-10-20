@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { newServiceDefaults, defaultDuration, teamRole } from "@/lib/console/serviceDefaults";
-import { getPrefs } from "@/hooks/useUser";
+import { getPrefs, usePrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
@@ -18,7 +18,8 @@ import { bibleVersionWanted } from "./BibleEnv";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import BgChip from "./library/BgChip";
-import { CfgGroup } from "./settings/parts";
+import { CfgGroup, Switch } from "./settings/parts";
+import { END_ACTIONS, END_LABEL, endChoice, GAPS, gapLabel } from "@/lib/console/autoplay";
 import ThemeChip from "./library/ThemeChip";
 import { lookOf, lookFields, lookForService, templateLookFields } from "@/lib/console/serviceLook";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
@@ -45,6 +46,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const church = useChurch();
     const client = useQueryClient();
     const svc = services.find((s) => s.id === serviceId) || null;
+    const prefs = usePrefs();
     const itemsKey = ["console", "serviceItems", serviceId];
     const items = (useQuery({ queryKey: itemsKey, queryFn: () => keryx.entities.ServiceItem.filter({ serviceId }, "order"), enabled: Boolean(serviceId) }).data || [])
         .slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -262,6 +264,15 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {form.service_type === "evento" && <><span className="k">Evento</span><Field label="Evento" icon={null} {...f("event_description")} placeholder="Descrição do evento" inputProps={{ spellCheck: true }} /></>}
                         <span className="k">Status</span><Seg small label="Status" value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
                         <span className="k">Notas</span><Field label="Notas" icon={null} {...f("notes")} placeholder="Notas gerais do culto" inputProps={{ spellCheck: true }} />
+                        {/* Setlist automática (Rodada N2): the switch of the Setlist's
+                            header, and this culto's pause (none = the church's). */}
+                        <span className="k">Avançar sozinho</span>
+                        <div className="pl-auto">
+                            <Switch on={Boolean(svc.autoplay)} label="Avançar sozinho: quando o item no ar termina, o próximo vai ao ar" onChange={(on) => saveSvc({ autoplay: on }, on ? "Avançar sozinho ligado." : "Avançar sozinho desligado.")} />
+                            <Seg small label="Pausa entre itens" value={svc.autoplay_gap == null ? "" : String(svc.autoplay_gap)}
+                                options={[["", `Padrão · ${gapLabel(prefs.autoplay_gap)}`], ...GAPS.map((g) => [String(g), gapLabel(g)])]}
+                                onChange={(v) => saveSvc({ autoplay_gap: v === "" ? null : Number(v) }, v === "" ? "Pausa entre itens: a de Configurações › Culto." : `Pausa entre itens deste culto: ${gapLabel(Number(v)).toLowerCase()}.`)} />
+                        </div>
                     </div>
                     </CfgGroup>
                     <CfgGroup id="planner.visual" title="Papel de parede e tema" summary={[look.background ? "papel de parede próprio" : "papel de parede de qualquer outro culto", look.theme_id ? "tema próprio" : "sem tema próprio"].join(" · ")}>
@@ -320,7 +331,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                     <Row className={`pl-item ${it.enabled === false ? "is-done" : ""}`} state={open ? "is-selected" : ""} expanded={open}
                                         lead={<span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span>}
                                         icon={typeIcon(it.type)} title={it.title}
-                                        meta={[typeLabel(it.type), it.enabled === false ? "desativado" : "", it.notes && it.type !== "TEXT" ? it.notes : ""].filter(Boolean).join(" · ")}
+                                        meta={[typeLabel(it.type), it.enabled === false ? "desativado" : "", endChoice(it) === "loop" ? "repete" : endChoice(it) === "stop" ? "para ao terminar" : "", it.notes && it.type !== "TEXT" ? it.notes : ""].filter(Boolean).join(" · ")}
                                         onClick={() => setSel(open ? null : it.id)} onKey={step.onKey(i)} dragProps={step.rowAttrs(i)}
                                         onContextMenu={(e) => menu(e, { title: it.title, items: [
                                             { label: open ? "Fechar os detalhes" : "Abrir os detalhes", icon: "edit", onSelect: () => setSel(open ? null : it.id) },
@@ -336,6 +347,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                             <div className="frm pl-frm">
                                                 <span className="k">Título</span><input key={`t${it.id}${it.title}`} className="pl-input" defaultValue={it.title} aria-label="Título" onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== it.title) updateItem(it.id, { title: v }); }} />
                                                 <span className="k">Duração</span><input key={`d${it.id}${it.duration}`} className="pl-input pl-dur" defaultValue={formatDuration(it.duration)} placeholder="m:ss" aria-label="Duração" onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={(e) => { const s = parseDuration(e.target.value); if (s !== null && s !== it.duration) updateItem(it.id, { duration: s }); }} />
+                                                <span className="k">Ao terminar</span><Seg small label="Ao terminar" value={endChoice(it)} options={END_ACTIONS.map((a) => [a, END_LABEL[a]])} onChange={(a) => updateItem(it.id, { end_action: a })} />
                                                 <span className="k">{it.type === "TEXT" ? "Texto" : "Notas"}</span>
                                                 <textarea className="ed-text" style={{ height: 64 }} defaultValue={it.notes || ""} onBlur={(e) => { if (e.target.value !== (it.notes || "")) updateItem(it.id, { notes: e.target.value }); }} placeholder={it.type === "TEXT" ? "O texto que vai para a tela" : "Para o operador e o Palco (ex.: intro longa)"} />
                                             </div>

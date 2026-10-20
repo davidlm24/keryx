@@ -1057,7 +1057,25 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   background (theirs, not the Fundo's; ScreenRenderer's Background). The rundown is called
   **"Setlist"** in the UI; its right click (and Planejar) has "Tirar da
   setlist…" / "Tirar a seção…" (`setlistActions.js`: asks with
-  `useConfirm`, then renumbers from the store; 0.2.19). Output windows are never background (occlusion
+  `useConfirm`, then renumbers from the store; 0.2.19). **Setlist automática**
+  (owner 2026-10-20, Rodada N2): "Avançar sozinho" in the Setlist's header
+  is the culto's switch (`Service.autoplay`, synced); with it on, the item on
+  air that ends does what its "Ao terminar" says (`ServiceItem.end_action`:
+  next — the default, "" and the old `autoAdvance` too — loop or stop; the
+  row's menu and Planejar o culto): the next playable item (sections and
+  disabled ones skipped) goes on air after the pause (`Service.autoplay_gap`,
+  else Configurações › Culto's `User.autoplay_gap`, 5 s), counted down on its
+  row and in a toast with Cancelar. "Ended" is `itemEnded`
+  (`src/lib/console/autoplay.js`, tested): a file's end as an output reports
+  it (`live.ended`: `media.clear`/`video.clear` with `ended`, a list past its
+  last item, `audio.ended` for a single file — never Esc, Limpar or Parar),
+  or played to its length; anything else its `duration` while on air (none:
+  never, "Sem duração" in the menu). `useSetlistAutoplay` (console only,
+  never /Janela) watches every 250 ms and sends as the console's own send
+  (`keepPrev`); Esc cancels the countdown first (`escapeTarget` "countdown"),
+  and so does any send meanwhile; locked it refuses and says so, and with
+  the projector window closed and something to hear it stops (amber).
+  Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
@@ -1212,7 +1230,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   not have) reads only `/api/live`, `/media`, `User` `get` and its own
   event stream (User, live and `hb` frames; `/api/screens` is 401); taps
   past a burst of 10 / 8 a second, or 4 waiting per phone (8 in all), get
-  429/503 (`createRemoteGate`); every stream gets an `hb` every 10 s
+  429/503 (`createRemoteGate`); `setlist.autoplay { on }` (T) is the Setlist's
+  "Avançar sozinho" and `state.autoplay` its value (Rodada N2); every stream gets an `hb` every 10 s
   (`connection.lastEventAt()` in network.js) and is dropped past 256 kB
   unread; reads are never logged. Under `npm run dev` the `/Remote` tab
   works too: `scripts/preview/server.cjs` checks its commands the same

@@ -30,7 +30,7 @@ export default function LiveMediaView({ media, fadeOut = null }) {
         if (!keryx.isDesktop || fadeOut) return;
         const next = inPlaylist ? media.playlist[(index + 1) % media.playlist.length] : null;
         const done = inPlaylist ? projection.advanceMedia(index, { fade: enterFade(prefs, mediaType(next?.kind), { ...next, playlist: media.playlist }) })
-            : projection.clearMedia({ fade: media.kind === "youtube" ? 0 : clearFade(prefs) });
+            : projection.clearMedia({ fade: media.kind === "youtube" ? 0 : clearFade(prefs), ended: true });
         done.catch((err) => console.error("[keryx] mídia:", err));
     };
 
