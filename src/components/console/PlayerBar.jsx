@@ -1,10 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { IconBtn, Seg } from "./kx";
 import { livePosition } from "@shared/live-state.mjs";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { playerLayers, playerLayer, playerOp, videoSwap, LAYER_LABEL, clock, followsItem, followLabel, followAction, followTicks, clockLength, seekAt, SEEK_KEY_SECONDS } from "@/lib/console/player";
 import { levelsNow, useReportedDuration, useMeterFeed } from "./meterStore";
+import { useFramePreview } from "./useFramePreview";
+import { slideNameAt, tipLeft, FRAME_W, FRAME_H } from "@/lib/console/seekPreview";
 
 const HOT = 0.95; // about -3 dBFS
 const FALL_PER_FRAME = 0.035;
@@ -50,8 +52,10 @@ function Meters() {
 }
 
 // The volume: a mute toggle and a slider. While it is dragged the slider
-// follows the hand; the operation goes out at most every 80 ms.
-function Volume({ volume, onVolume, disabled }) {
+// follows the hand; the operation goes out at most every 80 ms. Where the
+// sound goes is the mute's tooltip (Rodada N1, owner's pick A); with the
+// projector window closed (`silent`) the speaker wears an amber dot.
+function Volume({ volume, onVolume, disabled, where, silent }) {
     const [drag, setDrag] = useState(null);
     const lastSent = useRef(0);
     const before = useRef(1);
@@ -75,7 +79,10 @@ function Volume({ volume, onVolume, disabled }) {
     };
     return (
         <span className="pl-vol">
-            <IconBtn name={muted ? "volume-off" : "volume"} title={muted ? "Ligar o som" : "Mudo"} onClick={toggleMute} disabled={disabled} />
+            <span className="pl-spk">
+                <IconBtn name={muted ? "volume-off" : "volume"} title={`${muted ? "Ligar o som" : "Mudo"}${silent ? " · o projetor está fechado: o som não sai" : where ? ` · o som sai: ${where}` : ""}`} onClick={toggleMute} disabled={disabled} />
+                {silent && <i className="pl-spk-dot" aria-hidden="true" />}
+            </span>
             <input type="range" min={0} max={100} step={1} value={value} disabled={disabled} aria-label="Volume"
                 style={{ "--v": `${value}%` }}
                 onChange={(e) => { const v = Number(e.target.value); setDrag(v); send(v); }}
@@ -124,15 +131,47 @@ const SEEK_KEYS = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 };
 // release (`onSeek`), so the letra automática never walks through every
 // slide the hand passed. `can` false (nothing playing, the live clock): a
 // bar that only shows.
-function Seek({ value, duration, can, scrubbing, ticks, onScrub, onSeek }) {
+//
+// The pointer over the bar without a press (Rodada N1, as on YouTube): the
+// tip says the moment under it — the time, the slide of the letra automática
+// there (`ticks`) and, for a video of the computer (`frames`), a frame of
+// the file (useFramePreview: an element of its own, never the one on air) —
+// and a light band runs up to it. Nothing seeks until a press; the tip goes
+// when the pointer leaves. While the hand holds the bar the tip follows the
+// thumb as before. Nothing at all while the length is unknown.
+function Seek({ value, duration, can, scrubbing, ticks, frames, onScrub, onSeek }) {
     const held = useRef(false);
+    const tipRef = useRef(null);
+    const [hover, setHover] = useState(null); // { x, w, t }: the pointer, in the bar's px
+    const preview = useFramePreview(frames, Boolean(frames));
     const at = (e) => seekAt(e.clientX, e.currentTarget.getBoundingClientRect(), duration);
+    const pointAt = (e) => {
+        const box = e.currentTarget.getBoundingClientRect();
+        setHover({ x: Math.min(box.width, Math.max(0, e.clientX - box.left)), w: box.width, t: seekAt(e.clientX, box, duration) });
+    };
     const pct = duration ? Math.min(100, (value / duration) * 100) : 0;
     const letGo = (e, seek) => {
         if (!held.current) return;
         held.current = false;
         if (seek) onSeek(at(e)); else onScrub(null);
     };
+    useEffect(() => { if (!duration) setHover(null); }, [duration]);
+    // What the tip shows: the thumb's moment while held, else the pointer's.
+    const tipT = scrubbing ? value : hover?.t;
+    const showTip = Boolean(duration) && (scrubbing || hover) && tipT != null;
+    const slide = showTip ? slideNameAt(ticks, tipT) : null;
+    const showFrame = showTip && Boolean(frames) && !preview.failed;
+    const { show } = preview;
+    // Placed after it renders (its width is the frame's or its words'), kept
+    // inside the bar; the frame asked for the same second.
+    useLayoutEffect(() => {
+        const tip = tipRef.current;
+        if (!tip) return;
+        const w = hover?.w || tip.parentElement?.getBoundingClientRect().width || 0;
+        const x = scrubbing ? (pct / 100) * w : hover?.x ?? 0;
+        tip.style.left = `${tipLeft(x, w, tip.offsetWidth / 2)}px`;
+        if (showFrame) show(tipT);
+    });
     return (
         <span className={`pl-seek is-live ${duration ? "" : "is-unknown"} ${can ? "is-can" : ""} ${scrubbing ? "is-drag" : ""}`} role="slider" tabIndex={can ? 0 : -1}
             aria-label="Posição" aria-valuemin={0} aria-valuemax={Math.round(duration || 0)} aria-valuenow={Math.round(value)} aria-valuetext={clock(value)} aria-disabled={can ? undefined : true}
@@ -143,9 +182,14 @@ function Seek({ value, duration, can, scrubbing, ticks, onScrub, onSeek }) {
                 try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* a pointer the page did not see go down */ }
                 onScrub(at(e));
             }}
-            onPointerMove={(e) => { if (held.current) onScrub(at(e)); }}
-            onPointerUp={(e) => letGo(e, true)}
-            onPointerCancel={(e) => letGo(e, false)}
+            onPointerEnter={(e) => { if (duration && e.pointerType !== "touch") pointAt(e); }}
+            onPointerMove={(e) => {
+                if (held.current) onScrub(at(e));
+                else if (duration && e.pointerType !== "touch") pointAt(e);
+            }}
+            onPointerLeave={() => { if (!held.current) setHover(null); }}
+            onPointerUp={(e) => { letGo(e, true); if (!e.currentTarget.matches(":hover")) setHover(null); }}
+            onPointerCancel={(e) => { letGo(e, false); setHover(null); }}
             onKeyDown={(e) => {
                 const dir = SEEK_KEYS[e.key];
                 if (!can || !dir || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -153,9 +197,15 @@ function Seek({ value, duration, can, scrubbing, ticks, onScrub, onSeek }) {
                 onSeek(value + dir * SEEK_KEY_SECONDS);
             }}>
             <i style={{ width: `${pct}%` }} />
+            {hover && !scrubbing && duration ? <span className="pl-hov" style={{ width: `${Math.min(100, (hover.t / duration) * 100)}%` }} /> : null}
             {ticks.map((t) => <span key={t.i} className="pl-tick" style={{ left: `${t.pct}%` }} title={`Slide ${t.label}`} />)}
             <b style={{ left: `${pct}%` }} />
-            {scrubbing && <em className="pl-tip" style={{ left: `${pct}%` }}>{clock(value)}</em>}
+            {showTip && (
+                <span className={`pl-tip ${showFrame ? "has-frame" : ""}`} ref={tipRef} aria-hidden="true">
+                    {showFrame && <canvas ref={preview.canvasRef} width={FRAME_W} height={FRAME_H} />}
+                    <em className="pl-tip-t">{clock(tipT)}{slide && <span className="pl-tip-sl"> · {slide}</span>}</em>
+                </span>
+            )}
         </span>
     );
 }
@@ -229,14 +279,18 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
     const soundOnly = swap?.action === "showVideo";
     const where = layer === "video" ? (videoScreens || "telas de vídeo") : layer === "media" ? "Projetor" : layer === "audio" ? "Computador do projetor" : "";
     const silent = (layer === "audio" || layer === "media") && !projectorOpen;
+    // The hover tip's frames: a video file only (YouTube gives none, an
+    // audio file has no picture: those get the time and the slide).
+    const frames = media?.kind === "video" && media.url ? media.url : null;
 
     // Two rows (owner 2026-10-16, Rodada F1): what plays (its icon, title
     // and place in the list), the time and the progress bar on the first;
     // the controls under it: the transport, the eye, Parar, the layer, the
-    // letra automática, where the sound goes, then the volume and the meters
-    // at the right end. As the player narrows row 2 gives way (console.css):
-    // the volume number, −10/+10, the labels, the volume's width, then the
-    // meters and where; Tocar, the eye, Parar and the mute always stay.
+    // letra automática ("Projetor fechado" only when the sound cannot come
+    // out: where it goes is the mute's tooltip, Rodada N1), then the volume
+    // and the meters at the right end. As the player narrows row 2 gives way
+    // (console.css): the volume number, −10/+10, the labels, the volume's
+    // width, then the meters; Tocar, the eye, Parar and the mute always stay.
     return (
         <div className={`player ${off ? "is-idle" : ""}`} role="group" aria-label="Player de mídia">
             <div className="pl-row pl-row1">
@@ -246,7 +300,7 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
                     {listPos && <span className="pl-n">{listPos}</span>}
                 </span>
                 <span className="kx-time pl-time">{clock(shownPos)}</span>
-                <Seek value={shownPos} duration={duration} can={canSeek} scrubbing={Boolean(scrub?.held)} ticks={ticks}
+                <Seek value={shownPos} duration={duration} can={canSeek} scrubbing={Boolean(scrub?.held)} ticks={ticks} frames={frames}
                     onScrub={(t) => setScrub(t == null ? null : { t, held: true })} onSeek={seekTo} />
                 <span className="kx-time pl-left" title="Tempo restante · duração">{duration ? `-${clock(Math.max(0, duration - shownPos))}` : "--:--"}<small>{duration ? clock(duration) : ""}</small></span>
             </div>
@@ -264,13 +318,13 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
                     <Seg small value={layer} onChange={setPicked} label="Controlar" options={layers.map((l) => [l, LAYER_LABEL[l], { title: `Controlar: ${LAYER_LABEL[l]}` }])} />
                 )}
                 <FollowChip follow={follow} onAction={followOp} disabled={Boolean(cur?.locked)} />
-                {media && (
-                    <span className={`kx-meta pl-where ${silent ? "kx-warn" : ""}`} title={silent ? "A janela do projetor está fechada: o som não sai. Abra em Saídas." : `Onde o som sai: ${where}`}>
-                        <Icon name={silent ? "warn" : "tv"} /><span className="lbl">{silent ? "Projetor fechado" : where}</span>
+                {media && silent && (
+                    <span className="pl-closed" role="status" title="A janela do projetor está fechada: o som não sai. Abra em Saídas.">
+                        <Icon name="warn" /><span className="lbl">Projetor fechado</span>
                     </span>
                 )}
                 <span className="pl-gap" />
-                <Volume volume={pb?.volume} disabled={off || clockOnly} onVolume={(v) => run("volume", { volume: v })} />
+                <Volume volume={pb?.volume} disabled={off || clockOnly} where={media ? where : ""} silent={Boolean(media) && silent} onVolume={(v) => run("volume", { volume: v })} />
                 <Meters />
             </div>
         </div>

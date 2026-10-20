@@ -235,12 +235,17 @@ travado" while locked) and it has no send button.
 **The player** sits under the Programa, always visible, dimmed while idle
 (its icon only, no placeholder words), in two rows (64 px; the slot is
 `PLAYER_SLOT` 72 px, so starting a video never moves the monitors). Row 1 is
-what plays: the file icon, the title, "n/m" in a list, the elapsed time, the
-progress bar (it drags, one seek on release; Tab focuses it and ←/→ step
-5 s) and the remaining time. Row 2 is the controls: ⏮ −10 ⏯ +10 ⏭, the eye
+what plays: the file icon, the title (at most 28 % of the row and 260 px,
+ending in "…"; the whole title is its tooltip), "n/m" in a list, the elapsed
+time, the progress bar (it drags, one seek on release; Tab focuses it and
+←/→ step 5 s; hovering it shows a light band and a tip with the time, the
+slide there and, for a video file, a 160 × 90 frame) and the remaining time.
+Row 2 is the controls: ⏮ −10 ⏯ +10 ⏭, the eye
 ("Tirar o vídeo · o som continua"; pressed and red while the video plays as
-sound only), Parar, the layer switch, the letra automática chip, where the
-sound goes, the volume and the L/R meters (green, amber from −3 dBFS). It
+sound only), Parar, the layer switch, the letra automática chip, the volume
+and the L/R meters (green, amber from −3 dBFS). Where the sound goes is the
+mute's tooltip; only "Projetor fechado" shows, an amber status chip (not a
+button) with an amber dot on the speaker. It
 narrows with container queries; Tocar, the eye, Parar and the mute always
 stay.
 
