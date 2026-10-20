@@ -180,18 +180,82 @@ export function songRow(parsed, { name = "", lines = 0 } = {}) {
 
 // Any file the "+ › Do computador" picker accepts: its text or its bytes.
 // -> [song rows]; throws the reason a file cannot come in.
-export function songsFromFile(name, raw, { lines = 0 } = {}) {
+export const songsFromFile = (name, raw, opts) => readSongFile(name, raw, opts).rows;
+
+// The same, with the format's name the import shows. -> { format, rows }
+export function readSongFile(name, raw, { lines = 0 } = {}) {
     const text = decodeSongBytes(raw);
     const kind = sniffSongFile(name, text);
     if (kind === "json") {
         let data;
         try { data = JSON.parse(text); } catch { throw new Error("Arquivo JSON inválido."); }
-        if (isHolyrics(data)) return parseHolyrics(data).map((s) => songRow(s, { name, lines }));
-        return songsFromJson(text);
+        if (isHolyrics(data)) return { format: "Holyrics", rows: parseHolyrics(data).map((s) => songRow(s, { name, lines })) };
+        return { format: "KERYX", rows: songsFromJson(text) };
     }
-    if (kind === "openlyrics") return parseOpenLyrics(text).map((s) => songRow(s, { name, lines }));
+    if (kind === "openlyrics") return { format: "OpenLyrics", rows: parseOpenLyrics(text).map((s) => songRow(s, { name, lines })) };
     const song = songFromText(text, { name, lines });
-    return song.lyrics ? [song] : [];
+    return { format: isChordPro(text) ? "ChordPro" : "texto", rows: song.lyrics ? [song] : [] };
+}
+
+// -- Importar músicas (ImportSongsDialog) ---------------------------------------
+
+// What the import will do, file by file: one item per song (ok, or
+// repeated — already in the library or earlier in this import, by songKey)
+// and one per file that gave none (bad, with the reason). files: [{ name,
+// format, rows } | { name, error }]. -> { items, counts }
+export function importPlan(files, existing = []) {
+    const library = new Set(existing.map(songKey));
+    const seen = new Set();
+    const items = [];
+    files.forEach((f, i) => {
+        if (f.error || !f.rows?.length) {
+            items.push({ key: `${i}`, status: "bad", title: f.name, reason: f.error || "nenhuma letra encontrada", format: f.format || "" });
+            return;
+        }
+        f.rows.forEach((row, j) => {
+            const k = songKey(row);
+            const where = library.has(k) ? "library" : seen.has(k) ? "import" : "";
+            seen.add(k);
+            items.push({ key: `${i}:${j}`, status: where ? "repeated" : "ok", where, title: row.title, row, format: f.format, file: f.name });
+        });
+    });
+    const counts = { ok: 0, repeated: 0, bad: 0 };
+    for (const it of items) counts[it.status] += 1;
+    return { items, counts };
+}
+
+// The rows that go in: every ready one, and a repeated one when the
+// operator does not skip them or asked for that one ("Importar mesmo assim").
+export const importedItems = (items, { skip = true, forced = new Set() } = {}) =>
+    items.filter((it) => it.status === "ok" || (it.status === "repeated" && (!skip || forced.has(it.key))));
+
+// A row's second line and its size, as the list shows them.
+export function importRowMeta(item) {
+    if (item.status === "bad") return item.reason;
+    if (item.status === "repeated") return item.where === "library" ? "parece repetida · já está na biblioteca" : "parece repetida · já está nesta importação";
+    const { row } = item;
+    return [row.artist, row.song_key && `Tom ${row.song_key}`].filter(Boolean).join(" · ");
+}
+export function importRowSize(row) {
+    const n = row?.slides?.length || 0;
+    const chords = row?.slides?.some((s) => s.chorded) ? " · com cifra" : "";
+    return n ? `${n} ${n === 1 ? "slide" : "slides"}${chords}` : "";
+}
+
+// The band over the list: "15 arquivos de Músicas OpenLP · OpenLyrics, ChordPro".
+export function importSource(files, folder = "") {
+    const n = files.length;
+    const formats = [...new Set(files.map((f) => f.format).filter(Boolean))];
+    return `${n} ${n === 1 ? "arquivo" : "arquivos"}${folder ? ` de ${folder}` : ""}${formats.length ? ` · ${formats.join(", ")}` : ""}`;
+}
+
+// "11 prontas · 2 repetidas · 2 não deram"
+export function importCounts({ ok, repeated, bad }) {
+    return [
+        ok && `${ok} ${ok === 1 ? "pronta" : "prontas"}`,
+        repeated && `${repeated} ${repeated === 1 ? "repetida" : "repetidas"}`,
+        bad && `${bad} ${bad === 1 ? "não deu" : "não deram"}`,
+    ].filter(Boolean).join(" · ");
 }
 
 // Songs already in the library (or earlier in the same import) stay out:

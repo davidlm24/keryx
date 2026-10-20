@@ -23,7 +23,8 @@ import TopBar from "@/components/console/TopBar";
 import { MenuBarPop, MenusPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
 import { menuItem } from "@/lib/console/menuLabels";
-import { importSongFiles, SONG_FILE, SONG_ACCEPT } from "@/components/console/importSongs";
+import { ImportSongsContext, SONG_FILE, SONG_ACCEPT } from "@/components/console/importSongs";
+import ImportSongsDialog from "@/components/console/ImportSongsDialog";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import { useChurch } from "@/hooks/useChurch";
 import Library from "@/components/console/Library";
@@ -253,6 +254,10 @@ export default function Console() {
     const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
     // Ajuda › Relatar um problema (ReportDialog): open or not.
     const [reporting, setReporting] = useState(false);
+    // Importar músicas (ImportSongsDialog): { files, busy } while it is open.
+    const [importReq, setImportReq] = useState(null);
+    const openImport = useCallback((files) => setImportReq({ files: [...files], busy: false }), []);
+    const closeImport = useCallback(() => setImportReq((r) => (r?.busy ? r : null)), []);
     // With { subject, body }: Configurações' queue tried the e-mail and no program opened.
     const openReport = useCallback((mail) => setReporting(mail?.subject ? mail : true), []);
     const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
@@ -830,11 +835,11 @@ export default function Console() {
                 // "window": Esc goes to the TOP page's registered request
                 // (nav.js), which pops one level — "← Voltar" — or, at the
                 // first, closes; an unsaved guard may ask instead.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
-                    else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else setReporting(false); }
+                    else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else if (importReq) closeImport(); else setReporting(false); }
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "window") winEsc("esc");
@@ -848,7 +853,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if ((libReq || confirmReq || reporting) && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq || reporting || importReq) && !["black", "logo"].includes(action)) return;
             // Behind the window only the emergency keys (Tela preta, Logo)
             // act; a page's own keys (Mídia's Enter and Delete, the editors'
             // Ctrl+S, Space while marking timings) are its own listeners.
@@ -887,7 +892,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, reporting, letters, autoplay]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, reporting, importReq, closeImport, letters, autoplay]);
     useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -1369,10 +1374,11 @@ export default function Console() {
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
         <ReportContext.Provider value={openReport}>
+        <ImportSongsContext.Provider value={openImport}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
-                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || libReq)} />
+                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1451,7 +1457,7 @@ export default function Console() {
             <MenuBarPop menus={menus} open={open} setOpen={setOpen} />
             <MenusPop menus={menus} open={open} setOpen={setOpen} onAllServices={() => openPlanner(serviceId)} />
             <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept={SONG_ACCEPT}
-                onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) importSongFiles(files, c.say); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
+                onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) openImport(files); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
             <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} />
             <FirstSteps open={open} setOpen={setOpen} onGo={(id) => { if (id === "planner") openPlanner(serviceId); else if (id === "search") setOpen("palette"); else if (id === "verify") setOpen("verificar"); else if (id === "outs") setOpen("outs"); }} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
@@ -1464,6 +1470,7 @@ export default function Console() {
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
+            <ImportSongsDialog request={importReq} onClose={closeImport} onBusy={(busy) => setImportReq((r) => (r ? { ...r, busy } : r))} say={c.say} />
             <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !winOpen && env === "culto" && (() => {
@@ -1489,6 +1496,7 @@ export default function Console() {
             {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
+        </ImportSongsContext.Provider>
         </ReportContext.Provider>
         </ConfirmContext.Provider>
         </LibraryContext.Provider>

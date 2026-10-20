@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit, sniffSongFile, decodeSongBytes, splitRepeated, importSummary } from "./songImport.js";
+import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit, sniffSongFile, decodeSongBytes, splitRepeated, importSummary, readSongFile, importPlan, importedItems, importRowMeta, importRowSize, importSource, importCounts } from "./songImport.js";
 
 test("ChordPro: directives give title/artist, sections and no inline chords", () => {
     const raw = "{title: Algo Novo}\n{artist: Kemuel}\n{sov 1}\n[G]Vem me visitar [D]hoje aqui\n{eov}\n{soc}\nEspírito, [C]vem\n{eoc}";
@@ -172,4 +172,37 @@ test("the import's toast", () => {
     assert.equal(importSummary({ made: 1 }), "1 música importada.");
     assert.equal(importSummary({ repeated: 1 }), "1 já estava na biblioteca e ficou de fora.");
     assert.equal(importSummary({ bad: ["x.txt"] }), "Nenhuma letra encontrada · não deu: x.txt.");
+});
+
+test("readSongFile names the format the import shows", () => {
+    assert.equal(readSongFile("a.cho", "{title: A}\n{soc}\nVem\n{eoc}").format, "ChordPro");
+    assert.equal(readSongFile("a.txt", "Vem, Espírito").format, "texto");
+    assert.equal(readSongFile("a.json", JSON.stringify([{ title: "A", lyrics: "a" }])).format, "KERYX");
+    assert.equal(readSongFile("h.json", JSON.stringify([{ title: "A", lyrics: { paragraphs: [{ text: "a" }] } }])).format, "Holyrics");
+});
+
+test("the import plan: ready, repeated (library or this import) and files that gave nothing", () => {
+    const files = [
+        { name: "a.xml", format: "OpenLyrics", rows: [{ title: "Nova", artist: "Fulano", song_key: "G", lyrics: "um", slides: [{ text: "um" }, { text: "dois", chorded: "[G]dois" }] }] },
+        { name: "b.txt", format: "texto", rows: [{ title: "Velha", lyrics: "já tem", slides: [{ text: "já tem" }] }] },
+        { name: "c.txt", format: "texto", rows: [{ title: "Nova", lyrics: "um", slides: [] }] },
+        { name: "x.pro", error: "do ProPresenter 7, que o KERYX ainda não lê" },
+        { name: "vazio.txt", format: "texto", rows: [] },
+    ];
+    const { items, counts } = importPlan(files, [{ id: "1", title: "VELHA", lyrics: "Já tem!" }]);
+    assert.deepEqual(items.map((it) => it.status), ["ok", "repeated", "repeated", "bad", "bad"]);
+    assert.deepEqual(counts, { ok: 1, repeated: 2, bad: 2 });
+    assert.equal(importRowMeta(items[0]), "Fulano · Tom G");
+    assert.equal(importRowSize(items[0].row), "2 slides · com cifra");
+    assert.equal(importRowMeta(items[1]), "parece repetida · já está na biblioteca");
+    assert.equal(importRowMeta(items[2]), "parece repetida · já está nesta importação");
+    assert.equal(importRowMeta(items[3]), "do ProPresenter 7, que o KERYX ainda não lê");
+    assert.equal(importRowMeta(items[4]), "nenhuma letra encontrada");
+    // Pular as repetidas (default), one forced in, or none skipped.
+    assert.deepEqual(importedItems(items).map((it) => it.key), ["0:0"]);
+    assert.deepEqual(importedItems(items, { forced: new Set(["1:0"]) }).map((it) => it.key), ["0:0", "1:0"]);
+    assert.equal(importedItems(items, { skip: false }).length, 3);
+    assert.equal(importCounts(counts), "1 pronta · 2 repetidas · 2 não deram");
+    assert.equal(importSource(files, "Músicas OpenLP"), "5 arquivos de Músicas OpenLP · OpenLyrics, texto");
+    assert.equal(importSource(files.slice(0, 1)), "1 arquivo · OpenLyrics");
 });

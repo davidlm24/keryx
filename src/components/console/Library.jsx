@@ -6,7 +6,7 @@ import { Row, Btn, IconBtn, Field, Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
-import { importSongFiles as importSongs, SONG_FILE, SONG_ACCEPT } from "./importSongs";
+import { useImportSongs, SONG_FILE, SONG_ACCEPT } from "./importSongs";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { songRow, mmss, mediaIcon, copyingRows } from "@/lib/console/libraryRows";
 import { mediaFromYouTube } from "@/lib/mediaImport";
@@ -133,7 +133,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const copying = useCopyingFiles();
 
     // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
-    const importSongFiles = (files) => importSongs(files, c.say);
+    const importSongFiles = useImportSongs();
     // "+ › Exportar todas": the songs as the JSON the import reads back.
     const exportSongs = () => {
         const songs = data.songs.map(({ id: _id, created_date: _c, updated_date: _u, created_by_id: _b, ...rest }) => rest);
