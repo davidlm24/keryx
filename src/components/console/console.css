@@ -199,6 +199,26 @@
    all, so that screen's own label stays readable. */
 .console .mx .prog-pill :is(.pp-full, .pp-title, .prog-where) { display: none; }
 .console .mx .prog-pill .pp-more { display: inline-flex; }
+/* The Prévia's pill (PreviaPill, Rodada N5): the Programa pill's look in the
+   Prévia's bottom-right corner, a green dot and Enviar ao ar. It shares a
+   foot with the "não vai mostrar" lines, which stack above it, so neither
+   covers the other; the hatch states sit in the middle. On a narrow Prévia
+   only the glyph remains (its name in the tooltip and aria-label). */
+.console .prev-panel .kx-mon-screen { container-name: prev-screen; }
+.console .prev-foot { position: absolute; left: var(--space-2); right: var(--space-2); bottom: var(--space-2); z-index: 220; display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); pointer-events: none; }
+.console .prev-foot > .kx-prev-warn { position: static; align-self: stretch; }
+.console .prev-foot > .prev-pill { position: static; max-width: 100%; }
+/* A hatch state (a PDF preparing, a file coming or missing) centres its box
+   above the pill where the Prévia is tall enough; on a small one it stays in
+   the middle, under the caption badge, as before. */
+@container prev-screen (min-width: 340px) { .console .prev-panel .kx-mon-screen > .kx-screen-hatch { box-sizing: border-box; padding: var(--space-1) var(--space-1) 40px; } }
+.console .prev-pill.is-prev .pp-dot { background: var(--prev-fg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--prev) 30%, transparent); }
+.console .prev-pill.is-rh .pp-dot { background: var(--rh-fg); }
+.console .prev-pill .pv-send { width: auto; min-width: 0; gap: 6px; padding: 0 10px 0 6px; font: 600 13px/16px var(--font-sans); }
+.console .prev-pill .pv-send-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.console .prev-pill .pv-send[aria-disabled="true"] { color: var(--fg-3); cursor: not-allowed; }
+.console .prev-pill .pv-send[aria-disabled="true"]:is(:hover, :active) { background: transparent; }
+@container prev-screen (max-width: 200px) { .console .prev-pill .pv-send { width: 24px; padding: 0; } .console .prev-pill .pv-send-l { display: none; } }
 /* The Bíblia's No ar monitor: the screen actions alone, in the same pill. */
 .console .scr-pill { padding: 0 4px; }
 .kx-prog-cap { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
@@ -1950,6 +1970,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
   .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
   .console .topbar .tb-bell-dot { background: Highlight; }
+  /* The Prévia pill's Enviar ao ar is a button with words (Rodada N5). */
+  .console .prev-pill .pv-send:not(:focus-visible) { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .console .prev-pill .pv-send[aria-disabled="true"] { color: GrayText; outline-color: GrayText; }
   /* A row's copy or pages bar (Rodada H, HB). */
   .console .kx-row-progress::before { background: CanvasText; }
   .console .kx-row-progress > b { background: Highlight; }
