@@ -466,7 +466,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **song files are read by content, never extension** (`songsFromFile` in
   songImport.js: JSON, ChordPro, cifra, text and OpenLyrics/OpenLP —
   `src/lib/songFormats/openlyrics.js`, parts as [Estrofe 1]/[Refrão]/[Ponte]
-  in `verseOrder`, chords inline; a binary `.pro` is ProPresenter 7 and is
+  in `verseOrder`, chords inline; Holyrics' JSON export —
+  `songFormats/holyrics.js`, one paragraph one slide, the "Título:/Artista:"
+  header paragraph out, "[Refrão] (2 Vezes)" a label; a binary `.pro` is ProPresenter 7 and is
   refused with the reason), a song already in the library (`songKey`) is
   left out and the toast says so (`splitRepeated`, `importSummary`), and the
   owner's rule (2026-10-20): KERYX ships no lyrics, and no parser of another

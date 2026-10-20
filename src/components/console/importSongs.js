@@ -3,7 +3,7 @@ import { songsFromFile, splitRepeated, importSummary } from "@/lib/songImport";
 import { getPrefs } from "@/hooks/useUser";
 
 // Song files from the computer (cifra, ChordPro, texto, JSON exportado,
-// OpenLyrics/OpenLP): the Biblioteca's "+ › Do computador / Uma pasta
+// OpenLyrics/OpenLP, the Holyrics JSON export): the Biblioteca's "+ › Do computador / Uma pasta
 // inteira…" and the menu bar's Música › Importar uma pasta… What a file is
 // comes from its content (songsFromFile); a song already in the library is
 // left out. `say` tells the operator how it went.
