@@ -6,7 +6,7 @@
 | ARCH-002 | 1 | P1 | S | Projector signal drop throws all outputs onto the operator's screen | outputs-manager.cjs:150; outputs.cjs:62 | Open |
 | ARCH-003 | 1 | P1 | M | Unopenable DB stops Keryx at launch though backups exist | electron/main.cjs:284 | Open |
 | ARCH-004 | 1 | P2 | M | Slow sync work (DB, Bible search, backup) on the slide-relay thread | db/store.cjs:117; main.cjs:388 | Open |
-| ARCH-005 | 1 | P2 | S | Page with a failed first live read stays empty until next change | src/api/liveClient.js:52 | Open |
+| ARCH-005 | 1 | P2 | S | Page with a failed first live read stays empty until next change | src/api/liveClient.js:52 | Fixed (first read retried, 2026-10-20) |
 | ARCH-006 | 1 | P3 | M | No type checking on preload/main/page contract | electron/preload.cjs; data-ipc.cjs | Open |
 | ARCH-007 | 1 | P3 | M | Oversized files and leftovers (Console.jsx, CLAUDE.md 88 KB, supabase/) | src/pages/Console.jsx | Open |
 | ARCH-008 | 1 | P3 | S | Backups only at open/close | electron/system.cjs:165 | Open |

@@ -3,8 +3,9 @@
 // every network screen gets the new document after each change. The rules
 // are shared/live-state.mjs, the same module the pages and node:test use.
 //
-// Saved to live.json in the data folder (debounced) so a restart or crash
-// comes back with the same content loaded, the screen black.
+// Saved to live.json in the data folder (debounced) so a restart comes back
+// with the same content loaded, the screen black; after a crash a few minutes
+// ago (`afterCrash`, electron/runMarker.cjs) the screen as it was.
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -16,7 +17,7 @@ const SAVE_DELAY_MS = 300;
 // ESM from CommonJS: loaded once at startup, before the first window opens.
 const loadLiveRules = () => import(pathToFileURL(path.join(__dirname, "..", "shared", "live-state.mjs")).href);
 
-function createLive({ file, rules, log = console.warn, now = Date.now, saveDelayMs = SAVE_DELAY_MS }) {
+function createLive({ file, rules, log = console.warn, now = Date.now, saveDelayMs = SAVE_DELAY_MS, afterCrash = false }) {
     const listeners = new Set();
     let timer = null;
     let dirty = false;
@@ -26,7 +27,7 @@ function createLive({ file, rules, log = console.warn, now = Date.now, saveDelay
     // seeds it with the church's look (liveSeed.cjs).
     let fresh = false;
     try {
-        state = rules.restoreState(JSON.parse(fs.readFileSync(file, "utf8")), now());
+        state = rules.restoreState(JSON.parse(fs.readFileSync(file, "utf8")), now(), { afterCrash });
     } catch (err) {
         if (err.code !== "ENOENT") log(`[keryx-live] ${file} ilegível, começando vazio: ${err.message}`);
         state = rules.emptyState(now());

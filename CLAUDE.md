@@ -1145,6 +1145,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.
+- **After a crash the screens come back lit** (owner 2026-10-20; a normal
+  start still reopens on Tela preta): `running.json` (`electron/runMarker.cjs`,
+  tested) lives in the data folder while KERYX runs, rewritten every 15 s
+  with the outputs open, and goes on `will-quit` and `session-end`. Found at
+  start with a sign of life under 20 min old, `createLive({ afterCrash })` →
+  `restoreState(…, { afterCrash: true })` keeps `screen` and `locked`
+  (playback stays paused), `openAtLaunch(crash.outputs)` reopens what was
+  open, the bell says so. The installed app also runs a watchdog
+  (`electron/watchdog.cjs`, tested; never in desktop:dev or the smoke) that
+  starts KERYX again when main dies, at most 3 times in 5 minutes. An
+  import/restore restart (`importOutcome`) is not a crash. The console's
+  reload keeps the Prévia (sessionStorage) and opens on the culto on air
+  (`chooseService`, serviceChoice.js); outputs retry their first live read.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. Every write
   reaches every window with the whole row, deletes included.

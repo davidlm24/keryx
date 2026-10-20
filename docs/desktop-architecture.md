@@ -173,6 +173,15 @@ the pages and node:test):
   a wrong clock still counts the same seconds (`keryx.live.now()`).
 - **Restart:** `live.json` in the data folder (debounced); restored with the
   same content and `screen: "black"`, playback paused. One click resumes.
+  **After a crash** (owner 2026-10-20): `running.json` (`electron/runMarker.cjs`)
+  sits in the data folder while KERYX runs and is removed on a normal quit.
+  Found at start with a sign of life under 20 min old, the screen comes back
+  as it was (`restoreState(…, { afterCrash: true })`, the lock kept too),
+  playback still paused, and the outputs open then reopen. If main itself
+  dies, the installed app's watchdog (`electron/watchdog.cjs`, Electron's
+  binary in Node mode) starts KERYX again, at most 3 times in 5 minutes. A
+  restart KERYX asks for (import, restore) and Windows shutting down
+  (`session-end`) are not crashes.
 - **Media** in the document is `keryx-media://` like the database; each
   window and network screen maps it to a URL it can load.
 
@@ -315,7 +324,8 @@ the times; the top bar's service clock stays.)
   screens throws a 423; removals, `screen.set`, `idle.set`,
   `session.end` and the outputs' `*.advance` pass (`WHILE_LOCKED`).
   Being in the shared rules, it holds for the console, the outputs and the
-  preview server alike; `restoreState` comes back unlocked.
+  preview server alike; `restoreState` comes back unlocked (still locked
+  after a recent crash).
 - **Engine additions for it:** `history` (what the main layer showed before
   each change, for "Voltar ao anterior" — back through the Prévia, never
   straight to air), `session.item` (the ServiceItem on air), the `logo`

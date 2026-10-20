@@ -1078,7 +1078,10 @@ export function applyOp(state, op, args = {}, now = Date.now()) {
 // black (nothing reappears on the projector by itself), playback paused
 // where the last command left it (how far it played after that is unknown),
 // and the screens unlocked (a lock is for the session it was set in).
-export function restoreState(saved, now = Date.now()) {
+// `afterCrash` (owner 2026-10-20: KERYX died minutes ago, mid-service; main
+// decides it, electron/runMarker.cjs): the screen stays as the audience saw
+// it and the lock holds; playback is still paused.
+export function restoreState(saved, now = Date.now(), { afterCrash = false } = {}) {
     const base = emptyState(now);
     if (!isPlainObject(saved) || saved.version !== LIVE_VERSION || !Number.isInteger(saved.rev)) return base;
     const layer = (v) => (isPlainObject(v) ? v : null);
@@ -1086,7 +1089,8 @@ export function restoreState(saved, now = Date.now()) {
     return {
         ...base,
         rev: saved.rev,
-        screen: "black",
+        screen: afterCrash && SCREEN_MODES.includes(saved.screen) ? saved.screen : "black",
+        locked: afterCrash && saved.locked === true,
         session: layer(saved.session),
         background: layer(saved.background),
         content: restoredContent(layer(saved.content), now),

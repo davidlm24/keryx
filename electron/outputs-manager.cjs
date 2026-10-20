@@ -327,11 +327,14 @@ function createOutputManager({
         return list();
     }
 
-    function openAtLaunch() {
+    // `alsoOpen`: the outputs that were open when KERYX crashed a moment ago
+    // (electron/runMarker.cjs), reopened even without "Abrir ao iniciar".
+    function openAtLaunch(alsoOpen = []) {
         const opened = [];
+        const also = new Set(Array.isArray(alsoOpen) ? alsoOpen : []);
         for (const o of OUTPUTS) {
             const a = assignmentFor(o.key);
-            if (a.removed || !a.openAtLaunch) continue;
+            if (a.removed || !(a.openAtLaunch || also.has(o.key))) continue;
             try {
                 open(o.key);
                 opened.push(o.key);
