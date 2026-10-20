@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
 import '@/fonts.css'
 import '@/index.css'
+import { installRendererLog } from '@/lib/rendererLog.js'
+
+// Desktop: this window's errors go to the daily log too (Relatar um problema).
+installRendererLog()
 
 // Desktop: Ctrl+wheel (a precision touchpad's pinch too) never zooms a page
 // freely (audit C-91): the console steps its saved zoom instead (Console.jsx,

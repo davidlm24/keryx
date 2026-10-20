@@ -116,7 +116,7 @@ export const SETTINGS_INDEX = [
     e("backup", "Restaurar", "voltar os dados de um dia", ["restaurar um backup", "voltar", "recuperar"]),
     e("backup", "Outro computador", "exportar tudo num arquivo e importar em outro computador", ["exportar", "importar", "levar", "zip", "migrar"]),
     e("backup", "Pasta de dados", "onde o KERYX salva tudo neste computador", ["Dados", "dados", "abrir pasta"]),
-    e("backup", "Suporte", "um arquivo de diagnóstico para o suporte", ["diagnóstico", "log", "ajuda", "problema"]),
+    e("backup", "Suporte", "salvar o diagnóstico ou relatar um problema por e-mail ao suporte", ["diagnóstico", "Salvar diagnóstico", "log", "registro", "ajuda", "problema", "Relatar um problema", "relatar", "erro", "bug", "e-mail", "email", "suporte"]),
     e("backup", "Versão", "a versão instalada e as atualizações", ["Atualizações", "atualizar", "atualização", "novidades", "versão"]),
     e("backup", "Atualizar automaticamente", "baixar e instalar as atualizações sozinho", ["automático", "atualizações"]),
 

@@ -1633,6 +1633,23 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-prev-stream { background: linear-gradient(160deg, #3a4a5c, #1b2430 60%, #2c2418); }
 /* Novidades: the release notes after an update. */
 .console .dialog.wn { width: min(560px, calc(100% - 32px)); }
+/* Ajuda › Relatar um problema (ReportDialog.jsx): two fields, the
+   diagnostic's check, then the address and the text to copy when no e-mail
+   program opened. */
+.console .dialog.confirm-dialog.report-dialog { width: min(460px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); overflow: auto; }
+.console .report-dialog .rp-head { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; color: var(--fg-1); }
+.console .report-dialog .rp-head .kx-i { color: var(--fg-2); }
+.console .report-dialog .rp-field { display: flex; flex-direction: column; gap: var(--space-1); color: var(--fg-1); font-weight: 500; }
+.console .report-dialog .rp-field em { font-style: normal; font-weight: 400; color: var(--fg-3); }
+.console .report-dialog .rp-field textarea { resize: vertical; min-height: 40px; font-weight: 400; }
+.console .report-dialog .rp-check { display: flex; align-items: flex-start; gap: var(--space-2); color: var(--fg-1); cursor: pointer; }
+.console .report-dialog .rp-check input { margin: 2px 0 0; width: 14px; height: 14px; flex: none; accent-color: var(--brand); }
+.console .report-dialog .rp-say { margin: 0; color: var(--fg-2); }
+.console .report-dialog .rp-line { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.console .report-dialog .rp-line > .kx-meta { width: 56px; flex: none; }
+.console .report-dialog .rp-line b { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.console .report-dialog .rp-addr { user-select: all; }
+.console .report-dialog .rp-body { resize: vertical; font-size: 12px; line-height: 17px; }
 /* Ajuda › Primeiros passos (Popovers.jsx FirstSteps): numbered steps, each
    with the button that opens what it names; scrolls on a short window. */
 .console .dialog.fs { width: min(600px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); }

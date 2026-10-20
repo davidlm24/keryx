@@ -96,3 +96,53 @@ test("Novidades: pending after an update until seen", async () => {
     assert.deepEqual((await system.ops.whatsNew()).pending, null);
     store.close();
 });
+
+// Relatar um problema: the zip in Downloads (relato.txt inside, no dialog),
+// the folder shown, the mailto opened by main; `opened` false when no
+// e-mail program takes it.
+function reportRig({ openFails = false } = {}) {
+    const downloads = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-dl-"));
+    const calls = { shown: [], opened: [] };
+    const shell = {
+        showItemInFolder: (f) => calls.shown.push(f),
+        openExternal: async (href) => { if (openFails) throw new Error("no handler"); calls.opened.push(href); },
+    };
+    const logs = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-logs-"));
+    fs.writeFileSync(path.join(logs, "keryx-2026-10-20.log"), "10:00:00 error [renderer:Console] boom\n");
+    const logger = { info() {}, warn() {}, error() {}, recentFiles: () => [path.join(logs, "keryx-2026-10-20.log")] };
+    const screen = { getAllDisplays: () => [], getPrimaryDisplay: () => ({ id: 0 }) };
+    const r = sys({}, {
+        app: { getVersion: () => "0.2.20", isPackaged: false, getName: () => "KERYX", getPath: (k) => (k === "downloads" ? downloads : os.tmpdir()) },
+        shell, logger, screen, outputs: { list: () => ({ outputs: [] }) },
+    });
+    return { ...r, calls, downloads };
+}
+
+test("Relatar um problema saves the diagnostic in Downloads with the report inside and opens the e-mail", async () => {
+    const { system, store, calls, downloads } = reportRig();
+    const out = await system.ops.report(null, { text: "O vídeo travou", doing: "Apertei Esc", include: true, church: "Igreja X" });
+    assert.match(path.basename(out.file), /^keryx-diagnostico-\d{4}-\d{2}-\d{2}-\d{4}\.zip$/);
+    assert.equal(path.dirname(out.file), downloads);
+    assert.ok(fs.statSync(out.file).size > 0);
+    const raw = fs.readFileSync(out.file);
+    for (const name of ["sistema.json", "relato.txt", "logs/keryx-2026-10-20.log"]) assert.ok(raw.includes(Buffer.from(name)), name);
+    assert.deepEqual(calls.shown, [out.file]);
+    assert.equal(out.opened, true);
+    assert.equal(calls.opened.length, 1);
+    assert.match(calls.opened[0], /^mailto:davigoncalves207@gmail\.com\?subject=KERYX%200\.2\.20/);
+    assert.match(out.body, /Igreja X · KERYX 0\.2\.20/);
+    assert.ok(out.body.includes(`Anexe o arquivo ${path.basename(out.file)}`));
+    store.close();
+});
+
+test("Relatar um problema without the diagnostic, and with no e-mail program", async () => {
+    const { system, store, calls, downloads } = reportRig({ openFails: true });
+    const out = await system.ops.report(null, { text: "Travou", include: false });
+    assert.equal(out.file, null);
+    assert.equal(out.opened, false, "the console then shows the address and the text");
+    assert.deepEqual(fs.readdirSync(downloads), []);
+    assert.deepEqual(calls.shown, []);
+    assert.doesNotMatch(out.body, /Anexe/);
+    await assert.rejects(system.ops.report(null, { text: "  " }), /Escreva o que aconteceu/);
+    store.close();
+});
