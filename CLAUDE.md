@@ -463,6 +463,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the item in the Prévia, else at the end; Planejar o culto is the button
   beside it, not an item: Rodada M1); the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
+  **song files are read by content, never extension** (`songsFromFile` in
+  songImport.js: JSON, ChordPro, cifra, text and OpenLyrics/OpenLP —
+  `src/lib/songFormats/openlyrics.js`, parts as [Estrofe 1]/[Refrão]/[Ponte]
+  in `verseOrder`, chords inline; a binary `.pro` is ProPresenter 7 and is
+  refused with the reason), a song already in the library (`songKey`) is
+  left out and the toast says so (`splitRepeated`, `importSummary`), and the
+  owner's rule (2026-10-20): KERYX ships no lyrics, and no parser of another
+  program ships without a real export file in `songFormats/fixtures/`;
   the search row is Buscar · ☆ · (+) Adicionar; **the Biblioteca's header
   holds the doors** (owner's pick, Rodada H, H1): its title, "Abrir a
   Biblioteca de mídia" (the Mídia page, every tab), the chooser of what

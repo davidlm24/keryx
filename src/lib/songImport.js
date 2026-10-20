@@ -3,6 +3,8 @@
 // --test checks it; the console's "+ › Letras" and ChordImporter use it.
 import { isChordLine, stripLine, stripChords, hasInlineChords } from "./chords.js";
 import { generateSlides } from "../utils/songSections.js";
+import { isOpenLyrics, parseOpenLyrics } from "./songFormats/openlyrics.js";
+import { songKey } from "../../shared/syncDuplicates.mjs";
 
 // ChordPro uses directives in braces: {title:}, {c:}, {soc}, {eoc}, {sov}, {eov}.
 export const isChordPro = (raw) => /\{(title|t|artist|c|soc|eoc|sov|eov|comment|start_of_chorus|end_of_chorus|start_of_verse|end_of_verse)(:|\})\s*/i.test(raw);
@@ -108,6 +110,7 @@ export function songFromText(raw, { name = "", title = "", artist = "", lines = 
     return {
         title: title || directive(text, "title", "t") || baseName || (lyrics.split("\n")[0] || "Sem título").slice(0, 80),
         artist: artist || directive(text, "artist", "subtitle", "st"),
+        ...(directive(text, "copyright") ? { copyright: directive(text, "copyright") } : {}),
         lyrics,
         slides: sections.map((s) => ({ text: s.text, duration: 0, ...(CHORUS_RE.test(s.section) ? { is_chorus: true } : {}) })),
         // The editor redoes the slides with the same split when the lyrics change.
@@ -124,11 +127,91 @@ export function songsFromJson(raw) {
     return list.filter((s) => s && s.title && s.lyrics).map(({ id, created_date, updated_date, created_by_id, ...rest }) => rest);
 }
 
-// Any file the "+ › Do computador" picker accepts. -> [song rows]
+// A file's bytes as text: a BOM says UTF-8 or UTF-16; else UTF-8 when it is
+// valid, else the XML declaration's encoding, else Windows-1252 (the old
+// Brazilian .txt). A string passes as it is; null = a binary file.
+export function decodeSongBytes(raw) {
+    if (typeof raw === "string") return raw;
+    const bytes = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+    if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return new TextDecoder("utf-8").decode(bytes.subarray(3));
+    if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(bytes.subarray(2));
+    if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(bytes.subarray(2));
+    if (bytes.subarray(0, 8192).includes(0)) return null; // ProPresenter 7, a database, a zip
+    try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { /* not UTF-8 */ }
+    const head = new TextDecoder("latin1").decode(bytes.subarray(0, 200));
+    const declared = /^\s*<\?xml[^>]*encoding=["']([\w-]+)["']/i.exec(head)?.[1];
+    try { if (declared) return new TextDecoder(declared).decode(bytes); } catch { /* a label this runtime lacks */ }
+    return new TextDecoder("windows-1252").decode(bytes);
+}
+
+// What a file is, by its content — never its extension alone: ".pro" is
+// ChordPro text and also ProPresenter 7's binary. -> "json" | "openlyrics" |
+// "text", or throws the pt-BR reason the import shows next to the file name.
+export function sniffSongFile(name, text) {
+    if (text === null) {
+        if (/\.pro$/i.test(name)) throw new Error("do ProPresenter 7, que o KERYX ainda não lê");
+        throw new Error("não é um arquivo de texto");
+    }
+    const head = text.replace(/^﻿/, "").trimStart();
+    if (head.startsWith("<")) {
+        if (/<RVPresentationDocument\b/.test(head.slice(0, 4096))) throw new Error("do ProPresenter 6, que o KERYX ainda não lê");
+        if (isOpenLyrics(head)) return "openlyrics";
+        if (head.startsWith("<?xml") || /^<([\w:]+)[\s\S]*<\/\1>\s*$/.test(head)) throw new Error("XML que não é do OpenLyrics");
+    }
+    if (/\.json$/i.test(name)) return "json";
+    if (/^[[{]/.test(head) && !isChordPro(head)) { try { JSON.parse(head); return "json"; } catch { /* text */ } }
+    return "text";
+}
+
+// A parsed song (title, artist, lyrics with [Parte] labels and inline
+// chords…) as a Song row: its slides from the lyrics, with the Palco's
+// chorded twins when there are chords.
+export function songRow(parsed, { name = "", lines = 0 } = {}) {
+    const n = linesLimit(lines);
+    const baseName = String(name).replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim();
+    return {
+        ...parsed,
+        title: parsed.title || baseName || "Sem título",
+        slides: slidesFromLyrics(parsed.lyrics, { lines: n, chorded: hasInlineChords(parsed.lyrics) }),
+        lines_per_slide: n,
+    };
+}
+
+// Any file the "+ › Do computador" picker accepts: its text or its bytes.
+// -> [song rows]; throws the reason a file cannot come in.
 export function songsFromFile(name, raw, { lines = 0 } = {}) {
-    if (/\.json$/i.test(name)) return songsFromJson(raw);
-    const song = songFromText(raw, { name, lines });
+    const text = decodeSongBytes(raw);
+    const kind = sniffSongFile(name, text);
+    if (kind === "json") return songsFromJson(text);
+    if (kind === "openlyrics") return parseOpenLyrics(text).map((s) => songRow(s, { name, lines }));
+    const song = songFromText(text, { name, lines });
     return song.lyrics ? [song] : [];
+}
+
+// Songs already in the library (or earlier in the same import) stay out:
+// the same title and lyrics, as Sincronização compares them (songKey).
+// -> { fresh, repeated }
+export function splitRepeated(rows, existing = []) {
+    const seen = new Set(existing.map(songKey));
+    const fresh = [];
+    const repeated = [];
+    for (const row of rows) {
+        const key = songKey(row);
+        if (seen.has(key)) repeated.push(row);
+        else { seen.add(key); fresh.push(row); }
+    }
+    return { fresh, repeated };
+}
+
+// The toast after an import. bad: ["nome (motivo)"].
+export function importSummary({ made = 0, repeated = 0, bad = [] }) {
+    if (!made && !repeated) return `Nenhuma letra encontrada${bad.length ? ` · não deu: ${bad.join(", ")}` : ""}.`;
+    const parts = [];
+    if (made) parts.push(`${made} ${made === 1 ? "música importada" : "músicas importadas"}`);
+    if (repeated) parts.push(`${repeated} ${repeated === 1 ? "já estava na biblioteca e ficou de fora" : "já estavam na biblioteca e ficaram de fora"}`);
+    if (bad.length) parts.push(`não deu: ${bad.join(", ")}`);
+    const text = `${parts.join(" · ")}.`;
+    return text[0].toUpperCase() + text.slice(1);
 }
 
 // -- The song editor -------------------------------------------------------------

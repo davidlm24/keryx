@@ -6,7 +6,7 @@ import { Row, Btn, IconBtn, Field, Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
-import { importSongFiles as importSongs } from "./importSongs";
+import { importSongFiles as importSongs, SONG_FILE, SONG_ACCEPT } from "./importSongs";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { songRow, mmss, mediaIcon, copyingRows } from "@/lib/console/libraryRows";
 import { mediaFromYouTube } from "@/lib/mediaImport";
@@ -166,8 +166,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const addItems = tab === "letras"
         ? [
             menuItem("novaMusica", { onClick: () => onEditSong?.("new") }),
-            menuItem("doComputador", { accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", onFiles: importSongFiles }),
-            { label: "Uma pasta inteira…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", directory: true, onFiles: (files) => importSongFiles(files.filter((f) => /\.(txt|chordpro|cho|crd|pro|json)$/i.test(f.name))) },
+            menuItem("doComputador", { accept: SONG_ACCEPT, onFiles: importSongFiles }),
+            { label: "Uma pasta inteira…", icon: "folder", accept: SONG_ACCEPT, directory: true, onFiles: (files) => importSongFiles(files.filter((f) => SONG_FILE.test(f.name))) },
             { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
             { label: "Exportar todas…", icon: "save", onClick: exportSongs },
         ]

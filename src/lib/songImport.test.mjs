@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit } from "./songImport.js";
+import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit, sniffSongFile, decodeSongBytes, splitRepeated, importSummary } from "./songImport.js";
 
 test("ChordPro: directives give title/artist, sections and no inline chords", () => {
     const raw = "{title: Algo Novo}\n{artist: Kemuel}\n{sov 1}\n[G]Vem me visitar [D]hoje aqui\n{eov}\n{soc}\nEspírito, [C]vem\n{eoc}";
@@ -128,4 +128,48 @@ test("songSlidesFor: slides saved before the twins were kept get them from the l
     assert.equal(old.slides[0].start, 3, "the saved slide keeps its timing");
     const apart = songSlidesFor({ lyrics, slides: [{ text: "outra coisa" }] });
     assert.equal(apart.chordedSlides, null, "slides that no longer match the lyrics stay as saved");
+});
+
+test("what a file is comes from its content: a ChordPro .pro is text, ProPresenter is refused", () => {
+    const chordpro = "{title: Algo Novo}\n{copyright: 2020 Fulano}\n{soc}\n[G]Vem, Espírito\n{eoc}";
+    const [song] = songsFromFile("algo.pro", new TextEncoder().encode(chordpro));
+    assert.equal(song.title, "Algo Novo");
+    assert.equal(song.copyright, "2020 Fulano");
+    // ProPresenter 7: protobuf, NUL bytes and all.
+    const pro7 = Uint8Array.from([0x0a, 0x24, 0x0a, 0x00, 0x12, 0x05, 0x41, 0x6d, 0x61, 0x7a, 0x00, 0x1a]);
+    assert.throws(() => songsFromFile("Amazing.pro", pro7), /do ProPresenter 7, que o KERYX ainda não lê/);
+    assert.throws(() => songsFromFile("foto.txt", pro7), /não é um arquivo de texto/);
+    assert.throws(() => songsFromFile("Amazing.pro6", "<?xml version=\"1.0\"?>\n<RVPresentationDocument height=\"1080\">"), /ProPresenter 6/);
+    assert.throws(() => songsFromFile("outra.xml", "<?xml version=\"1.0\"?><playlist><item/></playlist>"), /XML que não é do OpenLyrics/);
+    assert.equal(sniffSongFile("x.txt", "[Verso 1]\nJesus"), "text", "a label is not JSON");
+    assert.equal(sniffSongFile("musicas", "{\"songs\":[]}"), "json", "JSON without its extension");
+    assert.equal(sniffSongFile("x.txt", "<b>Refrão</b> sem fim"), "text", "a stray tag is still text");
+});
+
+test("bytes: UTF-8 with or without BOM, UTF-16, and the old Windows-1252 .txt", () => {
+    assert.equal(decodeSongBytes(Uint8Array.from([0xef, 0xbb, 0xbf, 0x43, 0xc3, 0xa9, 0x75])), "Céu");
+    assert.equal(decodeSongBytes(Uint8Array.from([0xff, 0xfe, 0x43, 0x00, 0xe9, 0x00, 0x75, 0x00])), "Céu");
+    assert.equal(decodeSongBytes(Uint8Array.from([0x43, 0xe9, 0x75, 0x20, 0x61, 0x7a, 0x75, 0x6c])), "Céu azul", "not UTF-8: Windows-1252");
+    const [song] = songsFromFile("Graça.txt", Uint8Array.from([...new TextEncoder().encode("Gra"), 0xe7, 0x61]).buffer);
+    assert.equal(song.lyrics, "Graça");
+});
+
+test("an import leaves out what the library has, and repeats inside the same import", () => {
+    const existing = [{ id: "1", title: "Grande é o Senhor", lyrics: "Grande é o [G]Senhor\ne mui digno" }];
+    const rows = [
+        { title: "GRANDE É O SENHOR", lyrics: "[Estrofe]\nGrande é o Senhor!\nE mui digno" },
+        { title: "Nova", lyrics: "um" },
+        { title: "Nova", lyrics: "um" },
+    ];
+    const { fresh, repeated } = splitRepeated(rows, existing);
+    assert.deepEqual(fresh.map((r) => r.title), ["Nova"]);
+    assert.equal(repeated.length, 2);
+});
+
+test("the import's toast", () => {
+    assert.equal(importSummary({ made: 3, repeated: 2, bad: ["a.pro (do ProPresenter 7, que o KERYX ainda não lê)"] }),
+        "3 músicas importadas · 2 já estavam na biblioteca e ficaram de fora · não deu: a.pro (do ProPresenter 7, que o KERYX ainda não lê).");
+    assert.equal(importSummary({ made: 1 }), "1 música importada.");
+    assert.equal(importSummary({ repeated: 1 }), "1 já estava na biblioteca e ficou de fora.");
+    assert.equal(importSummary({ bad: ["x.txt"] }), "Nenhuma letra encontrada · não deu: x.txt.");
 });
