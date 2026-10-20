@@ -74,24 +74,23 @@ export default function BibliasSection({ c }) {
             )}
             {BIBLE_VERSIONS.map((v) => {
                 const count = installed[v.id];
-                const online = !v.install;
                 return (
                     <div key={v.id} className="kx-row">
                         <div className="kx-row-main">
                             <div className="kx-row-title">{v.id} · {v.name}{def === v.id && <span className="kx-count"> · em uso</span>}</div>
                             <div className={`kx-row-meta ${!count && def === v.id ? "kx-warn" : ""}`}>
-                                {count ? `Instalada neste computador · ${count.toLocaleString("pt-BR")} versículos` : online ? "Só com internet" : "Só com internet · baixe para usar sem rede"}
+                                {count ? `Instalada neste computador · ${count.toLocaleString("pt-BR")} versículos` : v.online ? "Pela internet · baixe para usar sem rede" : "Não instalada · baixe para usar"}
                             </div>
                         </div>
                         <span className="cfg-acts">
                             {def !== v.id && <Btn small onClick={() => setDefault(v.id)}>Usar esta</Btn>}
-                            {v.install && <Btn small kind={count ? "" : "outline"} disabled={Boolean(busy)} onClick={() => run(v.id, false)}>{busy === v.id ? "Baixando…" : count ? "Reinstalar" : "Baixar · 4 MB"}</Btn>}
+                            {v.install && <Btn small kind={count ? "" : "outline"} disabled={Boolean(busy)} onClick={() => run(v.id, false)}>{busy === v.id ? "Baixando…" : count ? "Reinstalar" : "Baixar"}</Btn>}
                             {v.install && <Btn small disabled={Boolean(busy)} onClick={() => run(v.id, true)}>Do arquivo…</Btn>}
                         </span>
                     </div>
                 );
             })}
-            <div className="listhead"><span className="kx-meta">A versão em uso vale em todo o KERYX, na Bíblia e nas referências; trocá-la aqui ou no seletor de Livros é a mesma coisa. Se a escolhida faltar, o KERYX avisa e mostra outra instalada; nunca troca em silêncio. Sem internet aqui, use "Do arquivo" com o JSON baixado em outro computador.</span></div>
+            <div className="listhead"><span className="kx-meta">A versão em uso vale em todo o KERYX, na Bíblia e nas referências; trocá-la aqui ou no seletor de Livros é a mesma coisa. Se a escolhida faltar, o KERYX avisa e mostra outra instalada; nunca troca em silêncio. Sem internet aqui, use "Do arquivo" com o arquivo (JSON ou zip) baixado em outro computador.</span></div>
         </>
     );
 }

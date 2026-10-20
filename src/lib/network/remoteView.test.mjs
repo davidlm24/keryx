@@ -218,7 +218,9 @@ test("Bíblia: the console's edition first, then the installed ones, then those 
     assert.equal(v[0].id, "ARA");
     assert.ok(v.find((x) => x.id === "NVI").installed);
     assert.ok(!v.some((x) => x.id === "AA"), "AA is neither installed nor online");
-    assert.equal(bibleVersions(null)[0].id, "NVI");
+    // NVI has no online source (bolls.life does not carry it): offered only installed.
+    assert.equal(bibleVersions(null)[0].id, "ACF");
+    assert.ok(!bibleVersions(null).some((x) => x.id === "NVI"));
 });
 
 test("a presentation being prepared says how far, in the console's words, when it sends them", () => {

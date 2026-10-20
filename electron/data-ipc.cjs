@@ -133,12 +133,12 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
     ipcMain.handle("keryx:bible:install", bibleOp((_e, { version }) => bible.installFromSource(store, version)));
     ipcMain.handle("keryx:bible:install-file", bibleOp(async (event, { version }) => {
         const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
-            title: `Escolha o arquivo JSON da ${version}`,
-            filters: [{ name: "Bíblia (JSON)", extensions: ["json"] }],
+            title: `Escolha o arquivo da ${version}`,
+            filters: [{ name: "Bíblia (JSON ou zip)", extensions: ["json", "zip"] }],
             properties: ["openFile"],
         });
         if (canceled || !filePaths[0]) return null;
-        return bible.installFromJson(store, version, await fs.promises.readFile(filePaths[0], "utf8"));
+        return bible.installFromFile(store, version, await fs.promises.readFile(filePaths[0]));
     }));
 
     ipcMain.handle("keryx:system", async (event, payload) => {

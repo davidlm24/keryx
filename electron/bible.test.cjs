@@ -4,8 +4,9 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
+const yazl = require("yazl");
 const {
-    BOOK_NAMES, SOURCES, parseBibleJson, installFromJson, installFromSource, fetchOnlineChapter, installedVersions, verseId,
+    BOOK_NAMES, SOURCES, parseBibleJson, installFromJson, installFromFile, installFromSource, fetchOnlineChapter, installedVersions, verseId, cleanVerse,
 } = require("./bible.cjs");
 
 const BOM = String.fromCharCode(0xfeff);
@@ -30,11 +31,82 @@ test("book names match the UI's book list", async () => {
     assert.deepEqual(BOOK_NAMES, bibleBooks.map((b) => b.name));
 });
 
-test("only the downloadable versions can be installed", async () => {
+// A bolls.life edition: [{ book, chapter, verse, text }], enough verses to
+// pass for a whole Bible (66 books × 310), with the source's markup in John 3:16.
+function fakeBolls(code = "ARA", { perBook = 310 } = {}) {
+    const out = [];
+    for (let book = 1; book <= 66; book++) {
+        for (let verse = 1; verse <= perBook; verse++) {
+            const chapter = Math.ceil(verse / 31);
+            const v = ((verse - 1) % 31) + 1;
+            const text = book === 43 && chapter === 3 && v === 16
+                ? "Porque Deus amou o mundo<sup>ⓢ</sup> de tal maneira que deu o seu <i>Filho</i> unigênito"
+                : `${code} ${book} ${chapter}:${v}`;
+            out.push({ pk: out.length, translation: code, book, chapter, verse: v, text });
+        }
+    }
+    // A deuterocanonical book (past 66) is left out.
+    out.push({ pk: -1, translation: code, book: 67, chapter: 1, verse: 1, text: "Tobias" });
+    return out;
+}
+const zipOf = (name, text) => new Promise((resolve) => {
+    const zip = new yazl.ZipFile();
+    zip.addBuffer(Buffer.from(text), name);
+    zip.end();
+    const parts = [];
+    zip.outputStream.on("data", (c) => parts.push(c)).on("end", () => resolve(Buffer.concat(parts)));
+});
+
+test("every edition the UI offers installs, from the source bible.cjs knows", async () => {
     const { BIBLE_VERSIONS } = await import(pathToFileURL(path.join(__dirname, "..", "src", "lib", "bibleBooks.js")).href);
-    const installable = BIBLE_VERSIONS.filter((v) => v.install).map((v) => [v.id, v.install]);
-    assert.deepEqual(Object.entries(SOURCES), installable);
-    assert.throws(() => installFromJson(fresh(), "ARA", JSON.stringify(fakeBible())), /não pode ser instalada/);
+    assert.deepEqual(Object.keys(SOURCES), BIBLE_VERSIONS.map((v) => v.id));
+    assert.ok(BIBLE_VERSIONS.every((v) => v.install));
+    // An edition read online from bolls.life installs from bolls.life under the same code (ACF installs from github).
+    for (const v of BIBLE_VERSIONS.filter((x) => x.online && SOURCES[x.id].bolls)) assert.equal(SOURCES[v.id].bolls, v.online, v.id);
+    assert.throws(() => installFromJson(fresh(), "BKJ1611", JSON.stringify(fakeBible())), /não pode ser instalada/);
+});
+
+test("cleanVerse: the source's markup goes, footnote marks with their content, entities decoded", () => {
+    assert.equal(cleanVerse("sabemos que o senhor é Mestre vindo da parte de Deus,<sup>ⓢ</sup> porque ninguém"), "sabemos que o senhor é Mestre vindo da parte de Deus, porque ninguém");
+    assert.equal(cleanVerse("E disse: <i>Faça-se a luz</i>."), "E disse: Faça-se a luz.");
+    assert.equal(cleanVerse("No princípio<S>7225</S> criou Deus<br/>os céus"), "No princípio criou Deus os céus");
+    assert.equal(cleanVerse("&quot;Eu sou&quot; &amp; o &#8220;caminho&#8221;&nbsp;"), "\"Eu sou\" & o “caminho”");
+    assert.equal(cleanVerse("  só   texto  "), "só texto");
+    assert.equal(cleanVerse(null), "");
+});
+
+test("a bolls.life edition installs from its JSON, its zip, or the download", async () => {
+    const s = fresh();
+    const json = JSON.stringify(fakeBolls("ARA"));
+    const r = installFromJson(s, "ARA", json);
+    assert.equal(r.verses, 66 * 310);
+    const jo = s.call("BibleVerse", "get", [verseId("ARA", 42, 3, 16)]);
+    assert.equal(jo.book, "João");
+    assert.equal(jo.testament, "Novo");
+    assert.equal(jo.text, "Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito");
+    assert.equal(s.call("BibleVerse", "filter", [{ version: "ARA", book: "Gênesis", chapter: 1 }]).length, 31);
+
+    // The zip picked on disk ("Do arquivo…").
+    const t = fresh();
+    const fromZip = await installFromFile(t, "NAA", await zipOf("NAA.json", JSON.stringify(fakeBolls("NAA"))));
+    assert.equal(fromZip.verses, 66 * 310);
+    // The github JSON still installs from a file too.
+    assert.equal((await installFromFile(t, "NVI", Buffer.from(JSON.stringify(fakeBible())))).version, "NVI");
+
+    // The download: bolls.life's zip.
+    let seen;
+    const u = fresh();
+    const zip = await zipOf("ARC09.json", JSON.stringify(fakeBolls("ARC09")));
+    const ok = await installFromSource(u, "ARC", async (url) => { seen = url; return { ok: true, status: 200, arrayBuffer: async () => zip.buffer.slice(zip.byteOffset, zip.byteOffset + zip.length) }; });
+    assert.equal(seen, "https://bolls.life/static/translations/ARC09.zip");
+    assert.equal(ok.verses, 66 * 310);
+    assert.deepEqual(installedVersions(u), { ARC: 66 * 310 });
+});
+
+test("a bolls.life file that is not a whole Bible, or not a zip, is refused", async () => {
+    assert.throws(() => installFromJson(fresh(), "ARA", JSON.stringify(fakeBolls("ARA", { perBook: 20 }))), /não parece uma Bíblia inteira/);
+    await assert.rejects(installFromFile(fresh(), "ARA", Buffer.from("PK broken zip")), /zip válido/);
+    await assert.rejects(installFromFile(fresh(), "ARA", await zipOf("leia-me.txt", "x")), /não tem o arquivo JSON/);
 });
 
 test("parseBibleJson strips the byte-order mark and rejects malformed files", () => {
@@ -110,22 +182,23 @@ test("installFromSource never waits for ever: a site that never answers, or a bo
     assert.ok(aborted, "the real request is stopped too");
 });
 
-test("fetchOnlineChapter reads the verses of the site's answer", async () => {
+test("fetchOnlineChapter reads bolls.life's chapter, without its markup", async () => {
     let seen;
     const fetchImpl = async (url) => {
         seen = url;
-        return { ok: true, status: 200, json: async () => ({ verses: [{ number: 1, text: " Bem-aventurado o homem " }, { number: "x", text: "ignorado" }, { number: 2 }] }) };
+        return { ok: true, status: 200, json: async () => [{ pk: 1, verse: 1, text: " Bem-aventurado o homem<sup>a</sup> " }, { verse: "x", text: "ignorado" }, { verse: 2 }, { verse: 3, text: "<sup>b</sup>" }] };
     };
-    const verses = await fetchOnlineChapter({ api: "ara", slug: "salmos", chapter: 1 }, fetchImpl);
-    assert.equal(seen, "https://www.abibliadigital.com.br/api/chapters/ara/salmos/1");
+    const verses = await fetchOnlineChapter({ code: "ARA", book: 19, chapter: 1 }, fetchImpl);
+    assert.equal(seen, "https://bolls.life/get-text/ARA/19/1/");
     assert.deepEqual(verses, [{ number: 1, text: "Bem-aventurado o homem" }]);
 });
 
 test("fetchOnlineChapter: unknown chapter is empty, failures speak pt-BR", async () => {
     const reply = (status, body) => async () => ({ ok: status < 400, status, json: async () => body });
-    const args = { api: "ara", slug: "salmos", chapter: 1 };
+    const args = { code: "ARA", book: 19, chapter: 1 };
     assert.deepEqual(await fetchOnlineChapter(args, reply(404, {})), []);
-    await assert.rejects(fetchOnlineChapter(args, reply(500, {})), /HTTP 500/);
+    assert.deepEqual(await fetchOnlineChapter(args, reply(200, { detail: "Not found" })), []);
+    await assert.rejects(fetchOnlineChapter(args, reply(503, {})), /HTTP 503/);
     await assert.rejects(fetchOnlineChapter(args, async () => ({ ok: true, status: 200, json: async () => { throw new Error("x"); } })), /resposta inválida/);
     await assert.rejects(fetchOnlineChapter(args, async () => { throw new TypeError("fetch failed"); }), /Sem conexão/);
 });
@@ -133,9 +206,11 @@ test("fetchOnlineChapter: unknown chapter is empty, failures speak pt-BR", async
 test("fetchOnlineChapter refuses parts that could change the URL", async () => {
     const never = async () => { throw new Error("no request expected"); };
     for (const args of [
-        { api: "../x", slug: "salmos", chapter: 1 },
-        { api: "ara", slug: "salmos/1?x=", chapter: 1 },
-        { api: "ara", slug: "salmos", chapter: 0 },
-        { api: "ara", slug: "salmos", chapter: "1/2" },
+        { code: "../x", book: 19, chapter: 1 },
+        { code: "ara", book: 19, chapter: 1 },
+        { code: "ARA", book: "19/1?x=", chapter: 1 },
+        { code: "ARA", book: 67, chapter: 1 },
+        { code: "ARA", book: 19, chapter: 0 },
+        { code: "ARA", book: 19, chapter: "1/2" },
     ]) await assert.rejects(fetchOnlineChapter(args, never), /inválido/);
 });

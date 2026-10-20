@@ -2,15 +2,16 @@
 //
 //   1. The local database (once a version is installed): instant, offline,
 //      exact.
-//   2. abibliadigital.com.br, when online and the version exists there
-//      (fetched by the main process: the page would hit CORS).
+//   2. bolls.life, when online and the edition is there (BIBLE_VERSIONS'
+//      `online` code; fetched by the main process, electron/bible.cjs, so
+//      the page never talks to the internet itself).
 //
 // KERYX never asks an AI for scripture. Network screens (no desktop bridge)
 // read installed text through the same store, over the church network.
 
 import { keryx } from "@/api/keryxClient";
 import { ClientError } from "@/api/errors";
-import { BIBLE_VERSIONS, BOOK_API_MAP, bibleBooks, editionPlan, readByPlan } from "@/lib/bibleBooks";
+import { BIBLE_VERSIONS, bibleBooks, bookNumber, editionPlan, readByPlan } from "@/lib/bibleBooks";
 import { searchTerms, anchorTerm, verseMatches } from "@/lib/bibleSearch";
 
 const ONLINE_CACHE_PREFIX = "bible_";
@@ -47,25 +48,31 @@ export function forgetInstalledVersions() {
     installedCache = null;
 }
 
+// One chapter from the internet: { verses } or { error } (why it could not
+// be read: no internet, the service down…), or null when the edition has no
+// online source. The cache's key changed with the source (bolls.life text,
+// without the old service's), so nothing read from the old one is reused.
 async function fetchOnline(version, book, chapter) {
-    const key = `${ONLINE_CACHE_PREFIX}${version}_${book}_${chapter}`;
+    const key = `${ONLINE_CACHE_PREFIX}b_${version}_${book}_${chapter}`;
     try {
         const cached = JSON.parse(localStorage.getItem(key) || "null");
-        if (Array.isArray(cached) && cached.length) return cached;
+        if (Array.isArray(cached) && cached.length) return { verses: cached };
     } catch { /* ignore a bad cache entry */ }
 
-    const api = versionInfo(version)?.api;
-    const slug = BOOK_API_MAP[book];
-    // Only the desktop app can ask: the request goes through the main
-    // process, because the site's CORS policy blocks the page.
-    if (!api || !slug || !keryx.isDesktop || !navigator.onLine) return null;
+    const code = versionInfo(version)?.online;
+    const number = bookNumber(book);
+    // Only the desktop app (and the browser preview) can ask: the request
+    // goes through the main process.
+    if (!code || !number || !keryx.isDesktop) return null;
+    if (!navigator.onLine) return { error: "sem conexão com a internet" };
     try {
-        const res = await window.keryxDesktop.bible.onlineChapter(api, slug, chapter);
-        if (res.error || !res.data.length) return null;
-        localStorage.setItem(key, JSON.stringify(res.data));
-        return res.data;
-    } catch {
-        return null;
+        const res = await window.keryxDesktop.bible.onlineChapter(code, number, chapter);
+        if (res.error) return { error: res.error.message.replace(/\.$/, "") };
+        if (!res.data.length) return { error: "o capítulo não existe nesta edição" };
+        try { localStorage.setItem(key, JSON.stringify(res.data)); } catch { /* the cache is a convenience */ }
+        return { verses: res.data };
+    } catch (err) {
+        return { error: err?.message || "não respondeu" };
     }
 }
 
@@ -75,14 +82,15 @@ export async function getChapter(version, book, chapter) {
     if (local.length) return { verses: local.map((v) => ({ number: v.verse, text: v.text })), source: "local" };
 
     const online = await fetchOnline(version, book, chapter);
-    if (online) return { verses: online, source: "online" };
+    if (online?.verses) return { verses: online.verses, source: "online" };
 
-    const installable = versionInfo(version)?.install;
+    // Every edition installs (Configurações › Bíblia e músicas, or the
+    // Bíblia's +); one read from the internet says why it did not come.
     throw new ClientError(
-        installable
-            ? `A ${version} não está instalada neste computador. Instale-a em Configurações › Bíblia e músicas (ou pelo + da Bíblia).`
-            : `A ${version} só está disponível com internet. Use uma versão instalada (NVI, ACF ou AA) para projetar sem internet.`,
-        404,
+        online?.error
+            ? `A ${version} não carregou da internet (${online.error}). Instale-a em Configurações › Bíblia e músicas para usar sem internet.`
+            : `A ${version} não está instalada neste computador. Instale-a em Configurações › Bíblia e músicas (ou pelo + da Bíblia).`,
+        online?.error ? 503 : 404,
     );
 }
 

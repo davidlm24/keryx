@@ -302,7 +302,7 @@ export const bookOf = (name) => bibleBooks.find((b) => b.name === name) || null;
 // installed there, then the ones read online.
 export function bibleVersions(bible) {
     const installed = new Set(bible?.installed || []);
-    const ids = BIBLE_VERSIONS.filter((v) => installed.has(v.id) || v.api).map((v) => v.id);
+    const ids = BIBLE_VERSIONS.filter((v) => installed.has(v.id) || v.online).map((v) => v.id);
     const first = bible?.version && ids.includes(bible.version) ? [bible.version] : [];
     return [...first, ...ids.filter((id) => id !== bible?.version)].map((id) => ({ id, installed: installed.has(id) }));
 }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bibleBooks, findBook, parseReference, formatReference, editionPlan, readByPlan } from "./bibleBooks.js";
+import { bibleBooks, findBook, parseReference, formatReference, editionPlan, readByPlan, BIBLE_VERSIONS, bookNumber, renamedVersion } from "./bibleBooks.js";
 
 const ref = (book, chapter, verseStart = null, verseEnd = verseStart) => ({ book, chapter, verseStart, verseEnd });
 
@@ -61,13 +61,32 @@ test("editions: installed here, else online with the installed one as fallback",
     assert.deepEqual(editionPlan("ARA", ["NVI"]), { use: "ARA", online: true, fallback: "NVI" });
     // The chosen edition installed: read here, no fallback needed.
     assert.deepEqual(editionPlan("NVI", ["NVI", "ACF"]), { use: "NVI", online: false, fallback: null });
-    // NVI chosen but only ACF installed: NVI online, ACF if it fails.
-    assert.deepEqual(editionPlan("NVI", ["ACF"]), { use: "NVI", online: true, fallback: "ACF" });
+    // ACF chosen but only NVI installed: ACF online (bolls.life's ACF11), NVI if it fails.
+    assert.deepEqual(editionPlan("ACF", ["NVI"]), { use: "ACF", online: true, fallback: "NVI" });
     // Nothing installed: online, and nothing to fall back to.
     assert.deepEqual(editionPlan("ARA", []), { use: "ARA", online: true, fallback: null });
-    // AA exists only as an install: not installed, the installed one is used.
+    // NVI and AA have no online source (bolls.life does not carry them):
+    // not installed, the installed one is used.
+    assert.deepEqual(editionPlan("NVI", ["ACF"]), { use: "ACF", online: false, fallback: null });
     assert.deepEqual(editionPlan("AA", ["NVI"]), { use: "NVI", online: false, fallback: null });
     assert.deepEqual(editionPlan("AA", []), { use: "AA", online: true, fallback: null });
+    // The King James Fiel 1611 left the list: a saved BKJ1611 is the KJA.
+    assert.deepEqual(editionPlan("BKJ1611", ["NVI"]), { use: "KJA", online: true, fallback: "NVI" });
+    assert.deepEqual(editionPlan("BKJ1611", ["KJA"]), { use: "KJA", online: false, fallback: null });
+});
+
+test("editions: every one installs; the online codes are bolls.life's; book numbers 1-66", () => {
+    assert.deepEqual(BIBLE_VERSIONS.map((v) => v.id), ["NVI", "ACF", "AA", "ARA", "ARC", "NAA", "NTLH", "KJA"]);
+    assert.ok(BIBLE_VERSIONS.every((v) => v.install === true));
+    assert.deepEqual(BIBLE_VERSIONS.filter((v) => v.online).map((v) => v.online), ["ACF11", "ARA", "ARC09", "NAA", "NTLH", "KJA"]);
+    // bolls.life's NVIPT is a refusal notice, never the text.
+    assert.ok(!BIBLE_VERSIONS.some((v) => /NVI/.test(v.online || "")));
+    assert.equal(bookNumber("Gênesis"), 1);
+    assert.equal(bookNumber("João"), 43);
+    assert.equal(bookNumber("Apocalipse"), 66);
+    assert.equal(bookNumber("Tobias"), null);
+    assert.equal(renamedVersion("BKJ1611"), "KJA");
+    assert.equal(renamedVersion("NVI"), "NVI");
 });
 
 test("a chapter that cannot be fetched comes from the installed edition, and says which failed", async () => {

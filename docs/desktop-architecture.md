@@ -649,15 +649,16 @@ Before phase 3 nothing read the `bible_verse` table; every verse came from
 - **Not bundled.** NVI (Biblica), ACF (Sociedade Bíblica Trinitariana do
   Brasil) and AA (Imprensa Bíblica Brasileira) are all copyrighted editions.
   An earlier draft of this plan called ACF/AA public domain; that was wrong.
-  KERYX ships no Bible text. Each church downloads a version once (≈4 MB,
-  from `thiagobodruk/biblia`, the source the web app already used) or
-  installs it from that JSON file; it lands in `bible_verse` (31k verses,
-  under a second) and works offline from then on.
+  KERYX ships no Bible text. Each church downloads a version once (NVI,
+  ACF, AA ≈4 MB from `thiagobodruk/biblia`, the source the web app already
+  used; ARA, ARC, NAA, NTLH, KJA ≈1.6 MB zips from bolls.life, since
+  2026-10-20) or installs it from such a file; it lands in `bible_verse`
+  (31k verses, a couple of seconds) and works offline from then on.
   Bíblia › Mais › Bíblias instaladas, and a prompt above the verse search
   while none is installed (`BibleInstaller`, `electron/bible.cjs`).
 - **One source of verse text:** `src/lib/bibleText.js` (`getChapter`,
   `getPassage`, `searchVerses`, `searchBible`, `readChapter`). Order: local
-  database → abibliadigital online. The console's Bíblia (read, search,
+  database → bolls.life online (abibliadigital until it went down in October 2026). The console's Bíblia (read, search,
   compare), the planner and the palette all use it. KERYX never asks an AI
   for scripture.
 - **Which edition (2026-10-10, owner's decision):** the one the operator
