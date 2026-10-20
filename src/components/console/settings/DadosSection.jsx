@@ -4,7 +4,8 @@ import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOn
 import { onAir } from "@/lib/console/updates";
 import { dataSummary, updatesSummary } from "@/lib/console/cfgSummaries";
 import { MENU_LABELS } from "@/lib/console/menuLabels";
-import { useReport, DIAGNOSTIC_SAVED } from "../ReportDialog";
+import { useReport, mailReport, DIAGNOSTIC_SAVED } from "../ReportDialog";
+import { queueSummary } from "@shared/support.mjs";
 
 const KEEPS = [["7", "7"], ["14", "14"], ["30", "30"], ["60", "60"]];
 
@@ -23,6 +24,18 @@ export default function DadosSection({ c }) {
     const system = useBridge("system");
     const openReport = useReport();
     const [info, refresh, setInfo, readError] = usePoll(() => system?.call("info"), 4000);
+    // Relatar um problema's queue (electron/reportQueue.cjs): reports this
+    // computer could not send yet, shown only while there are some.
+    const [queue, refreshQueue] = usePoll(() => system?.call("reportQueue"), 10000);
+    // The e-mail reserve for the oldest; the dialog shows the text when no
+    // e-mail program opens.
+    const mailOldest = async () => {
+        const first = queue?.[0];
+        if (!first) return;
+        const shown = await mailReport(system, first.id, c.say);
+        refreshQueue();
+        if (shown) openReport(shown);
+    };
     const [busy, setBusy] = useState("");
     const [confirm, setConfirm] = useState(null);
     // The backups to restore from, listed on demand (Restaurar um backup…).
@@ -143,6 +156,13 @@ export default function DadosSection({ c }) {
                     <Btn disabled={any} onClick={openReport}>{MENU_LABELS.relatar.label}</Btn>
                     <span className="kx-meta">registros recentes e dados do sistema, sem músicas, mídias nem senhas</span>
                 </FormRow>
+                {queue?.length > 0 && (
+                    <FormRow k="Relatos na fila">
+                        <span className="cfg-queue">{queueSummary(queue)}</span>
+                        {queue.some((r) => !r.refused) && <Btn disabled={any} onClick={() => run("reportRetry", "Relatos", (r) => { refreshQueue(); return r?.some((x) => !x.refused) ? "Ainda sem conexão com o suporte." : "Relatos enviados."; })}>{busy === "reportRetry" ? "Enviando…" : "Tentar agora"}</Btn>}
+                        <Btn disabled={any} onClick={mailOldest}>Mandar por e-mail…</Btn>
+                    </FormRow>
+                )}
             </div>
             </CfgGroup>
             <CfgGroup id="backup.atualizacoes" k="Atualizações" summary={updatesSummary(info)}>

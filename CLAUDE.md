@@ -660,12 +660,28 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   as in Backup e atualizações; off in the browser preview) · Atualizar agora
   while an update is due, else Verificar atualização, and Sobre o KERYX.
   **Relatar um problema…** (Rodada N3; also Configurações › Dados ›
-  Suporte): `ReportDialog.jsx` asks what happened; main (`system` op
-  `report`) saves the diagnostic zip with `relato.txt` in Downloads, shows
-  it and opens the mailto to `SUPPORT_EMAIL` (`shared/support.mjs`, the one
-  place for the address; the page never opens a mailto), and without an
-  e-mail program (or in the preview) the dialog shows the address and the
-  text with Copiar. The windows' own errors (onerror, unhandledrejection,
+  Suporte): `ReportDialog.jsx` asks what happened, what they were doing
+  and how to reach them (optional); **it goes over the internet, no e-mail**
+  (owner 2026-10-20, "Relatos sem e-mail"): main (`system` op `report`)
+  writes the report and its diagnostic zip (`relato.txt` inside) to the
+  queue `<data>/relatos` (`electron/reportQueue.cjs`, tested; never the
+  store or the sync) and posts it, multipart, to the Supabase Edge Function
+  `supabase/functions/relato` (`REPORT_URL`, deployed with verify_jwt off:
+  no key ships; it writes `problem_reports` and the private bucket
+  `relatos`, no policies — the owner reads them in the dashboard, and with
+  the secrets `RESEND_API_KEY`/`REPORT_NOTIFY_TO` it e-mails the owner each
+  new one). The answer is `reportOutcome` (support.mjs, tested): sent
+  (Relato enviado + its code `R-XXXX`, `reportCode`, the same in the
+  function), queued (offline or a 5xx: Guardado para enviar depois; the
+  queue tries at launch, every 10 min and on resume, by the report's own
+  id so the function never makes two, and drops it after 30 days, logged)
+  or refused (400/413/429: kept, never retried). **The e-mail is the
+  reserve** (`reportMail`: the zip to Downloads, the mailto to
+  `SUPPORT_EMAIL`, the report out of the queue; the page never opens a
+  mailto), from the dialog or Configurações › Dados › "Relatos na fila"
+  (only while one waits); without an e-mail program the dialog shows the
+  address and the text with Copiar. The browser preview fakes the answer
+  ("#fila" in the text = queued, "#recusa" = refused). The windows' own errors (onerror, unhandledrejection,
   console.error) reach the daily log as `[renderer:<page>]` over `keryx:log`
   (`src/lib/rendererLog.js` → `electron/rendererLog.cjs`, 20 a minute per
   window, 2 kB each; never from a network screen).

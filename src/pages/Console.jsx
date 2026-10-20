@@ -253,7 +253,8 @@ export default function Console() {
     const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
     // Ajuda › Relatar um problema (ReportDialog): open or not.
     const [reporting, setReporting] = useState(false);
-    const openReport = useCallback(() => setReporting(true), []);
+    // With { subject, body }: Configurações' queue tried the e-mail and no program opened.
+    const openReport = useCallback((mail) => setReporting(mail?.subject ? mail : true), []);
     const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
     const answerConfirm = useCallback((yes) => {
         // "Continuar" to an unsaved guard: a detach under way stays here.
@@ -1460,7 +1461,7 @@ export default function Console() {
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
-            <ReportDialog open={reporting} onClose={() => setReporting(false)} say={c.say} />
+            <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !winOpen && env === "culto" && (() => {
                 // Never over the Programa: on the side of it with more room

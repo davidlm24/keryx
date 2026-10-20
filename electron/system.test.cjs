@@ -97,15 +97,22 @@ test("Novidades: pending after an update until seen", async () => {
     store.close();
 });
 
-// Relatar um problema: the zip in Downloads (relato.txt inside, no dialog),
-// the folder shown, the mailto opened by main; `opened` false when no
-// e-mail program takes it.
-function reportRig({ openFails = false } = {}) {
+// Relatar um problema: the report goes over the internet (a fetch answering
+// from a script); offline it stays queued in <data>/relatos; the e-mail
+// reserve puts the zip in Downloads, shows it, opens the mailto and takes the
+// report out of the queue; `opened` false when no e-mail program takes it.
+function reportRig({ openFails = false, answers = [] } = {}) {
     const downloads = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-dl-"));
-    const calls = { shown: [], opened: [] };
+    const calls = { shown: [], opened: [], posted: [] };
     const shell = {
         showItemInFolder: (f) => calls.shown.push(f),
         openExternal: async (href) => { if (openFails) throw new Error("no handler"); calls.opened.push(href); },
+    };
+    const fetch = async (url, init) => {
+        calls.posted.push(Buffer.from(init.body).toString("latin1"));
+        const a = answers.shift() ?? "offline";
+        if (a === "offline") throw new TypeError("fetch failed");
+        return { status: a.status, json: async () => a.body ?? {} };
     };
     const logs = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-logs-"));
     fs.writeFileSync(path.join(logs, "keryx-2026-10-20.log"), "10:00:00 error [renderer:Console] boom\n");
@@ -113,36 +120,58 @@ function reportRig({ openFails = false } = {}) {
     const screen = { getAllDisplays: () => [], getPrimaryDisplay: () => ({ id: 0 }) };
     const r = sys({}, {
         app: { getVersion: () => "0.2.20", isPackaged: false, getName: () => "KERYX", getPath: (k) => (k === "downloads" ? downloads : os.tmpdir()) },
-        shell, logger, screen, outputs: { list: () => ({ outputs: [] }) },
+        shell, logger, screen, outputs: { list: () => ({ outputs: [] }), }, fetch,
     });
     return { ...r, calls, downloads };
 }
 
-test("Relatar um problema saves the diagnostic in Downloads with the report inside and opens the e-mail", async () => {
-    const { system, store, calls, downloads } = reportRig();
-    const out = await system.ops.report(null, { text: "O vídeo travou", doing: "Apertei Esc", include: true, church: "Igreja X" });
-    assert.match(path.basename(out.file), /^keryx-diagnostico-\d{4}-\d{2}-\d{2}-\d{4}\.zip$/);
-    assert.equal(path.dirname(out.file), downloads);
-    assert.ok(fs.statSync(out.file).size > 0);
-    const raw = fs.readFileSync(out.file);
-    for (const name of ["sistema.json", "relato.txt", "logs/keryx-2026-10-20.log"]) assert.ok(raw.includes(Buffer.from(name)), name);
-    assert.deepEqual(calls.shown, [out.file]);
-    assert.equal(out.opened, true);
-    assert.equal(calls.opened.length, 1);
-    assert.match(calls.opened[0], /^mailto:davigoncalves207@gmail\.com\?subject=KERYX%200\.2\.20/);
-    assert.match(out.body, /Igreja X · KERYX 0\.2\.20/);
-    assert.ok(out.body.includes(`Anexe o arquivo ${path.basename(out.file)}`));
+test("Relatar um problema sends the report and its diagnostic, with no e-mail", async () => {
+    const { system, store, calls, downloads, dataDir, saved } = reportRig({ answers: [{ status: 200, body: { code: "R-ABCD" } }] });
+    const out = await system.ops.report(null, { text: "O vídeo travou", doing: "Apertei Esc", contact: "Pr. Marcos", include: true, church: "Igreja X" });
+    assert.equal(out.status, "sent");
+    assert.equal(out.code, "R-ABCD");
+    assert.equal(calls.posted.length, 1);
+    for (const piece of ["sistema.json", "relato.txt", "logs/keryx-2026-10-20.log", "\"contact\":\"Pr. Marcos\"", "\"church\":\"Igreja X\"", "\"version\":\"0.2.20\""]) assert.ok(calls.posted[0].includes(piece), piece);
+    assert.ok(saved.installId, "one id per computer, for the daily limit");
+    assert.ok(calls.posted[0].includes(`"install":"${saved.installId}"`));
+    assert.deepEqual(fs.readdirSync(path.join(dataDir, "relatos")), [], "sent: nothing stays");
+    assert.deepEqual(fs.readdirSync(downloads), []);
+    assert.deepEqual(calls.opened, []);
     store.close();
 });
 
-test("Relatar um problema without the diagnostic, and with no e-mail program", async () => {
-    const { system, store, calls, downloads } = reportRig({ openFails: true });
+test("Relatar um problema offline: queued, then the e-mail reserve takes it out", async () => {
+    const { system, store, calls, downloads } = reportRig();
+    const out = await system.ops.report(null, { text: "O vídeo travou", doing: "Apertei Esc", include: true, church: "Igreja X" });
+    assert.equal(out.status, "queued");
+    assert.match(out.code, /^R-[0-9A-Z]{4}$/);
+    const queue = await system.ops.reportQueue();
+    assert.deepEqual(queue.map((r) => [r.id, r.refused, r.hasZip]), [[out.id, null, true]]);
+    const mail = await system.ops.reportMail(null, { id: out.id });
+    assert.match(path.basename(mail.file), /^keryx-diagnostico-\d{4}-\d{2}-\d{2}-\d{4}\.zip$/);
+    assert.equal(path.dirname(mail.file), downloads);
+    assert.ok(fs.readFileSync(mail.file).includes(Buffer.from("relato.txt")));
+    assert.deepEqual(calls.shown, [mail.file]);
+    assert.equal(mail.opened, true);
+    assert.match(calls.opened[0], /^mailto:davigoncalves207@gmail\.com\?subject=KERYX%200\.2\.20%20%C2%B7%20problema%20R-/);
+    assert.match(mail.body, /Igreja X · KERYX 0\.2\.20/);
+    assert.ok(mail.body.includes(`Anexe o arquivo ${path.basename(mail.file)}`));
+    assert.deepEqual(await system.ops.reportQueue(), [], "out of the queue: it never arrives twice");
+    await assert.rejects(system.ops.reportMail(null, { id: out.id }), /já não está na fila/);
+    store.close();
+});
+
+test("Relatar um problema refused, without the diagnostic, and with no e-mail program", async () => {
+    const { system, store, calls, downloads } = reportRig({ openFails: true, answers: [{ status: 429, body: { code: "rate" } }] });
     const out = await system.ops.report(null, { text: "Travou", include: false });
-    assert.equal(out.file, null);
-    assert.equal(out.opened, false, "the console then shows the address and the text");
+    assert.deepEqual([out.status, out.reason], ["refused", "rate"]);
+    assert.ok(!calls.posted[0].includes("name=\"diag\""));
+    const mail = await system.ops.reportMail(null, { id: out.id });
+    assert.equal(mail.file, null);
+    assert.equal(mail.opened, false, "the console then shows the address and the text");
     assert.deepEqual(fs.readdirSync(downloads), []);
     assert.deepEqual(calls.shown, []);
-    assert.doesNotMatch(out.body, /Anexe/);
+    assert.doesNotMatch(mail.body, /Anexe/);
     await assert.rejects(system.ops.report(null, { text: "  " }), /Escreva o que aconteceu/);
     store.close();
 });
