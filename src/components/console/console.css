@@ -783,20 +783,22 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Row 1: what plays (its icon, its title, n/m in a list — no kind word, the
    icon says it), the elapsed time, the progress bar and the remaining time;
    row 2: the controls — the transport, the eye, Parar, the layer it
-   controls, the letra automática, where the sound goes — then the volume
-   and the L/R meters at its right end. 64 px in all (.pslot, dock.js
-   PLAYER_SLOT). The title has a floor and a cap: it never vanishes, never
-   eats the bar. Narrowing folds row 2 in the owner's order (Rodada F1): the
-   volume number, −10/+10, the labels of where and of the letra automática
-   (down to their icons; they shorten with "…" before that), a narrower
-   volume, then the meters and where. Tocar, the eye, Parar and the mute
+   controls, the letra automática, "Projetor fechado" when the sound cannot
+   come out (where it goes is the mute's tooltip, Rodada N1) — then the
+   volume and the L/R meters at its right end. 64 px in all (.pslot, dock.js
+   PLAYER_SLOT). The title has a small floor and a cap of 28 % of the row,
+   260 px at most (Rodada N1): it never vanishes, and the bar keeps at least
+   half the row. Narrowing folds row 2 in the owner's order (Rodada F1): the
+   volume number, −10/+10, the labels of "Projetor fechado" and of the letra
+   automática (down to their icons; they shorten with "…" before that), a
+   narrower volume, then the meters. Tocar, the eye, Parar and the mute
    always stay. Idle (nothing plays): only the icon, the controls dimmed. */
 .console .player { flex: none; height: 64px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 4px var(--space-1) 4px var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); white-space: nowrap; min-width: 0; container: player / inline-size; }
 .console .player .pl-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .console .player .pl-row1 { height: 28px; }
 .console .player .pl-row2 { height: 26px; }
 .console .player .pl-gap { flex: 1 1 0; min-width: 0; }
-.console .player .pl-what { display: inline-flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: min(110px, 34cqw); max-width: 46cqw; color: var(--fg-1); } /* as long as its title, between a floor and a cap: it gives way to the bar, never to nothing */
+.console .player .pl-what { display: inline-flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: min(64px, 16cqw); max-width: min(28cqw, 260px); color: var(--fg-1); } /* as long as its title, between a floor and a cap (Rodada N1): it gives way to the bar, never to nothing; the whole title is its tooltip */
 .console .player .pl-what .t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .console .player .pl-what .kx-i { color: var(--fg-3); flex: none; }
 .console .player .pl-what .pl-n { flex: none; font-size: 11px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
@@ -820,7 +822,17 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .player .pl-seek > b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-round); background: var(--fg-1); box-shadow: 0 1px 4px #0009; opacity: 0; transition: opacity .12s; pointer-events: none; }
 .console .player .pl-seek.is-can:is(:hover, :focus-visible, .is-drag) > b { opacity: 1; }
 .console .player .pl-seek:focus-visible { outline: var(--bar) solid var(--brand); outline-offset: 2px; }
-.console .player .pl-seek > .pl-tip { position: absolute; bottom: calc(100% + 1px); z-index: 1; transform: translateX(-50%); padding: 0 5px; border-radius: 4px; background: var(--fg-1); color: var(--bg-0); font: 600 10px/14px var(--font-sans); font-style: normal; font-variant-numeric: tabular-nums; pointer-events: none; }
+/* The moment under the pointer (Rodada N1, as on YouTube): a light band up
+   to it, and over it a tip with the time, the slide of the letra automática
+   there and, for a video of the computer, a 160 × 90 frame of the file (a
+   YouTube link: its cover, fixed). The
+   tip is placed in px by PlayerBar (tipLeft: always inside the bar). */
+.console .player .pl-seek > .pl-hov { position: absolute; left: 0; top: 5px; height: 6px; border-radius: 3px 0 0 3px; background: color-mix(in srgb, var(--fg-1) 16%, transparent); pointer-events: none; }
+.console .player .pl-seek > .pl-tip { position: absolute; bottom: calc(100% + 1px); z-index: 30; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.console .player .pl-seek > .pl-tip.has-frame { bottom: calc(100% + 4px); }
+.console .player .pl-tip :is(canvas, .pl-tip-cover) { display: block; width: 160px; height: 90px; object-fit: cover; border-radius: 6px; background: #000; box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg-1) 18%, transparent), 0 6px 18px #000a; }
+.console .player .pl-tip-t { padding: 0 5px; border-radius: 4px; background: var(--fg-1); color: var(--bg-0); font: 600 10px/14px var(--font-sans); font-style: normal; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.console .player .pl-tip-sl { font-weight: 500; opacity: .75; }
 /* Só o som (Rodada F1): while a video plays as sound only, the eye is red. */
 .console .player .pl-eye.is-sound { background: color-mix(in srgb, var(--air) 24%, transparent); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
 .console .player .pl-eye.is-sound:hover { background: color-mix(in srgb, var(--air) 36%, transparent); }
@@ -847,13 +859,19 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .player .meters .kx-meter > i { width: 6px; }
 .console .player .meters .lr { font-size: 9px; line-height: 10px; width: 8px; color: var(--fg-3); white-space: normal; word-spacing: 8px; }
 .console .player .meters[data-state="off"], .console .player .meters[data-state="wait"] { opacity: var(--dim); }
-.console .player .pl-where { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 16px; overflow: hidden; }
-.console .player .pl-where .lbl { overflow: hidden; text-overflow: ellipsis; }
+/* Where the sound goes (Rodada N1, owner's pick A): the mute's tooltip says
+   it; only the projector window closed shows, as an amber status (not a
+   button: no hover, no press) and an amber dot on the speaker. */
+.console .player .pl-closed { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 22px; height: 20px; padding: 0 8px 0 6px; box-sizing: border-box; overflow: hidden; border-radius: 10px; background: var(--warn-tint); color: var(--warn-fg); font-size: 11px; font-weight: 600; cursor: default; }
+.console .player .pl-closed .kx-i { flex: none; }
+.console .player .pl-closed .lbl { overflow: hidden; text-overflow: ellipsis; }
+.console .player .pl-spk { position: relative; display: inline-flex; flex: none; }
+.console .player .pl-spk-dot { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--warn); box-shadow: 0 0 0 1.5px var(--bg-2); pointer-events: none; }
 @container player (max-width: 560px) { .console .player .pl-num { display: none; } }
 @container player (max-width: 520px) { .console .player .pl-skip { display: none; } }
-@container player (max-width: 440px) { .console .player :is(.pl-where, .pl-follow, .pl-follow-go) .lbl { display: none; } .console .player .pl-follow { padding: 0 6px; } }
+@container player (max-width: 440px) { .console .player :is(.pl-closed, .pl-follow, .pl-follow-go) .lbl { display: none; } .console .player .pl-follow { padding: 0 6px; } .console .player .pl-closed { padding: 0 4px; } }
 @container player (max-width: 400px) { .console .player .pl-vol input { width: 52px; } }
-@container player (max-width: 360px) { .console .player :is(.meters, .pl-where) { display: none; } }
+@container player (max-width: 360px) { .console .player .meters { display: none; } }
 /* ---------- Bíblia: quick jump (Livro → Capítulo → Versículo) ---------- */
 .console .qj { position: absolute; z-index: 40; left: 50%; top: 120px; transform: translateX(-50%); width: 560px; max-width: calc(100vw - 24px); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .console .qj-steps { display: flex; gap: var(--space-3); }
@@ -1637,6 +1655,23 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-prev-stream { background: linear-gradient(160deg, #3a4a5c, #1b2430 60%, #2c2418); }
 /* Novidades: the release notes after an update. */
 .console .dialog.wn { width: min(560px, calc(100% - 32px)); }
+/* Ajuda › Relatar um problema (ReportDialog.jsx): two fields, the
+   diagnostic's check, then the address and the text to copy when no e-mail
+   program opened. */
+.console .dialog.confirm-dialog.report-dialog { width: min(460px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); overflow: auto; }
+.console .report-dialog .rp-head { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; color: var(--fg-1); }
+.console .report-dialog .rp-head .kx-i { color: var(--fg-2); }
+.console .report-dialog .rp-field { display: flex; flex-direction: column; gap: var(--space-1); color: var(--fg-1); font-weight: 500; }
+.console .report-dialog .rp-field em { font-style: normal; font-weight: 400; color: var(--fg-3); }
+.console .report-dialog .rp-field textarea { resize: vertical; min-height: 40px; font-weight: 400; }
+.console .report-dialog .rp-check { display: flex; align-items: flex-start; gap: var(--space-2); color: var(--fg-1); cursor: pointer; }
+.console .report-dialog .rp-check input { margin: 2px 0 0; width: 14px; height: 14px; flex: none; accent-color: var(--brand); }
+.console .report-dialog .rp-say { margin: 0; color: var(--fg-2); }
+.console .report-dialog .rp-line { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.console .report-dialog .rp-line > .kx-meta { width: 56px; flex: none; }
+.console .report-dialog .rp-line b { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.console .report-dialog .rp-addr { user-select: all; }
+.console .report-dialog .rp-body { resize: vertical; font-size: 12px; line-height: 17px; }
 /* Ajuda › Primeiros passos (Popovers.jsx FirstSteps): numbered steps, each
    with the button that opens what it names; scrolls on a short window. */
 .console .dialog.fs { width: min(600px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); }
@@ -1967,6 +2002,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .player .pl-seek::before { background: Canvas; outline: 1px solid CanvasText; }
   .console .player .pl-seek > i { background: Highlight; }
   .console .player .pl-seek > :is(b, .pl-tick) { background: CanvasText; }
+  .console .player .pl-seek > .pl-hov { background: GrayText; }
+  .console .player .pl-tip-t { background: Canvas; color: CanvasText; outline: 1px solid CanvasText; }
+  .console .player .pl-closed { background: Canvas; color: CanvasText; outline: 1px solid CanvasText; }
+  .console .player .pl-spk-dot { background: Highlight; box-shadow: none; }
   .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
   .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
   .console .topbar .tb-bell-dot { background: Highlight; }

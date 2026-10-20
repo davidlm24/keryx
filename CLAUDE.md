@@ -647,9 +647,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Rodada M0; Alt+A): Primeiros passos (a dialog, `firstSteps.js`, tested:
   seven steps, each with the button that opens what it names, keys per Teclas
   de uma letra), Atalhos, Novidades · Verificar tudo, Salvar diagnóstico…,
-  Abrir a pasta de dados (the `system` bridge's `diagnostics`/`openDataDir`,
+  Relatar um problema…, Abrir a pasta de dados (the `system` bridge's `diagnostics`/`openDataDir`,
   as in Backup e atualizações; off in the browser preview) · Atualizar agora
   while an update is due, else Verificar atualização, and Sobre o KERYX.
+  **Relatar um problema…** (Rodada N3; also Configurações › Dados ›
+  Suporte): `ReportDialog.jsx` asks what happened; main (`system` op
+  `report`) saves the diagnostic zip with `relato.txt` in Downloads, shows
+  it and opens the mailto to `SUPPORT_EMAIL` (`shared/support.mjs`, the one
+  place for the address; the page never opens a mailto), and without an
+  e-mail program (or in the preview) the dialog shows the address and the
+  text with Copiar. The windows' own errors (onerror, unhandledrejection,
+  console.error) reach the daily log as `[renderer:<page>]` over `keryx:log`
+  (`src/lib/rendererLog.js` → `electron/rendererLog.cjs`, 20 a minute per
+  window, 2 kB each; never from a network screen).
   **The logo's menu is the app's** (owner 2026-10-19, Rodada M0 "app"):
   Configurações, Saídas, Sobre o KERYX and Atualizar agora when due; never a
   page of the content (those are the bar's). **Under 1240 px the
@@ -827,15 +837,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Programa on top (CenterPanel: the monitor or the Multiview, and the
   player **always visible**, dimmed while idle — only its icon then, **no
   placeholder words** — **in two rows** (Rodada F1, owner 2026-10-16): the
-  first is what plays (the file icon, the title — floor `min(110px, 34cqw)`,
-  cap 46cqw — and "n/m" in a list; **no kind word**, the icon says it), the
+  first is what plays (the file icon, the title — a small floor, **cap
+  `min(28cqw, 260px)`** (Rodada N1, owner 2026-10-20: the bar keeps at least
+  half the row), the whole title its tooltip — and "n/m" in a list; **no
+  kind word**, the icon says it), the
   elapsed time, the progress bar and the remaining time; the second is the
   controls: ⏮ −10 ⏯ +10 ⏭, the eye, Parar, the layer switch (2+ layers), the
-  letra automática, where the sound goes, then the volume and the meters;
+  letra automática, then the volume and the meters. **Where the sound goes
+  is not on the row** (Rodada N1, owner's pick A): it is the mute's tooltip
+  ("Mudo · o som sai: Projetor"); only the projector window closed shows,
+  as an amber status chip "Projetor fechado" (`.pl-closed`, `role=status`,
+  not a button) plus an amber dot on the speaker;
   64 px, `.pslot` and dock.js `PLAYER_SLOT` 72; narrowing folds row 2 (the
-  volume %, −10/+10, the where/chip labels down to icons, a narrower volume,
-  then the meters and where; Tocar, the eye, Parar and the mute always
-  stay). **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
+  volume %, −10/+10, the chip labels down to icons, a narrower volume,
+  then the meters; Tocar, the eye, Parar and the mute always
+  stay). **Hovering the progress bar shows the moment** (Rodada N1, as on
+  YouTube): a light band up to the pointer and a tip with the time, the
+  slide of the letra automática there (`slideNameAt`, from `followTicks`)
+  and, for a video of the computer, a 160 × 90 frame of the file
+  (`useFramePreview`: one detached muted `<video>` per file, made on the
+  first hover, one seek in flight, an LRU of 40 bitmaps — **never the
+  pool's element**, which plays on air; helpers `src/lib/console/seekPreview.js`,
+  tested); a YouTube link shows its cover, fixed (`media.poster`, else
+  YouTube's hqdefault: `tipPicture`; owner's mark n2_youtube = capa), an
+  audio file the time and the slide only. Nothing
+  seeks until a press. **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
   capture, a 16 px hit area, a time tip over the thumb): while the hand
   holds it only the console moves, and the screens get **one seek, on
   release** (`seekAt` in player.js, tested), so the letra automática never

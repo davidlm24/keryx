@@ -36,6 +36,7 @@ import { useSetlistAutoplay } from "@/components/console/useSetlistAutoplay";
 import { endsByItself, AUTOPLAY_SAY } from "@/lib/console/autoplay";
 import Layers from "@/components/console/Layers";
 import PromptDialog from "@/components/console/PromptDialog";
+import ReportDialog, { ReportContext, DIAGNOSTIC_SAVED } from "@/components/console/ReportDialog";
 import { timerChoices, minutesLabel } from "@/lib/console/timerPresets";
 import ThemeStrip from "@/components/console/ThemeStrip";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
@@ -250,6 +251,9 @@ export default function Console() {
     const [ask, setAsk] = useState(null);
     const askText = useCallback((spec) => new Promise((resolve) => setAsk({ ...spec, resolve })), []);
     const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
+    // Ajuda › Relatar um problema (ReportDialog): open or not.
+    const [reporting, setReporting] = useState(false);
+    const openReport = useCallback(() => setReporting(true), []);
     const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
     const answerConfirm = useCallback((yes) => {
         // "Continuar" to an unsaved guard: a detach under way stays here.
@@ -822,11 +826,11 @@ export default function Console() {
                 // "window": Esc goes to the TOP page's registered request
                 // (nav.js), which pops one level — "← Voltar" — or, at the
                 // first, closes; an unsaved guard may ask instead.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
-                    else if (top === "confirm") { if (ask) answerAsk(null); else answerConfirm(false); }
+                    else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else setReporting(false); }
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "window") winEsc("esc");
@@ -840,7 +844,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if ((libReq || confirmReq) && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq || reporting) && !["black", "logo"].includes(action)) return;
             // Behind the window only the emergency keys (Tela preta, Logo)
             // act; a page's own keys (Mídia's Enter and Delete, the editors'
             // Ctrl+S, Space while marking timings) are its own listeners.
@@ -879,7 +883,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, letters, autoplay]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, reporting, letters, autoplay]);
     useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -1272,7 +1276,8 @@ export default function Console() {
             shortcuts: () => setOpen("atalhos"),
             whatsNew: () => openWhatsNew(),
             verify: () => setOpen("verificar"),
-            diagnostics: () => helpCall("diagnostics", (r) => (r?.file ? "Diagnóstico salvo: envie o arquivo a quem dá suporte." : "")),
+            diagnostics: () => helpCall("diagnostics", (r) => (r?.file ? DIAGNOSTIC_SAVED : "")),
+            report: () => openReport(),
             dataDir: () => helpCall("openDataDir"),
             updateCheck: () => helpCall("updateCheck", (r) => r?.update?.message || ""),
             updateNow: () => updateNow(),
@@ -1358,10 +1363,11 @@ export default function Console() {
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
+        <ReportContext.Provider value={openReport}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
-                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
+                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1453,6 +1459,7 @@ export default function Console() {
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
+            <ReportDialog open={reporting} onClose={() => setReporting(false)} say={c.say} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !winOpen && env === "culto" && (() => {
                 // Never over the Programa: on the side of it with more room
@@ -1477,6 +1484,7 @@ export default function Console() {
             {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
+        </ReportContext.Provider>
         </ConfirmContext.Provider>
         </LibraryContext.Provider>
         </ContextMenuProvider>

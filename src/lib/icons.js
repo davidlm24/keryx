@@ -10,7 +10,7 @@
 // format and box as Lucide's.
 import {
     ArrowLeft, ArrowRight, Bell, Book, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight,
-    ChevronUp, ChevronsDownUp, ChevronsUpDown, Circle, Clock, Cloud, Copy, CornerDownLeft, Download,
+    ChevronUp, ChevronsDownUp, ChevronsUpDown, Circle, CircleHelp, Clock, Cloud, Copy, CornerDownLeft, Download,
     Ellipsis, Eraser, ExternalLink, Eye, EyeOff, Film, Folder, Footprints, GripVertical, History, Image, Info,
     Keyboard, Layers, LayoutGrid, LayoutPanelLeft, Library, List, Lock, LockOpen, Megaphone, Menu, Minus, Monitor, Music,
     Palette, Pause, Pencil, Pin, Play, Plus, Power, Presentation, Projector, Redo2, RefreshCw, Save,
@@ -111,6 +111,7 @@ export const ICON_NODES = {
     trash: Trash2,
     copy: Copy,
     info: Info,
+    help: CircleHelp,
     pin: Pin,
     cloud: Cloud,
     media: Library,

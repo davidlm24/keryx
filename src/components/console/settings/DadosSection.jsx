@@ -3,6 +3,8 @@ import { Btn, Empty, Seg } from "../kx";
 import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOnly, Reading, CfgGroup } from "./parts";
 import { onAir } from "@/lib/console/updates";
 import { dataSummary, updatesSummary } from "@/lib/console/cfgSummaries";
+import { MENU_LABELS } from "@/lib/console/menuLabels";
+import { useReport, DIAGNOSTIC_SAVED } from "../ReportDialog";
 
 const KEEPS = [["7", "7"], ["14", "14"], ["30", "30"], ["60", "60"]];
 
@@ -19,6 +21,7 @@ const RESTARTS = {
 // (electron/system.cjs).
 export default function DadosSection({ c }) {
     const system = useBridge("system");
+    const openReport = useReport();
     const [info, refresh, setInfo, readError] = usePoll(() => system?.call("info"), 4000);
     const [busy, setBusy] = useState("");
     const [confirm, setConfirm] = useState(null);
@@ -136,7 +139,8 @@ export default function DadosSection({ c }) {
                     <Btn disabled={any} onClick={() => run("openDataDir", "Abrir pasta")}>Abrir</Btn>
                 </FormRow>
                 <FormRow k="Suporte">
-                    <Btn disabled={any} onClick={() => run("diagnostics", "Diagnóstico", (r) => (r ? "Diagnóstico salvo." : ""))}>Salvar diagnóstico…</Btn>
+                    <Btn disabled={any} onClick={() => run("diagnostics", "Diagnóstico", (r) => (r ? DIAGNOSTIC_SAVED : ""))}>Salvar diagnóstico…</Btn>
+                    <Btn disabled={any} onClick={openReport}>{MENU_LABELS.relatar.label}</Btn>
                     <span className="kx-meta">registros recentes e dados do sistema, sem músicas, mídias nem senhas</span>
                 </FormRow>
             </div>

@@ -169,6 +169,9 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
             return () => levelListeners.delete(listener);
         },
     },
+    // This window's errors into the daily log (src/lib/rendererLog.js; main
+    // limits and writes them, electron/rendererLog.cjs).
+    log: (entry) => ipcRenderer.send("keryx:log", entry),
     system: {
         call: (op, args) => ipcRenderer.invoke("keryx:system", { op, args }),
         onUpdate(listener) {
