@@ -69,3 +69,13 @@ test("a corrupt or missing file starts empty; a huge document is refused", async
     assert.throws(() => live.call("content.show", { slides: big }), (e) => e.status === 413);
     assert.equal(live.get().content, null);
 });
+
+test("a crash a moment ago comes back lit; a normal restart comes back black", async () => {
+    const rules = await loadLiveRules();
+    const file = tempFile();
+    const live = createLive({ file, rules, now: () => 1000, saveDelayMs: 0, log: () => {} });
+    live.call("content.show", { title: "Hino", slides: ["a", "b"] });
+    live.flush();
+    assert.equal(createLive({ file, rules, now: () => 2000, log: () => {}, afterCrash: true }).get().screen, "show");
+    assert.equal(createLive({ file, rules, now: () => 2000, log: () => {} }).get().screen, "black");
+});

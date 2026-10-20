@@ -119,8 +119,9 @@ function reportRig({ openFails = false, answers = [] } = {}) {
     const logger = { info() {}, warn() {}, error() {}, recentFiles: () => [path.join(logs, "keryx-2026-10-20.log")] };
     const screen = { getAllDisplays: () => [], getPrimaryDisplay: () => ({ id: 0 }) };
     const r = sys({}, {
-        app: { getVersion: () => "0.2.20", isPackaged: false, getName: () => "KERYX", getPath: (k) => (k === "downloads" ? downloads : os.tmpdir()) },
-        shell, logger, screen, outputs: { list: () => ({ outputs: [] }), }, fetch,
+        app: { getVersion: () => "0.2.20", isPackaged: false, getName: () => "KERYX", getPath: (k) => (k === "downloads" ? downloads : os.tmpdir()), getAppMetrics: () => [{ pid: 1, type: "Browser", cpu: { percentCPUUsage: 2 }, memory: { workingSetSize: 102400 } }], getGPUInfo: async () => ({ gpuDevice: [{ vendorId: 0x8086, deviceId: 0x5917, active: true }] }), getGPUFeatureStatus: () => ({ webgl: "enabled" }) },
+        BrowserWindow: { getAllWindows: () => [] },
+        shell, logger, screen, outputs: { list: () => ({ outputs: [] }) }, fetch,
     });
     return { ...r, calls, downloads };
 }
@@ -131,7 +132,7 @@ test("Relatar um problema sends the report and its diagnostic, with no e-mail", 
     assert.equal(out.status, "sent");
     assert.equal(out.code, "R-ABCD");
     assert.equal(calls.posted.length, 1);
-    for (const piece of ["sistema.json", "relato.txt", "logs/keryx-2026-10-20.log", "\"contact\":\"Pr. Marcos\"", "\"church\":\"Igreja X\"", "\"version\":\"0.2.20\""]) assert.ok(calls.posted[0].includes(piece), piece);
+    for (const piece of ["sistema.json", "desempenho.json", "relato.txt", "logs/keryx-2026-10-20.log", "\"contact\":\"Pr. Marcos\"", "\"church\":\"Igreja X\"", "\"version\":\"0.2.20\""]) assert.ok(calls.posted[0].includes(piece), piece);
     assert.ok(saved.installId, "one id per computer, for the daily limit");
     assert.ok(calls.posted[0].includes(`"install":"${saved.installId}"`));
     assert.deepEqual(fs.readdirSync(path.join(dataDir, "relatos")), [], "sent: nothing stays");
@@ -174,4 +175,28 @@ test("Relatar um problema refused, without the diagnostic, and with no e-mail pr
     assert.doesNotMatch(mail.body, /Anexe/);
     await assert.rejects(system.ops.report(null, { text: "  " }), /Escreva o que aconteceu/);
     store.close();
+});
+
+test("desempenho: every window by its page, the GPU, and a report even when Chromium says nothing", async () => {
+    const win = (pid, url) => ({ isDestroyed: () => false, webContents: { getOSProcessId: () => pid, getURL: () => url } });
+    const app = {
+        getVersion: () => "0.2.20",
+        isPackaged: false,
+        getAppMetrics: () => [{ pid: 7, type: "Tab", cpu: { percentCPUUsage: 4 }, memory: { workingSetSize: 204800 } }],
+        getGPUInfo: async () => ({ gpuDevice: [{ vendorId: 0x1002, deviceId: 0x15d8, active: true }] }),
+        getGPUFeatureStatus: () => ({ webgl: "enabled" }),
+    };
+    const { system, store } = sys({}, { app, BrowserWindow: { getAllWindows: () => [win(7, "http://127.0.0.1:7700/Projection")] } });
+    const perf = await system.performance();
+    assert.equal(perf.processes[0].label, "Projeção");
+    assert.equal(perf.processes[0].memMB, 200);
+    assert.equal(perf.gpu.active.vendor, "AMD");
+    assert.ok(perf.machine.threads > 0 && perf.machine.memoryGB > 0);
+    store.close();
+
+    const bare = sys({}, { app: { getVersion: () => "0", isPackaged: false, getGPUInfo: async () => { throw new Error("no gpu"); } }, BrowserWindow: {} });
+    const none = await bare.system.performance();
+    assert.deepEqual(none.processes, []);
+    assert.equal(none.gpu.active, null);
+    bare.store.close();
 });

@@ -10,11 +10,16 @@
 // Snapshots only move forward: one with an older rev than the one shown is
 // ignored, so a late event can't undo a newer reply.
 
-import { ClientError } from "./errors";
+import { ClientError } from "./errors.js";
 
 const same = (v) => v;
 
-export function createLiveClient(bridge, { toStore = same, fromStore = same } = {}) {
+// The first read is retried (ARCH-005): an output reloading after a crash, or
+// opening while main is still busy starting, missed it once and stayed blank
+// until the next change on air — which, with a song on screen, may never come.
+const FIRST_READ_RETRY_MS = [250, 500, 1000, 2000, 4000, 8000];
+
+export function createLiveClient(bridge, { toStore = same, fromStore = same, retryDelays = FIRST_READ_RETRY_MS, schedule = (fn, ms) => setTimeout(fn, ms) } = {}) {
     let current = null;
     let offset = 0;
     let started = false;
@@ -56,7 +61,19 @@ export function createLiveClient(bridge, { toStore = same, fromStore = same } = 
         if (started) return;
         started = true;
         bridge.onChange(adopt);
-        load().catch((err) => console.error("[keryx] não foi possível ler a projeção:", err));
+        firstRead(0);
+    }
+
+    // Until a document arrives (a read or a change), with a growing pause.
+    function firstRead(attempt) {
+        load().catch((err) => {
+            if (current) return;
+            if (attempt >= retryDelays.length) {
+                console.error("[keryx] não foi possível ler a projeção:", err);
+                return;
+            }
+            schedule(() => { if (!current) firstRead(attempt + 1); }, retryDelays[attempt]);
+        });
     }
 
     return {

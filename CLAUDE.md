@@ -463,6 +463,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the item in the Prévia, else at the end; Planejar o culto is the button
   beside it, not an item: Rodada M1); the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
+  **song files are read by content, never extension** (`songsFromFile` in
+  songImport.js: JSON, ChordPro, cifra, text and OpenLyrics/OpenLP —
+  `src/lib/songFormats/openlyrics.js`, parts as [Estrofe 1]/[Refrão]/[Ponte]
+  in `verseOrder`, chords inline; a binary `.pro` is ProPresenter 7 and is
+  refused with the reason), a song already in the library (`songKey`) is
+  left out and the toast says so (`splitRepeated`, `importSummary`), and the
+  owner's rule (2026-10-20): KERYX ships no lyrics, and no parser of another
+  program ships without a real export file in `songFormats/fixtures/`;
   the search row is Buscar · ☆ · (+) Adicionar; **the Biblioteca's header
   holds the doors** (owner's pick, Rodada H, H1): its title, "Abrir a
   Biblioteca de mídia" (the Mídia page, every tab), the chooser of what
@@ -1153,6 +1161,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.
+- **After a crash the screens come back lit** (owner 2026-10-20; a normal
+  start still reopens on Tela preta): `running.json` (`electron/runMarker.cjs`,
+  tested) lives in the data folder while KERYX runs, rewritten every 15 s
+  with the outputs open, and goes on `will-quit` and `session-end`. Found at
+  start with a sign of life under 20 min old, `createLive({ afterCrash })` →
+  `restoreState(…, { afterCrash: true })` keeps `screen` and `locked`
+  (playback stays paused), `openAtLaunch(crash.outputs)` reopens what was
+  open, the bell says so. The installed app also runs a watchdog
+  (`electron/watchdog.cjs`, tested; never in desktop:dev or the smoke) that
+  starts KERYX again when main dies, at most 3 times in 5 minutes. An
+  import/restore restart (`importOutcome`) is not a crash. The console's
+  reload keeps the Prévia (sessionStorage) and opens on the culto on air
+  (`chooseService`, serviceChoice.js); outputs retry their first live read.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. Every write
   reaches every window with the whole row, deletes included.
@@ -1659,6 +1680,13 @@ side-panel "keryx-ui"): the real store and live engine on sample data in a
 temp folder (`scripts/preview/`, `src/api/backends/preview.js`,
 docs/desktop-architecture.md 8a); outputs open as tabs from Saídas. The
 smoke and `desktop:dev` remain the truth for outputs, audio and displays. `KERYX_SCREENSHOT=<file.png>` makes a smoke run save a screenshot.
+**The soak** (`KERYX_SOAK=<minutes>` on a smoke run or the installed app
+with `KERYX_SMOKE=1`; `electron/soak.cjs`, plan and verdict in
+`soakPlan.cjs`, numbers in `perfMetrics.cjs`, all tested) plays a service
+on a loop over the outputs and writes a CSV every 30 s plus a JSON verdict
+to the data folder; the diagnostic zip carries `desempenho.json` from the
+same module. Only the owner runs it (docs/requisitos.md has the command);
+the minimum PC there stays "provisório" until its CSVs come back.
 Pure logic lives in tested modules (`src/lib/**`, `shared/`); the UI is
 covered by the smoke's in-app checks.
 

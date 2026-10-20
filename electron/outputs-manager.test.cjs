@@ -158,6 +158,12 @@ test("removing an output closes its window, blocks open and skips the launch; re
     assert.deepEqual(outputs.openAtLaunch(), ["/StageView"]);
 });
 
+test("after a crash the outputs that were open reopen, even without Abrir ao iniciar; removed ones never", () => {
+    const { outputs, opened } = manager({ monitors: [display(1, 0, true)], settings: { outputs: { "/Projection": { target: "window", openAtLaunch: true }, "/LyricProjection": { target: "window", removed: true } } } });
+    assert.deepEqual(outputs.openAtLaunch(["/StageView", "/LyricProjection", "/Nope"]), ["/Projection", "/StageView"]);
+    assert.equal(opened.length, 2);
+});
+
 test("the main projection cannot be removed", () => {
     const { outputs } = manager({ monitors: [display(1, 0, true)] });
     assert.throws(() => outputs.setAssignment("/Projection", { removed: true }), /não pode ser removida/);

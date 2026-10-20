@@ -23,7 +23,7 @@ import TopBar from "@/components/console/TopBar";
 import { MenuBarPop, MenusPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
 import { menuItem } from "@/lib/console/menuLabels";
-import { importSongFiles, SONG_FILE } from "@/components/console/importSongs";
+import { importSongFiles, SONG_FILE, SONG_ACCEPT } from "@/components/console/importSongs";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import { useChurch } from "@/hooks/useChurch";
 import Library from "@/components/console/Library";
@@ -393,7 +393,10 @@ export default function Console() {
     };
 
     const { services, items, loaded: rundownLoaded } = useRundown(serviceId);
-    useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
+    // Chosen once the live state is read: the culto on the screens wins (a
+    // reload or a crash mid-service keeps its Setlist; serviceChoice.js).
+    const liveLoaded = Boolean(c.live);
+    useEffect(() => { if (!serviceId && services.length && liveLoaded) setServiceId(pickDefaultService(services, keryx.live.current())?.id || null); }, [services, serviceId, liveLoaded]);
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
     const service = services.find((s) => s.id === serviceId) || null;
     // Papel de parede (owner's decisions 2026-10-12/14, src/lib/console/defaultFundo.js):
@@ -1447,7 +1450,7 @@ export default function Console() {
             )}
             <MenuBarPop menus={menus} open={open} setOpen={setOpen} />
             <MenusPop menus={menus} open={open} setOpen={setOpen} onAllServices={() => openPlanner(serviceId)} />
-            <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept=".txt,.chordpro,.cho,.crd,.pro,.json,text/plain"
+            <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept={SONG_ACCEPT}
                 onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) importSongFiles(files, c.say); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
             <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} />
             <FirstSteps open={open} setOpen={setOpen} onGo={(id) => { if (id === "planner") openPlanner(serviceId); else if (id === "search") setOpen("palette"); else if (id === "verify") setOpen("verificar"); else if (id === "outs") setOpen("outs"); }} />

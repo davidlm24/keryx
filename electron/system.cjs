@@ -13,6 +13,7 @@ const backup = require("./backup.cjs");
 const archive = require("./archive.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createReportQueue } = require("./reportQueue.cjs");
+const { perfReport } = require("./perfMetrics.cjs");
 
 const SETTINGS_KEY = "backup";
 
@@ -374,12 +375,49 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         return { file: await writeDiagnostics(filePath) };
     }
 
-    // The diagnostic zip: sistema.json and the 3 newest logs, plus the
-    // report's own text when there is one (relato.txt). Salvar diagnóstico
-    // and Relatar um problema both write it.
+    // What KERYX spends now (perfMetrics.cjs): memory and CPU per process,
+    // each window by its page, the graphics card and whether it draws in
+    // software, and the machine. The soak run (soak.cjs) samples it too.
+    async function performance() {
+        const windows = [];
+        for (const w of (BrowserWindow.getAllWindows ? BrowserWindow.getAllWindows() : [])) {
+            try {
+                if (!w.isDestroyed()) windows.push({ pid: w.webContents.getOSProcessId(), url: w.webContents.getURL() });
+            } catch { /* closing */ }
+        }
+        let gpu = null;
+        try {
+            gpu = await app.getGPUInfo("basic");
+        } catch { /* no GPU info: the report has no devices */ }
+        let features = null;
+        try {
+            features = app.getGPUFeatureStatus();
+        } catch { /* idem */ }
+        const cpus = os.cpus();
+        const machine = {
+            os: osName(),
+            cpu: cpus[0] ? cpus[0].model.trim() : "",
+            threads: cpus.length,
+            memoryGB: Math.round((os.totalmem() / 2 ** 30) * 10) / 10,
+            freeGB: Math.round((os.freemem() / 2 ** 30) * 10) / 10,
+            uptimeMin: Math.round(process.uptime() / 60),
+        };
+        return perfReport({ metrics: app.getAppMetrics ? app.getAppMetrics() : [], windows, gpu, features, machine });
+    }
+
+    // The diagnostic zip: sistema.json, desempenho.json and the 3 newest
+    // logs, plus the report's own text when there is one (relato.txt).
+    // Salvar diagnóstico and Relatar um problema both write it.
     async function writeDiagnostics(filePath, relato) {
         const zip = new yazl.ZipFile();
         zip.addBuffer(Buffer.from(JSON.stringify(gatherDiagnostics(), null, 2)), "sistema.json");
+        let perf;
+        try {
+            perf = await performance();
+        } catch (err) {
+            perf = { error: err.message };
+        }
+        zip.addBuffer(Buffer.from(JSON.stringify(perf, null, 2)), "desempenho.json");
         if (relato) zip.addBuffer(Buffer.from(relato), "relato.txt");
         for (const file of logger.recentFiles(3)) zip.addFile(file, `logs/${path.basename(file)}`);
         zip.end();
@@ -464,6 +502,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         backupMedia,
         notifications,
         info,
+        performance,
         ops: {
             info: async () => info(),
             backupNow: async () => { backupNow("manual"); return info(); },

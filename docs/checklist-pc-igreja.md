@@ -34,6 +34,14 @@ Use o **KERYX instalado**, não o modo de desenvolvimento: alguns itens só exis
 3. Se alguma saída tiver **Abrir ao iniciar**, ela abre em tela cheia logo depois. Confira se isso é o que a igreja quer no começo do culto.
 4. Desligue a opção de novo, para o teste não ficar ligado.
 
+## 4b. Se o KERYX cair no meio do culto
+
+1. Abra a Projeção e coloque uma música no ar, num slide do meio.
+2. Abra o **Gerenciador de Tarefas** (Ctrl+Shift+Esc) e use **Finalizar tarefa** no KERYX.
+3. Em uns 5 segundos o KERYX deve abrir sozinho, a Projeção abrir de novo e mostrar o mesmo slide (não a tela preta). O sino diz "O KERYX fechou sozinho e abriu de novo".
+4. Se ele não abrir sozinho, abra pelo ícone: deve voltar com o mesmo slide. Anote qual dos dois aconteceu (o Gerenciador de Tarefas pode encerrar o vigia junto).
+5. Feche o KERYX normalmente e abra de novo: agora ele abre com a tela preta, como sempre.
+
 ## 5. Pergunta ao fechar com algo no ar
 
 1. Coloque um slide no ar.
