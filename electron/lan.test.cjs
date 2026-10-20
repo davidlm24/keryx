@@ -15,6 +15,12 @@ async function fixture(config = { pin: "", secret: "s3cret" }, { onRemote = null
     fs.mkdirSync(path.join(dist, "assets"), { recursive: true });
     fs.writeFileSync(path.join(dist, "index.html"), "<!doctype html><html><head><title>KERYX</title></head><body></body></html>");
     fs.writeFileSync(path.join(dist, "assets", "app.js"), "console.log(1)");
+    fs.mkdirSync(path.join(dist, "icons"));
+    fs.writeFileSync(path.join(dist, "icons", "keryx-512.png"), Buffer.alloc(8));
+    fs.writeFileSync(path.join(dist, "remote.webmanifest"), JSON.stringify({
+        name: "KERYX · Controle remoto", short_name: "KERYX", start_url: "/Remote", display: "standalone",
+        icons: [{ src: "/icons/keryx-512.png", sizes: "512x512", type: "image/png" }],
+    }));
     const media = path.join(root, "media");
     fs.mkdirSync(media);
     fs.writeFileSync(path.join(media, "a.png"), Buffer.alloc(1000, 1));
@@ -303,7 +309,16 @@ test("remote: the code is required even when the screens have no PIN", async (t)
     const wrong = await fetch(`${f.base}/lan/remote-code`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "code=111111" });
     assert.equal(wrong.status, 401);
     const cookie = await remoteSignedIn(f);
-    assert.equal((await page(f.base, "/Remote", { cookie })).status, 200);
+    const remotePage = await page(f.base, "/Remote", { cookie });
+    assert.equal(remotePage.status, 200);
+    const remoteHtml = await remotePage.text();
+    assert.match(remoteHtml, /rel="manifest" href="\/remote\.webmanifest"/);
+    assert.match(remoteHtml, /rel="apple-touch-icon" href="\/icons\/keryx-512\.png"/);
+    const manifest = await fetch(`${f.base}/remote.webmanifest`, { headers: { cookie } });
+    assert.equal(manifest.status, 200);
+    assert.match(manifest.headers.get("content-type"), /application\/manifest\+json/);
+    assert.equal((await manifest.json()).start_url, "/Remote");
+    assert.equal((await fetch(`${f.base}/icons/keryx-512.png`, { headers: { cookie } })).status, 200);
     const ok = await send(f, { action: "next" }, { cookie });
     assert.equal(ok.status, 200);
     assert.deepEqual(await ok.json(), { data: { message: "Feito." } });
