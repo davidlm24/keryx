@@ -36,7 +36,7 @@ function NextChip({ pending, onCancel }) {
     const left = Math.max(1, Math.ceil((pending.until - (now || keryx.live.now())) / 1000));
     return (
         <span className="rund-cd" role="timer" aria-live="off" title={`Próximo em ${left} s`}>
-            <span className="rund-cd-w">Próximo em </span>{left} s
+            <span><span className="rund-cd-w">Próximo em </span>{left} s</span>
             <button type="button" onClick={(e) => { e.stopPropagation(); onCancel(); }} onDoubleClick={(e) => e.stopPropagation()} title="Cancelar · Esc">Cancelar</button>
         </span>
     );
