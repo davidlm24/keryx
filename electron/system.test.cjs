@@ -112,7 +112,8 @@ function reportRig({ openFails = false } = {}) {
     const logger = { info() {}, warn() {}, error() {}, recentFiles: () => [path.join(logs, "keryx-2026-10-20.log")] };
     const screen = { getAllDisplays: () => [], getPrimaryDisplay: () => ({ id: 0 }) };
     const r = sys({}, {
-        app: { getVersion: () => "0.2.20", isPackaged: false, getName: () => "KERYX", getPath: (k) => (k === "downloads" ? downloads : os.tmpdir()) },
+        app: { getVersion: () => "0.2.20", isPackaged: false, getName: () => "KERYX", getPath: (k) => (k === "downloads" ? downloads : os.tmpdir()), getAppMetrics: () => [{ pid: 1, type: "Browser", cpu: { percentCPUUsage: 2 }, memory: { workingSetSize: 102400 } }], getGPUInfo: async () => ({ gpuDevice: [{ vendorId: 0x8086, deviceId: 0x5917, active: true }] }), getGPUFeatureStatus: () => ({ webgl: "enabled" }) },
+        BrowserWindow: { getAllWindows: () => [] },
         shell, logger, screen, outputs: { list: () => ({ outputs: [] }) },
     });
     return { ...r, calls, downloads };
@@ -125,7 +126,7 @@ test("Relatar um problema saves the diagnostic in Downloads with the report insi
     assert.equal(path.dirname(out.file), downloads);
     assert.ok(fs.statSync(out.file).size > 0);
     const raw = fs.readFileSync(out.file);
-    for (const name of ["sistema.json", "relato.txt", "logs/keryx-2026-10-20.log"]) assert.ok(raw.includes(Buffer.from(name)), name);
+    for (const name of ["sistema.json", "desempenho.json", "relato.txt", "logs/keryx-2026-10-20.log"]) assert.ok(raw.includes(Buffer.from(name)), name);
     assert.deepEqual(calls.shown, [out.file]);
     assert.equal(out.opened, true);
     assert.equal(calls.opened.length, 1);
@@ -145,4 +146,28 @@ test("Relatar um problema without the diagnostic, and with no e-mail program", a
     assert.doesNotMatch(out.body, /Anexe/);
     await assert.rejects(system.ops.report(null, { text: "  " }), /Escreva o que aconteceu/);
     store.close();
+});
+
+test("desempenho: every window by its page, the GPU, and a report even when Chromium says nothing", async () => {
+    const win = (pid, url) => ({ isDestroyed: () => false, webContents: { getOSProcessId: () => pid, getURL: () => url } });
+    const app = {
+        getVersion: () => "0.2.20",
+        isPackaged: false,
+        getAppMetrics: () => [{ pid: 7, type: "Tab", cpu: { percentCPUUsage: 4 }, memory: { workingSetSize: 204800 } }],
+        getGPUInfo: async () => ({ gpuDevice: [{ vendorId: 0x1002, deviceId: 0x15d8, active: true }] }),
+        getGPUFeatureStatus: () => ({ webgl: "enabled" }),
+    };
+    const { system, store } = sys({}, { app, BrowserWindow: { getAllWindows: () => [win(7, "http://127.0.0.1:7700/Projection")] } });
+    const perf = await system.performance();
+    assert.equal(perf.processes[0].label, "Projeção");
+    assert.equal(perf.processes[0].memMB, 200);
+    assert.equal(perf.gpu.active.vendor, "AMD");
+    assert.ok(perf.machine.threads > 0 && perf.machine.memoryGB > 0);
+    store.close();
+
+    const bare = sys({}, { app: { getVersion: () => "0", isPackaged: false, getGPUInfo: async () => { throw new Error("no gpu"); } }, BrowserWindow: {} });
+    const none = await bare.system.performance();
+    assert.deepEqual(none.processes, []);
+    assert.equal(none.gpu.active, null);
+    bare.store.close();
 });

@@ -2,7 +2,8 @@
 // page, that it rendered and that data flows through the bridge. In dev mode
 // it also drives the renderer adapter (src/api) end to end. Prints one
 // "SMOKE OK|FAIL <json>" line and exits 0 or 1. Always runs on a throwaway
-// data dir (scripts/desktop.mjs sets KERYX_DATA_DIR).
+// data dir (scripts/desktop.mjs sets KERYX_DATA_DIR). With KERYX_SOAK set
+// it runs the soak instead (soak.cjs, docs/requisitos.md).
 
 const fs = require("node:fs");
 const { focusVerdict, meterVerdict } = require("./smoke-verdicts.cjs");
@@ -3434,6 +3435,9 @@ async function checkUpdates(webContents, { system, live, settings }) {
 }
 
 function runSmokeTest(win, { dev, outputs, screen, system, settings, network, live, dataDir, importOutcome }) {
+    // KERYX_SOAK=<minutes>: a long service on a loop, measured (soak.cjs),
+    // instead of the checks.
+    if (require("./soakPlan.cjs").soakConfig(process.env)) return require("./soak.cjs").runSoak(win, { outputs, system, live, dataDir });
     const errors = [];
     const { webContents } = win;
     // Last check, then the report: closing the console must quit KERYX even
