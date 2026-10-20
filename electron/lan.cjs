@@ -178,9 +178,10 @@ function createRemoteGate(now = () => Date.now()) {
     };
 }
 
-// The /Remote page as a phone app: its colour, full screen from the home
-// screen (Adicionar à tela de início; plain HTTP, so no service worker).
-const REMOTE_META = '<meta name="theme-color" content="#0d0d0c"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="KERYX">';
+// The /Remote page as a phone app: its colour, home-screen icon and full
+// screen on iPhone. The LAN is plain HTTP, so this deliberately does not
+// register a service worker or claim that the page can be installed as a PWA.
+const REMOTE_META = '<meta name="theme-color" content="#0d0d0c"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="KERYX"><link rel="manifest" href="/remote.webmanifest"><link rel="apple-touch-icon" href="/icons/keryx-512.png">';
 
 // An event stream that stopped reading (a phone asleep on a bad Wi-Fi):
 // past this much waiting to be sent it is dropped; EventSource comes back.

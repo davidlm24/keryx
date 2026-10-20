@@ -57,6 +57,12 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
                 </span>
                 <button type="button" className="rm-b is-sm" onClick={onRefresh}><Icon name="refresh" size={18} />Atualizar</button>
             </div>
+            <details className="rm-install">
+                <summary>Adicionar à tela inicial</summary>
+                <p><b>Android (Chrome):</b> menu ⋮ › <em>Adicionar à tela inicial</em>.</p>
+                <p><b>iPhone (Safari):</b> Compartilhar › <em>Adicionar à Tela de Início</em>. Ao abrir pelo ícone, a tela fica sem a barra de endereço.</p>
+                <small>É um atalho seguro para o endereço da igreja. A instalação completa e o uso offline exigem HTTPS e ainda não estão disponíveis.</small>
+            </details>
         </div>
     );
 }
