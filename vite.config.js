@@ -55,11 +55,34 @@ function pdfjsAssets() {
   };
 }
 
+// The phone remote is a browser page on the church LAN, not a PWA yet: HTTP
+// cannot install it or run a service worker. It still needs one stable icon
+// for Android's "Adicionar à tela inicial" and iOS's home-screen shortcut.
+// The source is the same 512 px icon packaged with the Windows application.
+function remoteInstallAssets() {
+  const icon = fileURLToPath(new URL('./build/icon.png', import.meta.url));
+  const url = '/icons/keryx-512.png';
+  const send = (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    if (req.method === 'HEAD') return res.end();
+    fs.createReadStream(icon).on('error', next).pipe(res);
+  };
+  return {
+    name: 'keryx-remote-install-assets',
+    configureServer(server) { server.middlewares.use(url, send); },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'icons/keryx-512.png', source: fs.readFileSync(icon) });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   // bundleBudget: the outputs' JS within budget, every stylesheet in the
   // entry (scripts/bundle-budget.cjs); a build past it fails.
-  plugins: [react(), keryxPreview(), pdfjsAssets(), bundleBudget()],
+  plugins: [react(), keryxPreview(), pdfjsAssets(), remoteInstallAssets(), bundleBudget()],
   // The side-panel preview passes a free port in PORT (.claude/launch.json,
   // autoPort); without it Vite keeps its default.
   server: process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : {},
