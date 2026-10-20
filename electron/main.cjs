@@ -139,15 +139,6 @@ function isAppUrl(url) {
         return false;
     }
 }
-// The pages that may list the PC's fonts: the console and a detached page
-// of its window (/Janela; /Editor is its old name). An output page never.
-function fontsAllowedPath(url) {
-    try {
-        return /^\/(Console|Janela|Editor)\/?$/i.test(new URL(url).pathname);
-    } catch {
-        return false;
-    }
-}
 
 // A renderer that dies or hangs reloads itself (ARCH-001): the live state is
 // held by the main process and pages ignore stale revisions, so a reload comes
@@ -504,21 +495,13 @@ app.whenReady().then(async () => {
         }
     }, { useSystemPicker: false });
 
-    // The PC's installed fonts (Local Font Access, window.queryLocalFonts;
-    // the Editor de temas' "Do computador…", Rodada HF1): only the console
-    // and a detached page of its window may read the list, from the app's
-    // own origin — never an output window, never a page from elsewhere.
-    // Electron grants every permission by default; naming this one keeps
-    // the rest as they were.
-    const grantsLocalFonts = (url) => isAppUrl(url) && fontsAllowedPath(url);
-    session.defaultSession.setPermissionCheckHandler((_wc, permission, origin, details) => {
-        if (permission !== "local-fonts") return true;
-        return grantsLocalFonts(details?.requestingUrl || origin || "");
-    });
-    session.defaultSession.setPermissionRequestHandler((wc, permission, callback, details) => {
-        if (permission !== "local-fonts") { callback(true); return; }
-        callback(grantsLocalFonts(details?.requestingUrl || wc?.getURL?.() || ""));
-    });
+    // No page reads the PC's font list through the browser (Local Font
+    // Access, window.queryLocalFonts): KERYX lists the fonts itself, in this
+    // process (systemFonts.cjs, keryx:fonts; owner 2026-10-20), so the
+    // permission is refused everywhere. Electron grants every permission by
+    // default; naming this one keeps the rest as they were.
+    session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission !== "local-fonts");
+    session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => callback(permission !== "local-fonts"));
 
     const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
     appSettings = settings;

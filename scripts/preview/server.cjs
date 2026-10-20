@@ -11,6 +11,8 @@
 //                              the live state ("live" events)
 //   GET  /__keryx/outputs      the output pages (electron/outputs.cjs)
 //   GET  /__keryx/bible        installed Bible versions (rows per version)
+//   GET  /__keryx/fonts        this PC's installed fonts (electron/systemFonts.cjs)
+//   GET  /__keryx/font?id=     one face's file (a collection's face cut out)
 //   POST /__keryx/media?name=  the file's bytes -> { data: { fileName } }
 //   POST /__keryx/media-info   { names } -> { data: { [name]: { exists, size } } }
 //   GET  /media/<file>         the preview's media folder; /media/bundled/ is resources/
@@ -37,6 +39,7 @@ const { remoteCommand, remoteReply, remoteTimeout } = require("../../electron/la
 const PROTOCOL = require("../../shared/remoteProtocol.json");
 const schema = require("../../electron/db/schema.json");
 const { seed } = require("./fixtures.cjs");
+const { createSystemFonts } = require("../../electron/systemFonts.cjs");
 
 const ROOT = path.join(__dirname, "..", "..");
 const PREFIX = "/__keryx/";
@@ -93,6 +96,7 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
     const dir = freshDir(dataDir);
     const mediaDir = path.join(dir, "media");
     const store = createStore({ file: path.join(dir, "keryx.db"), schema, log });
+    const systemFonts = createSystemFonts();
     const live = createLive({ file: path.join(dir, "live.json"), rules: await loadLiveRules(), log });
     seed(store);
 
@@ -174,6 +178,13 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
             }
             if (route === "outputs" && req.method === "GET") return json(res, 200, { data: OUTPUTS.map(({ key, label, windowName }) => ({ key, label, windowName })) });
             if (route === "bible" && req.method === "GET") return json(res, 200, { data: store.countBy("BibleVerse", "version") });
+            // This PC's fonts, as the desktop's main process lists them.
+            if (route === "fonts" && req.method === "GET") return json(res, 200, { data: await systemFonts.list() });
+            if (route === "font" && req.method === "GET") {
+                const bytes = await systemFonts.read(url.searchParams.get("id"));
+                res.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Length": bytes.length, "Cache-Control": "no-store" });
+                return res.end(bytes);
+            }
             if (route === "media" && req.method === "POST") {
                 const bytes = await readBody(req, MAX_FILE);
                 const fileName = crypto.randomUUID() + safeExtension(url.searchParams.get("name"));

@@ -117,6 +117,11 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         exportFile: (json, name) => ipcRenderer.invoke("keryx:displays:export-file", { json, name }),
         importFile: () => ipcRenderer.invoke("keryx:displays:import-file"),
     },
+    // The PC's installed fonts (electron/systemFonts.cjs), for the Editor de temas.
+    fonts: {
+        list: () => ipcRenderer.invoke("keryx:fonts", { op: "list" }),
+        read: (id) => ipcRenderer.invoke("keryx:fonts", { op: "read", id }),
+    },
     bible: {
         status: () => ipcRenderer.invoke("keryx:bible:status"),
         onlineChapter: (api, slug, chapter) => ipcRenderer.invoke("keryx:bible:online-chapter", { api, slug, chapter }),

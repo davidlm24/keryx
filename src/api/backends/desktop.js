@@ -151,10 +151,29 @@ export function createDesktopBackend(bridge) {
         return Object.fromEntries(local.map((u) => [u, res.data[decodeURIComponent(u.slice(mediaBase.length))] || { exists: false, size: 0 }]));
     }
 
+    // The PC's installed fonts (electron/systemFonts.cjs; the Editor de
+    // temas' "Do computador…"): the families with their faces, and one
+    // face's file as a Blob to copy into the library. Only the desktop
+    // (and the browser preview) has them.
+    async function SystemFonts() {
+        if (!bridge.fonts) throw new ClientError("A lista de fontes do computador só existe no KERYX do computador.", 501);
+        const res = await bridge.fonts.list();
+        if (res.error) throw new ClientError(res.error.message, res.error.status);
+        return res.data;
+    }
+    async function SystemFontFile({ id } = {}) {
+        if (!bridge.fonts) throw new ClientError("A lista de fontes do computador só existe no KERYX do computador.", 501);
+        const res = await bridge.fonts.read(id);
+        if (res.error) throw new ClientError(res.error.message, res.error.status);
+        return new Blob([res.data]);
+    }
+
     const integrations = {
         Core: {
             UploadFile,
             FileInfo,
+            SystemFonts,
+            SystemFontFile,
             // AI features are out of v1 (docs/desktop-architecture.md, section 11).
             InvokeLLM: notInDesktop("A IA"),
             SendEmail: notInDesktop("Envio de email"),

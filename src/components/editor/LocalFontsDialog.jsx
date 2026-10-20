@@ -2,18 +2,20 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Btn, Field } from "../console/kx";
 import { useDialogFocus } from "../console/useDialogFocus";
-import { cssFamily, wantedFace, WANTED_FACES, familyFromFileName } from "@/lib/fonts";
+import { keryx } from "@/api/keryxClient";
+import { cssFamily, familyFromFileName } from "@/lib/fonts";
 import { fold } from "@/lib/bibleSearch";
 
-// "Fontes do computador" (Rodada HF1, the owner's mockup H3): the families
-// installed on this PC (Local Font Access, window.queryLocalFonts — only
-// the console and a detached page may call it, electron/main.cjs; it needs
-// a click, so the list is read when the dialog opens from the picker's
-// menu), each row drawn in its own family, a search field, the preview
-// line "Grande é o Senhor" in the chosen one, Usar esta fonte · Cancelar
-// in Windows order (C-74) and the licence line. Usar hands the chosen
-// family's faces (Regular, Bold, Italic, Bold Italic, at most four) to the
-// picker, which copies them into the church's library.
+// "Fontes do computador" (Rodada HF1, the owner's mockup H3): every family
+// installed on this PC, as Holyrics lists them (owner 2026-10-20). KERYX
+// reads the font folders itself (electron/systemFonts.cjs, through
+// integrations.Core.SystemFonts), so there is no permission and no click
+// to wait for. Each row is drawn in its own family, with a search field,
+// the preview line "Grande é o Senhor" in the chosen one, Usar esta fonte
+// · Cancelar in Windows order (C-74) and the licence line. Usar hands the
+// chosen family's faces (Regular, Bold, Italic, Bold Italic first, at most
+// four) to the picker, which copies them into the church's library. A
+// face whose licence forbids embedding is listed but not copied.
 //
 // mode "file": the same frame for a font FILE the operator picked
 // ("Arquivo de fonte…"): the family's name from the file's name, editable,
@@ -21,26 +23,11 @@ import { fold } from "@/lib/bibleSearch";
 // taken off on close).
 export const PREVIEW_TEXT = "Grande é o Senhor";
 export const LICENCE = "A fonte é copiada para a pasta de mídia da igreja, vai para os outros computadores e para as telas na rede. O KERYX nunca baixa fontes da internet. Fontes que vêm com o Windows ou foram compradas têm licença própria; as livres (OFL, como as do Google Fonts instaladas) são seguras.";
-const NO_API = "Este computador não oferece a lista de fontes instaladas. Use \"Arquivo de fonte…\" e escolha o arquivo .ttf ou .otf da fonte (em C:\\Windows\\Fonts).";
-const DENIED = "O KERYX não recebeu permissão para ler as fontes do computador. Use \"Arquivo de fonte…\".";
-
-// The PC's families with the faces a theme draws, from the API's list.
-export function groupLocalFonts(list = []) {
-    const map = new Map();
-    for (const f of list) {
-        const family = String(f?.family || "").trim();
-        if (!family) continue;
-        if (!map.has(family)) map.set(family, { family, faces: new Map(), count: 0 });
-        const g = map.get(family);
-        g.count += 1;
-        const face = wantedFace(f.style);
-        if (face && !g.faces.has(face)) g.faces.set(face, f);
-    }
-    return [...map.values()]
-        .map((g) => ({ family: g.family, count: g.count, faces: WANTED_FACES.filter((n) => g.faces.has(n)).map((n) => ({ name: n, data: g.faces.get(n) })) }))
-        .filter((g) => g.faces.length)
-        .sort((a, b) => a.family.localeCompare(b.family, "pt-BR"));
-}
+const NO_LIST = "Use \"Arquivo de fonte…\" e escolha o arquivo .ttf ou .otf da fonte (em C:\\Windows\\Fonts).";
+const RESTRICTED = "a licença desta fonte não permite copiá-la";
+// The faces a family brings: the ones its licence lets travel, the four a
+// theme draws first (the list comes sorted so), at most four.
+export const facesToCopy = (family) => (family?.faces || []).filter((f) => !f.restricted).slice(0, 4);
 
 const PREVIEW_FAMILY = "keryx-font-file-preview";
 
@@ -60,21 +47,13 @@ export default function LocalFontsDialog({ mode = "pc", file = null, onAnswer })
     useEffect(() => {
         if (mode !== "pc") return undefined;
         let alive = true;
-        if (typeof window.queryLocalFonts !== "function") { setError(NO_API); setList([]); return undefined; }
-        window.queryLocalFonts()
-            .then(async (fonts) => {
+        keryx.integrations.Core.SystemFonts()
+            .then((families) => {
                 if (!alive) return;
-                const grouped = groupLocalFonts(fonts);
-                // Denied, Chromium answers an empty list rather than refusing.
-                if (!grouped.length) {
-                    const state = await navigator.permissions?.query?.({ name: "local-fonts" }).then((p) => p.state).catch(() => "");
-                    if (state === "denied") setError(DENIED);
-                }
-                if (!alive) return;
-                setList(grouped);
+                setList(Array.isArray(families) ? families : []);
                 setTimeout(() => searchRef.current?.focus(), 0);
             })
-            .catch((err) => { if (!alive) return; setError(err?.name === "NotAllowedError" || err?.name === "SecurityError" ? DENIED : `Não foi possível ler as fontes: ${err?.message || err}`); setList([]); });
+            .catch((err) => { if (!alive) return; setError(`${err?.message || "Não foi possível ler as fontes do computador."} ${NO_LIST}`); setList([]); });
         return () => { alive = false; };
     }, [mode]);
 
@@ -96,14 +75,14 @@ export default function LocalFontsDialog({ mode = "pc", file = null, onAnswer })
     }, [list, q]);
     const chosen = mode === "pc" ? list?.find((g) => g.family === picked) || null : null;
     const previewFamily = mode === "file" ? PREVIEW_FAMILY : picked;
-    const canUse = mode === "file" ? Boolean(name.trim()) && !busy : Boolean(chosen) && !busy;
+    const canUse = mode === "file" ? Boolean(name.trim()) && !busy : facesToCopy(chosen).length > 0 && !busy;
 
     const use = async () => {
         if (!canUse) return;
         setBusy(true);
         try {
             if (mode === "file") await onAnswer({ family: name.trim(), file });
-            else await onAnswer({ family: chosen.family, faces: chosen.faces });
+            else await onAnswer({ family: chosen.family, faces: facesToCopy(chosen) });
         } finally { setBusy(false); }
     };
     const cancel = () => onAnswer(null);
@@ -135,15 +114,19 @@ export default function LocalFontsDialog({ mode = "pc", file = null, onAnswer })
                         <div className="fd-list" role="listbox" aria-label="Fontes instaladas neste computador">
                             {list === null && <div className="kx-meta fd-empty">Lendo as fontes do computador…</div>}
                             {list !== null && error && <div className="kx-meta fd-empty kx-warn">{error}</div>}
-                            {list !== null && !error && !shown.length && <div className="kx-meta fd-empty">{q ? `Nenhuma fonte com "${q}"` : "Nenhuma fonte com Regular, Bold ou Italic foi encontrada."}</div>}
-                            {shown.map((g) => (
-                                <div key={g.family} role="option" aria-selected={g.family === picked} tabIndex={0} className={`fd-row kx-t ${g.family === picked ? "is-on" : ""}`}
-                                    onClick={() => setPicked(g.family)} onDoubleClick={() => { setPicked(g.family); setTimeout(use, 0); }}
-                                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(g.family); } }}>
-                                    <span className="fd-name" style={{ fontFamily: cssFamily(g.family) }}>{g.family}</span>
-                                    <span className="fd-faces kx-meta">{g.faces.map((f) => f.name).join(", ")}</span>
-                                </div>
-                            ))}
+                            {list !== null && !error && !shown.length && <div className="kx-meta fd-empty">{q ? `Nenhuma fonte com "${q}"` : "Nenhuma fonte encontrada nas pastas de fontes do Windows."}</div>}
+                            {shown.map((g) => {
+                                const locked = !facesToCopy(g).length;
+                                return (
+                                    <div key={g.family} role="option" aria-selected={g.family === picked} aria-disabled={locked || undefined} tabIndex={0} className={`fd-row kx-t ${g.family === picked ? "is-on" : ""} ${locked ? "is-locked" : ""}`}
+                                        title={locked ? `${g.family}: ${RESTRICTED}` : g.family}
+                                        onClick={() => setPicked(g.family)} onDoubleClick={() => { if (locked) return; setPicked(g.family); setTimeout(use, 0); }}
+                                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(g.family); } }}>
+                                        <span className="fd-name" style={{ fontFamily: cssFamily(g.family) }}>{g.family}</span>
+                                        <span className="fd-faces kx-meta">{locked ? RESTRICTED : g.faces.map((f) => f.name).join(", ")}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </>
                 ) : (
@@ -154,6 +137,7 @@ export default function LocalFontsDialog({ mode = "pc", file = null, onAnswer })
                         <span className="kx-meta" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file?.name}</span>
                     </div>
                 )}
+                {mode === "pc" && list?.length > 0 && <span className="kx-meta fd-count">{shown.length === list.length ? `${list.length} fontes neste computador` : `${shown.length} de ${list.length} fontes`}</span>}
                 <div className="fd-preview" style={{ fontFamily: previewFamily ? cssFamily(previewFamily) : undefined }} aria-label="Exemplo">{PREVIEW_TEXT}</div>
                 <div className="acts">
                     <Btn kind="brand" disabled={!canUse} onClick={use}>{busy ? "Copiando…" : "Usar esta fonte"}</Btn>

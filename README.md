@@ -205,8 +205,8 @@ local database with no internet. Other versions (ARA, ARC, NAA, NTLH, BKJ
 Geist ships with the app and is every theme's "Padrão (Geist)"; the seven
 other KERYX choices (Serifa, Arial, Georgia…) are the device's own fonts.
 A theme can also use **a font of the church**: in the Editor de temas, Fonte
-› Trazer › "Do computador…" lists the fonts installed on the PC (the
-church's computer, like Holyrics) and "Arquivo de fonte…" takes a .ttf/.otf/
+› Trazer › "Do computador…" lists every font installed on the PC, read by
+KERYX from the Windows font folders as Holyrics does (no permission to grant) and "Arquivo de fonte…" takes a .ttf/.otf/
 .woff2/.woff file. The chosen font is copied into the media library (one
 Media row per face, category `font`), so it syncs to the other church
 computers and is served to every output window and network screen — the

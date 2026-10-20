@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { THEME_FONTS } from "@/lib/console/themes";
 import { FONT_MAP } from "@/lib/deviceStyles";
-import { fontStack, isFontKey, fontKind, findFontRow, weightOfStyle, faceFromFileName, KIND_EXTENSION, MAX_FONT_BYTES, FONT_ACCEPT, FONT_CATEGORY, COLLECTION_HINT, TOO_BIG_HINT, NOT_A_FONT_HINT } from "@/lib/fonts";
+import { fontStack, isFontKey, fontKind, findFontRow, faceFromFileName, KIND_EXTENSION, MAX_FONT_BYTES, FONT_ACCEPT, FONT_CATEGORY, COLLECTION_HINT, TOO_BIG_HINT, NOT_A_FONT_HINT } from "@/lib/fonts";
 import { FONTS_KEY } from "@/hooks/useFonts";
 import { useChurchFonts } from "../console/useConsoleData";
 import LocalFontsDialog from "./LocalFontsDialog";
@@ -107,7 +107,8 @@ export default function FontPicker({ value, onChange, say, label = "Fonte do tem
         try {
             let made;
             if (r.faces) {
-                const faces = r.faces.map((f) => ({ name: f.name, blob: () => f.data.blob(), ...weightOfStyle(f.name) }));
+                // The PC's faces, read by KERYX (electron/systemFonts.cjs).
+                const faces = r.faces.map((f) => ({ name: f.name, weight: f.weight, style: f.style, blob: () => keryx.integrations.Core.SystemFontFile({ id: f.id }) }));
                 made = await copyFaces(faces, rows, { family: r.family, origin: "pc" });
             } else {
                 const face = faceFromFileName(r.file.name);

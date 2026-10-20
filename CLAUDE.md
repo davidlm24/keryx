@@ -1113,10 +1113,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `pc_arquivo`): a theme's `font_family` is a KERYX key (`FONT_MAP`: sans =
   Geist, the other seven the device's fonts, "· do aparelho") or the
   **family name of a font the church brought in** — from the PC's installed
-  fonts (Local Font Access, `window.queryLocalFonts`, the "Fontes do
-  computador" dialog, `editor/LocalFontsDialog.jsx`; it needs a click, so
-  the list is read as the dialog opens) or from a font file (.ttf/.otf/
-  .woff2/.woff). Either way the file is **copied into the media library**
+  fonts (the "Fontes do computador" dialog, `editor/LocalFontsDialog.jsx`)
+  or from a font file (.ttf/.otf/.woff2/.woff). **KERYX lists the PC's
+  fonts itself, as Holyrics does** (owner 2026-10-20): the main process
+  reads `%WINDIR%Fonts` and the per-user
+  `%LOCALAPPDATA%MicrosoftWindowsFonts` (`electron/systemFonts.cjs`,
+  tested; IPC `keryx:fonts` list/read, `integrations.Core.SystemFonts` /
+  `SystemFontFile`; the preview server serves the same module), only the
+  table directory, `name` and OS/2 of each file: a family is the Windows
+  family (nameID 1, so "Segoe UI Semibold" is its own entry), a face its
+  style (nameID 2), a `.ttc` collection's face is cut out into a font of
+  its own when read, a face whose licence forbids embedding (fsType
+  restricted) is listed but never copied, and a face is read only by an id
+  from the last scan. No page uses Local Font Access: the `local-fonts`
+  permission is refused everywhere (main.cjs). Either way the file is **copied into the media library**
   (`UploadFile`, as bytes) as **Media rows of category `font`, one per
   face** (Regular, Bold, Italic, Bold Italic at most; `Media.font = {
   family, weight, style, face, origin }`, `title` = the family), so it syncs
@@ -1134,11 +1144,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   also `FontSelect` in the aviso and song editors) and Configurações ›
   Temas e fundos › **Fontes da igreja** (Excluir… via useConfirm, refused
   while a theme names the family). A font dropped in the Mídia is refused
-  (`mediaTypeOf` "font", `FONTS_IN_EDITOR_HINT`); a `.ttc` collection is
-  refused by the copy (`COLLECTION_HINT`), 20 MB is the cap. The
-  `local-fonts` permission is granted only to `/Console` and `/Janela`
-  from the app's origin (`setPermissionCheckHandler` /
-  `setPermissionRequestHandler` in main.cjs), never to an output. Verificar
+  (`mediaTypeOf` "font", `FONTS_IN_EDITOR_HINT`); a `.ttc` file picked
+  with "Arquivo de fonte…" is refused by the copy (`COLLECTION_HINT`), 20 MB
+  is the cap. Verificar
   says per church font whether it is copied, still coming (Baixando…) or
   gone. `useFitWidth` re-measures on `document.fonts` `loadingdone`, so a
   font that arrives late re-fits the line.
