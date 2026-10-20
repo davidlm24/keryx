@@ -120,10 +120,11 @@
    whatever the console's own offset. */
 .console .ctx-scrim { position: fixed; z-index: 45; }
 /* Every popover and menu (Ver, Saídas, the (+) menus, right-click menus,
-   the tabs lists) stands out from the panels under it: a stronger ring and
-   a deeper shadow than the design system's --shadow-popover (owner 2026-10-14,
-   who liked the framed menus of the proposal). */
-.console .kx-pop { box-shadow: 0 0 0 1px var(--line-strong), 0 12px 32px #000000a6; }
+   the tabs lists) stands out from the panels under it: a deeper shadow than
+   the design system's --shadow-popover (owner 2026-10-14, who liked the
+   framed menus of the proposal), on the soft --line-overlay ring of
+   everything that floats (Rodada N4). */
+.console .kx-pop { box-shadow: 0 0 0 1px var(--line-overlay), 0 12px 32px #000000a6; }
 /* The right-click menu opens at the pointer, over the row it acts on: a
    fainter ring and a smaller, lighter shadow than the other menus' frame
    (owner 2026-10-16, Rodada E0), so it does not stamp a hard box there. */
@@ -701,13 +702,13 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    fades (.is-gone). Built on <body>, outside .console, so it reads the
    tokens from :root. */
 .drag-card { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; will-change: transform; }
-.drag-card-in { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 100%; padding: 0 var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font: 500 13px/18px var(--font-sans); white-space: nowrap; box-shadow: 0 0 0 1px var(--line-strong), 0 14px 30px #000000a0; transform: scale(1.03); transition: transform 120ms var(--ease-out), box-shadow 180ms var(--ease-out); animation: kx-lift 120ms var(--ease-out); }
-@keyframes kx-lift { from { transform: none; box-shadow: 0 0 0 1px var(--line-strong); } }
+.drag-card-in { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 100%; padding: 0 var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font: 500 13px/18px var(--font-sans); white-space: nowrap; box-shadow: 0 0 0 1px var(--line-overlay), 0 14px 30px #000000a0; transform: scale(1.03); transition: transform 120ms var(--ease-out), box-shadow 180ms var(--ease-out); animation: kx-lift 120ms var(--ease-out); }
+@keyframes kx-lift { from { transform: none; box-shadow: 0 0 0 1px var(--line-overlay); } }
 .drag-card-in .kx-i { flex: none; color: var(--brand); }
 .drag-card-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .drag-card-time { flex: none; color: var(--fg-3); font-size: 11px; font-variant-numeric: tabular-nums; }
 .drag-card.is-land { transition: transform 180ms var(--ease-out), width 180ms var(--ease-out), height 180ms var(--ease-out); }
-.drag-card.is-land .drag-card-in { transform: none; box-shadow: 0 0 0 1px var(--line-strong), 0 2px 6px #00000059; }
+.drag-card.is-land .drag-card-in { transform: none; box-shadow: 0 0 0 1px var(--line-overlay), 0 2px 6px #00000059; }
 .drag-card.is-gone { opacity: 0; transition: opacity 120ms var(--ease-out); }
 .drag-card.is-gone .drag-card-in { transform: scale(0.96); }
 @media (prefers-reduced-motion: reduce) { .drag-card, .drag-card-in { transition: none !important; animation: none !important; } }
@@ -899,7 +900,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console :where(.cfg .cfg-select, .cfg-inline, .pl-pick, .fg-input, .mv-rename, .qt-min, .sync-time, .layerprops :is(select, input:not([type])), .bver > select) { height: 24px; padding: 0 6px; }
 .console :where(.ed-text, .op-notes-f, .lyr-paste textarea) { height: auto; }
 .console :where(.ed-text, .op-notes-f, .lyr-paste textarea)::placeholder { color: var(--fg-3); }
-.console :where(.pl-input, .ed-text, .op-notes-f, .lyr-paste textarea, .cfg-select, .cfg-inline, .pl-pick, .fg-input, .mv-rename, .qt-min, .sync-time, .layerprops :is(select, input:not([type])), .bver > select):hover:not(:disabled, :focus-visible, [aria-invalid="true"], .is-bad) { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console :where(.pl-input, .ed-text, .op-notes-f, .lyr-paste textarea, .cfg-select, .cfg-inline, .pl-pick, .fg-input, .mv-rename, .qt-min, .sync-time, .layerprops :is(select, input:not([type])), .bver > select):hover:not(:disabled, :focus-visible, [aria-invalid="true"], .is-bad) { box-shadow: inset 0 0 0 1px var(--line); }
 .kx.console :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea):focus-visible { box-shadow: none; outline: 1px solid var(--fg-3); outline-offset: -1px; }
 .console :where(.pl-input, .ed-text, .op-notes-f, .lyr-paste textarea, .cfg-select, .cfg-inline, .pl-pick, .fg-input, .mv-rename, .qt-min, .sync-time, .layerprops :is(select, input:not([type])), .bver > select):disabled { opacity: var(--dim); }
 .console :where(.pl-input, .ed-text, .cfg-select, .cfg-inline, .fg-input, .mv-rename, .qt-min, .sync-time)[aria-invalid="true"] { box-shadow: inset 0 0 0 1px var(--warn); outline-color: var(--warn); }
@@ -940,19 +941,19 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 
 /* Lyrics from the web (LyricsSearch): the Holyrics-style search dialog. */
 .console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); color: var(--fg-1); }
-.console .lyr-h { display: flex; align-items: center; gap: var(--space-2); height: 40px; padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid var(--line); flex: none; }
+.console .lyr-h { display: flex; align-items: center; gap: var(--space-2); height: 40px; padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid var(--line-soft); flex: none; }
 .console .lyr-q { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); flex: none; }
 .console .lyr-q .kx-field { flex: 1; height: 36px; background: var(--bg-3); }
 .console .lyr-q .kx-field input { font-size: 14px; }
-.console .lyr-b { flex: 1; min-height: 0; display: flex; border-top: 1px solid var(--line); }
-.console .lyr-list { flex: 0 0 42%; min-width: 0; overflow: auto; border-right: 1px solid var(--line); padding: var(--space-1); }
+.console .lyr-b { flex: 1; min-height: 0; display: flex; border-top: 1px solid var(--line-soft); }
+.console .lyr-list { flex: 0 0 42%; min-width: 0; overflow: auto; border-right: 1px solid var(--line-soft); padding: var(--space-1); }
 .console .lyr-prev { flex: 1; min-width: 0; overflow: auto; padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .console .lyr-t { font-size: 14px; }
 .console .lyr-t b { font-weight: 500; }
 .console .lyr-text { margin: 0; font: inherit; font-size: 13px; line-height: 19px; white-space: pre-wrap; color: var(--fg-1); user-select: text; }
 .console .lyr-paste { display: flex; flex-direction: column; gap: var(--space-2); flex: 1; min-height: 0; align-items: flex-start; }
 .console .lyr-paste textarea { width: 100%; flex: 1; min-height: 180px; resize: none; background: var(--bg-3); padding: var(--space-2); font-size: 13px; line-height: 19px; user-select: text; }
-.console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line); flex: none; font-size: 12px; }
+.console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line-soft); flex: none; font-size: 12px; }
 .console .lyr-legal { max-width: 360px; }
 
 /* ---------- A janela (Rodada C, owner 2026-10-14: "uma janela, com Voltar") ---------- */
@@ -999,7 +1000,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console.janela .win-bar :is(button, input, select, textarea, a, [role], .win-tools) { -webkit-app-region: no-drag; }
 .console .win-dialog.is-detached { position: relative; left: auto; top: auto; transform: none; width: auto; height: auto; flex: 1; min-height: 0; border-radius: 0; box-shadow: none; transition: none; }
 /* The bar: the Configurações header, now every page's. */
-.console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
+.console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line-soft); }
 /* The title gives way first (an ellipsis; its whole text is the page) so the
    tools and actions never leave the bar (D5: Relatórios at 960 px). */
 .console .win-bar .win-title { flex: 0 1 auto; color: var(--fg-1); font-size: 12px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1032,7 +1033,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg-results mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(--fg-1); border-radius: 2px; padding: 0 1px; }
 .console .cfg .is-flash { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 16%, transparent); border-radius: var(--radius-control); transition: background .4s, box-shadow .4s; }
 .console .cfg-dialog-b { flex: 1; min-height: 0; display: flex; background: var(--bg-1); }
-.console .cfg-nav { flex: 0 0 240px; min-width: 0; padding: var(--space-1) 0; border-right: 1px solid var(--line); overflow: auto; }
+.console .cfg-nav { flex: 0 0 240px; min-width: 0; padding: var(--space-1) 0; border-right: 1px solid var(--line-soft); overflow: auto; }
 .console .cfg-dialog-b .cfg { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .console .cfg-dialog-b .cfg > .kx-panel { flex: 1; border-radius: 0; }
 @media (max-width: 760px) { .console .cfg-nav { flex-basis: 180px; } }
@@ -1062,7 +1063,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    inside one keeps the same 12 px. */
 .console .cfg-group { display: flex; flex-direction: column; min-width: 0; }
 .console .cfg-group + .cfg-group, .console .listhead + .cfg-group, .console .cfg-group + .listhead { margin-top: var(--space-3); }
-.console .cfg-group + .cfg-group { border-top: 1px solid var(--line); padding-top: var(--space-1); }
+.console .cfg-group + .cfg-group { border-top: 1px solid var(--line-soft); padding-top: var(--space-1); }
 .console .cfg-group-h { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); margin: 0; padding: 0 var(--space-3) 0 var(--space-1); min-width: 0; font: inherit; }
 .console .cfg-group-t { display: inline-flex; align-items: center; gap: var(--space-1); height: 24px; max-width: 100%; min-width: 0; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
 .console button.cfg-group-t { cursor: pointer; }
@@ -1491,7 +1492,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 }
 .console .upd-line { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .notifs .note { display: grid; grid-template-columns: 16px 1fr 22px; gap: var(--space-2); align-items: start; padding: var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); }
-.console .notifs .note + .note { border-top: 1px solid var(--line); }
+.console .notifs .note + .note { border-top: 1px solid var(--line-soft); }
 .console .notifs .note > .kx-i { margin-top: 1px; color: var(--fg-3); }
 .console .notifs .note.is-warn > .kx-i { color: var(--warn); }
 .console .notifs .note.is-update > .kx-i { color: var(--prev); }
@@ -1499,7 +1500,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .notifs .note-b { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .console .notifs .note-t { color: var(--fg-1); font-size: 13px; font-weight: 500; }
 .console .notifs .note-d { font-size: 12px; line-height: 16px; white-space: pre-line; overflow-wrap: anywhere; }
-.console .upd-notes { display: flex; flex-direction: column; gap: 4px; padding-top: var(--space-1); border-top: 1px solid var(--line); }
+.console .upd-notes { display: flex; flex-direction: column; gap: 4px; padding-top: var(--space-1); border-top: 1px solid var(--line-soft); }
 .console .upd-notes-t { max-height: 180px; overflow: auto; white-space: pre-line; overflow-wrap: anywhere; color: var(--fg-2); font-size: 12px; line-height: 17px; }
 .console .notifs .note-f { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: 4px; }
 .console .notifs .note-x { height: 22px; width: 22px; }
@@ -1710,14 +1711,14 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    127.0.0.1 media URL typed into the field it lands on. */
 .kx img { -webkit-user-drag: none; }
 .console .lib-free { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 11px; color: var(--fg-2); margin-left: var(--space-2); }
-.console .lib-side { flex: 0 0 340px; min-width: 0; overflow: auto; border-left: 1px solid var(--line); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.console .lib-side { flex: 0 0 340px; min-width: 0; overflow: auto; border-left: 1px solid var(--line-soft); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .console .lib-sample { width: 100%; }
 .console .lib-label { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
 .console .lib-label .t { color: var(--fg-1); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .lib-side .fg-detail { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--space-2); align-items: center; }
 .console .lib-side .fg-detail .k { font-size: 11px; color: var(--fg-3); }
 .console .lib-side .fg-detail .frm-v { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
-.console .lib-foot { flex: none; height: 44px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border-top: 1px solid var(--line); }
+.console .lib-foot { flex: none; height: 44px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border-top: 1px solid var(--line-soft); }
 @media (max-width: 900px) { .console .lib-side { flex-basis: 260px; } }
 /* What background is chosen, and the library button (library/BgChip.jsx). */
 .console .bgchip { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
