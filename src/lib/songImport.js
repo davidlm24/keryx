@@ -4,6 +4,7 @@
 import { isChordLine, stripLine, stripChords, hasInlineChords } from "./chords.js";
 import { generateSlides } from "../utils/songSections.js";
 import { isOpenLyrics, parseOpenLyrics } from "./songFormats/openlyrics.js";
+import { isHolyrics, parseHolyrics } from "./songFormats/holyrics.js";
 import { songKey } from "../../shared/syncDuplicates.mjs";
 
 // ChordPro uses directives in braces: {title:}, {c:}, {soc}, {eoc}, {sov}, {eov}.
@@ -182,7 +183,12 @@ export function songRow(parsed, { name = "", lines = 0 } = {}) {
 export function songsFromFile(name, raw, { lines = 0 } = {}) {
     const text = decodeSongBytes(raw);
     const kind = sniffSongFile(name, text);
-    if (kind === "json") return songsFromJson(text);
+    if (kind === "json") {
+        let data;
+        try { data = JSON.parse(text); } catch { throw new Error("Arquivo JSON inválido."); }
+        if (isHolyrics(data)) return parseHolyrics(data).map((s) => songRow(s, { name, lines }));
+        return songsFromJson(text);
+    }
     if (kind === "openlyrics") return parseOpenLyrics(text).map((s) => songRow(s, { name, lines }));
     const song = songFromText(text, { name, lines });
     return song.lyrics ? [song] : [];
