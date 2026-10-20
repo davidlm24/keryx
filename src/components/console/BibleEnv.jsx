@@ -10,7 +10,8 @@ import BibleSearchPanel, { useBibleSearch } from "./BibleSearchPanel";
 import BibleCompareView from "./BibleCompareView";
 import { useBibleNotes } from "./useBibleNotes";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import { bibleBooks, BIBLE_VERSIONS, parseReference } from "@/lib/bibleBooks";
+import { bibleBooks, BIBLE_VERSIONS, parseReference, editionCredit } from "@/lib/bibleBooks";
+import { useBibleEditions } from "./useBibleEditions";
 import { readChapter, preferredVersion, installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
 import { stageFromVerses } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
@@ -352,6 +353,10 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             : source === "online" ? { text: `${ver} · pela internet.${fellBack ? "" : ` Sem internet, os capítulos ainda não lidos vêm de uma versão instalada.${canInstall(ver) ? " Instale-a pelo + para usar sem internet." : ""}`}` }
                 : null;
     const others = installed.filter((v) => v !== (version || wanted));
+    // The list and the church's own editions; an open one's credit is the
+    // select's tooltip (owner 2026-10-20, b3 = sobre: Sobre says it too).
+    const editions = useBibleEditions();
+    const credit = editionCredit(editions.find((v) => v.id === (ver || wanted)));
     // What the No ar pill's dot says (the Programa's tones, ProgramaPill).
     const airCap = captionParts(c.cur).title;
     const airIdle = airCap === "nada" && !airInPlayer(c.cur);
@@ -367,8 +372,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const modules = {
         books: (
             <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={<>
-                <span className="bver" title={badge ? badge.text : "Versão da Bíblia"}>
-                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
+                <span className="bver" title={[badge?.text, credit].filter(Boolean).join(" · ") || "Versão da Bíblia"}>
+                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"}>{editions.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
                     {badge && <i className="bver-dot" aria-hidden="true" />}
                 </span>
                 <Seg small label="Nomes dos livros" value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />

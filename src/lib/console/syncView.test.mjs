@@ -83,8 +83,12 @@ test("the Bible editions the other computers have and this one lacks", () => {
     assert.equal(biblesMissingHere(st([]), ["NVI"]), null, "alone in the folder");
     assert.equal(biblesMissingHere(st([pc("b", ["NVI"])]), ["nvi"]), null, "nothing missing");
     assert.deepEqual(biblesMissingHere(st([pc("b", ["ACF", "NVI"])]), ["ACF"]), {
-        elsewhere: ["ACF", "NVI"], missing: ["NVI"], line: "Instaladas no outro computador: ACF e NVI. Falta a NVI aqui.",
+        elsewhere: ["ACF", "NVI"], missing: ["NVI"], own: [], line: "Instaladas no outro computador: ACF e NVI. Falta a NVI aqui.",
     });
+    // An edition of the church's own: asked for by its file, never downloaded.
+    const bkj = biblesMissingHere(st([pc("b", ["BKJ", "NVI"])]), ["NVI"]);
+    assert.deepEqual(bkj.own, ["BKJ"]);
+    assert.equal(bkj.line, "Instaladas no outro computador: BKJ e NVI. Falta a BKJ aqui. A BKJ é uma edição da igreja: instale-a com o mesmo arquivo, em Instalar uma edição própria…");
     const many = biblesMissingHere(st([pc("b", ["NVI"]), pc("c", ["AA", "NVI"]), pc("d", ["ACF"], { verified: false }), pc("e", ["ACF"], { removed: { at: "x" } })]), []);
     assert.deepEqual(many.missing, ["AA", "NVI"], "computers without the code or taken out do not count");
     assert.equal(many.line, "Instaladas nos outros computadores: AA e NVI. Faltam a AA e a NVI aqui.");

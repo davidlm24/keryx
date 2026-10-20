@@ -916,6 +916,7 @@ const NOT_A_FILE = {
     "User.logo_size": "a size",
     "User.media_transition": "a transition's name",
     "OutputPref.icon": "a design-system icon's name",
+    "BibleEdition.file_name": "the name of the file an own Bible came from, shown in its row; the file is never copied",
 };
 // Fields of the entities kept on each computer that hold files: they stay
 // there on purpose (syncScope.cjs ON_EACH_COMPUTER).

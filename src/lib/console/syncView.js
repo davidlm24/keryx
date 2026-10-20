@@ -1,5 +1,6 @@
 // Configurações › Sincronização: what the main process's status
 // (electron/syncControl.cjs `status`) says, in the section's words. Pure.
+import { BIBLE_VERSIONS } from "../bibleBooks.js";
 
 // "há 12 s", "há 3 min", "há 2 horas", "ontem", "há 9 dias".
 export function ago(iso, nowMs = Date.now()) {
@@ -138,7 +139,11 @@ export function biblesMissingHere(st, here) {
     if (!missing.length) return null;
     const where = others.length === 1 ? "no outro computador" : "nos outros computadores";
     const lack = `${missing.length === 1 ? "Falta" : "Faltam"} ${editionsList(missing, true)} aqui.`;
-    return { elsewhere, missing, line: `Instaladas ${where}: ${editionsList(elsewhere)}. ${lack}` };
+    // An edition of the church's own (installed from its file, not in the
+    // list) never downloads: this computer needs the same file.
+    const own = missing.filter((v) => !BIBLE_VERSIONS.some((x) => x.id === v));
+    const ask = own.length ? ` ${own.length === 1 ? `A ${own[0]} é uma edição da igreja: instale-a` : `${editionsList(own)} são edições da igreja: instale-as`} com o mesmo arquivo, em Instalar uma edição própria…` : "";
+    return { elsewhere, missing, own, line: `Instaladas ${where}: ${editionsList(elsewhere)}. ${lack}${ask}` };
 }
 
 // Configurações › Sincronização › Código da igreja, the group's summary while

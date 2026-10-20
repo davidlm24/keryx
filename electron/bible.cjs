@@ -298,6 +298,14 @@ function createOwnInstaller(store, { newToken = () => crypto.randomUUID() } = {}
             pending = { token: newToken(), parsed, fileName: String(fileName).split(/[\\/]/).pop() };
             return { token: pending.token, file: pending.fileName, size: Buffer.byteLength(Buffer.from(bytes)), ...describe(parsed) };
         },
+        // The dialog's read: a file that is not a Bible comes back as
+        // { file, refused } (what to do instead), not as a failure.
+        async inspect(bytes, fileName = "") {
+            try { return await this.read(bytes, fileName); } catch (err) {
+                if (err instanceof BibleError && err.status === 400) { pending = null; return { file: String(fileName).split(/[\\/]/).pop(), refused: err.message }; }
+                throw err;
+            }
+        },
         // { token, sigla, name, rights, replace } -> { version, verses, name }.
         // `replace`: the own edition whose file is being swapped (its sigla stays).
         install({ token, sigla, name, rights, replace = null } = {}) {

@@ -127,6 +127,10 @@ test("an edition of the church's own: read, then installed only with the church'
 test("an own file that is not a Bible, or too short, is refused before anything is asked", async () => {
     const own = createOwnInstaller(fresh());
     await assert.rejects(own.read(Buffer.from("%PDF-1.4"), "bkj.pdf"), /não PDF nem Word/);
+    // The dialog asks through inspect: the refusal comes back with the file's name.
+    const pdf = await own.inspect(Buffer.from("%PDF-1.4"), "C:\\x\\bkj.pdf");
+    assert.equal(pdf.file, "bkj.pdf");
+    assert.match(pdf.refused, /não PDF nem Word/);
     await assert.rejects(own.read(Buffer.from("x"), "bkj.bblx"), /e-Sword/);
     await assert.rejects(own.read(await vplZip("x", { perBook: 20 }), "curta.zip"), /não parece uma Bíblia inteira/);
     // The New Testament alone is a reading of its own (the dialog warns).

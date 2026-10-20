@@ -120,6 +120,8 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
                 const plan = editionPlan(v, Object.keys(installed));
                 const offline = plan.fallback ? `sem internet, os capítulos ainda não lidos vêm da ${plan.fallback}` : "sem internet, não aparece";
                 const fix = info?.install ? { label: installing === v ? "Instalando…" : "Instalar", run: () => installBible(v) } : null;
+                // An edition of the church's own: its file, never a download.
+                if (!count && !info) { bible.push(line(v, `Edição da igreja, não instalada aqui · instale com o mesmo arquivo em Configurações › Bíblia e músicas · usando a ${plan.use}`, "warn", null, "book")); continue; }
                 if (count) bible.push(line(v, `Instalada para uso sem internet · ${count.toLocaleString("pt-BR")} versículos`, "ok", null, "book"));
                 else if (plan.online) bible.push(line(v, `${info?.install ? "Não instalada" : "Só existe pela internet"} · ${offline}`, navigator.onLine || plan.fallback ? "warn" : "miss", fix, "book"));
                 else bible.push(line(v, `Não instalada · usando a ${plan.use}`, "warn", fix, "book"));

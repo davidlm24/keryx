@@ -79,7 +79,8 @@ async function player({ d, live, args }) {
 async function reference(d, args) {
     const ref = refFromArgs(args);
     if (!ref) return { error: refuse(args.ref !== undefined ? `Não entendi "${args.ref}". Escreva como jo 3 16.` : "Referência inválida.", 400) };
-    if (args.version && !BIBLE_VERSIONS.some((v) => v.id === args.version)) return { error: fail("not_found", `A versão ${args.version} não existe no KERYX.`) };
+    // An edition of the list, or one of the church's own installed here.
+    if (args.version && !BIBLE_VERSIONS.some((v) => v.id === args.version) && !(await d.bible?.())?.installed?.includes(args.version)) return { error: fail("not_found", `A versão ${args.version} não existe no KERYX.`) };
     const { version, verses } = await d.referenceVerses(ref, args.version || null);
     if (!verses?.length) return { error: notInBible(ref, version) };
     const nums = referenceNums(ref);

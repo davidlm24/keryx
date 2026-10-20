@@ -373,7 +373,7 @@ async function readBible(bytes, name = "") {
     if (isSqlite(buf)) parsed = fromMySword(buf);
     else if (isZip(buf)) parsed = await fromZip(buf);
     else parsed = fromText(decode(buf));
-    return { language: null, title: null, ...parsed, language: parsed.language || guessLanguage(parsed.verses) };
+    return { title: null, ...parsed, language: parsed.language || guessLanguage(parsed.verses) };
 }
 
 module.exports = {

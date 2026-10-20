@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useUser } from "@/hooks/useUser";
 import { Btn } from "../kx";
 import { FormRow, useBridge, usePoll } from "./parts";
+import { BIBLE_VERSIONS, editionCredit } from "@/lib/bibleBooks";
 
 // The font's license ships in the build (public/fonts, see src/fonts.css).
 const FONT_LICENSE = "/fonts/Geist-OFL.txt";
@@ -14,6 +15,11 @@ export default function SobreSection({ onWhatsNew, onSection }) {
     const user = useUser();
     const [info] = usePoll(() => system?.call("info"), 0);
     const [license, setLicense] = useState(null);
+    // The open editions installed here owe their credit (owner 2026-10-20,
+    // b3 = sobre: their licences ask for the name, the holder and the licence).
+    const bible = useBridge("bible");
+    const [installed] = usePoll(() => bible?.status(), 0);
+    const credits = BIBLE_VERSIONS.filter((v) => v.group === "open" && installed?.[v.id] > 0).map(editionCredit);
     // window.keryxDesktop returns a fresh object on every access: read it once.
     const versions = useBridge("versions");
     const runtime = versions?.electron ? `Electron ${versions.electron} · Chromium ${versions.chrome}` : "";
@@ -67,9 +73,14 @@ export default function SobreSection({ onWhatsNew, onSection }) {
                     </FormRow>
                 )}
                 <FormRow k="Bíblias">
-                    <span className="kx-meta">O KERYX não traz o texto das Bíblias, que têm direitos autorais. Cada igreja instala as edições que pode usar, e o texto fica só neste computador.</span>
+                    <span className="kx-meta">O KERYX não traz o texto das Bíblias, que têm direitos autorais. Cada igreja instala as edições que pode usar, e o texto fica só neste computador.{credits.length ? " As edições abertas instaladas aqui, com o crédito que a licença pede:" : ""}</span>
                     <Btn onClick={() => onSection?.("biblia")}>Abrir Bíblia e músicas</Btn>
                 </FormRow>
+                {credits.map((line) => (
+                    <FormRow key={line} k="">
+                        <span className="kx-content">{line}</span>
+                    </FormRow>
+                ))}
             </div>
         </>
     );

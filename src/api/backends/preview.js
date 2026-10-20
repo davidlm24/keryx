@@ -14,6 +14,21 @@ const API = "/__keryx/";
 const ONLY_DESKTOP = "Disponível no aplicativo do computador.";
 const unavailable = async () => ({ error: { message: ONLY_DESKTOP, status: 501 } });
 
+// A file the person picks (the browser's chooser): a File, or null when
+// the chooser closes without one. The input sits in the page while it is
+// open (data-keryx-pick), so a check can hand it a file.
+function pickFile() {
+    return new Promise((resolve) => {
+        const input = Object.assign(document.createElement("input"), { type: "file", hidden: true });
+        input.dataset.keryxPick = "bible";
+        const done = (file) => { input.remove(); resolve(file || null); };
+        input.addEventListener("change", () => done(input.files?.[0]));
+        input.addEventListener("cancel", () => done(null));
+        document.body.append(input);
+        input.click();
+    });
+}
+
 async function request(route, { method = "GET", body, raw } = {}) {
     let res;
     try {
@@ -135,7 +150,18 @@ export function createPreviewBridge() {
             status: () => request("bible"),
             onlineChapter: (code, book, chapter) => request("bible-online", { method: "POST", body: { code, book, chapter } }),
             install: (version) => request("bible-install", { method: "POST", body: { version } }),
-            installFromFile: unavailable,
+            // The desktop picks the file in main; here the browser's chooser
+            // picks it and the preview server reads it with the same modules.
+            installFromFile: async (version) => {
+                const file = await pickFile();
+                return file ? request(`bible-file?version=${encodeURIComponent(version)}&name=${encodeURIComponent(file.name)}`, { method: "POST", raw: file }) : { data: null };
+            },
+            readOwn: async () => {
+                const file = await pickFile();
+                return file ? request(`bible-own-read?name=${encodeURIComponent(file.name)}`, { method: "POST", raw: file }) : { data: null };
+            },
+            installOwn: (args) => request("bible-own", { method: "POST", body: { op: "install", ...args } }),
+            removeOwn: (sigla) => request("bible-own", { method: "POST", body: { op: "remove", sigla } }),
         },
         network: {
             async call(op) {
