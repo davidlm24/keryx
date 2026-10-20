@@ -32,6 +32,10 @@ const ON_EACH_COMPUTER = new Set([
     // others learn which editions this one has from its computer.json
     // (electron/sync.cjs), never the text.
     "BibleVerse",
+    // An edition the church installed from its own file (the BKJ 1611…):
+    // its name and where it came from. The other computers see its sigla in
+    // the same list and ask for the file; the text never travels.
+    "BibleEdition",
     // Each computer's outputs and their designs. The designs and looks move
     // to SYNC_ENTITIES at the end of Rodada G10, which first replaces its
     // content fields; what stays this computer's (placement) stays here.

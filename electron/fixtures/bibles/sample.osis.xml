@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace">
+<osisText osisIDWork="Exemplo" xml:lang="pt">
+<header><work osisWork="Exemplo"><title>Bíblia de Exemplo</title></work></header>
+<div type="book" osisID="Gen">
+<chapter osisID="Gen.1">
+<title type="sub">A criação</title>
+<verse osisID="Gen.1.1">No princípio criou <w lemma="strong:H430">Deus</w> os céus e a terra.<note type="study">Nota de estudo.</note></verse>
+<verse osisID="Gen.1.2">E a terra era sem forma e vazia.</verse>
+</chapter>
+</div>
+<div type="book" osisID="John">
+<chapter sID="John.3"/>
+<verse sID="John.3.16" osisID="John.3.16"/>Porque Deus amou o mundo de tal maneira<note>uma nota</note> que deu o seu Filho unigênito.<verse eID="John.3.16"/>
+<verse sID="John.3.17" osisID="John.3.17"/>Porque Deus enviou o seu Filho ao mundo.<verse eID="John.3.17"/>
+<chapter eID="John.3"/>
+</div>
+<div type="book" osisID="Tob"><chapter osisID="Tob.1"><verse osisID="Tob.1.1">Tobias fica de fora.</verse></chapter></div>
+</osisText>
+</osis>

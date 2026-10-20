@@ -263,6 +263,53 @@
         }
       }
     },
+    "BibleEdition": {
+      "table": "bible_edition",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "sigla": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "format": {
+          "type": "text"
+        },
+        "file_name": {
+          "type": "text"
+        },
+        "verses": {
+          "type": "real"
+        },
+        "books": {
+          "type": "real"
+        },
+        "testament": {
+          "type": "text"
+        },
+        "language": {
+          "type": "text"
+        },
+        "rights_confirmed": {
+          "type": "boolean"
+        }
+      }
+    },
     "BibleMaterial": {
       "table": "bible_material",
       "columns": {

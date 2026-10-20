@@ -106,7 +106,7 @@ test("a bolls.life edition installs from its JSON, its zip, or the download", as
 test("a bolls.life file that is not a whole Bible, or not a zip, is refused", async () => {
     assert.throws(() => installFromJson(fresh(), "ARA", JSON.stringify(fakeBolls("ARA", { perBook: 20 }))), /não parece uma Bíblia inteira/);
     await assert.rejects(installFromFile(fresh(), "ARA", Buffer.from("PK broken zip")), /zip válido/);
-    await assert.rejects(installFromFile(fresh(), "ARA", await zipOf("leia-me.txt", "x")), /não tem o arquivo JSON/);
+    await assert.rejects(installFromFile(fresh(), "ARA", await zipOf("leia-me.txt", "x")), /não reconheceu este arquivo/);
 });
 
 test("parseBibleJson strips the byte-order mark and rejects malformed files", () => {
