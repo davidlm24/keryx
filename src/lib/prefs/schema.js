@@ -32,6 +32,8 @@ export const PREF_FIELDS = {
     service_start_time: { default: "", normalize: (v) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : "") },
     service_weekday: { default: null, normalize: (v) => (v !== null && v !== "" && Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 6 ? Number(v) : null) },
     duration_song: { default: 240, normalize: (v) => (Number.isInteger(Number(v)) && Number(v) >= 10 && Number(v) <= 3600 && v !== null ? Number(v) : 240) },
+    // Setlist automática (Rodada N2): the pause before the next item goes on air.
+    autoplay_gap: { default: 5, normalize: (v) => (v !== null && v !== "" && [0, 3, 5, 10].includes(Number(v)) ? Number(v) : 5) },
     duration_other: { default: 120, normalize: (v) => (Number.isInteger(Number(v)) && Number(v) >= 10 && Number(v) <= 3600 && v !== null ? Number(v) : 120) },
     logo_corner: { default: "bottom-right", normalize: oneOf(["top-left", "top-right", "bottom-left", "bottom-right"], "bottom-right") },
     logo_size: { default: "medium", normalize: oneOf(["small", "medium", "large"], "medium") },

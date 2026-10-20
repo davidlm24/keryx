@@ -744,7 +744,7 @@ async function checkConsole(webContents, { live, outputs }) {
     // Both captions sit inside their screens (.kx-prog-cap): the Programa's
     // in its pill, bottom-right (Rodada E1: the Programa has no header), the
     // Prévia's in its badge, top-left (2026-10-14).
-    const capSel = (mon) => (mon === PROG ? ".prog-pill .kx-prog-cap .kx-mon-t" : ".prev-panel .kx-prog-cap .kx-mon-t");
+    const capSel = (mon) => (mon === PROG ? ".prog-pill:not(.prev-pill) .kx-prog-cap .kx-mon-t" : ".prev-panel .kx-prog-cap .kx-mon-t");
     const capTitle = (mon) => js(`(document.querySelector(${JSON.stringify(capSel(mon))}) || {}).textContent || ""`).catch(() => "");
     const waitCap = (mon, title, ms = 8000) => waitFor(async () => (await capTitle(mon)) === title, ms);
     // Real key presses. Printable keys also send the "char" event that types.
@@ -809,9 +809,9 @@ async function checkConsole(webContents, { live, outputs }) {
     // the pill shows it; folded (a small Programa) through its "…", the
     // Programa's menu, as the operator would. `menuText` names the item there.
     const pillClick = async (label, menuText = label) => {
-        const sel = `.prog-pill button[aria-label="${label}"]`;
+        const sel = `.prog-pill:not(.prev-pill) button[aria-label="${label}"]`;
         if (await js(`(() => { const b = document.querySelector(${JSON.stringify(sel)}); return Boolean(b && b.offsetParent); })()`)) return click(sel, "");
-        if (!(await click(".prog-pill .pp-more", ""))) return false;
+        if (!(await click(".prog-pill:not(.prev-pill) .pp-more", ""))) return false;
         await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
         return click(".console .ctx-menu button", menuText);
     };
@@ -929,7 +929,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // air, and no permanent red frame on the monitor.
         result.progOneTitle = await js(`(() => {
             const caps = [...document.querySelectorAll(".console .dock .kx-live-cap")].filter((e) => /^programa/i.test(e.textContent.trim()));
-            const title = document.querySelector(".prog-pill .prog-cap .kx-mon-t");
+            const title = document.querySelector(".prog-pill:not(.prev-pill) .prog-cap .kx-mon-t");
             const frame = getComputedStyle(document.querySelector(".prog .kx-mon-screen"), "::after").borderTopColor;
             return caps.length === 0 && Boolean(title) && getComputedStyle(title).color === "rgb(255, 107, 112)" && frame !== "rgb(229, 72, 77)" && !document.querySelector(".prog .kx-mon-cap");
         })()`).catch(() => false);
@@ -988,7 +988,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // arrows while the slide on air stays put; no visible control smaller
         // than 24 x 24.
         result.telasChip = await js(`(() => {
-            const g = document.querySelector(".prog-pill .pp-screens");
+            const g = document.querySelector(".prog-pill:not(.prev-pill) .pp-screens");
             if (!g || document.querySelector(".topbar .tb-screens")) return false;
             const bs = [...g.querySelectorAll("button")];
             const named = ["Tela preta", "Mostrar logo", "Limpar texto", "Encerrar a projeção"].every((t) => bs.some((b) => b.getAttribute("aria-label") === t && b.title));
@@ -1001,7 +1001,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // the screen, bottom-right, with Multiview always in it.
         result.progPill = await js(`(() => {
             const scr = document.querySelector(".prog .kx-mon-screen");
-            const pill = scr && scr.querySelector(".prog-pill");
+            const pill = scr && scr.querySelector(".prog-pill:not(.prev-pill)");
             const cell = document.querySelector(".console .dock .dock-group[data-dock-mods~='programa']");
             if (!pill || !cell || document.querySelector(".prog-panel > .kx-panel-h")) return false;
             const s = scr.getBoundingClientRect(), p = pill.getBoundingClientRect(), l = cell.getBoundingClientRect();
@@ -1163,7 +1163,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.projected2 = Boolean(main) && await waitText(main, "Primeiro slide do console");
         // Back on: the banner goes, and the Programa says where it is.
         result.closedCleared = await waitText(webContents, "Projeção fechada", false, 8000);
-        result.onScreens = await waitFor(() => js("/^\\d+ telas?$/.test((document.querySelector('.prog-pill .prog-where') || {}).textContent || '')"), 8000);
+        result.onScreens = await waitFor(() => js("/^\\d+ telas?$/.test((document.querySelector('.prog-pill:not(.prev-pill) .prog-where') || {}).textContent || '')"), 8000);
 
         // Multiview (Programa › Multiview): the Programa as four outputs; the
         // Projeção quadrant shows what is on air and says it is on screen; a
@@ -1247,7 +1247,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.lookDefault = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && !st.transition && st.transition_ms == null); }, 5000);
         // No "no ar há" in the Programa's pill any more (Rodada F1); lyrics
         // keep their title there (the player does not name them).
-        result.pillNoSince = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill'); return Boolean(p) && !/no ar há/.test(p.textContent) && ((p.querySelector('.pp-title') || {}).textContent || '') === 'Canto do console'; })()"), 5000);
+        result.pillNoSince = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill:not(.prev-pill)'); return Boolean(p) && !/no ar há/.test(p.textContent) && ((p.querySelector('.pp-title') || {}).textContent || '') === 'Canto do console'; })()"), 5000);
         // Títulos nas telas off: the song's name leaves the Programa (and every output).
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { show_item_title: false }])`);
         result.titleHidden = await waitFor(() => js("Boolean(document.querySelector('.kx-mon .ks-text')) && !document.querySelector('.kx-mon .ks-title')"), 5000);
@@ -1552,7 +1552,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.audioUnderSong = Boolean(live.get().content) && live.get().content.title === "Canto do console";
         // Its title, no kind word (Rodada F1: the icon says it); the pill keeps
         // the song's title, which the player does not name.
-        result.playerShows = await waitFor(() => js("Boolean(document.querySelector('.player:not(.is-idle)')) && document.querySelector('.player .pl-what').textContent === 'Tom de teste' && ((document.querySelector('.prog-pill .pp-title') || {}).textContent || '') === 'Canto do console'"));
+        result.playerShows = await waitFor(() => js("Boolean(document.querySelector('.player:not(.is-idle)')) && document.querySelector('.player .pl-what').textContent === 'Tom de teste' && ((document.querySelector('.prog-pill:not(.prev-pill) .pp-title') || {}).textContent || '') === 'Canto do console'"));
         const meterState = () => js("document.querySelector('.player .meters') && document.querySelector('.player .meters').dataset.state");
         await waitFor(async () => (await meterState()) !== "wait", 8000);
         result.meterState = await meterState();
@@ -1607,15 +1607,21 @@ async function checkConsole(webContents, { live, outputs }) {
             const offSeek = live.onChange((s) => { const p = s.audio && s.audio.playback; if (p && p.position !== last) { last = p.position; seeks.push(p.position); } });
             if (bar) {
                 const x = (f) => Math.round(bar.left + bar.width * f);
+                // Hovering (Rodada N1): the tip says the moment under the
+                // pointer (a quarter of 20 s = 0:05) and nothing seeks.
+                webContents.sendInputEvent({ type: "mouseMove", x: x(0.25) - 2, y: bar.y });
                 webContents.sendInputEvent({ type: "mouseMove", x: x(0.25), y: bar.y });
+                result.seekHoverTip = await waitFor(() => js("(() => { const t = document.querySelector('.player .pl-seek .pl-tip .pl-tip-t'); return Boolean(t) && /^0:0[45]/.test(t.textContent) && Boolean(document.querySelector('.player .pl-seek .pl-hov')); })()"), 3000) && seeks.length === 0;
                 webContents.sendInputEvent({ type: "mouseDown", x: x(0.25), y: bar.y, button: "left", clickCount: 1 });
                 for (const f of [0.35, 0.5, 0.65, 0.75]) {
                     webContents.sendInputEvent({ type: "mouseMove", x: x(f), y: bar.y, modifiers: ["leftButtonDown"] });
                     await sleep(60);
                 }
-                result.seekDragFollows = await waitFor(() => js("(() => { const t = document.querySelector('.player .pl-seek .pl-tip'); return Boolean(t) && /^0:1[45]$/.test(t.textContent) && /^0:1[45]$/.test(document.querySelector('.player .pl-time').textContent); })()"), 3000) && seeks.length === 0;
+                result.seekDragFollows = await waitFor(() => js("(() => { const t = document.querySelector('.player .pl-seek .pl-tip .pl-tip-t'); return Boolean(t) && /^0:1[45]$/.test(t.textContent) && /^0:1[45]$/.test(document.querySelector('.player .pl-time').textContent); })()"), 3000) && seeks.length === 0;
                 webContents.sendInputEvent({ type: "mouseUp", x: x(0.75), y: bar.y, button: "left", clickCount: 1 });
                 await waitFor(() => seeks.length > 0, 3000);
+                // The pointer leaves the bar: the hover tip goes with it.
+                webContents.sendInputEvent({ type: "mouseMove", x: x(0.75), y: bar.y - 80 });
                 await sleep(400);
             }
             offSeek();
@@ -1642,7 +1648,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // The tone again, with nothing else on air: the player names it, so
         // the pill has no title (owner's pick A, Rodada F1), its dot still red.
         if (toneItem) live.call("audio.show", { kind: toneItem.kind, url: toneItem.url, title: toneItem.title, duration: toneItem.duration, id: toneItem.id });
-        result.pillTitleInPlayer = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill'); return Boolean(p) && !p.querySelector('.pp-title') && p.classList.contains('is-air'); })()"), 4000);
+        result.pillTitleInPlayer = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill:not(.prev-pill)'); return Boolean(p) && !p.querySelector('.pp-title') && p.classList.contains('is-air'); })()"), 4000);
         await click(".player button", "Parar e tirar do ar");
         result.audioStopped = await waitFor(() => !live.get().audio);
         result.pillNada = await waitCap(PROG, "Nada no ar", 4000);
@@ -1661,10 +1667,10 @@ async function checkConsole(webContents, { live, outputs }) {
         // has no options of its own (its pencil's menu changes the papel de
         // parede) and the Visual do culto is gone.
         // Camadas may be a card or the drawer at this width.
-        const dayLookDrawer = await js("(() => { const b = document.querySelector('.prog-pill button[aria-label=\"Camadas\"]'); if (b) b.click(); return Boolean(b); })()");
+        const dayLookDrawer = await js("(() => { const b = document.querySelector('.prog-pill:not(.prev-pill) button[aria-label=\"Camadas\"]'); if (b) b.click(); return Boolean(b); })()");
         await click(".kx-layer", "Fundo");
         result.temasCard = await waitFor(() => js("(() => { const t = document.querySelector('[data-dock-mods~=\"temas\"] .tm, .layer-temas .tm'); const l = document.querySelector('.kx-layer'); return Boolean(t && l) && Boolean(l.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING) && document.querySelectorAll('.kx-layer .layer-edit').length === 4 && !document.querySelector('.layerprops') && ![...document.querySelectorAll('.layerprops button, .tm-acts button')].some((b) => /Biblioteca…|Editar fundo|Visual d/.test(b.textContent)); })()"), 4000);
-        if (dayLookDrawer) await js("(() => { const b = document.querySelector('.prog-pill button[aria-label=\"Camadas\"]'); if (b) b.click(); return true; })()");
+        if (dayLookDrawer) await js("(() => { const b = document.querySelector('.prog-pill:not(.prev-pill) button[aria-label=\"Camadas\"]'); if (b) b.click(); return true; })()");
         // No service yet: dropping a song on the Setlist (the right column,
         // under Camadas, in the wide tier) starts today's setlist.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
@@ -1802,7 +1808,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.layersBefore = (live.get().layerOrder || []).join(",");
         // Camadas: in the dock (over the Setlist by default), else (in the
         // tray) a drawer opened from the Programa's pill (or its "…").
-        const camadasDrawer = await js("Boolean(document.querySelector('.prog-pill button[aria-label=\"Camadas\"]'))") && await pillClick("Camadas", "Camadas");
+        const camadasDrawer = await js("Boolean(document.querySelector('.prog-pill:not(.prev-pill) button[aria-label=\"Camadas\"]'))") && await pillClick("Camadas", "Camadas");
         result.camadasWhere = camadasDrawer ? "drawer" : "section";
         await waitFor(() => js("Boolean(document.querySelector('.kx-layer'))"), 4000);
         result.layerDrag = await js(`(async () => {
@@ -1969,12 +1975,13 @@ async function checkConsole(webContents, { live, outputs }) {
         }
 
         // The Prévia: the prepared song as Projeção shows it (the picker of
-        // other outputs went with the Multiview, 2026-10-12).
+        // other outputs went with the Multiview, 2026-10-12), with its
+        // Enviar ao ar pill in the corner (Rodada N5), ready to send.
         await click(".envtabs button", "KERYX");
         await click(".kx-tabs button", "Letras");
         await click(".kx-row", "Canto do console");
         await waitCap(PREV, "Canto do console");
-        result.prevShows = await waitFor(() => js("(() => { const m = document.querySelector('.prev-panel .kx-mon'); return Boolean(m && m.querySelector('.ks-text')) && !document.querySelector('.prev-panel .prev-outs'); })()"), 3000);
+        result.prevShows = await waitFor(() => js("(() => { const m = document.querySelector('.prev-panel .kx-mon'); const send = m && m.querySelector('.prev-pill .pv-send'); return Boolean(m && m.querySelector('.ks-text')) && !document.querySelector('.prev-panel .prev-outs') && Boolean(send) && send.getAttribute('aria-label') === 'Enviar ao ar' && !send.hasAttribute('aria-disabled'); })()"), 3000);
         await js("document.activeElement && document.activeElement.blur(); true");
 
         // Hover actions never reach the middle of a row, in every Biblioteca

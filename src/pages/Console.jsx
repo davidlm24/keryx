@@ -31,9 +31,12 @@ import SlidesPanel, { handTitle, handIsPrev } from "@/components/console/SlidesP
 import OnAirPanel, { onAirCount } from "@/components/console/OnAirPanel";
 import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaPill } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
-import Rundown, { plannedTimes } from "@/components/console/Rundown";
+import Rundown, { plannedTimes, AutoplaySwitch } from "@/components/console/Rundown";
+import { useSetlistAutoplay } from "@/components/console/useSetlistAutoplay";
+import { endsByItself, AUTOPLAY_SAY } from "@/lib/console/autoplay";
 import Layers from "@/components/console/Layers";
 import PromptDialog from "@/components/console/PromptDialog";
+import ReportDialog, { ReportContext, DIAGNOSTIC_SAVED } from "@/components/console/ReportDialog";
 import { timerChoices, minutesLabel } from "@/lib/console/timerPresets";
 import ThemeStrip from "@/components/console/ThemeStrip";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
@@ -78,7 +81,7 @@ import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, isSection, total, itemOnAir } from "@/lib/console/setlist";
+import { plan, playableItems, total, itemOnAir } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { readChapter } from "@/lib/bibleText";
@@ -248,6 +251,9 @@ export default function Console() {
     const [ask, setAsk] = useState(null);
     const askText = useCallback((spec) => new Promise((resolve) => setAsk({ ...spec, resolve })), []);
     const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
+    // Ajuda › Relatar um problema (ReportDialog): open or not.
+    const [reporting, setReporting] = useState(false);
+    const openReport = useCallback(() => setReporting(true), []);
     const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
     const answerConfirm = useCallback((yes) => {
         // "Continuar" to an unsaved guard: a detach under way stays here.
@@ -439,9 +445,10 @@ export default function Console() {
     const airNow = itemOnAir(c.cur, items);
     const prevItemId = c.prev?.args?.ref?.serviceItemId || null;
     const airIdx = items.findIndex((i) => i.id === airItemId);
-    // Sections (Pré-culto, Culto…) are headers: never prepared, never next.
+    // Sections (Pré-culto, Culto…) are headers and disabled items are
+    // skipped: never prepared, never next (the phone's "Próximo" too).
     const playable = useMemo(() => playableItems(items), [items]);
-    const nextItem = (airIdx >= 0 ? items.slice(airIdx + 1) : items).find((i) => !isSection(i)) || null;
+    const nextItem = (airIdx >= 0 ? playableItems(items.slice(airIdx + 1)) : playable)[0] || null;
     const setPlan = useMemo(() => plan(service, items), [service, items]);
 
     // A rundown item as a stage: the row it points at, with the item's id in ref.
@@ -527,6 +534,12 @@ export default function Console() {
         try { const stage = await buildStage(item, index); c.setPrev(stage); await sendStage(stage); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c, sendStage]);
 
+    // Setlist automática (Rodada N2, useSetlistAutoplay.js): with the culto's
+    // switch on, the item on air that ends sends the next one (after the
+    // pause, its countdown on the next row). Only this console runs it.
+    const autoplay = useSetlistAutoplay({ c, service, items, songs: data.songs, prefs, projectorOpen: projector ? projector.open !== false : true, buildStage, sendStage });
+    const endsAlone = useCallback((it) => endsByItself(it, String(it.type || "").toUpperCase() === "SONG" ? data.songs.find((x) => x.id === it.contentId) : null), [data.songs]);
+
     // No service chosen: the first item added starts today's setlist, a draft
     // service the operator can rename later in Cultos.
     const ensureService = useCallback(async () => {
@@ -541,6 +554,15 @@ export default function Console() {
         c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
         return row.id;
     }, [serviceId, c]);
+    // "Avançar sozinho" (the Setlist's header): the culto's switch; with no
+    // culto, today's draft starts.
+    const setAutoplay = useCallback(async (on) => {
+        try {
+            const sid = serviceId || await ensureService();
+            await keryx.entities.Service.update(sid, { autoplay: Boolean(on) });
+            c.say(on ? AUTOPLAY_SAY.on : AUTOPLAY_SAY.off);
+        } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
+    }, [serviceId, ensureService, c]);
 
     // Today's papel de parede, the ONE live door (Rodada B 2026-10-14,
     // "Papel de parede × Tema": the Programa's header button is gone):
@@ -804,14 +826,15 @@ export default function Console() {
                 // "window": Esc goes to the TOP page's registered request
                 // (nav.js), which pops one level — "← Voltar" — or, at the
                 // first, closes; an unsaved guard may ask instead.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, window: winOpen, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
-                    else if (top === "confirm") { if (ask) answerAsk(null); else answerConfirm(false); }
+                    else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else setReporting(false); }
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "window") winEsc("esc");
+                    else if (top === "countdown") autoplay.cancel();
                     else if (top === "drawer") setDrawer(false);
                     else if (top === "edit") setEditing(false);
                     return;
@@ -821,7 +844,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if ((libReq || confirmReq) && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq || reporting) && !["black", "logo"].includes(action)) return;
             // Behind the window only the emergency keys (Tela preta, Logo)
             // act; a page's own keys (Mídia's Enter and Delete, the editors'
             // Ctrl+S, Space while marking timings) are its own listeners.
@@ -860,7 +883,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, letters]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, reporting, letters, autoplay]);
     useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -1049,9 +1072,10 @@ export default function Console() {
         ] });
     };
     const setlistPanel = (
-        <Panel title="Setlist" className={coverCls} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
-            actions={<>{coverTag}<IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
+        <Panel title="Setlist" className={`setlist-panel ${coverCls}`} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+            actions={<>{coverTag}<AutoplaySwitch on={Boolean(service?.autoplay)} onChange={setAutoplay} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+            <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
+                autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes
@@ -1252,7 +1276,8 @@ export default function Console() {
             shortcuts: () => setOpen("atalhos"),
             whatsNew: () => openWhatsNew(),
             verify: () => setOpen("verificar"),
-            diagnostics: () => helpCall("diagnostics", (r) => (r?.file ? "Diagnóstico salvo: envie o arquivo a quem dá suporte." : "")),
+            diagnostics: () => helpCall("diagnostics", (r) => (r?.file ? DIAGNOSTIC_SAVED : "")),
+            report: () => openReport(),
             dataDir: () => helpCall("openDataDir"),
             updateCheck: () => helpCall("updateCheck", (r) => r?.update?.message || ""),
             updateNow: () => updateNow(),
@@ -1338,10 +1363,11 @@ export default function Console() {
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
+        <ReportContext.Provider value={openReport}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
-                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
+                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1433,6 +1459,7 @@ export default function Console() {
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
+            <ReportDialog open={reporting} onClose={() => setReporting(false)} say={c.say} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !winOpen && env === "culto" && (() => {
                 // Never over the Programa: on the side of it with more room
@@ -1457,6 +1484,7 @@ export default function Console() {
             {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
+        </ReportContext.Provider>
         </ConfirmContext.Provider>
         </LibraryContext.Provider>
         </ContextMenuProvider>

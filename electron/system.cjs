@@ -4,13 +4,27 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const os = require("node:os");
 const { pipeline } = require("node:stream/promises");
+const { pathToFileURL } = require("node:url");
 const yazl = require("yazl");
 const backup = require("./backup.cjs");
 const archive = require("./archive.cjs");
 const closeGuard = require("./closeGuard.cjs");
 
 const SETTINGS_KEY = "backup";
+
+// shared/support.mjs (ESM), loaded by the first report.
+let supportModule = null;
+const loadSupport = () => (supportModule ||= import(pathToFileURL(path.join(__dirname, "..", "shared", "support.mjs")).href));
+
+const pad2 = (n) => String(n).padStart(2, "0");
+// keryx-diagnostico-2026-10-20-1432.zip: the local day and minute.
+const fileStamp = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}`;
+// "Windows 11 Home" where Node knows it, else the platform.
+function osName() {
+    try { return os.version() || process.platform; } catch { return process.platform; }
+}
 
 function dirSize(dir) {
     let total = 0;
@@ -355,12 +369,55 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             filters: [{ name: "Diagnóstico (zip)", extensions: ["zip"] }],
         });
         if (canceled || !filePath) return null;
+        return { file: await writeDiagnostics(filePath) };
+    }
+
+    // The diagnostic zip: sistema.json and the 3 newest logs, plus the
+    // report's own text when there is one (relato.txt). Salvar diagnóstico
+    // and Relatar um problema both write it.
+    async function writeDiagnostics(filePath, relato) {
         const zip = new yazl.ZipFile();
         zip.addBuffer(Buffer.from(JSON.stringify(gatherDiagnostics(), null, 2)), "sistema.json");
+        if (relato) zip.addBuffer(Buffer.from(relato), "relato.txt");
         for (const file of logger.recentFiles(3)) zip.addFile(file, `logs/${path.basename(file)}`);
         zip.end();
         await pipeline(zip.outputStream, fs.createWriteStream(filePath));
-        return { file: filePath };
+        return filePath;
+    }
+
+    // Relatar um problema (Rodada N3): the diagnostic goes to Downloads with
+    // no dialog (relato.txt inside), the folder opens on it, and the e-mail
+    // program opens addressed to support with the text filled in
+    // (shared/support.mjs). Only main opens the mailto; `opened` is false
+    // when no program took it, and the console then shows the address and
+    // the text to copy.
+    async function report({ text = "", doing = "", include = true, church = "" } = {}) {
+        const what = String(text || "").trim().slice(0, 4000);
+        if (!what) throw Object.assign(new Error("Escreva o que aconteceu."), { status: 400 });
+        const how = String(doing || "").trim().slice(0, 4000);
+        const now = new Date();
+        let file = null;
+        if (include) {
+            const dir = app.getPath("downloads");
+            fs.mkdirSync(dir, { recursive: true });
+            file = path.join(dir, `keryx-diagnostico-${fileStamp(now)}.zip`);
+            const relato = [`Relato de ${now.toLocaleString("pt-BR")}`, "", "O que aconteceu:", what, ...(how ? ["", "O que eu estava fazendo:", how] : [])].join("\r\n");
+            await writeDiagnostics(file, relato);
+            logger.info(`[keryx-relato] diagnóstico salvo em ${file}`);
+        }
+        const { reportMail } = await loadSupport();
+        const mail = reportMail({ text: what, doing: how, church: String(church || "").slice(0, 120), version: app.getVersion(), os: osName(), file: file ? path.basename(file) : "" });
+        if (file) {
+            try { shell.showItemInFolder(file); } catch { /* the toast still says where */ }
+        }
+        let opened = true;
+        try {
+            await shell.openExternal(mail.href);
+        } catch (err) {
+            opened = false;
+            logger.warn(`[keryx-relato] nenhum programa de e-mail abriu: ${err.message}`);
+        }
+        return { file, opened, ...mail };
     }
 
     return {
@@ -405,6 +462,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             backupList: async () => backupList(),
             restoreBackup: async (event, { name }) => restoreBackup(event, name),
             diagnostics: async (event) => diagnostics(event),
+            report: async (_event, args) => report(args),
             updateCheck: async () => { await updater.check(); return info(); },
             updateState: async () => updateState(),
             updateSetAuto: async (_event, { on }) => {

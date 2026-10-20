@@ -78,6 +78,10 @@
       "type": "integer",
       "description": "Culto: duracao de uma musica na setlist quando ela nao tem a sua, em segundos. Nulo = 240"
     },
+    "autoplay_gap": {
+      "type": "integer",
+      "description": "Culto: pausa entre itens da Setlist automatica (Avancar sozinho), em segundos: 0, 3, 5 ou 10. Nulo = 5"
+    },
     "duration_other": {
       "type": "integer",
       "description": "Culto: duracao de qualquer outro item na setlist quando ele nao tem a sua, em segundos. Nulo = 120"

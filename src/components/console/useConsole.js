@@ -4,7 +4,7 @@ import { projection } from "@/lib/projection";
 import { useLiveState } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
-import { emptyToasts, pushToast, nextToast } from "@/lib/console/toastQueue";
+import { emptyToasts, pushToast, nextToast, dropToast } from "@/lib/console/toastQueue";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
@@ -77,8 +77,13 @@ export function useToast() {
     const held = useRef(false);
     const left = useRef(0);
     const since = useRef(0);
-    const say = useCallback((text, action = null) => setToasts((s) => pushToast(s, { id: ++ids.current, text, action })), []);
+    // opts: { ms } how long it shows, when not toastMs's (the Setlist
+    // automática's countdown lasts its pause); { replace } a plain toast that
+    // takes an action toast's place (its Cancelar answered another way).
+    const say = useCallback((text, action = null, opts = null) => setToasts((s) => pushToast(s, { id: ++ids.current, text, action, ...(opts?.ms ? { ms: opts.ms } : {}), ...(opts?.replace ? { replace: true } : {}) })), []);
     const done = useCallback(() => setToasts(nextToast), []);
+    // The toast showing goes now, if it is this one (a countdown overtaken).
+    const unsay = useCallback((text) => setToasts((s) => dropToast(s, text)), []);
     const cur = toasts.cur;
     useEffect(() => {
         clearTimeout(timer.current);
@@ -96,7 +101,7 @@ export function useToast() {
     }, [done]);
     useEffect(() => () => clearTimeout(timer.current), []);
     const toastAction = useMemo(() => (cur?.action ? { ...cur.action, run: () => { done(); cur.action.run(); } } : null), [cur, done]);
-    return { toast: cur?.text || null, toastAction, say, holdToast };
+    return { toast: cur?.text || null, toastAction, say, unsay, holdToast };
 }
 
 // The operations on what is on air that need nothing of the console's own
@@ -171,7 +176,7 @@ export function useConsole() {
         try { if (id) localStorage.setItem(THEME_IN_USE_KEY, id); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
     }, []);
     const { stamp, bgPrefs } = useStamp(themeId);
-    const { toast, toastAction, say, holdToast } = useToast();
+    const { toast, toastAction, say, unsay, holdToast } = useToast();
     const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen, clearText } = useLiveOps(live, say, bgPrefs);
 
     // The idle wallpaper follows its settings: editing its dim or blur in
@@ -342,5 +347,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say, holdToast };
+    return { live, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say, unsay, holdToast };
 }

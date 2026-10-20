@@ -37,6 +37,7 @@ import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import PromptDialog from "@/components/console/PromptDialog";
+import ReportDialog, { ReportContext } from "@/components/console/ReportDialog";
 import Toast from "@/components/console/Toast";
 import { useWinPageFocus } from "@/components/console/useDialogFocus";
 import { setEditorHost } from "@/lib/editorWindow";
@@ -160,6 +161,9 @@ export default function Janela() {
     const [ask, setAsk] = useState(null);
     const askText = useCallback((spec) => new Promise((resolve) => setAsk({ ...spec, resolve })), []);
     const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
+    // Configurações › Dados › Suporte › Relatar um problema (ReportDialog).
+    const [reporting, setReporting] = useState(false);
+    const openReport = useCallback(() => setReporting(true), []);
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
 
@@ -223,15 +227,15 @@ export default function Janela() {
         if (!action) return;
         if (action === "blur") { e.target.blur?.(); return; }
         if (action === "end") {
-            const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, window: stack.length > 0 });
+            const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting, library: libReq, window: stack.length > 0 });
             e.preventDefault();
             if (top === "menu") setCtxMenu(null);
-            else if (top === "confirm") { if (ask) answerAsk(null); else answerConfirm(false); }
+            else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else setReporting(false); }
             else if (top === "library") closeLibrary(null);
             else if (top === "window") winEsc("esc");
             return;
         }
-        if ((ctxMenu || libReq || confirmReq || ask) && !["black", "logo"].includes(action)) return;
+        if ((ctxMenu || libReq || confirmReq || ask || reporting) && !["black", "logo"].includes(action)) return;
         // Prevented: a select focused with Tab would also jump to its option.
         if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
         else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
@@ -266,6 +270,7 @@ export default function Janela() {
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
+        <ReportContext.Provider value={openReport}>
         <div className="kx console janela" onClick={onMouseClick}>
             {stack.length > 0 && (
                 <div ref={boxRef} className="win-dialog is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
@@ -283,10 +288,12 @@ export default function Janela() {
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
+            <ReportDialog open={reporting} onClose={() => setReporting(false)} say={c.say} />
             <Toast c={c} />
             {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={() => setCtxMenu(null)} />
         </div>
+        </ReportContext.Provider>
         </ConfirmContext.Provider>
         </LibraryContext.Provider>
         </ContextMenuProvider>

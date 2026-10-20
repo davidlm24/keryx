@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "@/components/console/Icon";
 import { allowed, setlistRows, TAG_TEXT } from "@/lib/network/remoteView";
-import { Cmd } from "./parts";
+import { Cmd, Toggle } from "./parts";
 
 // The Setlist (owner's pick "escolher"): a tap picks an item, then the sticky
 // "Enviar ao ar · título" sends it — never a send by a stray tap. Sections
 // are headers; the item on air, the next and the last sent are marked; a
 // file missing, still downloading or a presentation still being prepared
-// cannot be picked. The list opens on the item on air.
-export default function SetlistTab({ live, state, c }) {
+// cannot be picked. The list opens on the item on air. On top, the culto's
+// "Avançar sozinho" (the Setlist automática, Rodada N2), as on the console.
+export default function SetlistTab({ live, state, c, onRefresh }) {
     const [pick, setPick] = useState(null);
     const rows = setlistRows(state, live);
     const picked = rows.find((r) => r.id === pick && !r.section) || null;
@@ -28,6 +29,8 @@ export default function SetlistTab({ live, state, c }) {
     return (
         <div className="rm-main" ref={list}>
             {service && <h2 className="rm-sec is-top">{service}</h2>}
+            <Toggle title="Avançar sozinho" sub="Quando o item no ar termina, o próximo vai ao ar." on={Boolean(state.autoplay)} busy={c.busy.has("autoplay")}
+                onChange={() => c.run("autoplay", "setlist.autoplay", { on: !state.autoplay }).then((r) => { if (r?.ok) onRefresh?.(); })} />
             <ul className="rm-list" role="list">
                 {rows.map((r) => (r.section
                     ? <li key={r.id} className="rm-sec">{r.title}</li>

@@ -52,7 +52,7 @@ export default function VideoProjection() {
         <>
             <div style={box}>
                 {video.title && <div className="net-vtitle">{video.title}</div>}
-                <LiveVideo item={video} meter="video" className="w-full h-screen" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} />
+                <LiveVideo item={video} meter="video" className="w-full h-screen" onEnded={() => { if (keryx.isDesktop) projection.clearVideo({ ended: true }).catch(() => {}); }} />
                 <AlertLayer alert={alertOf(live, prefs.pref, "/VideoProjection")} />
             </div>
             {fading}

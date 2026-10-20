@@ -14,12 +14,20 @@ export const TOAST_QUEUE = 3;
 export const emptyToasts = { cur: null, queue: [] };
 
 // A new toast. A plain one over an action toast queues; anything else takes
-// the place (the newest action wins: Esc twice keeps the latest Desfazer).
+// the place (the newest action wins: Esc twice keeps the latest Desfazer),
+// and so does one marked `replace` (the answer to that action's question).
 export function pushToast(state, toast) {
     const s = state || emptyToasts;
     const t = { ...toast, ms: toast.ms ?? toastMs(toast.text, toast.action) };
-    if (s.cur?.action && !t.action) return { cur: s.cur, queue: [...s.queue, t].slice(-TOAST_QUEUE) };
+    if (s.cur?.action && !t.action && !t.replace) return { cur: s.cur, queue: [...s.queue, t].slice(-TOAST_QUEUE) };
     return { cur: t, queue: s.queue };
+}
+
+// The one showing goes now, if it says `text` (the Setlist automática's
+// countdown, overtaken by a send); anything else stays.
+export function dropToast(state, text) {
+    const s = state || emptyToasts;
+    return s.cur && s.cur.text === text ? nextToast(s) : s;
 }
 
 // The one showing is done (its time is up, or its action ran): the next

@@ -74,6 +74,8 @@ test("state v2: caps, the version, the service per request version, capped lists
     assert.deepEqual(st.timers, [{ id: "min-5", minutes: 5 }, { id: "t1", minutes: 7 }]);
     assert.equal(st.alerts[0].message.length, PROTOCOL.limits.alertMessage);
     assert.deepEqual(st.bible, { version: "NVI", installed: ["NVI"] });
+    assert.equal(st.autoplay, false, "the culto's Avançar sozinho (Rodada N2)");
+    assert.equal(remoteState({ v: 2, service: { ...service, autoplay: true } }).autoplay, true);
     assert.ok(!/https?:|keryx-media:/.test(JSON.stringify(st)), "no URL in state");
     assert.ok(JSON.stringify(st).length <= PROTOCOL.limits.stateBytes);
     // A version 1 page: the title string, the v1 fields.

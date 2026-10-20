@@ -9,6 +9,7 @@ const { createOutputManager, createReloadLimiter } = require("./outputs-manager.
 const { createSettings } = require("./settings.cjs");
 const { outputKeyForUrl, outputForKey } = require("./outputs.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
+const { createRendererLog } = require("./rendererLog.cjs");
 const { applyPendingImport } = require("./archive.cjs");
 const { createUpdater, installedNote } = require("./updater.cjs");
 const { createCheckSchedule } = require("./updateSchedule.cjs");
@@ -586,6 +587,22 @@ app.whenReady().then(async () => {
         fatal("KERYX não conseguiu iniciar", `Não foi possível carregar o estado da projeção: ${err && err.message}`);
         return;
     }
+
+    // The windows' own errors into the daily log (electron/rendererLog.cjs:
+    // rate-limited per window). Only the app's windows have the preload, so
+    // network screens never send here.
+    const rendererLog = createRendererLog({ logger });
+    const rendererSeen = new Set();
+    ipcMain.on("keryx:log", (event, payload) => {
+        const url = event.senderFrame && event.senderFrame.url;
+        if (!isAppUrl(url)) return;
+        const id = event.sender.id;
+        if (!rendererSeen.has(id)) {
+            rendererSeen.add(id);
+            event.sender.once("destroyed", () => { rendererSeen.delete(id); rendererLog.forget(id); });
+        }
+        rendererLog.write(id, url, payload);
+    });
 
     // Controle remoto: a phone's command (electron/lan.cjs, checked there
     // against shared/remoteProtocol.json) goes to the console, which runs it
