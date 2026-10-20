@@ -647,9 +647,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Rodada M0; Alt+A): Primeiros passos (a dialog, `firstSteps.js`, tested:
   seven steps, each with the button that opens what it names, keys per Teclas
   de uma letra), Atalhos, Novidades · Verificar tudo, Salvar diagnóstico…,
-  Abrir a pasta de dados (the `system` bridge's `diagnostics`/`openDataDir`,
+  Relatar um problema…, Abrir a pasta de dados (the `system` bridge's `diagnostics`/`openDataDir`,
   as in Backup e atualizações; off in the browser preview) · Atualizar agora
   while an update is due, else Verificar atualização, and Sobre o KERYX.
+  **Relatar um problema…** (Rodada N3; also Configurações › Dados ›
+  Suporte): `ReportDialog.jsx` asks what happened; main (`system` op
+  `report`) saves the diagnostic zip with `relato.txt` in Downloads, shows
+  it and opens the mailto to `SUPPORT_EMAIL` (`shared/support.mjs`, the one
+  place for the address; the page never opens a mailto), and without an
+  e-mail program (or in the preview) the dialog shows the address and the
+  text with Copiar. The windows' own errors (onerror, unhandledrejection,
+  console.error) reach the daily log as `[renderer:<page>]` over `keryx:log`
+  (`src/lib/rendererLog.js` → `electron/rendererLog.cjs`, 20 a minute per
+  window, 2 kB each; never from a network screen).
   **The logo's menu is the app's** (owner 2026-10-19, Rodada M0 "app"):
   Configurações, Saídas, Sobre o KERYX and Atualizar agora when due; never a
   page of the content (those are the bar's). **Under 1240 px the

@@ -108,6 +108,8 @@ export function buildMenus(ctx) {
         sep,
         { label: "Verificar tudo", icon: "check", title: "Telas, mídias e Bíblias antes do culto", onSelect: call("verify") },
         { label: "Salvar diagnóstico…", icon: "save", disabled: !ctx.desktop, title: ctx.desktop ? "Um .zip com os registros recentes, para enviar a quem dá suporte · sem músicas, mídias nem senhas" : DESKTOP_ONLY, onSelect: call("diagnostics") },
+        // Works in the preview too: there it shows the address and the text to copy.
+        mi("relatar", { title: "Conte o que aconteceu: o diagnóstico vai para Downloads e o e-mail ao suporte abre pronto", onSelect: call("report") }),
         { label: "Abrir a pasta de dados", icon: "folder", disabled: !ctx.desktop, title: ctx.desktop ? "Onde ficam o banco, as mídias e os registros deste computador" : DESKTOP_ONLY, onSelect: call("dataDir") },
         sep,
         updateItem,
