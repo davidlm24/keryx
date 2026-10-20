@@ -22,6 +22,7 @@ import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
 import { MenuBarPop, MenusPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
+import { menuItem } from "@/lib/console/menuLabels";
 import { importSongFiles, SONG_FILE } from "@/components/console/importSongs";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import { useChurch } from "@/hooks/useChurch";
@@ -1045,8 +1046,6 @@ export default function Console() {
             { label: "Seção…", icon: "list", onSelect: async () => { const t = await askText({ title: "Seção da setlist", placeholder: "Pré-culto, Louvor, Palavra…", ok: "Adicionar" }); if (t) addRowToSetlist({ type: "SECTION", title: t, duration: 0 }); } },
             { label: "Texto…", icon: "text", onSelect: async () => { const t = await askText({ title: "Texto na setlist", placeholder: "O texto que vai às telas", ok: "Adicionar", multiline: true, hint: "Ctrl+Enter adiciona" }); if (t) addRowToSetlist({ type: "TEXT", title: t.split("\n")[0].slice(0, 60), notes: t, duration: 60 }); } },
             { label: "Timer…", icon: "clock", onSelect: () => timersMenu(at, "Timer na setlist", (m) => addRowToSetlist({ type: "TIMER", title: `Timer ${m} min`, duration: m * 60 })) },
-            "sep",
-            { label: "Planejar o culto…", icon: "list", onSelect: () => openPlanner(serviceId) },
         ] });
     };
     const setlistPanel = (
@@ -1153,7 +1152,7 @@ export default function Console() {
         { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
         !camadasOn && { label: drawer ? "Fechar Camadas" : "Camadas…", icon: "layers", onSelect: () => setDrawer((d) => !d) },
         { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
-        { label: "Encerrar…", icon: "stop", air: true, onSelect: () => setOpen("encerrar") },
+        menuItem("encerrar", { air: true, onSelect: () => setOpen("encerrar") }, letters),
     ] });
     // The Programa has no header (Rodada E1): the screen's top lines up with
     // the panels beside it, and its caption and controls are the pill inside
@@ -1181,7 +1180,7 @@ export default function Console() {
             onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
             onPrevMenu={(e) => openMenu(e, { title: "Prévia", items: [
                 { label: "Limpar a prévia", icon: "x", disabled: !c.prev, onSelect: () => c.setPrev(null) },
-                { label: "Enviar ao ar", icon: "play", kbd: "Enter", air: true, disabled: !c.prev || c.locked, onSelect: () => sendStage() },
+                menuItem("enviarAoAr", { air: true, disabled: !c.prev || c.locked, onSelect: () => sendStage() }, letters),
             ] })} />
     );
     // Every module of the culto environment, each built apart from where it
@@ -1238,6 +1237,7 @@ export default function Console() {
             syncSong: (id) => openSong(id, { sync: true }),
             follow: (action) => c.callOp("content.follow", { action }).catch(() => {}),
             media: (intent) => openMedia(intent),
+            backgrounds: () => pickFromLibrary({ manage: true, title: "Fundos" }),
             playerToggle: () => { const op = playerOp(c.cur, barLayer, "toggle"); if (op) c.callOp(op[0], op[1]).catch(() => {}); },
             notices: () => openNotices(),
             newNotice: () => openNotice("new"),

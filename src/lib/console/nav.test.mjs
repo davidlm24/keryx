@@ -115,7 +115,7 @@ test("detachSpec: every page of the window can leave for its own, and comes back
         assert.deepEqual(top(s).props, props, page);
         assert.equal(backLabel(s), null, "detached, the page is a first level");
     }
-    // The Mídia's intent (Enviar arquivos…) already ran in the console.
+    // The Mídia's intent (Do computador…) already ran in the console.
     assert.equal(new URLSearchParams(detachSpec(openStack({ page: "media", props: { intent: "upload" } })).query).get("media"), "1");
 });
 

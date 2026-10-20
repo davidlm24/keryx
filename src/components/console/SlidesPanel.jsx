@@ -6,6 +6,7 @@ import useKeepInView, { useFocusFollows } from "./useKeepInView";
 import ClipTitle from "./ClipTitle";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { lyricsOnAir } from "@/lib/console/dock";
+import { menuItem } from "@/lib/console/menuLabels";
 
 // The item in hand (owner 2026-10-14, as in Holyrics): the Prévia's slides
 // whenever it holds an item, even one of a single slide; with nothing
@@ -81,8 +82,8 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
                     return (
                         <button type="button" key={i} className={`kx-slide kx-t ${cls}`} aria-current={onAir ? "true" : undefined} onClick={() => pick(i)} onDoubleClick={() => go(i)}
                             onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
-                                { label: "Pôr na prévia", icon: "eye", disabled: !hand && i === index, onSelect: () => pick(i) },
-                                { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
+                                menuItem("porNaPrevia", { disabled: !hand && i === index, onSelect: () => pick(i) }),
+                                menuItem("enviarAoAr", { air: true, onSelect: () => go(i) }),
                             ] })} title={`${onAir ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || sl.label || ""}`}>
                             <span className="kx-slide-n">{i + 1}</span><SrState cls={cls} />
                             <SlideText slide={sl} />

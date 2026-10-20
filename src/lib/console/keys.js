@@ -99,10 +99,17 @@ function letterAction(e, letters) {
     return mode === "on" || e.shiftKey ? action : null;
 }
 
+const FIXED_HINTS = { send: "Enter", end: "Esc", undo: "Ctrl+Z", delete: "Delete", rename: "F2" };
+
 // The key a menu or a tooltip names for an action under that choice, or
 // null when no key does it (Tela preta with the letters off).
 export function keyHint(action, letters = "on") {
     const mode = letterKeys(letters);
+    // Keys that do not depend on the letter choice. send/end/undo are
+    // liveAction's (keys.test.mjs pins them); delete/rename are the lists'
+    // own (gridNav.js, the Mídia and the Escola), named here so no menu types
+    // them by hand — a menu shows them only where its list handles the key.
+    if (action in FIXED_HINTS) return FIXED_HINTS[action];
     if (action === "search") return mode === "on" ? "/" : "Ctrl+F";
     if (mode === "off") return null;
     if (action === "help") return "?";

@@ -23,6 +23,7 @@ import { themeForKind, themeName } from "@/lib/console/themes";
 import useKeepInView, { useFocusFollows } from "./useKeepInView";
 import { ScreenActions } from "./CenterPanel";
 import { captionParts, airInPlayer } from "@/lib/console/caption";
+import { menuItem } from "@/lib/console/menuLabels";
 
 // Book groups, by position in the canon, for the colour bar of each book.
 const GROUPS = [[0, 4, "#b08a5a"], [5, 16, "#9a7a4a"], [17, 21, "#8d8a6a"], [22, 38, "#8a6a9a"], [39, 43, "#5a8ab0"], [44, 64, "#6a9a7a"], [65, 65, "#7a9a5a"]];
@@ -461,9 +462,9 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                                         onClick={(e) => pick(v.number, e)}
                                         onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
                                         onContextMenu={(e) => menu(e, { title: `${book} ${chapter}:${v.number}`, items: [
-                                            { label: "Selecionar", icon: "check", onSelect: () => pick(v.number) },
+                                            menuItem("porNaPrevia", { onSelect: () => pick(v.number) }),
                                             { label: "Copiar o texto", icon: "text", onSelect: () => copyVerse(v) },
-                                            { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => sendCell(v.number) },
+                                            menuItem("enviarAoAr", { air: true, onSelect: () => sendCell(v.number) }),
                                         ] })}
                                         title={marked.has(v.number) ? `Anotação: ${notesApi.noteOf(book, chapter, v.number)?.note_text || ""}` : "Clique seleciona · 2 cliques projetam a partir deste versículo"}>
                                         <span className="kx-verse-n">{v.number}</span><SrState cls={`${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`} /><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>

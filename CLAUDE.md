@@ -32,12 +32,36 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   monitor físico e telas na rede, Saída = janela/página (aberta/fechada;
   rede = conectada/desconectada); Pôr na prévia / Enviar ao ar; Fixar no
   console; Exemplo (nunca "amostra"); posições Alto/Meio/Baixo e
-  Esq./Centro/Dir.; "Do computador…"; Aviso rápido; Atalhos; "Instalar e
+  Esq./Centro/Dir.; "Do computador…" (never "Enviar arquivos"); "Link do
+  YouTube…"; Aviso rápido; Atalhos (one place: Ajuda); "Temas e fundos" (the
+  section's one name, "Fundos" the library alone); "Instalar e
   reiniciar"; Ver › "Editar disposição" (o arranjo do console — "layout" é
   das telas). Heading hierarchy: the page title is the Panel's header; a
   listhead is a smaller sub-title (its "· hint" never in caps, console.css)
   that NEVER repeats the page title, only where a section has 2+ groups;
   hints must not restate the row's own options.
+  **One name, one icon, one key per action in every menu** (owner
+  2026-10-20, Rodada M1, "todas as trocas"): the actions that appear in 2+
+  menus are `MENU_LABELS` in `src/lib/console/menuLabels.js` (label, icon,
+  the key's name) and each menu builds them with `menuItem(id, extras)` —
+  the bar (menuBar.js, so the Menu button too), the (+) menus, the row menus
+  of Biblioteca, Setlist, Slides, No ar, Bíblia, Mídia and Escola, the
+  Prévia's and the Programa's; only a one-off label is written by hand.
+  `menuLabels.test.mjs` fails on a shared action spelled its own way and on
+  a table entry no menu builds. The rules it holds: "…" ends a label only
+  when the command asks for more before it acts (a file, a link, a
+  confirmation); one that opens a page has none (Nova música, Novo aviso,
+  Planejar o culto). Every "Excluir…" is the `trash`, every "Tirar…" the `x`
+  (Camadas' overlays included), "Remover saída" the trash too; the ⋯ glyph
+  only opens a menu ("Editar no planejador" is the `edit` pencil); "Pôr na
+  prévia" everywhere (never "Selecionar"). A menu shows a key only where it
+  works and always from `keyHint` (keys.js: send = Enter, end = Esc, delete =
+  Delete and rename = F2 where a list handles them — the Mídia and the Escola
+  today —, the letter keys by the church's choice), never typed by hand
+  (`kbd: "F2"` fails the test). "Enviar ao ar" shows Enter in every row menu;
+  "Encerrar…" shows Esc (which ends at once, the menu item asks first).
+  "Planejar o culto" lives in the bar's Culto, the Setlist's button and the
+  service clock — not in the Setlist's (+); "Atalhos" only in Ajuda (not Ver).
 - **`src/components/ui/` is generated shadcn/ui.** It is excluded from lint and
   from editor type checking. Don't hand-edit it; add components with the
   shadcn CLI (`components.json` is configured) or wrap them instead.
@@ -430,8 +454,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   of the tabs panel are prepared in the Prévia (`stageFromTool`), the aviso
   goes to the screens at once (`alert.show`); a text is asked with
   `askText` (PromptDialog.jsx; Esc closes it first). The Setlist's **+** is a menu
-  too: Buscar… (the palette), Seção…, Texto…, Timer… (a ServiceItem under
-  the item in the Prévia, else at the end) and Planejar o culto…; the
+  too: Buscar… (the palette), Seção…, Texto… and Timer… (a ServiceItem under
+  the item in the Prévia, else at the end; Planejar o culto is the button
+  beside it, not an item: Rodada M1); the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
   the search row is Buscar · ☆ · (+) Adicionar; **the Biblioteca's header
   holds the doors** (owner's pick, Rodada H, H1): its title, "Abrir a
@@ -615,8 +640,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   menu switches, ← / → walk them. Every item is something the console
   already does (Música › Sincronizar a música… opens the song in the Prévia
   or on air with Sincronizar on top; Letra automática › Iniciar/Pausar/
-  Retomar; Mídia › Enviar arquivos… / Link do YouTube… open the Mídia on
-  that step). **Ver stays beside the bell, with the panels glyph**
+  Retomar; Mídia › Do computador… / Link do YouTube… open the Mídia on
+  that step; Mídia › Fundos opens the backgrounds library at once). **Ver stays beside the bell, with the panels glyph**
   (`panels`, Lucide layout-panel-left; the eye is only for the choosers of
   what to show). **Ajuda is the bar's last menu** (owner 2026-10-20,
   Rodada M0; Alt+A): Primeiros passos (a dialog, `firstSteps.js`, tested:

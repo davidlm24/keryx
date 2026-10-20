@@ -11,6 +11,7 @@ import { plan, clockAt, span, total, isSection, typeIcon, typeLabel } from "@/li
 import { moveTo } from "@/lib/console/dropOrder";
 import useSortable from "./useSortable";
 import useRowStep from "./useRowStep";
+import { menuItem } from "@/lib/console/menuLabels";
 
 // The planned clock time of each item ("HH:MM"; "" for a section): the
 // service's start plus the durations before it (src/lib/console/setlist.js).
@@ -71,8 +72,8 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                         <div key={it.id} className="listhead rund-sec" role="listitem" {...sort.rowProps(i, { label: it.title, icon: "list", time: sec.seconds ? total(sec.seconds) : "" })} {...step.rowAttrs(i)} style={sort.rowStyle(i)}
                             tabIndex={canReorder ? 0 : undefined} aria-label={canReorder ? `Seção ${it.title} · Alt+↑ ou Alt+↓ muda de lugar` : undefined} onKeyDown={step.onKey(i)}
                             onContextMenu={(e) => menu(e, { title: it.title, items: [
-                                onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
-                                { label: "Tirar a seção…", icon: "x", onSelect: () => askTakeOut(it) },
+                                onPlan && menuItem("editarNoPlanejador", { onSelect: () => onPlan(it) }),
+                                menuItem("tirar", { label: "Tirar a seção…", onSelect: () => askTakeOut(it) }),
                                 ...step.menuItems(i),
                             ] })}>
                             <span className="kx-section">{it.title}</span><span className="kx-count"> · {sec.count} · {total(sec.seconds)}</span>
@@ -95,15 +96,15 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                         onClick={() => onPrepare(it, i)}
                         onDoubleClick={() => onGo(it, i)}
                         onContextMenu={(e) => menu(e, { title: it.title || typeLabel(it.type), items: [
-                            { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(it, i) },
-                            onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
-                            { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(it, i) },
-                            { label: "Tirar da setlist…", icon: "x", onSelect: () => askTakeOut(it) },
+                            menuItem("porNaPrevia", { onSelect: () => onPrepare(it, i) }),
+                            onPlan && menuItem("editarNoPlanejador", { onSelect: () => onPlan(it) }),
+                            menuItem("enviarAoAr", { air: true, onSelect: () => onGo(it, i) }),
+                            menuItem("tirar", { label: "Tirar da setlist…", onSelect: () => askTakeOut(it) }),
                             ...step.menuItems(i),
                         ] })}
                         onKey={step.onKey(i)}
                         dragProps={dragProps}
-                        actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Enviar ao ar · 2 cliques" aria-label={`Ir para ${it.title || typeLabel(it.type)}`}><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="more" title="Editar no planejador" aria-label={`Editar ${it.title || typeLabel(it.type)} no planejador`} onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
+                        actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Enviar ao ar · 2 cliques" aria-label={`Ir para ${it.title || typeLabel(it.type)}`}><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="edit" title="Editar no planejador" aria-label={`Editar ${it.title || typeLabel(it.type)} no planejador`} onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
                     />
                 );
             })}
