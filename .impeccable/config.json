@@ -32,6 +32,15 @@
         ],
         "createdAt": "2026-10-14T21:22:02.175Z",
         "reason": "Owner-approved Rodada C design (artifact Janelas do KERYX): the one window animates between its two sizes (Padrão/Editor) in 200ms; a single centered dialog resized once per navigation, not continuous layout animation, and transform scaling would distort the page content"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "docs/design-system/components/bundle.css"
+        ],
+        "createdAt": "2026-10-20T15:22:49.305Z",
+        "reason": "CLAUDE.md (owner, Rodada C/D3): THE window's frame animates between its Padrão and Editor sizes; rule moved verbatim from console.css in DS3, a nothing-changes-on-screen PR"
       }
     ]
   }

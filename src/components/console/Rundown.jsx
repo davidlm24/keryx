@@ -23,7 +23,7 @@ export function AutoplaySwitch({ on, onChange, disabled }) {
     const tip = disabled ? "Avançar sozinho: escolha ou comece um culto primeiro" : on ? "Avançar sozinho ligado: quando o item no ar termina, o próximo vai ao ar" : "Avançar sozinho: quando o item no ar terminar, o próximo vai ao ar sozinho";
     return (
         <button type="button" className="rund-auto" role="switch" aria-checked={Boolean(on)} aria-label="Avançar sozinho" title={tip} disabled={disabled} onClick={() => onChange(!on)}>
-            <span className={`sw2 ${on ? "is-on" : ""}`} aria-hidden="true" /><span className="rund-auto-l">Avançar sozinho</span>
+            <span className={`sw2 kx-switch ${on ? "is-on" : ""}`} aria-hidden="true" /><span className="rund-auto-l">Avançar sozinho</span>
         </button>
     );
 }

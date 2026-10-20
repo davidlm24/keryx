@@ -69,8 +69,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `kx-row`/`kx-layer` in the console (Biblioteca, Setlist, the tabs panel,
   Camadas, Configurações' menu, the views) sits `--space-1` in from its
   column with `--radius-control`, 2 px apart, like the verses — the hover
-  and the states never run edge to edge. One rule in `console.css`; don't
-  override it per list. Edge to edge only where the owner asks (the Slides
+  and the states never run edge to edge. One rule, the Row component in
+  `docs/design-system/components/bundle.css`; don't override it per list. Edge to edge only where the owner asks (the Slides
   column and No ar, to gain room). docs/design-system.md has it too.
 - **Windows contrast themes** (forced colours; design audit C-05,
   2026-10-16): the states and controls that are backgrounds or shadows get
@@ -158,8 +158,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   contract. **The other pages of THE window** (Rodada H4) use `CfgGroup`
   too (Editor de música, Planejar o culto, Aviso, Escola bíblica; ids
   `song.*`, `planner.*`, `notice.*`, `school.turma`; summaries in
-  `src/lib/console/pageGroups.js`): its CSS is scoped `.console .cfg-group*`,
-  not `.console .cfg`, so any column can hold one.
+  `src/lib/console/pageGroups.js`): its CSS is the Group component of
+  bundle.css (`kx-group`, beside the old `cfg-group` names), scoped `.kx`,
+  not `.cfg`, so any column can hold one.
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
@@ -619,7 +620,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/components/console/`); `/` and any unknown path go there. It is built
   on the design system in `docs/design-system/` (tokens and `kx-` classes,
   imported as `@ds/…`; read `docs/design-system.md` before touching its
-  look). One screen, always live (no steps; Verificar is an overlay from the
+  look: `tokens.json` is the one source of the tokens, `bundle.css` the
+  components as they ship, `console.css` only the console's layout and its
+  app-specific compositions, and no stylesheet types a colour, a px font
+  size or a z-index by hand — `src/lib/tokens.test.mjs`; the three kinds of
+  surface are `docs/design-system/surfaces.md`). One screen, always live (no steps; Verificar is an overlay from the
   Saídas popover; Configurações, `settings/SettingsView`, is a window over
   whatever is on screen, its own `cfg` state, `?config=`; its sections are
   `src/lib/console/settings.js`, old ids resolve through `resolveSection`;
@@ -697,8 +702,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **One floating window over the live console**, the Configurações frame
   on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2, the
   title, the page's tools and actions, the (x) "Fechar · Esc"; there is
-  no "← Console" BackBtn any more), `.win-dialog` + `.win-scrim` in
-  console.css, two sizes (Padrão, and `.is-editor` for the editors; the
+  no "← Console" BackBtn any more), the Window component of bundle.css
+  (`kx-win`, beside the old `.win-dialog`; the `.win-scrim` and the
+  `.win-body` layout stay in console.css), two sizes (Padrão, and `.is-editor` for the editors; the
   frame animates between them). **The window stretches by its 4 edges and 4 corners** (owner
   2026-10-15, Rodada D3; `WinEdges` in `src/components/console/winLayout.jsx`,
   `dragRect`/`clampWin` in `src/lib/console/winLayout.js`, tested): min
@@ -890,7 +896,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `Panel bare`, `kx-panel-bare`). **The Programa has no header** (owner
   2026-10-16, Rodada E1): its screen's top lines up with the panels beside
   it, and its caption and controls are **one pill inside the screen,
-  bottom-right** (`ProgramaPill` in CenterPanel.jsx, `.prog-pill`, Monitor
+  bottom-right** (`ProgramaPill` in CenterPanel.jsx, the Pill component
+  `kx-pill` of bundle.css beside the old `.prog-pill`, Monitor
   children so it rides the Multiview too): a dot in the state's colour
   (red on air, blue locked with the "Travado" word, amber when an output
   failed, grey "Nada no ar"), the title (in that colour, **no "Programa"
@@ -1005,7 +1012,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   done row dims only its glyph; a note is a mark in the corner. The bars
   are inset box-shadows (a contrast theme drops them; its block draws the
   states), and the keyboard's ring over a gold wash is `fg-1`, gold
-  elsewhere. **Switches** (`.sw2`, role=switch, every one: SwitchRow, the
+  elsewhere. **Switches** (`kx-switch` in bundle.css, beside the old
+  `.sw2`; role=switch, every one: SwitchRow, the
   Saídas rows, Avançar sozinho, Abrir ao iniciar) are 32 × 20, on = an
   `fg-1` track with a `bg-0` knob (never the Prévia's green). The No ar strip
   (low, across the window) keeps its cards. The classes stay
@@ -1424,6 +1432,7 @@ npm run desktop:smoke  # build + run the app on a temp data dir + in-app checks
 KERYX_SMOKE=1 npm run desktop:dev   # same checks + the renderer adapter end to end
 npm run dist           # Windows installer in release/ (unsigned)
 npm run db:schema      # after editing base44/entities/*.jsonc
+npm run ds:tokens      # after editing docs/design-system/tokens.json (writes tokens.css; --format tidies the json)
 npm run db:import      # one-off Base44 -> local import; needs the user's token
 npm run dev            # dev only: the console in a plain browser on sample data (the side-panel preview)
 ```

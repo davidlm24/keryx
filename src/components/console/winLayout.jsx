@@ -63,6 +63,6 @@ export function WinEdges({ dialogRef, onRect, onDone }) {
         if (d?.last) onDone(d.last);
     };
     return EDGES.map((edge) => (
-        <div key={edge} className={`win-edge is-${edge}`} aria-hidden="true" onPointerDown={down(edge)} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
+        <div key={edge} className={`win-edge kx-win-edge is-${edge}`} aria-hidden="true" onPointerDown={down(edge)} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
     ));
 }

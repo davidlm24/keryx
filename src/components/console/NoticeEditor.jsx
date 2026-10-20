@@ -182,7 +182,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                             <Seg small label="Canto do logo" value={draft.show_logo === false ? "none" : draft.logo_position || "top-left"} onChange={(v) => set(v === "none" ? { show_logo: false } : { show_logo: true, logo_position: v })} options={LOGO} />
                             <span className="k">Som de alerta</span>
                             <span className="nv-inline">
-                                <button type="button" role="switch" aria-checked={Boolean(draft.sound_alert)} aria-label="Som de alerta" className={`sw2 kx-t ${draft.sound_alert ? "is-on" : ""}`} onClick={() => set({ sound_alert: !draft.sound_alert })} />
+                                <button type="button" role="switch" aria-checked={Boolean(draft.sound_alert)} aria-label="Som de alerta" className={`sw2 kx-switch kx-t ${draft.sound_alert ? "is-on" : ""}`} onClick={() => set({ sound_alert: !draft.sound_alert })} />
                                 <span className={draft.sound_alert && !chimeOn ? "kx-warn" : "kx-meta"}>{draft.sound_alert ? (chimeOn ? "Toca um sino curto quando o aviso entra" : "O sino está desligado em Configurações › Telas e saídas") : "Sem som"}</span>
                             </span>
                         </div>
