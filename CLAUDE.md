@@ -883,9 +883,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the header it lost pays for the player's second row;
   the Prévia is its screen, its caption a badge inside the top-left corner
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
-  locked), and **no Enviar ao ar button** — Enter, a double click on it
-  or its right-click menu send (the Bíblia, the Escola bíblica and the
-  Mídia keep theirs). Camadas in the tray is a drawer opened from the
+  locked), and **an Enviar ao ar pill inside the screen, bottom-right, in
+  the Programa pill's style** (owner 2026-10-20, Rodada N5; `PreviaPill`,
+  `.prog-pill.prev-pill`: a green dot and the button, "Usar o tema" for a
+  theme's example, aria-disabled with the reason in its tooltip while
+  `sendBlock` refuses — locked, a PDF preparing, a file coming or missing;
+  only its glyph on a narrow Prévia, `prev-screen`; the "não vai mostrar"
+  lines stack above it in `.prev-foot`), plus Enter, a double click or its
+  right-click menu (the Bíblia, the Escola bíblica and the Mídia keep
+  their own buttons). The smoke reads the Programa's pill as
+  `.prog-pill:not(.prev-pill)`. Camadas in the tray is a drawer opened from the
   Programa's pill (or its "…"). The old `order`/`stacks`/widths are only read to build the first
   dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca have
   their chooser in the panel's header**, at the level of the title like every
