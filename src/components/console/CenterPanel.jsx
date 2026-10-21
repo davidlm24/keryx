@@ -7,7 +7,7 @@ import MultiView from "./MultiView";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
-import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
+import { getDragStage, getDragStages, clearDragStage } from "@/lib/console/dragStage";
 import { captionParts, airInPlayer } from "@/lib/console/caption";
 import { OUTPUT_VIEWS } from "@/lib/network/views";
 import { prefState, prefVars, outputsNotShowing, alertOf } from "@/lib/outputPrefs";
@@ -188,7 +188,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     const dropProps = {
         onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (!dropOn) setDropOn(true); } },
         onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOn(null); },
-        onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "air"); },
+        onDrop: (e) => { const st = getDragStage(); const n = getDragStages().length; setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "air", n); },
     };
     const dropHint = dropOn && <div className="kx-drop-hint is-air"><span>Solte para enviar ao ar</span></div>;
     return (
@@ -286,7 +286,7 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
     const dropProps = {
         onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (!dropOn) setDropOn(true); } },
         onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOn(null); },
-        onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "prev"); },
+        onDrop: (e) => { const st = getDragStage(); const n = getDragStages().length; setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "prev", n); },
     };
     return (
         <Panel bare className={`prev-panel ${className}`}>

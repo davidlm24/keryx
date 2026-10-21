@@ -1,5 +1,5 @@
 import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { measureRows, roomFor, slotAt, slotTop, shiftFor, isNoop } from "@/lib/console/dropOrder";
+import { measureRows, roomFor, slotAt, slotTop, shiftFor, isNoop, groupIdxs, groupRoom, isGroupNoop } from "@/lib/console/dropOrder";
 import { setDragGhost, claimGhost } from "./dragGhost";
 
 // A list you drag in (owner 2026-10-15, Rodada D; Rodada E2, 2026-10-16:
@@ -17,25 +17,33 @@ import { setDragGhost, claimGhost } from "./dragGhost";
 //                               list (the Biblioteca's stage onto the Setlist).
 //   carry(e)                  — read at the drop and handed to onDrop (what
 //                               the drag carried is gone once the card landed).
-//   onDrop(from, over, carry) — `from` the row dragged here (-1 from
-//                               elsewhere), `over` the slot (0..n), never a no-op.
+//   onDrop(from, over, carry, group) — `from` the row dragged here (-1 from
+//                               elsewhere), `over` the slot (0..n), never a
+//                               no-op; `group` the rows dragged together
+//                               (their indices, in order) or null.
+//   group(k)                  — the rows that go with row k when it is
+//                               grabbed (the marked ones, Rodada O2): with 2+
+//                               they stay where they were, dimmed
+//                               (data-sort-held), the slot opens as tall as
+//                               all of them and the card counts them.
 //   keys                      — the rows' ids in order: the slot stays lit
 //                               until they change (the new order is on
 //                               screen), so the list never flashes the old one.
 //   room                      — the room a drag from elsewhere opens (px);
 //                               else the list's tallest row.
-// -> { listProps, rowProps(k, { label, icon, time }), rowStyle(k), slot, sorting, dragFrom, over }
+// -> { listProps, rowProps(k, { label, icon, time }), rowStyle(k), slot, sorting, dragFrom, over, held }
 // Rows are the list's children marked data-sort-row, in order; `slot` (the
 // placeholder for a drop from elsewhere) is rendered inside the list.
 const SETTLE_MS = 180;
 const WAIT_MS = 1000;
 const reduced = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
 
-export default function useSortable({ accepts = () => false, carry, onDrop, keys, room, disabled = false } = {}) {
+export default function useSortable({ accepts = () => false, carry, onDrop, keys, room, group, disabled = false } = {}) {
     const listRef = useRef(null);
     // What is drawn: whose drag ("own" from a row here, "ext" from
     // elsewhere), the row dragged, the slot lit and the rows as measured.
-    const [mode, setMode] = useState(null);
+    const [mode, setMode] = useState(null); // "own" | "ext" | "group"
+    const [held, setHeld] = useState(null); // a group's rows
     const [from, setFrom] = useState(null);
     const [over, setOver] = useState(null);
     const [geom, setGeom] = useState(null);
@@ -45,6 +53,7 @@ export default function useSortable({ accepts = () => false, carry, onDrop, keys
     // The same, for the event handlers (state lags one event behind).
     const geo = useRef(null);
     const fromRef = useRef(null);
+    const groupRef = useRef(null);
     const slotRef = useRef(null);
     const phase = useRef("idle"); // "idle" | "drag" | "land"
     const ghost = useRef(null);
@@ -65,7 +74,9 @@ export default function useSortable({ accepts = () => false, carry, onDrop, keys
         phase.current = "idle";
         geo.current = null;
         fromRef.current = null;
+        groupRef.current = null;
         slotRef.current = null;
+        setHeld(null);
         setMode(null); setFrom(null); setOver(null); setGeom(null); setLanding(null);
     }, []);
     // However a drag ends — dropped elsewhere, or cancelled — the rows go
@@ -100,10 +111,15 @@ export default function useSortable({ accepts = () => false, carry, onDrop, keys
     };
     const yIn = (e) => { const box = listRef.current; return box ? e.clientY - origin(box).top : 0; };
     // The list's tail (a filler marked data-sort-tail) always means "at the end".
-    const slotOf = (e, f) => (e.target?.closest?.("[data-sort-tail]") ? geo.current.tops.length : slotAt(geo.current, yIn(e), f, slotRef.current, roomFor(geo.current, f, room)));
+    // What the drag moves as the maths see it: a group is a drop from
+    // elsewhere (its rows stay put) opening the group's room.
+    const dragged = () => (groupRef.current
+        ? { f: -1, gap: groupRoom(geo.current, groupRef.current) }
+        : { f: fromRef.current ?? -1, gap: roomFor(geo.current, fromRef.current ?? -1, room) });
+    const slotOf = (e) => { const d = dragged(); return e.target?.closest?.("[data-sort-tail]") ? geo.current.tops.length : slotAt(geo.current, yIn(e), d.f, slotRef.current, d.gap); };
     const ours = (e) => fromRef.current !== null || accepts(e);
     // The lit slot on screen (viewport px): where the card lands.
-    const slotRect = (f, o) => {
+    const slotRect = (f, o, gap) => {
         const box = listRef.current;
         const g = geo.current;
         if (!box || !g || o == null) return null;
@@ -112,7 +128,7 @@ export default function useSortable({ accepts = () => false, carry, onDrop, keys
         if (f >= 0) return { left: at.left + g.lefts[f], top, width: g.widths[f], height: g.heights[f] };
         const ph = box.querySelector(":scope > .kx-sort-slot")?.getBoundingClientRect();
         const r = box.getBoundingClientRect();
-        return { left: ph ? ph.left : r.left + 4, top, width: ph ? ph.width : r.width - 8, height: roomFor(g, -1, room) - g.gap };
+        return { left: ph ? ph.left : r.left + 4, top, width: ph ? ph.width : r.width - 8, height: gap - g.gap };
     };
 
     const listProps = disabled ? { ref: listRef } : {
@@ -122,7 +138,7 @@ export default function useSortable({ accepts = () => false, carry, onDrop, keys
             e.preventDefault();
             if (!geo.current) setGeom(measure());
             if (phase.current === "idle") { phase.current = "drag"; setMode("ext"); }
-            const slot = slotOf(e, fromRef.current ?? -1);
+            const slot = slotOf(e);
             if (slot !== slotRef.current) { slotRef.current = slot; setOver(slot); }
         },
         onDragLeave: (e) => {
@@ -134,22 +150,25 @@ export default function useSortable({ accepts = () => false, carry, onDrop, keys
             if (phase.current === "land" || !ours(e)) return;
             e.preventDefault();
             if (!geo.current) setGeom(measure());
+            const grp = groupRef.current;
+            const d = dragged();
             const f = fromRef.current ?? -1;
-            const o = slotOf(e, f);
+            const o = slotOf(e);
             const carried = carry?.(e);
-            const noop = isNoop(f, o);
-            // The slot stays lit while the card lands (its own place on a no-op).
-            const shown = noop ? f : o;
+            const noop = grp ? isGroupNoop(geo.current.tops.length, grp, o) : isNoop(f, o);
+            // The slot stays lit while the card lands (its own place on a
+            // no-op; a group's where it was asked for).
+            const shown = noop && !grp ? f : o;
             phase.current = "land";
             slotRef.current = shown;
             setOver(shown);
             setLanding({ wait: false });
             ghost.current = claimGhost();
-            ghost.current?.land(slotRect(f, shown));
+            ghost.current?.land(slotRect(d.f, shown, d.gap));
             const commit = () => {
                 pending.current = null;
                 if (noop) { reset(); return; }
-                drop.current?.(f, o, carried);
+                drop.current?.(f, o, carried, grp);
                 if (sigRef.current === null) { reset(); return; }
                 setLanding({ wait: true, sig: sigRef.current });
                 // A drop that changed nothing (refused, failed): back to rest.
@@ -164,6 +183,7 @@ export default function useSortable({ accepts = () => false, carry, onDrop, keys
     const rowProps = (k, ghostOf = {}) => (disabled ? { "data-sort-row": "" } : {
         "data-sort-row": "",
         "data-sort-slot": live && mode === "own" && k === from ? "" : undefined,
+        "data-sort-held": live && mode === "group" && held?.includes(k) ? "" : undefined,
         draggable: true,
         onDragStart: (e) => {
             e.stopPropagation();
@@ -175,25 +195,30 @@ export default function useSortable({ accepts = () => false, carry, onDrop, keys
             timers.current = [];
             ghost.current?.remove();
             ghost.current = null;
-            setDragGhost(e, ghostOf);
+            const grp = group ? groupIdxs(group(k), Infinity) : [];
+            const many = grp.length > 1 && grp.includes(k) ? grp : null;
+            setDragGhost(e, many ? { ...ghostOf, count: many.length } : ghostOf);
             phase.current = "drag";
             fromRef.current = k;
+            groupRef.current = many;
             slotRef.current = null;
             const g = measure();
             // The row turns into the slot only after the browser started the
             // drag (changing the dragged node in dragstart can cancel it).
-            setTimeout(() => { if (fromRef.current === k && phase.current === "drag") { setGeom(g); setFrom(k); setMode("own"); setLanding(null); } }, 0);
+            setTimeout(() => { if (fromRef.current === k && phase.current === "drag") { setGeom(g); setFrom(k); setHeld(many); setMode(many ? "group" : "own"); setLanding(null); } }, 0);
         },
     });
     const rowStyle = (k) => {
         if (!live || over == null) return undefined;
         const f = mode === "own" ? from : -1;
-        const dy = k === f ? slotTop(geom, f, over) - geom.tops[f] : shiftFor(k, f, over, roomFor(geom, f, room));
+        const gap = mode === "group" ? groupRoom(geom, held) : roomFor(geom, f, room);
+        const dy = k === f ? slotTop(geom, f, over) - geom.tops[f] : shiftFor(k, f, over, gap);
         return dy ? { transform: `translateY(${dy}px)` } : undefined;
     };
-    // From elsewhere: a placeholder of a row's size where the drop goes.
-    const slot = live && mode === "ext" && over != null
-        ? createElement("div", { className: "kx-sort-slot", "aria-hidden": true, style: { top: slotTop(geom, -1, over), height: roomFor(geom, -1, room) - geom.gap } })
+    // From elsewhere: a placeholder of a row's size where the drop goes; for
+    // a group, as tall as all its rows.
+    const slot = live && (mode === "ext" || mode === "group") && over != null
+        ? createElement("div", { className: "kx-sort-slot", "aria-hidden": true, style: { top: slotTop(geom, -1, over), height: (mode === "group" ? groupRoom(geom, held) : roomFor(geom, -1, room)) - geom.gap } })
         : null;
-    return { listProps, rowProps, rowStyle, slot, sorting: live, dragFrom: from, over };
+    return { listProps, rowProps, rowStyle, slot, sorting: live, dragFrom: from, over, held: live && mode === "group" ? held : null };
 }

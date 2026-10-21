@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { keryx } from "@/api/keryxClient";
-import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
+import { getDragStage, getDragStages, clearDragStage } from "@/lib/console/dragStage";
 import { Row, Btn, IconBtn, Empty, SelBar, RowMark } from "./kx";
 import { useMultiSelect } from "./useMultiSelect";
 import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
@@ -12,7 +12,7 @@ import { useConfirm } from "./ConfirmDialog";
 import { takeOut, takeOutQuestion, takeOutMany } from "./setlistActions";
 import Icon from "./Icon";
 import { plan, clockAt, span, total, isSection, typeIcon, typeLabel } from "@/lib/console/setlist";
-import { moveTo } from "@/lib/console/dropOrder";
+import { moveTo, moveManyTo } from "@/lib/console/dropOrder";
 import useSortable from "./useSortable";
 import useRowStep from "./useRowStep";
 import { menuItem } from "@/lib/console/menuLabels";
@@ -23,11 +23,14 @@ import { END_ACTIONS, END_LABEL, END_ICON, END_TIP, endChoice, NO_DURATION } fro
 // Setlist's header, the culto's switch (Service.autoplay; it syncs with the
 // culto). 24 px like every header control; its word goes first when the
 // header is narrow (console.css, the setlist-h container), the switch stays.
+// Rodada O3 (owner 2026-10-21): the small switch (kx-switch-sm) and the one
+// word "Autoplay" — English by the owner's choice, the exception to the
+// pt-BR rule; the whole sentence stays in the tooltip.
 export function AutoplaySwitch({ on, onChange, disabled }) {
     const tip = disabled ? "Avançar sozinho: escolha ou comece um culto primeiro" : on ? "Avançar sozinho ligado: quando o item no ar termina, o próximo vai ao ar" : "Avançar sozinho: quando o item no ar terminar, o próximo vai ao ar sozinho";
     return (
-        <button type="button" className="rund-auto" role="switch" aria-checked={Boolean(on)} aria-label="Avançar sozinho" title={tip} disabled={disabled} onClick={() => onChange(!on)}>
-            <span className={`sw2 kx-switch ${on ? "is-on" : ""}`} aria-hidden="true" /><span className="rund-auto-l">Avançar sozinho</span>
+        <button type="button" className="rund-auto" role="switch" aria-checked={Boolean(on)} aria-label="Autoplay: avançar sozinho" title={tip} disabled={disabled} onClick={() => onChange(!on)}>
+            <span className={`sw2 kx-switch kx-switch-sm ${on ? "is-on" : ""}`} aria-hidden="true" /><span className="rund-auto-l">Autoplay</span>
         </button>
     );
 }
@@ -92,18 +95,21 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
     // slot shows where the item lands and the rows around it make room — a
     // Setlist row moved, or a song from the Biblioteca (a stage, taken at
     // the drop) added there (useSortable; dropOrder.js, tested).
-    const reorder = async (from, over) => {
-        const next = moveTo(items, from, over);
-        await Promise.all(next.map((x, i) => (x.order !== i ? keryx.entities.ServiceItem.update(x.id, { order: i }) : null)));
-    };
+    const renumber = (next) => Promise.all(next.map((x, i) => (x.order !== i ? keryx.entities.ServiceItem.update(x.id, { order: i }) : null)));
+    const reorder = (from, over) => renumber(moveTo(items, from, over));
+    // Rodada O2: a marked row grabbed with others marked takes them all, in
+    // the list's order (a section never goes with them: it is not marked).
+    const markedIdxs = (k) => (picked.length > 1 && !isSection(items[k]) && ms.has(items[k]?.id) ? items.flatMap((it, i) => (ms.has(it.id) && !isSection(it) ? [i] : [])) : null);
     const sort = useSortable({
         disabled: !canReorder,
         keys: items.map((it) => it.id),
+        group: markedIdxs,
         accepts: () => Boolean(getDragStage()),
-        carry: () => { const stage = getDragStage(); clearDragStage(); return stage; },
-        onDrop: (from, over, stage) => {
+        carry: () => { const stages = getDragStages(); clearDragStage(); return stages; },
+        onDrop: (from, over, stages, group) => {
+            if (group) { renumber(moveManyTo(items, group, over)); return; }
             if (from >= 0) { reorder(from, over); return; }
-            if (stage) onAddStage?.(stage, over);
+            if (stages?.length) onAddStage?.(stages, over);
         },
     });
     // The list follows the service: when the item on air (or in the Prévia)

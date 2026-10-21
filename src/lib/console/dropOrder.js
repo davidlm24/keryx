@@ -102,3 +102,36 @@ export function stepSlot(from, dir, n) {
 
 // The step a key press on a focused row asks for: Alt+↑ -1, Alt+↓ +1, else 0.
 export const stepKey = (e) => (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey ? ({ ArrowUp: -1, ArrowDown: 1 }[e.key] || 0) : 0);
+
+// Dragging several marked rows at once (owner 2026-10-21, Rodada O2 = A).
+// The marked rows stay where they were, dimmed, and the slot opens where
+// they all land, as tall as the group: the maths are those of a drop from
+// elsewhere (`from` -1) with the group's room. `idxs` are the rows' indices
+// in the list, in any order; the group lands in the list's order.
+
+// The marked rows' indices, in the list's order, without repeats or strays.
+export const groupIdxs = (idxs, n) => [...new Set((idxs || []).filter((i) => Number.isInteger(i) && i >= 0 && i < n))].sort((a, b) => a - b);
+
+// The room the group opens: the rows' own pitches added up.
+export const groupRoom = (geo, idxs) => groupIdxs(idxs, geo.pitch.length).reduce((s, i) => s + geo.pitch[i], 0);
+
+// The list with the rows at `idxs` moved together to slot `over` of the
+// original list, in their order (the same list when nothing would move).
+// One index is moveTo.
+export function moveManyTo(list, idxs, over) {
+    const g = groupIdxs(idxs, list.length);
+    if (!g.length) return list;
+    const held = new Set(g);
+    const rest = list.filter((_, i) => !held.has(i));
+    const at = Math.max(0, Math.min(rest.length, over - g.filter((i) => i < over).length));
+    const out = [...rest.slice(0, at), ...g.map((i) => list[i]), ...rest.slice(at)];
+    return out.every((x, i) => x === list[i]) ? list : out;
+}
+
+// Whether dropping the group at `over` would leave the list as it is.
+export const isGroupNoop = (n, idxs, over) => {
+    const g = groupIdxs(idxs, n);
+    if (!g.length) return true;
+    const list = Array.from({ length: n }, (_, i) => i);
+    return moveManyTo(list, g, over) === list;
+};

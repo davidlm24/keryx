@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { overIndex, isNoop, shiftFor, placeIndex, moveTo, measureRows, roomFor, slotAt, slotTop, stepSlot, stepKey } from "./dropOrder.js";
+import { overIndex, isNoop, shiftFor, placeIndex, moveTo, measureRows, roomFor, slotAt, slotTop, stepSlot, stepKey, moveManyTo, isGroupNoop, groupRoom, groupIdxs } from "./dropOrder.js";
 
 test("overIndex: the slot is how many row middles are above the pointer", () => {
     const mids = [16, 48, 80];
@@ -125,4 +125,40 @@ test("stepKey: only Alt+↑ / Alt+↓ move a row", () => {
     assert.equal(stepKey({ key: "ArrowDown" }), 0);
     assert.equal(stepKey({ key: "ArrowDown", altKey: true, ctrlKey: true }), 0);
     assert.equal(stepKey({ key: "ArrowLeft", altKey: true }), 0);
+});
+
+test("moveManyTo: the marked rows move together, in the list's order", () => {
+    const l = ["a", "b", "c", "d", "e", "f"];
+    assert.deepEqual(moveManyTo(l, [4, 1], 0), ["b", "e", "a", "c", "d", "f"], "to the top, in list order");
+    assert.deepEqual(moveManyTo(l, [0, 2], 6), ["b", "d", "e", "f", "a", "c"], "the tail slot: last");
+    assert.deepEqual(moveManyTo(l, [0, 2], 4), ["b", "d", "a", "c", "e", "f"], "before e: rows before the slot leave room");
+    assert.deepEqual(moveManyTo(l, [1, 5], 3), ["a", "c", "b", "f", "d", "e"], "into the middle, from both sides");
+    assert.equal(moveManyTo(l, [1, 2], 1), l, "a block over its own place");
+    assert.equal(moveManyTo(l, [1, 2], 3), l);
+    assert.notEqual(moveManyTo(l, [1, 3], 2), l, "a gap closes up: it moves");
+    assert.equal(moveManyTo(l, [], 2), l);
+    assert.equal(moveManyTo(l, [9, -1], 2), l, "strays ignored");
+    assert.deepEqual(moveManyTo(l, [3, 3], 0), ["d", "a", "b", "c", "e", "f"], "repeats count once");
+});
+
+test("moveManyTo with one row is moveTo", () => {
+    const l = ["a", "b", "c", "d"];
+    for (let from = 0; from < l.length; from += 1) {
+        for (let over = 0; over <= l.length; over += 1) assert.deepEqual(moveManyTo(l, [from], over), moveTo(l, from, over), `${from} → ${over}`);
+    }
+});
+
+test("isGroupNoop and groupRoom", () => {
+    assert.ok(isGroupNoop(5, [1, 2], 1) && isGroupNoop(5, [1, 2], 2) && isGroupNoop(5, [1, 2], 3));
+    assert.ok(!isGroupNoop(5, [1, 2], 0) && !isGroupNoop(5, [1, 2], 4) && !isGroupNoop(5, [1, 3], 2));
+    assert.ok(isGroupNoop(5, [], 2));
+    assert.deepEqual(groupIdxs([3, 1, 3, 7], 5), [1, 3]);
+    const geo = measureRows([{ top: 0, height: 30 }, { top: 32, height: 20 }, { top: 54, height: 30 }]);
+    assert.equal(groupRoom(geo, [0, 2]), 32 + 32, "the slot is as tall as the group, gaps included");
+    assert.equal(groupRoom(geo, [1]), 22);
+    // The slot under the pointer counts the rows as drawn with the group's room.
+    const room = groupRoom(geo, [0, 2]);
+    assert.equal(slotAt(geo, 10, -1, null, room), 0);
+    assert.equal(slotAt(geo, 45, -1, null, room), 2);
+    assert.equal(slotAt(geo, 200, -1, 3, room), 3);
 });
