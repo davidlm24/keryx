@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor, WinBar } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor, WinBar, SelectManyBtn, SelBar, RowMark } from "./kx";
+import { useMultiSelect } from "./useMultiSelect";
+import { pickedOf } from "@/lib/console/multiSelect";
+import { deleteSeveral } from "./bulkActions";
 import { CfgGroup, setGroupOpen } from "./settings/parts";
 import { previewDoc, captionOf, TeacherNotes } from "./CenterPanel";
 import { stageFromMaterial, stageFromTool, liveStageId, stageAt } from "@/lib/console/stage";
@@ -57,6 +60,14 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         for (const m of shown) { const k = String(m.subject || "").trim() || "Sem lição"; if (!by.has(k)) by.set(k, []); by.get(k).push(m); }
         return [...by.entries()];
     }, [shown]);
+    // Selecting several materials (multiSelect.js, owner 2026-10-21, M4):
+    // "air" mode, so a plain click still prepares; Ctrl/Shift + click and
+    // Selecionar vários mark. The order is the list's, lesson by lesson.
+    const listed = useMemo(() => lessons.flatMap(([, list]) => list), [lessons]);
+    const listedIds = useMemo(() => listed.map((m) => m.id), [listed]);
+    const materialIds = useMemo(() => materials.map((m) => m.id), [materials]);
+    const ms = useMultiSelect({ order: listedIds, existing: materialIds, mode: "air", register: false });
+    const picked = pickedOf(ms.sel, listed);
 
     // -- Turmas and students -------------------------------------------------------
     const saveClass = (patch) => keryx.entities.BibleSchoolClass.update(cls.id, patch).then(refresh).catch(fail);
@@ -93,10 +104,13 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const renameClass = (k) => renameRow("Renomear a turma", k.name, (name) => keryx.entities.BibleSchoolClass.update(k.id, { name }).then(refresh).catch(fail));
     const renameStudent = (i) => renameRow("Renomear o aluno", cls.students[i].name, (name) => saveClass({ students: cls.students.map((s, k) => (k === i ? { ...s, name } : s)) }));
     const renameMaterial = (m) => renameRow("Renomear o material", m.title, (title) => keryx.entities.BibleMaterial.update(m.id, { title }).then(refresh).catch(fail));
-    const removeMaterial = async (m) => {
-        if (!(await ask(deleteQuestion("o material", m.title)))) return;
-        try { await keryx.entities.BibleMaterial.delete(m.id); refresh(); c.say("Material excluído."); } catch (err) { fail(err); }
-    };
+    // One question for one material or many (bulkActions.js, M5 = A): it
+    // names them, warns about the setlists that use them, and their Setlist
+    // items leave with them.
+    const removeMany = (rows = picked) => deleteSeveral({ confirm: ask, say: c.say, entity: "BibleMaterial", kind: "material", rows })
+        .then((gone) => { if (gone.length) refresh(); })
+        .catch(fail);
+    const removeMaterial = (m) => removeMany([m]);
 
     // The rows' menus and keys (audit C-72, as the console's lists): a right
     // click acts on the row under the pointer; on a focused row Delete asks
@@ -111,6 +125,10 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         askText && menuItem("renomear", { onSelect: () => renameStudent(i) }),
         menuItem("tirar", { label: "Tirar da turma…", kbd: keyHint("delete"), onSelect: () => removeStudent(i) }),
     ];
+    // A right click on a marked row, with others marked, acts on them all.
+    const materialMenu = (e, m) => (ms.has(m.id) && picked.length > 1
+        ? menu(e, { title: `${picked.length} materiais`, items: [menuItem("excluir", { kbd: keyHint("delete"), onSelect: () => removeMany() })] })
+        : menu(e, { title: m.title, items: materialItems(m) }));
     const materialItems = (m) => [
         menuItem("porNaPrevia", { onSelect: () => prepare(m) }),
         onEditMaterial && menuItem("editar", { onSelect: () => onEditMaterial(m.id) }),
@@ -134,7 +152,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         const k = kind === "class" && classes.find((x) => x.id === id);
         const m = kind === "material" && materials.find((x) => x.id === id);
         if (k) rowKeys(e, () => removeClass(k), () => renameClass(k));
-        else if (m) rowKeys(e, () => removeMaterial(m), () => renameMaterial(m));
+        else if (m) rowKeys(e, () => (picked.length ? removeMany() : removeMaterial(m)), () => renameMaterial(m));
     };
 
     // -- Materials ---------------------------------------------------------------
@@ -147,7 +165,8 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     // Esc comes routed from the console (keys.js ESC_ORDER "window"):
     // nothing to guard here, it just leaves. Every other key is the
     // console's (Enter sends, ←/→ walk the slides, B, L, C).
-    if (escRef) escRef.current = (mode) => onClose(mode === "all");
+    // Marked materials clear first (Esc once more leaves).
+    if (escRef) escRef.current = (mode) => { if (mode === "esc" && (ms.count || ms.picking)) { ms.clear(); return; } onClose(mode === "all"); };
 
     const { cur, prev, locked, stamp } = c;
     // Built with a time fixed per prepared stage, never the ticking clock:
@@ -223,17 +242,22 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             {colTurmas.split}
             <div className="col center sv-center">
                 <Panel title={<>Materiais da lição <span className="kx-count">· {onlyClass && cls ? cls.name : "todas as turmas"}</span></>} actions={<>
+                        {shown.length > 1 && <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />}
                         {cls && <Seg small label="Materiais de" value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
                         <IconBtn name="plus" small title="Novo material" onClick={() => onEditMaterial?.(null, onlyClass ? cls?.id : "")} />
                     </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                        <div className="sv-scroll" onKeyDown={listKeys}>
+                        <SelBar count={picked.length} onClear={ms.clear}>
+                            <Btn small onClick={() => removeMany()} title="Excluir os materiais marcados · Delete">Excluir…</Btn>
+                        </SelBar>
+                        <div className={`sv-scroll ${ms.picking ? "is-picking" : ""}`} onKeyDown={(e) => { if (!ms.keyDown(e)) listKeys(e); }}>
                             {!shown.length && <Empty icon="book" title="Nenhum material">Use + para criar slides, um quiz, um texto, um vídeo ou uma imagem para a lição.</Empty>}
                             {lessons.map(([lesson, list]) => (
                                 <React.Fragment key={lesson}>
                                     <div className="listhead"><span className="kx-section">{lesson}</span><span className="kx-count">&nbsp;· {list.length}</span></div>
                                     {list.map((m) => (
-                                        <Row key={m.id} icon={materialIcon(m.type)} title={m.title} meta={[materialMeta(m), !onlyClass && m.class_name, m.description ? "tem notas" : ""].filter(Boolean).join(" · ")} state={stateOf(m)}
-                                            onClick={() => prepare(m)} onDoubleClick={() => send(m)} onContextMenu={(e) => menu(e, { title: m.title, items: materialItems(m) })} dragProps={{ "data-row": `material:${m.id}` }}
+                                        <Row key={m.id} icon={materialIcon(m.type)} title={m.title} meta={[materialMeta(m), !onlyClass && m.class_name, m.description ? "tem notas" : ""].filter(Boolean).join(" · ")} state={`${stateOf(m)} ${ms.has(m.id) ? "is-marked" : ""}`}
+                                            lead={ms.picking ? <RowMark /> : null}
+                                            onClick={(e) => { if (!ms.click(m.id, e)) prepare(m); }} onDoubleClick={() => { if (!ms.picking) send(m); }} onContextMenu={(e) => materialMenu(e, m)} dragProps={{ "data-row": `material:${m.id}` }}
                                             actions={<>
                                                 <Btn onClick={(e) => { e.stopPropagation(); onEditMaterial?.(m.id); }} aria-label={`Editar ${m.title}`}>Editar</Btn>
                                                 {onAddToSetlist && <Btn onClick={(e) => { e.stopPropagation(); onAddToSetlist(m); }} title="Adicionar ao fim da setlist" aria-label={`Adicionar ${m.title} à setlist`}>Setlist</Btn>}

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    sourceOf, backgroundList, visibleBackgrounds, backgroundActions, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults,
+    sourceOf, backgroundList, visibleBackgrounds, backgroundActions, backgroundRemoval, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults,
     CATEGORY_SUGGESTIONS, normalizeCategories, categoryList, managedCategories, addCategory, renameCategory, removeCategory, moveCategory, inCategory,
 } from "./backgroundPrefs.js";
 import { bundledBackgrounds, bundledBackgroundId } from "../backgrounds.js";
@@ -181,4 +181,32 @@ test("the papel de parede Esc puts back carries its own look (0.2.18)", () => {
     assert.equal(withBackgroundDefaults("background.default", none, prefs), none);
     const color = { background: { kind: "color", value: "#000000" } };
     assert.equal(withBackgroundDefaults("background.default", color, prefs), color);
+});
+
+test("several backgrounds out at once: each origin its way, one plan (owner 2026-10-21, M3)", () => {
+    const list = backgroundList({
+        bundled,
+        images: [
+            { id: "m1", url: "http://h/media/own.png" }, { id: "m3", url: "http://h/media/twice.png" },
+            { id: "m2", url: "http://h/media/midia.png", origin: "media" },
+        ],
+        prefs: [
+            { id: "p-b", source: "bundled:b", hidden: true }, { id: "p-own", source: "http://h/media/own.png", category: "Cruz" },
+            { id: "p-twice", source: "http://h/media/twice.png" }, { id: "p-midia", source: "http://h/media/midia.png" },
+        ],
+    });
+    const by = (s) => list.find((b) => b.source === s);
+    const media = [
+        { id: "m1", file_url: "http://h/media/own.png" }, { id: "m3", file_url: "http://h/media/twice.png" },
+        { id: "m4", file_url: "http://h/media/twice.png" },
+    ];
+    const plan = backgroundRemoval(["bundled:a", "bundled:b", "http://h/media/own.png", "http://h/media/twice.png", "http://h/media/midia.png"].map(by), media);
+    assert.deepEqual(plan.exclude.map((b) => b.source), ["bundled:a"], "a factory photo goes to Excluídos");
+    assert.deepEqual(plan.skipped.map((b) => b.source), ["bundled:b"], "already excluded: nowhere further");
+    assert.deepEqual(plan.delete.map((b) => b.mediaId), ["m1", "m3"], "the files sent here are deleted");
+    assert.deepEqual(plan.untrack.map((b) => b.source), ["http://h/media/midia.png"], "a Mídia picture only leaves the backgrounds");
+    assert.deepEqual(plan.prefsToDelete.sort(), ["p-midia", "p-own"], "another copy of twice.png stays a background: its settings stay");
+    const all = backgroundRemoval([by("http://h/media/twice.png")], [{ id: "m3", file_url: "http://h/media/twice.png" }]);
+    assert.deepEqual(all.prefsToDelete, ["p-twice"], "the last copy: its settings go too");
+    assert.deepEqual(backgroundRemoval([], media), { exclude: [], delete: [], untrack: [], skipped: [], prefsToDelete: [] });
 });

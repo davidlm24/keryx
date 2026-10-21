@@ -1,8 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
-import { Btn, Empty } from "../kx";
+import { Btn, Empty, SelectManyBtn, SelBar, RowMark } from "../kx";
+import { useMultiSelect } from "../useMultiSelect";
+import { pickedOf } from "@/lib/console/multiSelect";
+import { deleteSeveral } from "../bulkActions";
 import { CfgKey, CfgGroup } from "./parts";
 import { ThemeThumb, FactoryThumb, NoBgMark } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
@@ -23,6 +26,7 @@ import { emptyState } from "@shared/live-state.mjs";
 import { themesSummary, fundosSummary, idleSummary, fontsSummary } from "@/lib/console/cfgSummaries";
 
 const FONT = Object.fromEntries(THEME_FONTS);
+const NO_THEMES = [];
 
 // Temas padrão (owner's decision 2026-10-13, as in SPresenter): one theme per
 // kind of content — Música (the theme marked padrão), Bíblia, Texto and
@@ -73,9 +77,9 @@ function KindThemes({ c, themes, setDefault }) {
 // Editar and "Novo tema…" open it. Camadas adjusts what is on air and
 // captures a theme with "Salvar como novo"; the console's Temas card
 // applies them.
-export default function TemasSection({ c, onOpenScreen }) {
+export default function TemasSection({ c, onOpenScreen, escRef = null }) {
     const client = useQueryClient();
-    const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
+    const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data ?? NO_THEMES;
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["settings", "themes"] })), [client]);
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
     const storedCats = usePrefs().background_categories;
@@ -107,26 +111,56 @@ export default function TemasSection({ c, onOpenScreen }) {
         if (r?.spec) run(keryx.entities.ProjectionTheme.update(t.id, bgFields(r.spec)), "Fundo do tema salvo.");
     };
     const menu = useContextMenu();
-    const themeMenu = (e, t) => menu(e, { title: themeName(t), items: [
+    // Selecting several (multiSelect.js, owner 2026-10-21, M3 = A): a plain
+    // click still edits, so only Ctrl/Shift + click and Selecionar vários
+    // mark ("air" mode: a plain click clears the marks and does what it
+    // always did). Esc clears them before it leaves Configurações (escRef).
+    const themeIds = useMemo(() => themes.map((t) => t.id), [themes]);
+    const ms = useMultiSelect({ order: themeIds, mode: "air", register: false });
+    const picked = pickedOf(ms.sel, themes);
+    if (escRef) escRef.current = () => { if (ms.count || ms.picking) { ms.clear(); return true; } return false; };
+    const click = (t, e) => { if (!ms.click(t.id, e)) edit(t.id); };
+    // Fixar no console for every one marked: all pinned, unless all already
+    // are (then all leave). The Temas panel shows up to 9.
+    const pinMany = (rows = picked) => {
+        const pin = !rows.every((t) => t.pinned);
+        const change = rows.filter((t) => Boolean(t.pinned) !== pin).map((t) => ({ id: t.id, pinned: pin }));
+        if (!change.length) return;
+        run(keryx.entities.ProjectionTheme.bulkUpdate(change), pin ? `${change.length === 1 ? "1 tema fixado" : `${change.length} temas fixados`} no console.` : `${change.length === 1 ? "1 tema saiu" : `${change.length} temas saíram`} do console.`);
+    };
+    // Excluir… for every one marked: ONE question (bulkActions.js) that says
+    // the default theme and who uses them (they fall back to the default).
+    const removeMany = (rows = picked) => deleteSeveral({ confirm, say: c.say, entity: "ProjectionTheme", kind: "theme", rows, nameOf: (t) => themeName(t) })
+        .then((gone) => { if (gone.length) reload(); })
+        .catch((err) => c.say(err?.message || "Não foi possível."));
+    const pinLabel = (rows) => (rows.every((t) => t.pinned) ? "Tirar do console" : "Fixar no console");
+    const themeMenu = (e, t) => (ms.has(t.id) && picked.length > 1 ? menu(e, { title: `${picked.length} temas`, items: [
+        { label: pinLabel(picked), icon: "pin", onSelect: () => pinMany() },
+        { label: "Excluir…", icon: "trash", onSelect: () => removeMany() },
+    ] }) : menu(e, { title: themeName(t), items: [
         { label: "Editar", icon: "edit", onSelect: () => edit(t.id) },
         ...(themeHasBackground(t) ? [] : [{ label: "Escolher fundo…", icon: "image", onSelect: () => chooseBg(t) }]),
         { label: t.is_default ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: Boolean(t.is_default), onSelect: () => makeDefault(t) },
         { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${themeName(t)} saiu do console.` : `${themeName(t)} fixado no console.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => remove(t) },
-    ] });
+    ] }));
 
     const catList = categoryList(storedCats);
     return (
         <>
             <KindThemes c={c} themes={themes} setDefault={setDefault} />
-            <CfgGroup id="temas.todos" k="Todos os temas" summary={themesSummary(themes)} actions={<Btn small kind="brand" onClick={() => edit("new")}>Novo tema…</Btn>}>
+            <CfgGroup id="temas.todos" k="Todos os temas" summary={themesSummary(themes)} actions={<>{themes.length > 1 && <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />}<Btn small kind="brand" onClick={() => edit("new")}>Novo tema…</Btn></>}>
+                <SelBar count={picked.length} onClear={ms.clear}>
+                    <Btn small onClick={() => pinMany()} title="O painel Temas do console mostra até 9">{pinLabel(picked)}</Btn>
+                    <Btn small onClick={() => removeMany()} title="Excluir os temas marcados · Delete">Excluir…</Btn>
+                </SelBar>
                 {/* The themes as small screens, as in the library (owner's request
                     2026-10-13); a click edits in the Editor de temas e layouts. */}
-                <div className="tmg" role="list" aria-label="Temas">
+                <div className={`tmg ${ms.picking ? "is-picking" : ""}`} role="list" aria-label="Temas" onKeyDown={(e) => ms.keyDown(e, { onDelete: removeMany })}>
                     {themes.map((t) => (
-                        <button type="button" key={t.id} role="listitem" className="kx-t fg-tile tmg-tile" aria-label={themeName(t)}
-                            title={`${themeName(t)} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
-                            <span className="fg-img"><ThemeThumb theme={t} /><NoBgMark theme={t} label /></span>
+                        <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tmg-tile ${ms.has(t.id) ? "is-marked" : ""}`} aria-label={`${themeName(t)}${ms.has(t.id) ? ", selecionado" : ""}`}
+                            title={ms.picking ? `${themeName(t)} · clique marca ou desmarca` : `${themeName(t)} · clique para editar · Ctrl ou Shift + clique marca vários · botão direito: mais opções`} onClick={(e) => click(t, e)} onContextMenu={(e) => themeMenu(e, t)}>
+                            <span className="fg-img"><ThemeThumb theme={t} /><NoBgMark theme={t} label />{ms.picking && <RowMark />}</span>
                             {(t.is_default || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
                             <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", sizeLabel(t.font_size)].filter(Boolean).join(" · ")}</span>
                         </button>

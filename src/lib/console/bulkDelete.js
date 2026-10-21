@@ -125,3 +125,39 @@ export function deletedSay(n, noun = NOUNS.item, failed = 0) {
     const done = n === 1 ? `${fem ? "Excluída" : "Excluído"}: 1 ${one}` : `${n} ${many} ${fem ? "excluídas" : "excluídos"}`;
     return failed ? `${done} · ${failed} não ${failed === 1 ? "pôde" : "puderam"} ser ${fem ? (failed === 1 ? "excluída" : "excluídas") : (failed === 1 ? "excluído" : "excluídos")}.` : `${done}.`;
 }
+
+// "Tirar dos fundos…" for several (backgroundRemoval in backgroundPrefs.js):
+// one question that says where each origin goes. The files deleted for good
+// are the amber line, and only then does it open on Cancelar. null = nothing
+// can go further (every one already in Excluídos).
+export function backgroundQuestion({ exclude = [], delete: del = [], untrack = [], skipped = [] } = {}) {
+    const going = [...exclude, ...del, ...untrack];
+    const n = going.length;
+    if (!n) return null;
+    const count = (list, one, many) => `${list.length === 1 ? `1 ${one}` : `${list.length} ${many}`}`;
+    const text = [
+        exclude.length && `${count(exclude, "vem com o KERYX e vai", "vêm com o KERYX e vão")} para Excluídos: Restaurar traz de volta.`,
+        untrack.length && `${count(untrack, "é da Mídia e sai", "são da Mídia e saem")} só dos fundos: a Mídia continua com ${untrack.length === 1 ? "ele" : "eles"}.`,
+        skipped.length && `${count(skipped, "já está", "já estão")} em Excluídos.`,
+    ].filter(Boolean).join(" ");
+    const warn = del.length ? [`${count(del, "foi enviado para a biblioteca e é excluído", "foram enviados para a biblioteca e são excluídos")} de vez.`] : [];
+    return {
+        title: n === 1 ? "Tirar o fundo?" : `Tirar ${n} fundos?`,
+        list: nameList(going.map((b) => b.name)),
+        warn, text,
+        ok: n === 1 ? "Tirar" : `Tirar ${n}`,
+        danger: del.length > 0,
+    };
+}
+
+// The toast after: what went where.
+export function backgroundSay({ exclude = 0, delete: del = 0, untrack = 0, failed = 0 } = {}) {
+    const parts = [
+        exclude && `${exclude} em Excluídos`,
+        del && `${del} ${del === 1 ? "excluído" : "excluídos"}`,
+        untrack && `${untrack} só fora dos fundos`,
+    ].filter(Boolean);
+    const n = exclude + del + untrack;
+    const head = `${n === 1 ? "1 fundo saiu" : `${n} fundos saíram`} da biblioteca`;
+    return `${head}${parts.length ? ` · ${parts.join(" · ")}` : ""}${failed ? ` · ${failed} não ${failed === 1 ? "pôde" : "puderam"} sair` : ""}.`;
+}

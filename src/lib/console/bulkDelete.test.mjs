@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { NOUNS, nameList, serviceName, itemsUsing, setlistLines, themeLines, bulkDeleteQuestion, renumberPlan, deletedSay } from "./bulkDelete.js";
+import { NOUNS, nameList, serviceName, itemsUsing, setlistLines, themeLines, bulkDeleteQuestion, renumberPlan, deletedSay, backgroundQuestion, backgroundSay } from "./bulkDelete.js";
 import { focusesCancel } from "./confirm.js";
 
 const services = [{ id: "dom", title: "Domingo", date: "2026-10-20" }, { id: "qua", title: "", date: "2026-10-23" }];
@@ -81,4 +81,27 @@ test("the toast after", () => {
     assert.equal(deletedSay(1, NOUNS.song), "Excluída: 1 música.");
     assert.equal(deletedSay(3, NOUNS.song), "3 músicas excluídas.");
     assert.equal(deletedSay(4, NOUNS.media, 1), "4 arquivos excluídos · 1 não pôde ser excluído.");
+});
+
+test("Tirar dos fundos for several: one question that says where each origin goes", () => {
+    const b = (name) => ({ name });
+    const q = backgroundQuestion({ exclude: [b("Céu"), b("Mar")], delete: [b("Cruz")], untrack: [b("Igreja")], skipped: [b("Campo")] });
+    assert.equal(q.title, "Tirar 4 fundos?");
+    assert.deepEqual(q.list, ["Céu", "Mar", "Cruz", "Igreja"]);
+    assert.equal(q.ok, "Tirar 4");
+    assert.deepEqual(q.warn, ["1 foi enviado para a biblioteca e é excluído de vez."]);
+    assert.equal(q.text, "2 vêm com o KERYX e vão para Excluídos: Restaurar traz de volta. 1 é da Mídia e sai só dos fundos: a Mídia continua com ele. 1 já está em Excluídos.");
+    assert.equal(focusesCancel(q), true, "a file deleted for good: it opens on Cancelar");
+    const soft = backgroundQuestion({ exclude: [b("Céu")] });
+    assert.equal(soft.title, "Tirar o fundo?");
+    assert.equal(soft.ok, "Tirar");
+    assert.deepEqual(soft.warn, []);
+    assert.equal(focusesCancel(soft), false, "Excluídos gives it back: it opens on Tirar");
+    assert.equal(backgroundQuestion({ skipped: [b("Campo")] }), null, "nothing can go further");
+});
+
+test("the toast after Tirar dos fundos", () => {
+    assert.equal(backgroundSay({ exclude: 2, delete: 1, untrack: 1 }), "4 fundos saíram da biblioteca · 2 em Excluídos · 1 excluído · 1 só fora dos fundos.");
+    assert.equal(backgroundSay({ exclude: 1 }), "1 fundo saiu da biblioteca · 1 em Excluídos.");
+    assert.equal(backgroundSay({ delete: 2, failed: 1 }), "2 fundos saíram da biblioteca · 2 excluídos · 1 não pôde sair.");
 });
