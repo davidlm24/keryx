@@ -1194,6 +1194,27 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   through its escRef. The Mídia page is the reference; the Biblioteca, Setlist,
   Planejar o culto, Temas, the background library (manage only) and the Escola
   follow; the Temas panel and the short settings lists stay single.
+  **The KERYX package, `.keryx`** (M6 = A; Rodada O, O1-1 = A, O1-2 = C): one
+  file for every kind — songs, themes, avisos, media, Escola materials — with
+  what each uses (its themes, the Media rows and files it names, their
+  BackgroundPref, the church's fonts by family). The rules are
+  `src/lib/keryxPackage.js` (tested: `packageFor`, `openPlan`, `importSteps`,
+  `rewriteRow`); the zip is `electron/keryxPackage.cjs` (manifest.json,
+  items.json, media/, fonts/; an entry allowlist and caps, `.partial` then
+  rename, IPC `keryx:package` export | open | take | close; the preview server
+  uses the same module). "Exportar…" (the selection bars, the multi-row and
+  row menus of the Biblioteca and the Mídia; `exportItems` of `usePackages`,
+  `PackageDialogs.jsx`) asks "Com os arquivos" or, for songs, "Só as letras"
+  (the JSON of always); Biblioteca › + › "Abrir pacote do KERYX…" or a .keryx
+  picked in Importar músicas opens the list grouped by kind: ✓ novo, ! parece
+  repetido (songs by `songKey`, themes by name, a file by type + title + size,
+  a font face by family + weight + style) with "Trazer mesmo assim" / "Trazer
+  como cópia", ✕ não abre. "Pular os repetidos" is on: a repeated song, aviso
+  or material stays out, a repeated theme or file is reused by what comes in;
+  what only a skipped row used stays out too. Ids are always new and nothing
+  is overwritten; files go into the media folder through `importMedia` (a new
+  name) and every row through the store, so the sync records them. A new
+  field that holds a reference to another row goes in `rewriteRow`.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. Every write
   reaches every window with the whole row, deletes included.

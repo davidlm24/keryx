@@ -117,6 +117,23 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         exportFile: (json, name) => ipcRenderer.invoke("keryx:displays:export-file", { json, name }),
         importFile: () => ipcRenderer.invoke("keryx:displays:import-file"),
     },
+    // The KERYX package (electron/keryxPackage.cjs): export where the operator
+    // chooses; open one picked in main, or a File the page was given (its
+    // path, which only the preload can read); take one of its files into the
+    // media folder; close.
+    packages: {
+        export: ({ manifest, items, files, name }) => ipcRenderer.invoke("keryx:package", { op: "export", manifest, items, files, name }),
+        open(file) {
+            let sourcePath = "";
+            if (file) {
+                try { sourcePath = webUtils.getPathForFile(file); } catch { sourcePath = ""; }
+                if (!sourcePath) return Promise.resolve({ error: { message: "Abra o pacote por Abrir pacote do KERYX…", status: 400 } });
+            }
+            return ipcRenderer.invoke("keryx:package", { op: "open", sourcePath });
+        },
+        take: (id, entry) => ipcRenderer.invoke("keryx:package", { op: "take", id, entry }),
+        close: (id) => ipcRenderer.invoke("keryx:package", { op: "close", id }),
+    },
     // The PC's installed fonts (electron/systemFonts.cjs), for the Editor de temas.
     fonts: {
         list: () => ipcRenderer.invoke("keryx:fonts", { op: "list" }),

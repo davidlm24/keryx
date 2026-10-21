@@ -46,6 +46,8 @@ import { setRelayedProgress, relayPagesRetry } from "@/hooks/usePagesBackfill";
 import { PAGE_TITLES, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
 import { resolveSection } from "@/lib/console/settings";
 import { liveAction, escapeTarget } from "@/lib/console/keys";
+import { usePackageHost } from "@/components/console/PackageDialogs";
+import { PackageContext } from "@/components/console/packages";
 import { usePrefs } from "@/hooks/useUser";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 
@@ -165,6 +167,8 @@ export default function Janela() {
     const [reporting, setReporting] = useState(false);
     // With { subject, body }: Configurações' queue tried the e-mail and no program opened.
     const openReport = useCallback((mail) => setReporting(mail?.subject ? mail : true), []);
+    // The KERYX package (a detached Mídia's Exportar…).
+    const pkg = usePackageHost(say);
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
 
@@ -228,15 +232,15 @@ export default function Janela() {
         if (!action) return;
         if (action === "blur") { e.target.blur?.(); return; }
         if (action === "end") {
-            const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting, library: libReq, window: stack.length > 0 });
+            const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || pkg.open, library: libReq, window: stack.length > 0 });
             e.preventDefault();
             if (top === "menu") setCtxMenu(null);
-            else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else setReporting(false); }
+            else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else if (pkg.open) pkg.close(); else setReporting(false); }
             else if (top === "library") closeLibrary(null);
             else if (top === "window") winEsc("esc");
             return;
         }
-        if ((ctxMenu || libReq || confirmReq || ask || reporting) && !["black", "logo"].includes(action)) return;
+        if ((ctxMenu || libReq || confirmReq || ask || reporting || pkg.open) && !["black", "logo"].includes(action)) return;
         // Prevented: a select focused with Tab would also jump to its option.
         if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
         else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
@@ -272,6 +276,7 @@ export default function Janela() {
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
         <ReportContext.Provider value={openReport}>
+        <PackageContext.Provider value={pkg.value}>
         <div className="kx console janela" onClick={onMouseClick}>
             {stack.length > 0 && (
                 <div ref={boxRef} className="win-dialog kx-win is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
@@ -290,10 +295,12 @@ export default function Janela() {
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
             <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />
+            {pkg.element}
             <Toast c={c} />
             {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={() => setCtxMenu(null)} />
         </div>
+        </PackageContext.Provider>
         </ReportContext.Provider>
         </ConfirmContext.Provider>
         </LibraryContext.Provider>

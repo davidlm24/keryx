@@ -241,6 +241,33 @@ export function createPreviewBridge() {
                 }
             },
         },
+        // The KERYX package, read and written by the preview server with the
+        // app's module (electron/keryxPackage.cjs): the export is a download
+        // here, and opening one takes the browser's chooser (or the File the
+        // song importer was given).
+        packages: {
+            async export({ manifest, items, files, name }) {
+                const res = await request("package-export", { method: "POST", body: { manifest, items, files, name } });
+                if (res.error || !res.data) return res;
+                const a = Object.assign(document.createElement("a"), { href: `${API}package-download?token=${encodeURIComponent(res.data.token)}`, download: res.data.file });
+                document.body.appendChild(a); a.click(); a.remove();
+                return res;
+            },
+            async open(given) {
+                const file = given || await new Promise((resolve) => {
+                    const input = Object.assign(document.createElement("input"), { type: "file", accept: ".keryx", hidden: true });
+                    input.dataset.keryxPick = "package";
+                    const done = (f) => { input.remove(); resolve(f || null); };
+                    input.addEventListener("change", () => done(input.files?.[0]));
+                    input.addEventListener("cancel", () => done(null));
+                    document.body.append(input);
+                    input.click();
+                });
+                return file ? request(`package-open?name=${encodeURIComponent(file.name)}`, { method: "POST", raw: file }) : { data: null };
+            },
+            take: (id, entry) => request("package-take", { method: "POST", body: { id, entry } }),
+            close: (id) => request("package-close", { method: "POST", body: { id } }),
+        },
         media: {
             async importFile(file) {
                 return request(`media?name=${encodeURIComponent(file.name || "arquivo")}`, { method: "POST", raw: new Uint8Array(await file.arrayBuffer()) });

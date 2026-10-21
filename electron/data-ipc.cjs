@@ -5,6 +5,7 @@
 //   keryx:media-info    invoke  { names } -> { [name]: { exists, size } } files in the media folder
 //   keryx:config        sync    { mediaBaseUrl, mediaImportMaxBytes }
 //   keryx:displays:*    invoke  list / set / open / close / identify for output windows
+//   keryx:package       invoke  { op: export | open | take | close } the .keryx package (keryxPackage.cjs)
 //   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter, the church's own editions (keryx:bible:own)
 //   keryx:fonts         invoke  { op: list | read, id } the PC's installed fonts (systemFonts.cjs): the
 //                               families with their faces, or one face's file as bytes
@@ -27,6 +28,7 @@ const bible = require("./bible.cjs");
 const bibleFormats = require("./bibleFormats.cjs");
 const { createSystemFonts } = require("./systemFonts.cjs");
 const { importMedia, MAX_IMPORT_BYTES } = require("./mediaImport.cjs");
+const { createPackages } = require("./keryxPackage.cjs");
 
 function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
@@ -121,6 +123,43 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
         const { size } = await fs.promises.stat(filePaths[0]);
         if (size > MAX_OUTPUTS_FILE) throw Object.assign(new Error("Este arquivo é grande demais para ser um arquivo de saídas do KERYX."), { status: 413 });
         return { text: await fs.promises.readFile(filePaths[0], "utf8"), name: path.basename(filePaths[0]) };
+    }));
+
+    // The KERYX package (electron/keryxPackage.cjs; src/lib/keryxPackage.js
+    // decides the rows): export writes the selection's rows and files where
+    // the operator chooses; open reads one (picked here, or a file the page
+    // was given, by its path) into a staging folder; take copies one of its
+    // files into the media folder (a new name, as any import); close drops
+    // the staging folder. The rows themselves are written by the page,
+    // through the store.
+    const packages = createPackages({ root: path.join(path.dirname(mediaDir), "pacotes"), mediaDir, importMedia, log });
+    const MAX_PACKAGE_JSON = 64 * 1024 * 1024;
+    const PACKAGE_FILES = [{ name: "Pacote do KERYX", extensions: ["keryx"] }];
+    ipcMain.handle("keryx:package", fileOp(async (event, { op, ...args }) => {
+        if (op === "export") {
+            const items = JSON.stringify(args.items || {});
+            if (items.length > MAX_PACKAGE_JSON) throw Object.assign(new Error("Itens demais para um pacote só. Exporte em partes."), { status: 413 });
+            const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
+                title: "Exportar pacote do KERYX",
+                defaultPath: typeof args.name === "string" && /^[\w.-]{1,90}\.keryx$/.test(args.name) ? args.name : "keryx.keryx",
+                filters: PACKAGE_FILES,
+            });
+            if (canceled || !filePath) return null;
+            return packages.write({ target: filePath, manifest: args.manifest, items: JSON.parse(items), files: args.files });
+        }
+        if (op === "open") {
+            let file = typeof args.sourcePath === "string" ? args.sourcePath : "";
+            if (file && (!path.isAbsolute(file) || !/\.keryx$/i.test(file))) throw Object.assign(new Error("Este arquivo não é um pacote do KERYX."), { status: 400 });
+            if (!file) {
+                const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: "Abrir pacote do KERYX", filters: PACKAGE_FILES, properties: ["openFile"] });
+                if (canceled || !filePaths[0]) return null;
+                file = filePaths[0];
+            }
+            return { ...(await packages.open(file)), name: path.basename(file) };
+        }
+        if (op === "take") return packages.take(args.id, args.entry);
+        if (op === "close") return packages.close(args.id);
+        throw Object.assign(new Error("Operação de pacote desconhecida."), { status: 400 });
     }));
 
     const bibleOp = (fn) => async (event, payload) => {
