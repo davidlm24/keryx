@@ -1,10 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { libMediaKinds } from "@/lib/console/panelTabs";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Row, Btn, IconBtn, Field, Empty } from "./kx";
+import { Row, Btn, IconBtn, Field, Empty, SelBar, RowMark } from "./kx";
+import { useMultiSelect } from "./useMultiSelect";
+import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
+import { deleteSeveral } from "./bulkActions";
+import { keyHint } from "@/lib/console/keys";
 import { useContextMenu } from "./ContextMenu";
-import { useConfirm, deleteQuestion } from "./ConfirmDialog";
+import { useConfirm } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
 import { useImportSongs, SONG_FILE, SONG_ACCEPT } from "./importSongs";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
@@ -117,7 +121,8 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // line, under it the artist, the key and the length as songLine says
 // (the header's (+) › Mostrar o artista / o tom / a duração) — and its
 // flags as badges that the hover buttons replace.
-export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {} }) {
+const NONE = [];
+export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {}, picking, setPicking }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -148,11 +153,6 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const menu = useContextMenu();
     // "Excluir…" in the menus asks first (ConfirmDialog.jsx).
     const confirm = useConfirm();
-    const removeRow = async (entity, row, what, name, done) => {
-        if (!(await confirm(deleteQuestion(what, name)))) return;
-        try { await keryx.entities[entity].delete(row.id); c.say(done); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
-    };
-    const MEDIA_WORD = { image: "a imagem", video: "o vídeo", audio: "o áudio", gif: "a imagem", pdf: "o arquivo" };
     const toggleFav = (s) => keryx.entities.Song.update(s.id, { is_favorite: !s.is_favorite }).catch((err) => c.say(err?.message || "Não foi possível."));
     // "+ › Do computador" in Mídia: videos, audio, images, PDF, PowerPoint.
     const importMedia = async (files) => {
@@ -163,6 +163,51 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     // (+) shows them): which Media types each lists (panelTabs.js).
     const shownIds = (tabs || []).map((t) => t.id);
     const mediaKinds = libMediaKinds(tab, shownIds);
+
+    // What the tab on screen lists, after its search (and ☆), in order.
+    const songsShown = useMemo(() => (tab === "letras" ? data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || ""))) : NONE), [tab, data.songs, favOnly, ql]);
+    const mediaKindsKey = (mediaKinds || []).join();
+    const mediaShown = useMemo(() => (mediaKinds ? data.media.filter((m) => mediaKinds.includes(m.type) && match(ql, m.title, m.description)) : NONE), [mediaKindsKey, data.media, ql]); // eslint-disable-line react-hooks/exhaustive-deps
+    const piecesShown = useMemo(() => (tab === "avisos" ? data.pieces.filter((p) => match(ql, p.title, p.text, p.subtext)) : NONE), [tab, data.pieces, ql]);
+    const listRows = tab === "letras" ? songsShown : mediaKinds ? mediaShown : tab === "avisos" ? piecesShown : NONE;
+    const allRows = tab === "letras" ? data.songs : mediaKinds ? data.media : tab === "avisos" ? data.pieces : NONE;
+
+    // Selecting several (multiSelect.js, owner 2026-10-21): Ctrl/Shift +
+    // click and "Selecionar vários" (its button is the panel header's,
+    // Console.jsx) mark; a plain click still prepares (M1 = A). One tab at a
+    // time: changing tab clears it.
+    const order = useMemo(() => listRows.map((r) => r.id), [listRows]);
+    const existing = useMemo(() => allRows.map((r) => r.id), [allRows]);
+    const ms = useMultiSelect({ order, existing, mode: "air", picking, onPicking: setPicking });
+    const clearSel = ms.clear;
+    useEffect(() => { clearSel(); }, [tab, clearSel]);
+    const picked = pickedOf(ms.sel, listRows);
+    // Excluir, for one row or the marked ones (bulkActions.js: one question,
+    // the setlists that use them warned and their items taken out).
+    const removeRows = (rows) => {
+        const spec = tab === "letras" ? { entity: "Song", kind: "song" }
+            : mediaKinds ? { entity: "Media", kind: "media", nameOf: (m) => m.title || "sem título", text: rows.length === 1 ? "O arquivo continua na pasta de mídia do computador." : "Os arquivos continuam na pasta de mídia do computador." }
+            : { entity: "CommunicationVideo", kind: "notice", nameOf: (p) => p.title || p.text || "sem título" };
+        return deleteSeveral({ confirm, say: c.say, rows, ...spec }).catch((err) => c.say(err?.message || "Não foi possível excluir."));
+    };
+    // A row's click: a selection click marks (and prepares nothing); a
+    // plain one clears what was marked and prepares, as always.
+    const rowClick = (id, prepare) => (e) => { if (!ms.click(id, e)) prepare(); };
+    const rowGo = (go) => onGo && (() => { if (!ms.picking) go(); });
+    const marked = (id) => (ms.has(id) ? "is-marked" : "");
+    const mark = ms.picking ? <RowMark /> : null;
+    // The right click on a marked row, with several marked: it acts on all.
+    const rowMenu = (id, single) => (e) => {
+        if (picked.length > 1 && ms.has(id)) {
+            menu(e, { title: selectionCount(picked.length, { feminine: tab === "letras" }), items: [
+                menuItem("excluir", { label: `Excluir ${picked.length}…`, kbd: keyHint("delete"), onSelect: () => removeRows(picked) }),
+                { label: "Limpar a seleção", icon: "x", onSelect: ms.clear },
+            ] });
+            return;
+        }
+        single(e);
+    };
+    const listKeys = (e) => ms.keyDown(e, { onDelete: () => removeRows(picked) });
     const addItems = tab === "letras"
         ? [
             menuItem("novaMusica", { onClick: () => onEditSong?.("new") }),
@@ -202,9 +247,9 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
             </div>
 
             {tab === "letras" && (() => {
-                const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || "")));
+                const songs = songsShown;
                 return (
-                    <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
+                    <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }} onKeyDown={listKeys}>
                         {!songs.length && data.loaded?.songs !== false && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
                         {songs.map((s) => { const r = songRow(s, { duplicate: Boolean(dupIds?.has(s.id)), syncing: Boolean(s.audio_url && pending.has(s.audio_url)), showArtist: songLine.artist === true, showKey: songLine.key !== false, showLength: songLine.length !== false }); return (
                             <Row
@@ -212,18 +257,19 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                 title={s.title}
                                 tip={r.tip}
                                 meta={r.meta}
-                                state={state(`song:${s.id}`)}
-                                onClick={() => onPrepare(stageFromSong(s, {}, data.themes))}
-                                onDoubleClick={onGo && (() => onGo(stageFromSong(s, {}, data.themes)))}
-                                onContextMenu={(e) => menu(e, { title: s.title, items: [
+                                state={`${state(`song:${s.id}`)} ${marked(s.id)}`}
+                                lead={mark}
+                                onClick={rowClick(s.id, () => onPrepare(stageFromSong(s, {}, data.themes)))}
+                                onDoubleClick={rowGo(() => onGo(stageFromSong(s, {}, data.themes)))}
+                                onContextMenu={rowMenu(s.id, (e) => menu(e, { title: s.title, items: [
                                     menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromSong(s, {}, data.themes)) }),
                                     onAddSong && menuItem("adicionarSetlist", { onSelect: () => onAddSong(s) }),
                                     onEditSong && menuItem("editar", { onSelect: () => onEditSong(s.id) }),
                                     menuItem(s.is_favorite ? "tirarDosFavoritos" : "favoritar", { onSelect: () => toggleFav(s) }),
                                     dupIds?.has(s.id) && onDuplicates && { label: "Ver as repetidas…", icon: "copy", onSelect: onDuplicates },
-                                    menuItem("excluir", { onSelect: () => removeRow("Song", s, "a música", s.title, "Música excluída.") }),
+                                    menuItem("excluir", { onSelect: () => removeRows([s]) }),
                                     onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) }),
-                                ] })}
+                                ] }))}
                                 dragProps={dragProps(stageFromSong(s, {}, data.themes), s.duration ? mmss(s.duration) : "")}
                                 actions={<>
                                     <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label={`Favorita: ${s.title}`} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
@@ -239,7 +285,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
             })()}
 
             {mediaKinds && (() => {
-                const media = data.media.filter((m) => mediaKinds.includes(m.type) && match(ql, m.title, m.description));
+                const media = mediaShown;
                 // A file being copied is a row "Copiando o arquivo…" until its
                 // Media row arrives and takes its place.
                 const copies = copyingRows(copying, data.media, { kinds: mediaKinds, q: ql });
@@ -260,16 +306,17 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         title={m.title}
                         meta={m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
                         metaClass={m.missing && !m.syncing ? "kx-warn" : ""}
-                        state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
-                        onClick={() => onPrepare(stageFromMedia(m))}
-                        onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
-                        onContextMenu={(e) => menu(e, { title: m.title, items: [
+                        state={`${m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)} ${marked(m.id)}`}
+                        lead={mark}
+                        onClick={rowClick(m.id, () => onPrepare(stageFromMedia(m)))}
+                        onDoubleClick={rowGo(() => onGo(stageFromMedia(m)))}
+                        onContextMenu={rowMenu(m.id, (e) => menu(e, { title: m.title, items: [
                             menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromMedia(m)) }),
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
                             onOpenMedia && { label: "Abrir a Mídia", icon: "media", onSelect: () => onOpenMedia() },
-                            menuItem("excluir", { onSelect: () => removeRow("Media", m, MEDIA_WORD[m.type] || "o arquivo", m.title || "sem título", "Excluído da Mídia.") }),
+                            menuItem("excluir", { onSelect: () => removeRows([m]) }),
                             onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromMedia(m)) }),
-                        ] })}
+                        ] }))}
                         dragProps={dragProps(stageFromMedia(m), m.duration ? mmss(m.duration) : "")}
                         {...rowProps(m)}
                         item
@@ -290,7 +337,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
-                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
+                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }} onKeyDown={listKeys}>
                             {copies.map((p) => <Row key={p.key} className="is-copying" icon={mediaIcon(p)} title={p.title} meta={[p.type === "pdf" ? "PDF" : MEDIA_LABEL[p.type], p.meta].filter(Boolean).join(" · ")} item><RowBar /></Row>)}
                             {!media.length && !copies.length && data.loaded?.media !== false && <Empty icon={{ imagens: "image", audios: "volume", apresentacoes: "presentation" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
                             {media.map(mediaRow)}
@@ -300,7 +347,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
             })()}
 
             {tab === "avisos" && (() => {
-                const pieces = data.pieces.filter((p) => match(ql, p.title, p.text, p.subtext));
+                const pieces = piecesShown;
                 return (
                     <>
                         {!elsewhere.aviso && <>
@@ -312,22 +359,25 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         <ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} />
                         </>}
                         <div className="listhead"><span className="kx-section">Todos os avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
-                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
+                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }} onKeyDown={listKeys}>
                             {!pieces.length && data.loaded?.pieces !== false && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
-                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
-                                    onContextMenu={(e) => menu(e, { title: p.title || p.text, items: [
+                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={`${state(`piece:${p.id}`)} ${marked(p.id)}`} lead={mark} onClick={rowClick(p.id, () => onPrepare(stageFromPiece(p)))} onDoubleClick={rowGo(() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
+                                    onContextMenu={rowMenu(p.id, (e) => menu(e, { title: p.title || p.text, items: [
                                         menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromPiece(p)) }),
                                         onEditNotice && menuItem("editar", { onSelect: () => onEditNotice(p.id) }),
-                                        menuItem("excluir", { onSelect: () => removeRow("CommunicationVideo", p, "o aviso", p.title || p.text || "sem título", "Aviso excluído.") }),
+                                        menuItem("excluir", { onSelect: () => removeRows([p]) }),
                                         onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromPiece(p)) }),
-                                    ] })}
+                                    ] }))}
                                     actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label={`Editar ${p.title || p.text}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
                             ))}
                         </div>
                     </>
                 );
             })()}
+            <SelBar count={picked.length} feminine={tab === "letras"} onClear={ms.clear}>
+                <Btn small onClick={() => removeRows(picked)} title={`Excluir · ${keyHint("delete")}`}>Excluir…</Btn>
+            </SelBar>
             {mediaKinds && <MediaPeek peek={peek} />}
         </>
     );

@@ -125,3 +125,16 @@ export function deletedSay(n, noun = NOUNS.item, failed = 0) {
     const done = n === 1 ? `${fem ? "Excluída" : "Excluído"}: 1 ${one}` : `${n} ${many} ${fem ? "excluídas" : "excluídos"}`;
     return failed ? `${done} · ${failed} não ${failed === 1 ? "pôde" : "puderam"} ser ${fem ? (failed === 1 ? "excluída" : "excluídas") : (failed === 1 ? "excluído" : "excluídos")}.` : `${done}.`;
 }
+
+// Taking several items out of one culto's setlist (the Setlist and Planejar
+// o culto): "Tirar", never "Excluir" (the songs and files stay in the
+// KERYX), so it opens on the action, as the one-item question does.
+export function takeOutManyQuestion(names = []) {
+    const n = names.length;
+    return {
+        title: `Tirar ${n} ${n === 1 ? "item" : "itens"} da setlist?`,
+        list: nameList(names),
+        text: `${n === 1 ? "Ele sai" : "Eles saem"} da setlist deste culto e ${n === 1 ? "continua" : "continuam"} no KERYX.`,
+        ok: `Tirar ${n}`,
+    };
+}

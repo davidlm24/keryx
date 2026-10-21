@@ -82,3 +82,13 @@ test("the toast after", () => {
     assert.equal(deletedSay(3, NOUNS.song), "3 músicas excluídas.");
     assert.equal(deletedSay(4, NOUNS.media, 1), "4 arquivos excluídos · 1 não pôde ser excluído.");
 });
+
+test("taking several out of a setlist: Tirar, and it opens on the action", async () => {
+    const { takeOutManyQuestion } = await import("./bulkDelete.js");
+    const q = takeOutManyQuestion(["Hino", "Oração", "Aviso"]);
+    assert.equal(q.title, "Tirar 3 itens da setlist?");
+    assert.deepEqual(q.list, ["Hino", "Oração", "Aviso"]);
+    assert.equal(q.text, "Eles saem da setlist deste culto e continuam no KERYX.");
+    assert.equal(q.ok, "Tirar 3");
+    assert.equal(focusesCancel(q), false, "nothing leaves the KERYX: Enter takes them out, as with one");
+});

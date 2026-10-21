@@ -824,6 +824,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .rund-cd.is-warn { padding-right: var(--space-2); background: var(--warn-tint); color: var(--warn-fg); }
 /* A narrow Setlist keeps the next row's title in sight: "9 s · Cancelar". */
 .console .rund { container: rund / inline-size; }
+/* The selection bar under the Setlist (multiSelect.js): the list scrolls in the
+   panel body and fills it (min-height 100%), so the bar sticks to the bottom
+   of the panel, always in sight while items are marked. */
+.console .setlist-panel .kx-selbar { position: sticky; bottom: var(--space-1); z-index: var(--z-screen); }
 @container rund (width < 300px) { .console .rund-cd-w { display: none; } }
 .console .rund-menu-note { max-width: 260px; padding: 2px var(--space-2) var(--space-1) 32px; font-size: var(--fs-meta); line-height: 1.35; color: var(--fg-3); }
 

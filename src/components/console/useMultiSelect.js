@@ -12,16 +12,22 @@ import { selections } from "@/lib/console/selectionStore";
 //   register  a console panel's selection is cleared by the console's Esc
 //             before the air (keys.js "selection"); a page of THE window
 //             clears its own through its escRef, so it passes false.
-export function useMultiSelect({ order, existing = order, mode = "gallery", register = true }) {
+//   picking, onPicking  "Selecionar vários" held by the caller (the
+//             Biblioteca's button is in its panel header, in Console.jsx);
+//             without them the hook holds it.
+export function useMultiSelect({ order, existing = order, mode = "gallery", register = true, picking: pickingProp, onPicking }) {
     const [sel, setSel] = useState(EMPTY_SELECTION);
-    const [picking, setPickingState] = useState(false);
+    const [pickingOwn, setPickingOwn] = useState(false);
+    const controlled = pickingProp !== undefined;
+    const picking = controlled ? Boolean(pickingProp) : pickingOwn;
+    const setPickingState = useCallback((on) => { if (controlled) onPicking?.(on); else setPickingOwn(on); }, [controlled, onPicking]);
     const key = useId();
 
     // Rows deleted here or on another computer leave the selection.
     const existingKey = existing.join("\n");
     useEffect(() => { setSel((s) => pruneSelection(s, new Set(existing))); }, [existingKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const clear = useCallback(() => { setSel(EMPTY_SELECTION); setPickingState(false); }, []);
+    const clear = useCallback(() => { setSel(EMPTY_SELECTION); setPickingState(false); }, [setPickingState]);
     const active = sel.ids.length > 0 || picking;
     useEffect(() => {
         if (!register) return undefined;
