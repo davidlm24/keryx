@@ -76,6 +76,7 @@ import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import Toast from "@/components/console/Toast";
 import { useDialogFocus, useWinPageFocus } from "@/components/console/useDialogFocus";
 import { liveAction, quickJumpKey, escapeTarget, keyHint } from "@/lib/console/keys";
+import { selections } from "@/lib/console/selectionStore";
 import { wheelZoomStep } from "@/lib/wheelZoom";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
@@ -835,7 +836,7 @@ export default function Console() {
                 // "window": Esc goes to the TOP page's registered request
                 // (nav.js), which pops one level — "← Voltar" — or, at the
                 // first, closes; an unsaved guard may ask instead.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, selection: selections.any(), edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
@@ -845,6 +846,7 @@ export default function Console() {
                     else if (top === "window") winEsc("esc");
                     else if (top === "countdown") autoplay.cancel();
                     else if (top === "drawer") setDrawer(false);
+                    else if (top === "selection") selections.clearTop();
                     else if (top === "edit") setEditing(false);
                     return;
                 }
