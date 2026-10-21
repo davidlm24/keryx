@@ -18,9 +18,20 @@ import { chooseService } from "@/lib/console/serviceChoice";
 // No initialData: with a staleTime, an empty initial list would count as
 // fresh data and never be fetched.
 const EMPTY = [];
+// A burst of changes (an import of 2,000 songs writes 100 per batch, a sync
+// applies many rows) refetches the list once, not once per row: each
+// invalidation started a fetch of the whole table.
+const COALESCE_MS = 100;
 const useList = (name, args, key = name) => {
     const client = useQueryClient();
-    useEffect(() => keryx.entities[name].subscribe(() => client.invalidateQueries({ queryKey: ["console", key] })), [name, key, client]);
+    useEffect(() => {
+        let timer = null;
+        const off = keryx.entities[name].subscribe(() => {
+            if (timer) return;
+            timer = setTimeout(() => { timer = null; client.invalidateQueries({ queryKey: ["console", key] }); }, COALESCE_MS);
+        });
+        return () => { clearTimeout(timer); off(); };
+    }, [name, key, client]);
     const q = useQuery({ queryKey: ["console", key], queryFn: () => keryx.entities[name].list(...args), staleTime: 60_000 });
     return { ...q, data: q.data ?? EMPTY };
 };

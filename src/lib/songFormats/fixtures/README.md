@@ -11,4 +11,4 @@ Real files the parsers are tested on (`../*.test.mjs`). Rule (owner,
 | `holyrics.json` | Holyrics JSON export | seven songs from the church's real export (2026-10-21, 2,000 songs): every field and the structure as exported, each lyric line replaced by "Linha n da letra" (the lyrics are copyrighted); headers, part markers and comments kept |
 
 The OpenLyrics samples are public-domain hymn texts. EasyWorship and
-ProPresenter files wait for exports the church makes of its own songs.
+ProPresenter are not planned (owner 2026-10-21: only Holyrics).

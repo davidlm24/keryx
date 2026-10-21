@@ -354,10 +354,11 @@ Tables are the entities in snake_case; columns are the entity fields verbatim
    computer in use** (another program in front, or playing sound): they are
    listed in `console.inconclusive` instead of failing the run (see
    CLAUDE.md). A quiet computer still gives the full answer.
-5. **Songs from other programs: OpenLyrics and Holyrics so far.** The
+5. **Songs from other programs: OpenLyrics and Holyrics only.** The
    Biblioteca's Letras (+) reads KERYX's JSON, ChordPro, cifra, plain text,
    OpenLyrics/OpenLP `.xml` and Holyrics' JSON export
    (`src/lib/songFormats/`), by content, not extension; a song already in
    the library is left out. ProPresenter 6/7 files are refused with the
-   reason; EasyWorship and ProPresenter parsers wait for real export files (the rule: no parser without a real
-   fixture in `src/lib/songFormats/fixtures/`).
+   reason. EasyWorship and ProPresenter are not planned (owner 2026-10-21:
+   the church comes from Holyrics); a parser for another program would
+   need a real export file as its fixture in `src/lib/songFormats/fixtures/`.
