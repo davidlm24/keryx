@@ -4,6 +4,7 @@ import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop, SelectManyBtn, SelBar, RowMark } from "./kx";
 import { useMultiSelect } from "./useMultiSelect";
 import { pickedOf } from "@/lib/console/multiSelect";
+import { deleteSeveral } from "./bulkActions";
 import { importMediaFiles, importSummary, mediaFromYouTube } from "@/lib/mediaImport";
 import { playsInSequence } from "@/lib/presentation";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
@@ -153,20 +154,15 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const recategorise = (value) => Promise.all(picked.map((m) => keryx.entities.Media.update(m.id, { category: value }))).then(() => c.say(`Categoria: ${catLabel(value)}.`)).catch(fail);
     // Excluir asks first (useConfirm, as every Excluir does); the files stay
     // in the media folder.
-    const remove = async (rows = picked) => {
-        if (!rows.length) return;
-        const one = rows.length === 1;
-        const ok = await confirm({
-            title: one ? "Excluir da Mídia?" : `Excluir ${rows.length} arquivos da Mídia?`,
-            text: `${one ? `"${rows[0].title}" sai` : "Eles saem"} da Mídia; ${one ? "o arquivo continua" : "os arquivos continuam"} na pasta de mídia do computador.`,
-        });
-        if (!ok) return;
-        try {
-            for (const m of rows) await keryx.entities.Media.delete(m.id);
-            c.say(`${one ? "Excluído" : `${rows.length} excluídos`} da Mídia · os arquivos continuam na pasta de mídia.`);
-            // The deleted rows leave the selection by themselves (useMultiSelect prunes).
-        } catch (err) { fail(err); }
-    };
+    // One question for one file or many (bulkActions.js, M5 = A): it names
+    // them, warns about the setlists that use them (their items leave too),
+    // and opens on Cancelar. The deleted rows leave the selection by
+    // themselves (useMultiSelect prunes).
+    const remove = (rows = picked) => deleteSeveral({
+        confirm, say: c.say, entity: "Media", kind: "media", rows,
+        text: rows.length === 1 ? "O arquivo continua na pasta de mídia do computador." : "Os arquivos continuam na pasta de mídia do computador.",
+        after: rows.length === 1 ? "O arquivo continua na pasta de mídia." : "Os arquivos continuam na pasta de mídia.",
+    }).catch(fail);
     // A file's right-click menu (C-72), as the Biblioteca's: it acts on
     // the file under the pointer; what goes on air is last.
     const fileMenu = (m) => (e) => menu(e, { title: m.title, items: [
