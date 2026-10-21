@@ -944,6 +944,12 @@
         "thumbnail_url": {
           "type": "text"
         },
+        "video_codec": {
+          "type": "text"
+        },
+        "video_bit_depth": {
+          "type": "real"
+        },
         "duration": {
           "type": "real"
         },

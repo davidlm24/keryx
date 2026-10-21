@@ -27,6 +27,15 @@
       "type": "string",
       "description": "URL da miniatura"
     },
+    "video_codec": {
+      "type": "string",
+      "enum": ["avc1", "hvc1", "hev1", "av01", "vp09", "webm", "other"],
+      "description": "O codec de um vídeo, lido dos bytes do arquivo (src/lib/videoCodec.js): avc1 = H.264, hvc1/hev1 = H.265 (HEVC), av01 = AV1, vp09 = VP9; vazio = ainda não lido"
+    },
+    "video_bit_depth": {
+      "type": "number",
+      "description": "Bits por amostra do vídeo (8, 10, 12), quando o arquivo diz"
+    },
     "duration": {
       "type": "number",
       "description": "Dura\u00e7\u00e3o em segundos (para v\u00eddeos)"

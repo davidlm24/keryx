@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "../Icon";
 import { Btn, IconBtn, Seg, onTabsKey, tabStop } from "../kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import VideoStill from "@/components/screen/VideoStill";
 import GeneratorPanel, { GeneratorTiles } from "../GeneratorPanel";
 import { FundoDetail, useSaveBackgroundPref } from "../settings/FundosGallery";
 import { useBackgrounds, useLibrary, useThemes } from "../useConsoleData";
@@ -224,7 +225,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                 <div className="lib-grid">
                                     {mediaOfTab.map((m) => (
                                         <button type="button" key={m.id} className="kx-t fg-tile" aria-label={m.title} title={m.title} onClick={() => bring(m)}>
-                                            <span className="fg-img">{m.type === "video" ? <video src={m.file_url} preload="metadata" muted /> : <img src={m.file_url} alt="" loading="lazy" />}</span>
+                                            <span className="fg-img">{m.type === "video" ? <VideoStill src={m.file_url} className="" /> : <img src={m.file_url} alt="" loading="lazy" />}</span>
                                             <span className="fg-name">{m.title}</span>
                                         </button>
                                     ))}
@@ -250,7 +251,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                     return (
                                         <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""}`} aria-pressed={on} aria-label={b.name} title={tip}
                                             onClick={() => (waiting ? c.say(PENDING_SAY) : setSel({ kind: b.kind, value: b.url }))} onDoubleClick={() => { if (!waiting) take({ kind: b.kind, value: b.url }); }} onContextMenu={(e) => tileMenu(e, b)}>
-                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <video src={b.url} preload="metadata" muted /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}</span>
+                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <VideoStill src={b.url} className="" /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}</span>
                                             <span className="fg-name">{b.favorite && <Icon name="star" size={12} />}{b.name}</span>
                                         </button>
                                     );
@@ -287,7 +288,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                         )}
                     </div>
                     {!big && <div className="lib-side">
-                        <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} preview motion />}</div>
+                        {/* A generator moves here; a video shows its still (Rodada O, item 11). */}
+                        <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} preview motion={sel?.kind !== "video"} />}</div>
                         <div className="lib-label"><span className="kx-meta">Escolhido</span><span className="t">{label}</span></div>
                         {entry && <FundoDetail key={entry.source} b={entry} save={save} sample={false}
                             categories={managedCategories(storedCats, list)} onCategories={() => setView("categories")} onRestore={() => act.restore(entry)} />}

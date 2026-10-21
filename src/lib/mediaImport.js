@@ -1,6 +1,7 @@
 import { keryx } from "@/api/keryxClient";
 import { PPTX_HINT } from "@/lib/presentation";
 import { FONTS_IN_EDITOR_HINT, FONT_EXTENSIONS } from "@/lib/fonts";
+import { readVideoCodec, fileReader } from "@/lib/videoCodec";
 
 // The Media type of a picked file, by MIME type and extension.
 export function mediaTypeOf(file) {
@@ -89,6 +90,19 @@ export const copyingNow = () => copying;
 export const subscribeCopying = (fn) => { copyingListeners.add(fn); return () => copyingListeners.delete(fn); };
 let batches = 0;
 
+// A video's codec, read from the picked file (src/lib/videoCodec.js): the
+// Media row's video_codec / video_bit_depth. A file it cannot read is copied
+// all the same; the console's backfill tries again from the media folder.
+async function codecFields(file) {
+    try {
+        const found = await readVideoCodec(fileReader(file), file.size);
+        if (!found) return {};
+        return { video_codec: found.codec, ...(found.bitDepth ? { video_bit_depth: found.bitDepth } : {}) };
+    } catch {
+        return {};
+    }
+}
+
 // A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
 // `refused`, and the caller says how to save it as PDF (PPTX_HINT). A PDF's
 // pages are made after, by the console (usePagesBackfill).
@@ -118,6 +132,7 @@ export async function importMediaFiles(files, { title = "", description = "", ca
                 file_url,
                 category,
                 duration: 0,
+                ...(kind === "video" ? await codecFields(file) : {}),
             });
             if (row?.id) rememberMadeHere(row.id);
             created.push(row);

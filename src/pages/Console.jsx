@@ -6,6 +6,8 @@ import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { usePosterBackfill } from "@/hooks/usePosterBackfill";
+import { useCodecBackfill } from "@/hooks/useCodecBackfill";
+import { setVideoStills } from "@/lib/videoStills";
 import { usePagesBackfill, pagesProgressAll, subscribePagesProgress, retryPages } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
@@ -129,6 +131,10 @@ export default function Console() {
     // Every video's still (Media.thumbnail_url), the background library's too.
     const allMedia = useMemo(() => [...data.media, ...data.backgroundMedia], [data.media, data.backgroundMedia]);
     usePosterBackfill(allMedia);
+    // The previews draw a video background's still instead of playing it
+    // (videoStills.js), and each video's codec is read (videoCodec.js).
+    useEffect(() => { setVideoStills(allMedia); }, [allMedia]);
+    useCodecBackfill(allMedia);
     // Every PDF's pages as pictures (Media.pages): a presentation on air.
     usePagesBackfill(data.media);
     // A PDF put in the Prévia before its pages were ready (stage.blocked):

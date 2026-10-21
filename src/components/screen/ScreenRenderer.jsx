@@ -1,6 +1,7 @@
 import React from "react";
 import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
+import VideoStill from "./VideoStill";
 import AlertBar from "./AlertBar";
 import { mainLayer, currentSlide, nextSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect, typography } from "@/lib/deviceStyles";
@@ -239,7 +240,10 @@ function Background({ state, layer, preview, motion }) {
         // A generated background: computed on the screen (GeneratorBackground),
         // moving on an output and on the Programa monitor, still elsewhere.
         if (liveBg.kind === "generator" && liveBg.gen) return <><GeneratorBackground gen={liveBg.gen} animate={!preview || motion} />{look.dim}</>;
-        if (liveBg.kind === "video") return <><video className="ks-bg-video" style={look.media} src={liveBg.value} autoPlay loop muted playsInline />{look.dim}</>;
+        // A video plays the same way (Rodada O, item 11): on an output and the
+        // Programa monitor; the Prévia, thumbnails and samples draw its still,
+        // so one file is not decoded once per preview.
+        if (liveBg.kind === "video") return <>{!preview || motion ? <video className="ks-bg-video" style={look.media} src={liveBg.value} autoPlay loop muted playsInline /> : <VideoStill src={liveBg.value} style={look.media} />}{look.dim}</>;
         return <><div className="ks-bg-img" style={{ backgroundImage: `url(${liveBg.value})`, ...look.image }} />{look.dim}</>;
     }
     return hidden ? <div className="ks-black" /> : <div className="ks-bg-default" />;
