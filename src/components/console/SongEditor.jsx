@@ -379,25 +379,28 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const media = song.audio_url;
     const video = isVideoUrl(media);
     const marked = starts.filter((x) => Number.isFinite(x)).length;
+    // Narrow, one column shows Dados or Letra: the switch rides in the
+    // header of whichever is on screen.
+    const foldSeg = narrow && <Seg small value={fold} onChange={setFold} label="O que a coluna mostra" options={[["dados", "Dados"], ["letra", "Letra"]]} />;
 
     return (
         <>
             <WinBar title="Editor de música" sub={`${songId === "new" ? "Nova música" : song.title || "Música"}${dirty ? " · não salvo" : ""}`}
-                tools={<>
-                    <IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label="Favorita" onClick={() => set({ is_favorite: !song.is_favorite })} />
-                    {narrow && <Seg small value={fold} onChange={setFold} label="O que a coluna mostra" options={[["dados", "Dados"], ["letra", "Letra"]]} />}
-                    {/* At the left, apart from Cancelar and Salvar (audit C-40). */}
-                    {songId !== "new" && <Btn small onClick={remove} title="Excluir esta música · pergunta antes">Excluir…</Btn>}
-                </>}
                 actions={<>
-                    <Btn small onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir</Btn>
                     <Btn small onClick={() => close()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={busy === "save"} onClick={save} title="Salvar · Ctrl+S">{busy === "save" ? "Salvando…" : "Salvar"}</Btn>
                 </>} />
             <div className="win-body" ref={bodyRef}>
             {(!narrow || fold === "dados") && (
             <div className="col song-ed-l" style={narrow ? { flex: 1, minWidth: 0 } : colDados.style}>
-                <Panel title="Música" bodyStyle={{ overflow: "auto" }}>
+                <Panel title="Música" actions={<>
+                    {/* The song's own commands, with the song (Rodada O, O7:
+                        the bar keeps Cancelar and Salvar, apart — audit C-40). */}
+                    <IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label="Favorita" onClick={() => set({ is_favorite: !song.is_favorite })} />
+                    {foldSeg}
+                    {songId !== "new" && <Btn small onClick={remove} title="Excluir esta música · pergunta antes">Excluir…</Btn>}
+                    <Btn small onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir</Btn>
+                </>} bodyStyle={{ overflow: "auto" }}>
                     <CfgGroup id="song.dados" title="Dados" fold={false}>
                     <div className="frm">
                         <span className="k">Título</span><Field label="Título" icon={null} value={song.title} onChange={(v) => set({ title: v })} placeholder="Título da música" />
@@ -496,7 +499,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             {(!narrow || fold === "letra") && <>
             {!narrow && colDados.split}
             <div className="col" style={narrow ? { flex: 1, minWidth: 0 } : colLetra.style}>
-                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<LinesPicker value={split} onChange={pickSplit} titles={{ stanza: "Uma estrofe por slide · a letra não muda, só os slides" }} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<>{foldSeg}<LinesPicker value={split} onChange={pickSplit} titles={{ stanza: "Uma estrofe por slide · a letra não muda, só os slides" }} /></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="ed-tools">
                         <Btn small kind="outline" onClick={() => addMarker("Verso")}>[Verso]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Refrão")}>[Refrão]</Btn>

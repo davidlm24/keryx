@@ -103,9 +103,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`--space-1`) in from the column, with its text at 12 px; listheads and
   sub-titles ("Selecionado", a Temas heading inside Camadas) at 12 px;
   Capítulos is as tall as its cells, up to 40 % of the column (`Measure` →
-  the Bíblia's `fitDock` `locked`, Console.jsx); every panel header is 32 px, 28 in
-  Compacta (`panelHead`), one line — a header never wraps into a taller
-  block. No text a panel does not need (owner 2026-10-16, the Bíblia
+  the Bíblia's `fitDock` `locked`, Console.jsx); every panel header is 36 px, 32 in
+  Compacta (owner 2026-10-21, Rodada O5: the tokens `panel-head` and
+  `panel-head-compact`; `panelHead` in layout.js and dock.js `PANEL_HEAD`
+  keep the locked heights in step), one line — a header never wraps into a
+  taller block. No text a panel does not need (owner 2026-10-16, the Bíblia
   review): no hints in headers, no "installed here" lines, counts inside
   the lists they count (the Bíblia's dropdowns), never on their button.
   Don't give one panel its own inset. **Configurações' groups** (Rodada H1,
@@ -120,8 +122,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   one-line string the section computes from its own values (`outputsSummary`,
   `syncSummary`, `src/lib/console/cfgSummaries.js`; tested), shown only while
   closed — never in a header hint; a title never repeats the page's (Backup,
-  Dados and Atualizações are accepted), is the console's grey caption at
-  weight 600, not gold; every new `CfgGroup k` goes in settingsSearch.js.
+  Dados and Atualizações are accepted), is 13 px `fg-1` at 600 in sentence
+  case, not gold, and a static group has no chevron slot (Rodada O10 = C,
+  owner 2026-10-21); **the first static group right under a panel's title
+  shows no title of its own** (Planejar o culto's Dados under Culto, the song
+  editor's, the Editor de temas' Nome e padrão, the first area of a
+  Configurações section): one rule in console.css by structure, the title
+  kept for screen readers and the search; every new `CfgGroup k` goes in
+  settingsSearch.js.
 - **Every panel folds** (owner 2026-10-16, Rodada F4): a chevron right of
   the header's + (`FoldBtn` in kx.jsx; "Dobrar"/"Abrir"), on every module
   but the Programa, the Prévia, the player and the Bíblia's panels
@@ -733,8 +741,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   there), Relatórios (`ReportsView.jsx`) and the theme/screen editors.
   **One floating window over the live console**, the Configurações frame
   on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2, the
-  title, the page's tools and actions, the (x) "Fechar · Esc"; there is
-  no "← Console" BackBtn any more), the Window component of bundle.css
+  title, the window's actions, the (x) "Fechar · Esc"; there is
+  no "← Console" BackBtn any more). **The window is one surface**
+  (owner 2026-10-21, Rodada O7 = A): `bg-1` under the bar and the page, the
+  bar parted only by its `line-soft` rule, a faint ring and a deep
+  `shadow-window`; the page's panels start right under the rule, one grey
+  step up (`.win-body .kx-panel`: `bg-2`, fields `bg-3`, pressed `bg-4`).
+  **Lean bars**: the bar holds the title and what acts on the whole window
+  (Desfazer/Refazer, Cancelar, Salvar, Destacar, ×); what acts on the
+  content goes in the page — Configurações' search at the top of its nav,
+  the Editor da tela's Mostrar com in the canvas header, the Editor de
+  temas' theme select and Excluir… in the form's header, the Mídia's search
+  and Adicionar in its filter row, the song editor's ☆, Dados/Letra,
+  Excluir… and Imprimir in the Música panel, Relatórios' Período and search
+  at the top of the page, Sincronizar's Velocidade in the media's header
+  (Planejar o culto's bar is the tabs' own). **Side menus are fixed** (no
+  splitter: Configurações' nav, the Editor da tela's and the Tela ociosa's
+  Telas) **and start with Voltar** (O8: `WinBack`, `WinBar menuBack`);
+  a page without one keeps Voltar at the bar's left. The Window component of bundle.css
   (`kx-win`, beside the old `.win-dialog`; the `.win-scrim` and the
   `.win-body` layout stay in console.css), two sizes (Padrão, and `.is-editor` for the editors; the
   frame animates between them). **The window stretches by its 4 edges and 4 corners** (owner
@@ -742,8 +766,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `dragRect`/`clampWin` in `src/lib/console/winLayout.js`, tested): min
   760 × 480, never past the console, one size per kind kept on this computer
   (localStorage `keryx.console.win`); a double click on the bar's empty area
-  restores the default. **Inside a page, columns (and the song editor's
-  Slides/Vídeo) are resized by splitters as in the console** (`useWinCol`,
+  restores the default. **Inside a page, content columns (and the song editor's
+  Slides/Vídeo) are resized by splitters as in the console** (never a side
+  menu; a `kx-gap` stands beside one) (`useWinCol`,
   size per page per computer; double click restores), and the spacing is the
   Editor da tela's: 6 px between panels, side by side or stacked — `.win-body`
   has no flex gap, the splitter IS the gap; don't add a gap beside one. **Opening from inside navigates in the

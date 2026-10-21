@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PANEL_HEAD, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -405,11 +405,11 @@ test("folded panels (Rodada F4): a header down a column, a strip across a row, o
     // The Setlist and Temas folded: Camadas is the last open one — its
     // chevron cannot fold it, and it takes the rest instead of its list's height.
     const last = fitDock(d, 1908, 1000, { folded: ["setlist", "temas"], locked: { camadas: 152, temas: 220 } }).children[0].frame.children[3].frame;
-    assert.deepEqual(at(last), [["camadas", 890 - 64 - 12, false, false], ["temas", 32, true, true], ["setlist", 32, true, true]]);
+    assert.deepEqual(at(last), [["camadas", 890 - 72 - 12, false, false], ["temas", PANEL_HEAD, true, true], ["setlist", PANEL_HEAD, true, true]]);
     assert.deepEqual(last.children[0].frame.fold, { dir: "col", on: false, can: false });
     // All three folded (a save from another width): the flexible one stays open.
     const all = fitDock(d, 1908, 1000, { folded: ["camadas", "temas", "setlist"] }).children[0].frame.children[3].frame;
-    assert.deepEqual(at(all), [["camadas", 32, true, true], ["temas", 32, true, true], ["setlist", 890 - 64 - 12, false, false]]);
+    assert.deepEqual(at(all), [["camadas", PANEL_HEAD, true, true], ["temas", PANEL_HEAD, true, true], ["setlist", 890 - 72 - 12, false, false]]);
     assert.deepEqual(all.children[2].frame.fold, { dir: "col", on: false, can: false });
     // The No ar strip folded is its header; gone (no lyrics on air), no room at all.
     assert.deepEqual(fitDock(d, 1908, 1000, { folded: ["onair"], locked: { onair: 150 }, head: 28 }).children.map((c) => c.size), [1000 - 6 - 28, 28]);
@@ -443,11 +443,11 @@ test("the Bíblia's panels never fold (owner 2026-10-16)", () => {
 
 test("the No ar strip is as tall as the slide with the most lines", () => {
     assert.equal(onAirHeight([]), ONAIR_H, "never under the default strip");
-    assert.equal(onAirHeight([{ text: "a\nb" }]), Math.max(ONAIR_H, 72 + 2 * 18));
-    assert.equal(onAirHeight([{ text: "a\nb" }, { text: "a\nb\nc\nd" }]), 72 + 4 * 18, "4 lines a slide (the song's editor)");
+    assert.equal(onAirHeight([{ text: "a\nb" }]), Math.max(ONAIR_H, 76 + 2 * 18));
+    assert.equal(onAirHeight([{ text: "a\nb" }, { text: "a\nb\nc\nd" }]), 76 + 4 * 18, "4 lines a slide (the song's editor)");
     assert.ok(onAirHeight([{ text: "1\n2\n3\n4\n5\n6" }]) > onAirHeight([{ text: "1\n2\n3\n4" }]), "a whole stanza");
-    assert.equal(onAirHeight([{ text: "a\nb\nc" }], 28), 72 + 3 * 18 - 4, "a compact header is 4 px shorter");
-    assert.equal(onAirHeight([{ text: "", image_url: "p1.jpg", label: "Página 1" }]), 72 + ONAIR_PAGE_LINES * 18, "a presentation's page: a thumbnail of ONAIR_PAGE_LINES lines");
+    assert.equal(onAirHeight([{ text: "a\nb\nc" }], 32), 76 + 3 * 18 - 4, "a compact header is 4 px shorter");
+    assert.equal(onAirHeight([{ text: "", image_url: "p1.jpg", label: "Página 1" }]), 76 + ONAIR_PAGE_LINES * 18, "a presentation's page: a thumbnail of ONAIR_PAGE_LINES lines");
 });
 
 // The Bíblia's dock: the same engine, its own modules.

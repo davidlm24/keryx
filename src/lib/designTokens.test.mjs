@@ -20,6 +20,10 @@ const { compileTokens, formatJson } = createRequire(import.meta.url)(path.join(r
 // file › selector › token: overrides on purpose, each with its reason.
 const OVERRIDES = {
     "src/components/console/console.css › .console › --gutter": "the console's one 6 px gutter (owner 2026-10-13)",
+    "src/components/console/console.css › .console.is-compact › --panel-head": "Compacta's panel headers (Rodada O, O5): panel-head-compact through the one variable",
+    "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-1": "THE window's panels one grey step up (Rodada O, O7)",
+    "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-2": "THE window's panels one grey step up (Rodada O, O7)",
+    "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-3": "THE window's panels one grey step up (Rodada O, O7)",
 };
 
 // Every custom property a stylesheet declares, with the rule it sits in.

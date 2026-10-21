@@ -71,7 +71,6 @@ export default function ScreenEditor(props) {
 
 function OutputScreenEditor({ say, live: liveState, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colTelas = useWinCol("screen.telas", { name: "Telas", def: 190, min: 160, max: 360 });
     const colAjustes = useWinCol("screen.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
     const prefRows = useOutputPrefRows();
     const church = useChurch();
@@ -343,7 +342,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const num = (el, k, v, lo, hi) => { const n = Number(v); if (Number.isFinite(n)) setEl(el.id, { [k]: Math.min(hi, Math.max(lo, n)) }); };
     const cLike = { say, live: liveState };
 
-    const screensMenu = <ScreensMenu path={path} screens={EDITOR_SCREENS} onPick={switchTo} style={colTelas.style} />;
+    const screensMenu = <ScreensMenu path={path} screens={EDITOR_SCREENS} onPick={switchTo} />;
 
     // A ready drawing in place of the current one: a factory model, or
     // another screen's own design (Rodada C, fase d2 — the catalog's one
@@ -363,7 +362,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const body = (
         <>
             {screensMenu}
-            {colTelas.split}
+            <div className="kx-gap" />
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel caption={isStream ? "Ajustes" : tabs} actions={!isStream && !hosted && <span className="kx-count">{name}{dirty ? " · não salvo" : ""}</span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
@@ -553,9 +552,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
             </div>
             {colAjustes.split}
             <div className="col center">
-                <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!hosted && <>
-                    <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />
-                </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!isStream && <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {isStream || !draft ? (
                         <Empty icon={isStream ? "text" : "monitor"} title={isStream ? "Sem canvas" : "Abrindo a tela…"}>
                             {isStream ? "A legenda da Transmissão segue os ajustes ao lado." : null}
@@ -597,8 +594,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     if (!hosted) return body;
     return (
         <>
-            <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`}
-                tools={!isStream && <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />}
+            <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`} menuBack
                 actions={!isStream && <>
                     <UndoRedo history={history} />
                     <Btn small onClick={() => leave()}>Cancelar</Btn>

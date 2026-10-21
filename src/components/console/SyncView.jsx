@@ -176,14 +176,15 @@ export default function SyncView({ title = "", slides = [], media = "", duration
     return (
         <>
             <WinBar title="Sincronizar" sub={`${title || "Música"} · ${marked}/${n} marcados${dirty ? " · não aplicado" : ""}`}
-                tools={<Seg small label="Velocidade" value={String(speed)} onChange={(v) => toSpeed(Number(v))} options={SPEEDS.map((v) => [String(v), `${String(v).replace(".", ",")}×`, { title: `Tocar a ${String(v).replace(".", ",")}× · [ e ]` }])} />}
                 actions={<>
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={!dirty} onClick={apply} title="Leva as marcas para o Editor de música; o Salvar de lá grava">Aplicar</Btn>
                 </>} />
             <div className="win-body sync">
                 <div className="col center">
-                    <Panel title={sourceWord} actions={<>
+                    <Panel className="sync-media" title={sourceWord} actions={<>
+                        {/* How fast the media plays: the media's (Rodada O, O7). */}
+                        <Seg small label="Velocidade" value={String(speed)} onChange={(v) => toSpeed(Number(v))} options={SPEEDS.map((v) => [String(v), `${String(v).replace(".", ",")}×`, { title: `Tocar a ${String(v).replace(".", ",")}× · [ e ]` }])} />
                         {rec === null
                             ? <Btn small kind="outline" disabled={!n} onClick={startRecording} title="Toca e, a cada Espaço, marca o próximo slide a partir do escolhido · as outras marcas ficam">Gravar a partir do slide {Math.min(sel + 1, n)}</Btn>
                             : <Btn small kind="rh" onClick={stopRecording} title="Parar de gravar · Esc">Gravando · Espaço marca o slide {rec + 1}</Btn>}
