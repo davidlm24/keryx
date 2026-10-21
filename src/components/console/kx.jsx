@@ -303,7 +303,7 @@ export function SelectManyBtn({ on, onToggle }) {
     return <IconBtn name={SELECT_MANY.icon} small on={on} title={on ? `${SELECT_MANY.label} · Esc desliga` : SELECT_MANY.label} onClick={() => onToggle(!on)} />;
 }
 export function RowMark() {
-    return <span className="kx-mark" aria-hidden="true"><Icon name="check" size={12} /></span>;
+    return <span className="kx-pick" aria-hidden="true"><Icon name="check" size={12} /></span>;
 }
 export function SelBar({ count, feminine = false, onClear, children }) {
     if (!count) return null;
