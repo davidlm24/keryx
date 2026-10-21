@@ -1160,9 +1160,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .mv-th audio { display: none; }
 .console .mv-th:hover { box-shadow: 0 0 0 1px var(--line-strong); }
 .console .mv-th.is-sel { box-shadow: 0 0 0 2px var(--rh-fg); }
-/* Selecionar vários: the box in the card's top-right corner, over the picture (the kind label holds the left; kx-mark). */
-.console .mv-th .kx-mark { position: absolute; top: var(--space-1); right: var(--space-1); z-index: var(--z-mark); background: var(--chrome-mark); border-color: var(--fg-1); }
-.console .mv-th.is-marked .kx-mark { background: var(--rh-fg); border-color: var(--rh-fg); }
+/* Selecionar vários: the box in the card's top-right corner, over the picture (the kind label holds the left; kx-pick). */
+.console .mv-th .kx-pick { position: absolute; top: var(--space-1); right: var(--space-1); z-index: var(--z-mark); background: var(--chrome-mark); border-color: var(--fg-1); }
+.console .mv-th.is-marked .kx-pick { background: var(--rh-fg); border-color: var(--rh-fg); }
 .console .mv-th.is-air { box-shadow: 0 0 0 2px var(--air); }
 /* On air and marked: the air's ring, the mark's outside it (a card can be both). */
 .console .mv-th.is-air.is-sel { box-shadow: 0 0 0 2px var(--air), 0 0 0 4px var(--rh-fg); }
