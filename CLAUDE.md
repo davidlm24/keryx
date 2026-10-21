@@ -1439,13 +1439,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Prévia and shows on hover in the Biblioteca. **A video Fundo plays only on
   the outputs and the Programa monitor** (Rodada O, item 11; like a generator,
   `!preview || motion`): the Prévia, the Temas thumbnails and the library draw
-  `VideoStill` (the row's still by file, `src/lib/videoStills.js`, filled by
+  `VideoStill` (the row's still by file, `src/lib/videoFiles.js`, filled by
   the console and /Janela; else the paused first frame) — one file decoded
   15 times kept the loops still. A video's codec is read from its bytes
-  (`src/lib/videoCodec.js`, tested: the MP4/MOV `stsd`, bit depth from
-  hvcC/avcC/av1C/vpcC) on import and by `useCodecBackfill` (HTTP Range) into
-  `Media.video_codec`/`video_bit_depth`; `mayNotPlay` (HEVC, H.264 above 8
-  bits, unknown) is the data for the warning the Rodada O mockup will draw.
+  (`src/lib/videoCodec.js`, tested: the MP4/MOV `stsd`, bit depth and chroma
+  from hvcC/avcC/av1C/vpcC) on import and by `useCodecBackfill` (HTTP Range)
+  into `Media.video_codec`/`video_bit_depth`/`video_chroma`. **A video that
+  may freeze is refused, never converted** (owner's O11 = B, 2026-10-21:
+  `codecProblem` = HEVC, H.264 above 8 bits or not 4:2:0; a codec the reader
+  does not name passes): `importMediaFiles` leaves it in `refused` with
+  `codecRefusal`'s words (HandBrake, "Fast 1080p30"); a row already in the
+  library keeps its file and wears `CodecMark` ("HEVC · pode não tocar",
+  amber, `.codec-mark`) in the Fundos' tiles, the Mídia and the Biblioteca,
+  and the background library will not pick it for anything new. All the
+  words are videoCodec.js's.
 - **Apresentações are PDF only** (owner 2026-10-16, Rodada F3, "Só PDF"):
   when a PDF reaches the Mídia the console renders its pages with pdf.js
   (`pdfjs-dist`, a devDependency bundled by Vite; its worker and data files

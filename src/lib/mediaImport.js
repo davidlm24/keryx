@@ -1,7 +1,7 @@
 import { keryx } from "@/api/keryxClient";
 import { PPTX_HINT } from "@/lib/presentation";
 import { FONTS_IN_EDITOR_HINT, FONT_EXTENSIONS } from "@/lib/fonts";
-import { readVideoCodec, fileReader } from "@/lib/videoCodec";
+import { readVideoCodec, fileReader, codecFields, codecRefusal } from "@/lib/videoCodec";
 
 // The Media type of a picked file, by MIME type and extension.
 export function mediaTypeOf(file) {
@@ -90,21 +90,17 @@ export const copyingNow = () => copying;
 export const subscribeCopying = (fn) => { copyingListeners.add(fn); return () => copyingListeners.delete(fn); };
 let batches = 0;
 
-// A video's codec, read from the picked file (src/lib/videoCodec.js): the
-// Media row's video_codec / video_bit_depth. A file it cannot read is copied
-// all the same; the console's backfill tries again from the media folder.
-async function codecFields(file) {
-    try {
-        const found = await readVideoCodec(fileReader(file), file.size);
-        if (!found) return {};
-        return { video_codec: found.codec, ...(found.bitDepth ? { video_bit_depth: found.bitDepth } : {}) };
-    } catch {
-        return {};
-    }
+// A video's codec, read from the picked file before it is copied
+// (src/lib/videoCodec.js). A file it cannot read is copied all the same; the
+// console's backfill tries again from the media folder.
+async function readCodec(file) {
+    try { return await readVideoCodec(fileReader(file), file.size); } catch { return null; }
 }
 
 // A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
-// `refused`, and the caller says how to save it as PDF (PPTX_HINT). A PDF's
+// `refused`, and the caller says how to save it as PDF (PPTX_HINT). Nor is a
+// video that may freeze on the screens (HEVC, H.264 at 10 bits or not 4:2:0;
+// Rodada O, O11 = B): refused with codecRefusal's words (HandBrake). A PDF's
 // pages are made after, by the console (usePagesBackfill).
 export async function importMediaFiles(files, { title = "", description = "", category = "other", onProgress } = {}) {
     const list = Array.from(files || []);
@@ -122,6 +118,9 @@ export async function importMediaFiles(files, { title = "", description = "", ca
         const kind = mediaTypeOf(file);
         if (kind === "powerpoint") { refused.push({ name: file.name, message: PPTX_HINT }); continue; }
         if (kind === "font") { refused.push({ name: file.name, message: FONTS_IN_EDITOR_HINT }); continue; }
+        const codec = kind === "video" ? await readCodec(file) : null;
+        const refusal = codecRefusal(file.name, codec);
+        if (refusal) { dropCopying(keyOf(i)); refused.push({ name: file.name, message: refusal }); continue; }
         try {
             if (i > 0) setCopying(copying.map((c) => (c.key === keyOf(i) ? { ...c, waiting: false } : c)));
             const { file_url } = await keryx.integrations.Core.UploadFile({ file });
@@ -132,7 +131,7 @@ export async function importMediaFiles(files, { title = "", description = "", ca
                 file_url,
                 category,
                 duration: 0,
-                ...(kind === "video" ? await codecFields(file) : {}),
+                ...codecFields(codec),
             });
             if (row?.id) rememberMadeHere(row.id);
             created.push(row);

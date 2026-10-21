@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { keryx } from "@/api/keryxClient";
-import { needsCodec, rangeReader, readVideoCodec } from "@/lib/videoCodec";
+import { codecFields, needsCodec, rangeReader, readVideoCodec } from "@/lib/videoCodec";
 
 const PAUSE_MS = 600;
 
@@ -24,7 +24,7 @@ export function useCodecBackfill(rows) {
             tried.add(`${row.id}|${row.file_url}`);
             setBusy(true);
             readVideoCodec(rangeReader(row.file_url))
-                .then((found) => found && keryx.entities.Media.update(row.id, { video_codec: found.codec, ...(found.bitDepth ? { video_bit_depth: found.bitDepth } : {}) }))
+                .then((found) => found && keryx.entities.Media.update(row.id, codecFields(found)))
                 .catch((err) => console.warn("[keryx] codec do vídeo:", row.title, err?.message || err))
                 .finally(() => { setBusy(false); setTick((n) => n + 1); });
         }, PAUSE_MS);

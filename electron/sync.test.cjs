@@ -918,6 +918,7 @@ const NOT_A_FILE = {
     "OutputPref.icon": "a design-system icon's name",
     "BibleEdition.file_name": "the name of the file an own Bible came from, shown in its row; the file is never copied",
     "Media.video_codec": "the codec read from the video's bytes (src/lib/videoCodec.js)",
+    "Media.video_chroma": "how the video's colour is sampled, read from its bytes (src/lib/videoCodec.js)",
 };
 // Fields of the entities kept on each computer that hold files: they stay
 // there on purpose (syncScope.cjs ON_EACH_COMPUTER).

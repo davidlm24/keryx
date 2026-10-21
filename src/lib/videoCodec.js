@@ -3,9 +3,11 @@
 // tree of boxes; the video track's sample description
 // (moov/trak/mdia/minf/stbl/stsd) names the codec — avc1 is H.264, hvc1/hev1
 // H.265 (HEVC), av01 AV1, vp09 VP9 — and its configuration box says how many
-// bits a sample has. Chromium plays H.264 at 8 bits, VP9 and AV1; HEVC only
-// where the graphics card decodes it, and H.264 at 10 bits never
-// (mayNotPlay). Pure: the bytes come through `read(offset, length)`, so the
+// bits a sample has and how its colour is sampled. Chromium plays H.264 at 8
+// bits 4:2:0, VP9 and AV1; HEVC only where the graphics card decodes it, and
+// H.264 at 10 bits or 4:2:2/4:4:4 never — KERYX refuses those
+// (codecProblem; the owner's O11 = B: refuse, KERYX ships no converter).
+// Pure: the bytes come through `read(offset, length)`, so the
 // same walk serves a picked File (fileReader), a file of the media folder
 // over HTTP Range (rangeReader) and the tests' hand-built boxes.
 
@@ -43,47 +45,57 @@ function boxes(b, start = 0, end = b.length) {
 }
 const child = (b, box, type) => box && boxes(b, box.body, box.end).find((x) => x.type === type);
 
-// The bit depth a codec's configuration box gives (null when it does not say).
-function bitDepthOf(b, codec, entry) {
+// chroma_format_idc of H.264 and HEVC, as the usual names.
+const CHROMA = ["400", "420", "422", "444"];
+
+// What a codec's configuration box says of its samples: { bitDepth, chroma }
+// ("420", "422", "444", "400" for black and white), null where it does not say.
+function sampleFormat(b, codec, entry) {
+    const none = { bitDepth: null, chroma: null };
     // VisualSampleEntry: 8 header + 78 bytes of fields, then its boxes.
     const kids = boxes(b, entry.body + 78, entry.end);
     const box = (type) => kids.find((x) => x.type === type);
     if (codec === "hvc1" || codec === "hev1") {
         const c = box("hvcC");
-        // bitDepthLumaMinus8 is the low 3 bits of the configuration's byte 17.
-        return c && c.end - c.body > 17 ? (b[c.body + 17] & 7) + 8 : null;
+        // chromaFormat and bitDepthLumaMinus8: the low bits of bytes 16 and 17.
+        return c && c.end - c.body > 17 ? { bitDepth: (b[c.body + 17] & 7) + 8, chroma: CHROMA[b[c.body + 16] & 3] } : none;
     }
     if (codec === "av01") {
         const c = box("av1C");
-        if (!c || c.end - c.body < 3) return null;
-        const flags = b[c.body + 2];
-        return flags & 0x40 ? (flags & 0x20 ? 12 : 10) : 8;
+        if (!c || c.end - c.body < 3) return none;
+        // high_bitdepth, twelve_bit, monochrome, subsampling_x, subsampling_y.
+        const f = b[c.body + 2];
+        return { bitDepth: f & 0x40 ? (f & 0x20 ? 12 : 10) : 8, chroma: f & 0x10 ? "400" : !(f & 0x08) ? "444" : f & 0x04 ? "420" : "422" };
     }
     if (codec === "vp09") {
         const c = box("vpcC"); // a full box: 4 bytes of version and flags first
-        return c && c.end - c.body > 6 ? b[c.body + 6] >> 4 : null;
+        if (!c || c.end - c.body <= 6) return none;
+        const sub = (b[c.body + 6] >> 1) & 7;
+        return { bitDepth: b[c.body + 6] >> 4, chroma: sub <= 1 ? "420" : sub === 2 ? "422" : "444" };
     }
     if (codec === "avc1") {
         const c = box("avcC");
-        if (!c || c.end - c.body < 7) return null;
+        if (!c || c.end - c.body < 7) return none;
         const profile = b[c.body + 1];
-        // Baseline, Main, Extended: always 8 bits; High 10 and up say it
-        // after the parameter sets.
-        if (![100, 110, 122, 244].includes(profile)) return 8;
+        // Baseline, Main, Extended: always 8 bits, 4:2:0; the High profiles
+        // say it after the parameter sets (High itself is 8 bits too).
+        const high = { 100: 1, 110: 1, 122: 1, 244: 1 }[profile];
+        const plain = profile === 100 ? { bitDepth: 8, chroma: "420" } : none;
+        if (!high) return { bitDepth: 8, chroma: "420" };
         let at = c.body + 5;
         let n = b[at++] & 31;
         for (let i = 0; i < n && at + 2 <= c.end; i++) at += 2 + u16(b, at);
-        if (at >= c.end) return profile === 100 ? 8 : null;
+        if (at >= c.end) return plain;
         n = b[at++];
         for (let i = 0; i < n && at + 2 <= c.end; i++) at += 2 + u16(b, at);
-        // chroma_format, then bit_depth_luma_minus8 (its low 3 bits).
-        return at + 1 < c.end ? (b[at + 1] & 7) + 8 : profile === 100 ? 8 : null;
+        // chroma_format, then bit_depth_luma_minus8 (their low bits).
+        return at + 1 < c.end ? { bitDepth: (b[at + 1] & 7) + 8, chroma: CHROMA[b[at] & 3] } : plain;
     }
-    return null;
+    return none;
 }
 
 // The video track's codec in a moov box's bytes (the box, header included,
-// or `moov` saying where its body is): { codec, bitDepth, width, height } or null.
+// or `moov` saying where its body is): { codec, bitDepth, chroma, width, height } or null.
 export function codecInMoov(b, moov = null) {
     if (!moov) moov = b.length >= 8 && fourcc(b, 4) === "moov" ? { body: 8, end: b.length } : { body: 0, end: b.length };
     for (const trak of boxes(b, moov.body, moov.end).filter((x) => x.type === "trak")) {
@@ -101,7 +113,7 @@ export function codecInMoov(b, moov = null) {
         const sized = entry.end - entry.body >= 28;
         return {
             codec,
-            bitDepth: codec === "other" ? null : bitDepthOf(b, codec, entry),
+            ...(codec === "other" ? { bitDepth: null, chroma: null } : sampleFormat(b, codec, entry)),
             width: sized ? u16(b, entry.body + 24) : null,
             height: sized ? u16(b, entry.body + 26) : null,
             ...(codec === "other" ? { format: entry.type } : {}),
@@ -118,7 +130,7 @@ export function codecInMoov(b, moov = null) {
 export async function readVideoCodec(read, size = Infinity) {
     const first = await read(0, 16);
     if (first.length >= 4 && first[0] === 0x1a && first[1] === 0x45 && first[2] === 0xdf && first[3] === 0xa3) {
-        return { codec: "webm", bitDepth: null, width: null, height: null };
+        return { codec: "webm", bitDepth: null, chroma: null, width: null, height: null };
     }
     let at = 0;
     for (let n = 0; n < MAX_BOXES && at < size; n++) {
@@ -162,14 +174,48 @@ export const rangeReader = (url, fetchImpl = fetch) => async (offset, length) =>
     return res.status === 206 ? bytes.subarray(0, length) : bytes.subarray(offset, offset + length);
 };
 
-// A codec Chromium may not decode, so the video may stay still: HEVC (only
-// where the graphics card decodes it), H.264 above 8 bits, and anything it
-// does not know (ProRes, MPEG-4 Part 2…). Unknown (null) is not a warning.
-export function mayNotPlay(codec, bitDepth = null) {
-    if (!codec || codec === "webm") return false;
-    if (codec === "hvc1" || codec === "hev1" || codec === "other") return true;
-    if (codec === "avc1") return Number(bitDepth) > 8;
-    return Number(bitDepth) > 10;
+// A video KERYX refuses on import and marks in the lists (Rodada O, O11 = B):
+// HEVC (it may freeze on the screens: only some graphics cards decode it),
+// H.264 above 8 bits, and H.264 whose colour is not 4:2:0. -> "hevc" |
+// "10bit" | "chroma" | null. A file read as something else (VP9, AV1, a
+// WebM, a codec the reader does not name) or not read at all passes.
+export function codecProblem({ codec, bitDepth, chroma } = {}) {
+    if (codec === "hvc1" || codec === "hev1") return "hevc";
+    if (codec === "avc1" && Number(bitDepth) > 8) return "10bit";
+    if (codec === "avc1" && chroma && chroma !== "420" && chroma !== "400") return "chroma";
+    return null;
+}
+
+// A Media row's codec fields as codecProblem takes them.
+export const codecOfRow = (row) => ({ codec: row?.video_codec || null, bitDepth: row?.video_bit_depth ?? null, chroma: row?.video_chroma || null });
+
+// The fields a read codec leaves on a Media row.
+export function codecFields(found) {
+    if (!found) return {};
+    return { video_codec: found.codec, ...(found.bitDepth ? { video_bit_depth: found.bitDepth } : {}), ...(found.chroma ? { video_chroma: found.chroma } : {}) };
+}
+
+const chromaName = (c) => `${c[0]}:${c[1]}:${c[2]}`;
+const PROBLEM = {
+    hevc: () => ({ short: "HEVC", what: "está em HEVC (H.265)" }),
+    "10bit": (f) => ({ short: `${f.bitDepth} bits`, what: `está em H.264 de ${f.bitDepth} bits` }),
+    chroma: (f) => ({ short: chromaName(f.chroma), what: `está em H.264 ${chromaName(f.chroma)}` }),
+};
+const HANDBRAKE = "Converta para MP4 H.264 no HandBrake (gratuito), predefinição \"Fast 1080p30\", e envie de novo.";
+
+// The words for a video with a problem ("" for none): the mark in the lists
+// ("HEVC · pode não tocar"), its tooltip, and why the import refused it.
+export function codecMark(found) {
+    const p = codecProblem(found || {});
+    return p ? `${PROBLEM[p](found).short} · pode não tocar` : "";
+}
+export function codecHint(found) {
+    const p = codecProblem(found || {});
+    return p ? `Este vídeo ${PROBLEM[p](found).what} e pode congelar nas telas. ${HANDBRAKE}` : "";
+}
+export function codecRefusal(name, found) {
+    const p = codecProblem(found || {});
+    return p ? `${name}: este vídeo ${PROBLEM[p](found).what} e pode congelar nas telas. ${HANDBRAKE}` : "";
 }
 
 // A video row of the library whose codec is not known yet: a file on this

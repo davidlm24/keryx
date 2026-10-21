@@ -36,6 +36,11 @@
       "type": "number",
       "description": "Bits por amostra do vídeo (8, 10, 12), quando o arquivo diz"
     },
+    "video_chroma": {
+      "type": "string",
+      "enum": ["420", "422", "444", "400"],
+      "description": "Como a cor do vídeo é amostrada (4:2:0 é o que as telas tocam), quando o arquivo diz"
+    },
     "duration": {
       "type": "number",
       "description": "Dura\u00e7\u00e3o em segundos (para v\u00eddeos)"

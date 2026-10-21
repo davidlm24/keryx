@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { codecInMoov, readVideoCodec, rangeReader, mayNotPlay, needsCodec } from "./videoCodec.js";
+import { codecInMoov, readVideoCodec, rangeReader, codecProblem, codecOfRow, codecFields, codecMark, codecHint, codecRefusal, needsCodec } from "./videoCodec.js";
 
 // Tiny hand-built MP4 boxes: just enough of the tree for the walk.
 const bytes = (...parts) => Uint8Array.from(parts.flatMap((p) => (typeof p === "string" ? [...p].map((c) => c.charCodeAt(0)) : Array.isArray(p) ? p : [p])));
@@ -35,17 +35,21 @@ const memReader = (file, calls = []) => async (offset, length) => { calls.push([
 
 test("codecInMoov: the video track's sample entry names the codec", () => {
     const sound = track("soun", box("mp4a", zeros(28)));
-    assert.deepEqual(codecInMoov(moov(sound, track("vide", sampleEntry("hvc1", hvcC(10))))), { codec: "hvc1", bitDepth: 10, width: 1920, height: 1080 }, "the audio track is skipped");
+    assert.deepEqual(codecInMoov(moov(sound, track("vide", sampleEntry("hvc1", hvcC(10))))), { codec: "hvc1", bitDepth: 10, chroma: "420", width: 1920, height: 1080 }, "the audio track is skipped");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("hev1", hvcC(8))))).bitDepth, 8);
-    assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(66), 1280, 720)))), { codec: "avc1", bitDepth: 8, width: 1280, height: 720 }, "Baseline is 8 bits");
+    assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(66), 1280, 720)))), { codec: "avc1", bitDepth: 8, chroma: "420", width: 1280, height: 720 }, "Baseline is 8 bits, 4:2:0");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("avc3", avcC(100))))).codec, "avc1", "avc3 is H.264 too");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(100))))).bitDepth, 8, "High without the extension");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(110, [0xfd, 0xfa, 0xfa, 0]))))).bitDepth, 10, "High 10");
+    assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(122, [0xfe, 0xfa, 0xfa, 0]))))), { codec: "avc1", bitDepth: 10, chroma: "422", width: 1920, height: 1080 }, "High 4:2:2");
+    assert.equal(codecInMoov(moov(track("vide", sampleEntry("hvc1", hvcC(10).map((x, i) => (i === 8 + 16 ? 0xfe : x)))))).chroma, "422", "HEVC 4:2:2");
+    assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("av01", av1C(0x0c))))).chroma, "420");
+    assert.equal(codecInMoov(moov(track("vide", sampleEntry("av01", av1C(0x00))))).chroma, "444");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("av01", av1C(0x00))))).bitDepth, 8);
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("av01", av1C(0x40))))).bitDepth, 10);
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("av01", av1C(0x60))))).bitDepth, 12);
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("vp09", vpcC(10))))).bitDepth, 10);
-    assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("apcn")))), { codec: "other", bitDepth: null, width: 1920, height: 1080, format: "apcn" }, "ProRes");
+    assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("apcn")))), { codec: "other", bitDepth: null, chroma: null, width: 1920, height: 1080, format: "apcn" }, "ProRes");
     assert.equal(codecInMoov(moov(sound)), null, "no video track");
     assert.equal(codecInMoov(bytes(0, 0, 0, 3, "moov")), null, "a broken box");
 });
@@ -53,7 +57,7 @@ test("codecInMoov: the video track's sample entry names the codec", () => {
 test("readVideoCodec: walks the top boxes by their headers and reads only the moov", async () => {
     const file = mp4(track("vide", sampleEntry("hvc1", hvcC(10))));
     const calls = [];
-    assert.deepEqual(await readVideoCodec(memReader(file, calls), file.length), { codec: "hvc1", bitDepth: 10, width: 1920, height: 1080 });
+    assert.deepEqual(await readVideoCodec(memReader(file, calls), file.length), { codec: "hvc1", bitDepth: 10, chroma: "420", width: 1920, height: 1080 });
     assert.ok(calls.every(([, len], i) => i === calls.length - 1 || len === 16), "headers only, then the moov");
     // The moov first (a "fast start" file), and a 64-bit mdat size.
     const big = join(box("ftyp", "isom", zeros(4)), moov(track("vide", sampleEntry("avc1", avcC(77))))
@@ -88,18 +92,44 @@ test("rangeReader: asks for the bytes, keeps them whether the server honours Ran
     await assert.rejects(rangeReader("u", async () => ({ ok: false, status: 404 }))(0, 4), /404/);
 });
 
-test("mayNotPlay: HEVC, H.264 above 8 bits and the unknown ones", () => {
-    assert.equal(mayNotPlay("hvc1", 8), true);
-    assert.equal(mayNotPlay("hev1"), true);
-    assert.equal(mayNotPlay("other"), true);
-    assert.equal(mayNotPlay("avc1", 8), false);
-    assert.equal(mayNotPlay("avc1", null), false);
-    assert.equal(mayNotPlay("avc1", 10), true);
-    assert.equal(mayNotPlay("vp09", 10), false);
-    assert.equal(mayNotPlay("av01", 12), true);
-    assert.equal(mayNotPlay("webm"), false);
-    assert.equal(mayNotPlay(null), false, "not read yet");
-    assert.equal(mayNotPlay(""), false);
+test("codecProblem: HEVC, H.264 above 8 bits or not 4:2:0; the rest passes", () => {
+    assert.equal(codecProblem({ codec: "hvc1", bitDepth: 8, chroma: "420" }), "hevc");
+    assert.equal(codecProblem({ codec: "hev1" }), "hevc");
+    assert.equal(codecProblem({ codec: "avc1", bitDepth: 10, chroma: "420" }), "10bit");
+    assert.equal(codecProblem({ codec: "avc1", bitDepth: 8, chroma: "422" }), "chroma");
+    assert.equal(codecProblem({ codec: "avc1", bitDepth: 8, chroma: "420" }), null);
+    assert.equal(codecProblem({ codec: "avc1", bitDepth: 8, chroma: "400" }), null, "black and white plays");
+    assert.equal(codecProblem({ codec: "avc1" }), null, "not said: passes");
+    assert.equal(codecProblem({ codec: "vp09", bitDepth: 10 }), null);
+    assert.equal(codecProblem({ codec: "av01", bitDepth: 10 }), null);
+    assert.equal(codecProblem({ codec: "webm" }), null);
+    assert.equal(codecProblem({ codec: "other" }), null, "a codec the reader does not name passes");
+    assert.equal(codecProblem({}), null);
+    assert.equal(codecProblem(), null);
+});
+
+test("codecFields / codecOfRow: the row's columns and back", () => {
+    const found = { codec: "hvc1", bitDepth: 10, chroma: "420", width: 1, height: 1 };
+    const fields = codecFields(found);
+    assert.deepEqual(fields, { video_codec: "hvc1", video_bit_depth: 10, video_chroma: "420" });
+    assert.deepEqual(codecOfRow(fields), { codec: "hvc1", bitDepth: 10, chroma: "420" });
+    assert.deepEqual(codecFields({ codec: "webm", bitDepth: null, chroma: null }), { video_codec: "webm" });
+    assert.deepEqual(codecFields(null), {});
+    assert.deepEqual(codecOfRow(null), { codec: null, bitDepth: null, chroma: null });
+});
+
+test("the words: the mark, its tooltip and the refusal (pt-BR, one place)", () => {
+    const hevc = { codec: "hvc1", bitDepth: 8, chroma: "420" };
+    assert.equal(codecMark(hevc), "HEVC · pode não tocar");
+    assert.equal(codecRefusal("pão e vinho.mp4", hevc), "pão e vinho.mp4: este vídeo está em HEVC (H.265) e pode congelar nas telas. Converta para MP4 H.264 no HandBrake (gratuito), predefinição \"Fast 1080p30\", e envie de novo.");
+    assert.equal(codecHint(hevc), "Este vídeo está em HEVC (H.265) e pode congelar nas telas. Converta para MP4 H.264 no HandBrake (gratuito), predefinição \"Fast 1080p30\", e envie de novo.");
+    assert.equal(codecMark({ codec: "avc1", bitDepth: 10, chroma: "420" }), "10 bits · pode não tocar");
+    assert.match(codecRefusal("a.mp4", { codec: "avc1", bitDepth: 10 }), /^a.mp4: este vídeo está em H.264 de 10 bits e pode congelar/);
+    assert.equal(codecMark({ codec: "avc1", bitDepth: 8, chroma: "422" }), "4:2:2 · pode não tocar");
+    assert.match(codecRefusal("b.mov", { codec: "avc1", bitDepth: 8, chroma: "444" }), /H.264 4:4:4/);
+    assert.equal(codecMark({ codec: "avc1", bitDepth: 8, chroma: "420" }), "");
+    assert.equal(codecHint(null), "");
+    assert.equal(codecRefusal("c.mp4", { codec: "webm" }), "");
 });
 
 test("needsCodec: a video file on this computer whose codec is not known", () => {

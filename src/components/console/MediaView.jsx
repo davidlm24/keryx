@@ -15,6 +15,7 @@ import { PENDING_SAY } from "@/lib/pendingMedia";
 import { useContextMenu } from "./ContextMenu";
 import { gridStep, columnsOf } from "@/lib/console/gridNav";
 import { mediaIcon, copyingRows } from "@/lib/console/libraryRows";
+import CodecMark from "@/components/console/CodecMark";
 import { keyHint } from "@/lib/console/keys";
 import { menuItem } from "@/lib/console/menuLabels";
 
@@ -331,6 +332,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                     </button>
                                     {renaming === m.id ? renameField(m) : <span className="mv-title" onDoubleClick={() => setRenaming(m.id)}>{m.title}</span>}
                                     {isDoc(m) && !m.missing && <span className="kx-meta mv-sub"><PagesMeta row={m} /></span>}
+                                    {m.type === "video" && <CodecMark row={m} />}
                                     {m.missing && !m.syncing && <Btn small kind="outline" onClick={() => locate(m)}>Localizar…</Btn>}
                                 </div>
                             ))}
@@ -351,7 +353,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             <span className="kx-glyph"><Icon name={mediaIcon(m)} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title" title={m.title}>{m.title}</div>}
-                                <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : [isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}</div>
+                                <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : <>{[isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}</div>
                             </div>
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>
                             <span className="kx-row-acts">

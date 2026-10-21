@@ -950,6 +950,9 @@
         "video_bit_depth": {
           "type": "real"
         },
+        "video_chroma": {
+          "type": "text"
+        },
         "duration": {
           "type": "real"
         },
