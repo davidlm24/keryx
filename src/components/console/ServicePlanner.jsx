@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { newServiceDefaults, defaultDuration, teamRole } from "@/lib/console/serviceDefaults";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { newServiceDefaults, defaultDuration, teamRole, localDate } from "@/lib/console/serviceDefaults";
 import { getPrefs, usePrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +29,10 @@ import ThemeChip from "./library/ThemeChip";
 import { lookOf, lookFields, lookForService, templateLookFields } from "@/lib/console/serviceLook";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
 import { useWinCol } from "./winLayout";
+import { TabRow } from "./TabsPanel";
+import { usePlaced } from "./Menu";
+import { useServices } from "./useConsoleData";
+import { PLANNER_TABS_KEY, NO_TABS, readTabs, pruneTabs, openTab, closeTab, tabLabel, lastService, cultosToOpen, duplicateFields } from "@/lib/console/plannerTabs";
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
@@ -37,20 +41,150 @@ const ADD = [
 const MEDIA_FOR = { VIDEO: ["video"], AUDIO: ["audio"], IMAGE: ["image", "gif", "pdf", "powerpoint"] };
 const MEDIA_TYPE = { video: "VIDEO", audio: "AUDIO", image: "IMAGE", gif: "IMAGE", pdf: "PDF", powerpoint: "POWERPOINT" };
 const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().includes(q));
-const today = () => { const d = new Date(); const two = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`; };
+const today = () => localDate(new Date());
 
-// The service planner (canvas artboard 17), inside the console: the culto
-// and its team on the left, the Setlist on the right — sections (Pré-culto,
-// Culto, Pós-culto), every kind of item, drag to reorder, notes and length
-// per item, totals and the end time; templates (which now keep each item's
-// content), duplicating the last culto, PDF. Everything saves as it changes;
-// nothing here touches the screens.
-export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose, escRef, onEditSong = null }) {
+// The tabs open on this computer (plannerTabs.js); storage may refuse.
+const loadTabs = () => { try { return readTabs(window.localStorage.getItem(PLANNER_TABS_KEY)); } catch { return NO_TABS; } };
+const saveTabs = (tabs) => { try { window.localStorage.setItem(PLANNER_TABS_KEY, JSON.stringify(tabs)); } catch { /* this computer's convenience only */ } };
+
+// Planejar o culto in tabs, as in a browser (owner 2026-10-21, Rodada O,
+// O9 = A): one culto per tab, the (+) a new tab that chooses one, the tabs
+// open kept on this computer. The tabs are for planning: switching them
+// never changes the console's culto — its tab has a green dot, and "Usar no
+// console" (a tab's right click) is the one door. Closing a tab never
+// deletes the culto (Excluir culto… stays in the Culto panel). `openId`
+// opens or brings forward that culto's tab (the console's Planejar, a deep
+// link ?planner=<id>); `onFront` tells the window which tab is in front, so
+// "Destacar em janela" opens on it (nav.js detachSpec).
+export default function ServicePlanner({ c, data, openId = null, focusId = null, consoleServiceId = null, onUseOnConsole, active = true, onFront, onClose, escRef, onEditSong = null }) {
+    const { services, loaded } = useServices();
+    const [tabs, setTabs] = useState(() => openTab(loadTabs(), openId));
+    // The new tab's chooser in front (none of the cultos' tabs is).
+    const [choosing, setChoosing] = useState(false);
+    // The item the console asked for opens once, in the tab it asked for.
+    const [focus, setFocus] = useState(() => (openId && focusId ? { id: openId, item: focusId } : null));
+    useEffect(() => { saveTabs(tabs); }, [tabs]);
+    // A culto deleted here or on another computer: its tab closes.
+    useEffect(() => { if (loaded) setTabs((t) => pruneTabs(t, services.map((s) => s.id))); }, [loaded, services]);
+    const front = choosing || !tabs.active ? null : tabs.active;
+    const frontRef = useRef(onFront);
+    frontRef.current = onFront;
+    useEffect(() => { if (active) frontRef.current?.(front); }, [front, active]);
+    const menu = useContextMenu();
+    const byId = useMemo(() => new Map(services.map((s) => [s.id, s])), [services]);
+
+    const show = (id) => { setChoosing(false); setTabs((t) => openTab(t, id)); };
+    // A culto chosen in the new tab takes the new tab's place, at the end.
+    const showNew = (id) => { setChoosing(false); setTabs((t) => openTab(t.ids.includes(id) ? t : { ...t, active: null }, id)); };
+    const close = (id) => {
+        if (id === "new") { setChoosing(false); return; }
+        setTabs((t) => closeTab(t, id));
+    };
+    const takeToConsole = (id) => {
+        onUseOnConsole?.(id);
+        c.say(`${tabLabel(byId.get(id))} passa a ser o culto do console.`);
+    };
+    const create = async (fields, message) => {
+        try {
+            const row = await keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto", ...fields });
+            c.say(message);
+            return row;
+        } catch (err) { c.say(err?.message || "Não foi possível criar o culto."); return null; }
+    };
+    const newService = async () => {
+        const row = await create({}, "Novo culto criado.");
+        if (row?.id) showNew(row.id);
+    };
+    const last = lastService(services, today());
+    const duplicateLast = async () => {
+        if (!last) return;
+        const row = await create(duplicateFields(last, newServiceDefaults(getPrefs())), `${tabLabel(last)} duplicado.`);
+        if (!row?.id) return;
+        const source = (await keryx.entities.ServiceItem.filter({ serviceId: last.id }, "order").catch(() => [])) || [];
+        if (source.length) await keryx.entities.ServiceItem.bulkCreate(itemsFor(row.id, source, 0)).catch((err) => c.say(err?.message || "A setlist não foi copiada."));
+        showNew(row.id);
+    };
+
+    // Esc: what the culto in front has open (the adder, a popover, a
+    // selection), then the new tab, then the window. The Voltar chip
+    // ("back") and the (x) ("all") leave at once — nothing to guard, the
+    // planner saves as it goes. The console never ends the projection here.
+    const innerEsc = useRef(null);
+    if (escRef) escRef.current = (mode) => {
+        if (mode !== "esc") onClose(mode === "all");
+        else if (innerEsc.current?.()) return;
+        else if (choosing && tabs.ids.length) setChoosing(false);
+        else onClose();
+    };
+
+    const tabMenu = (e, t) => {
+        if (t.id === "new") return;
+        const onConsole = t.id === consoleServiceId;
+        menu(e, { title: tabLabel(byId.get(t.id)), items: [
+            { label: onConsole ? "Já é o culto do console" : "Usar no console", icon: "check", disabled: onConsole || !onUseOnConsole, onSelect: () => takeToConsole(t.id) },
+            { label: "Fechar a aba", icon: "x", onSelect: () => close(t.id) },
+        ] });
+    };
+    const tabList = tabs.ids.filter((id) => byId.has(id) || !loaded).map((id) => {
+        const label = byId.has(id) ? tabLabel(byId.get(id)) : "…";
+        const here = id === consoleServiceId;
+        return { id, name: label, dot: here ? "é o culto do console" : null, title: here ? `${label} · é o culto do console` : `${label} · clique direito: Usar no console` };
+    });
+    if (choosing || !tabs.ids.length) tabList.push({ id: "new", name: "Nova aba", title: "Abrir ou criar um culto" });
+
+    const bar = (
+        <WinBar title="Planejar o culto" tools={<span className="pl-tabs">
+            <TabRow label="Cultos abertos" tabs={tabList} active={front || "new"} onPick={(id) => (id === "new" ? setChoosing(true) : show(id))} onClose={close} onMenu={tabMenu} />
+            <IconBtn name="plus" small title="Nova aba: abrir ou criar um culto" onClick={() => setChoosing(true)} />
+        </span>} />
+    );
+    return (
+        <>
+            {bar}
+            {front && byId.has(front)
+                ? <CultoPlan key={front} c={c} services={services} serviceId={front} data={data} focusId={focus?.id === front ? focus.item : null} onFocused={() => setFocus(null)}
+                    escRef={innerEsc} onEditSong={onEditSong} onDeleted={(id) => { if (id === consoleServiceId) onUseOnConsole?.(null); close(id); }} />
+                : <NewTab services={services} loaded={loaded} open={tabs.ids} last={last} onNew={newService} onDuplicate={duplicateLast} onOpen={showNew} />}
+        </>
+    );
+}
+
+// The new tab (+): Novo culto, Duplicar the last culto, and the cultos not
+// open yet (the mockup's O9 list).
+function NewTab({ services, loaded, open, last, onNew, onDuplicate, onOpen }) {
+    const rest = cultosToOpen(services, open, today());
+    return (
+        <div className="win-body">
+            <div className="col center pl-newtab">
+                <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                    <div className="kx-acts-list">
+                        <Row single icon="plus" title="Novo culto" onClick={onNew} />
+                        {last && <Row single icon="copy" title={`Duplicar ${tabLabel(last)}`} meta="a setlist, o papel de parede, o tema e a equipe; num dia novo" onClick={onDuplicate} />}
+                    </div>
+                    {rest.length > 0 && <div className="listhead"><span className="kx-section">Abrir um culto</span></div>}
+                    <div className="kx-acts-list pl-newtab-list">
+                        {rest.map((s) => <Row key={s.id} single icon="list" title={tabLabel(s)} onClick={() => onOpen(s.id)} />)}
+                        {loaded && !services.length && <Empty icon="list" title="Nenhum culto ainda">Crie um culto para planejar a setlist.</Empty>}
+                    </div>
+                </Panel>
+            </div>
+        </div>
+    );
+}
+
+// One culto's plan (canvas artboard 17), the tab in front: the culto and its
+// team on the left, the Setlist on the right — sections (Pré-culto, Culto,
+// Pós-culto), every kind of item, drag to reorder, notes and length per
+// item, totals and the end time; templates (which keep each item's
+// content), duplicating the previous culto, PDF. Everything saves as it
+// changes; nothing here touches the screens.
+function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, escRef, onEditSong = null, onDeleted }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colCulto = useWinCol("planner.culto", { name: "Culto", def: 360, min: 300, max: 640 });
     const church = useChurch();
     const client = useQueryClient();
     const svc = services.find((s) => s.id === serviceId) || null;
+    useEffect(() => { if (focusId) onFocused?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const prefs = usePrefs();
     const itemsKey = ["console", "serviceItems", serviceId];
     const items = (useQuery({ queryKey: itemsKey, queryFn: () => keryx.entities.ServiceItem.filter({ serviceId }, "order"), enabled: Boolean(serviceId) }).data || [])
@@ -179,16 +313,13 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         if (!source.length) { c.say(`${previous.title} não tem itens.`); return; }
         await run(keryx.entities.ServiceItem.bulkCreate(itemsFor(serviceId, source, items.length)), `Setlist de "${previous.title}" copiada.`);
     };
-    const newService = async () => {
-        const row = await run(keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto" }), "Novo culto criado.");
-        if (row?.id) setServiceId(row.id);
-    };
+    // Its tab closes with it (and the console, when it was its culto, goes
+    // back to its own choice).
     const deleteService = async () => {
         if (!(await ask(deleteQuestion("o culto", svc.title, "A setlist dele sai junto.")))) return;
         for (const it of items) await keryx.entities.ServiceItem.delete(it.id).catch(() => {});
         await run(keryx.entities.Service.delete(serviceId), "Culto excluído.");
-        setServiceId(null);
-        onClose();
+        onDeleted?.(serviceId);
     };
     const addMember = () => {
         const m = parseMember(member);
@@ -200,26 +331,29 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
 
     // Esc comes routed from the console (keys.js ESC_ORDER "window", so
     // whatever is open over the planner closes first, and a field's Esc
-    // already blurred): close the adder or a popover, then leave. The
-    // Voltar chip ("back") and the (x) ("all") leave at once — nothing to
-    // guard, the planner saves as it goes. The console never ends the
-    // projection from here.
-    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(null); else if (pop) setPop(null); else if (ms.count || ms.picking) ms.clear(); else onClose(); };
+    // already blurred) through the tabs' host: the adder, a popover, a
+    // selection close here first (true = one did).
+    if (escRef) escRef.current = () => {
+        if (adding) setAdding(null);
+        else if (pop) setPop(null);
+        else if (ms.count || ms.picking) ms.clear();
+        else return false;
+        return true;
+    };
 
-    // The bar: the culto picker, and the Modelos menu that gathers the
-    // three template actions the setlist header used to spread out
-    // (Rodada C, fase b).
-    const bar = (
-        <WinBar title="Planejar o culto" tools={svc && form ? <>
-            <select className="cfg-select pl-pick" value={serviceId} onChange={(e) => setServiceId(e.target.value)} aria-label="Escolher culto">
-                {services.map((s) => <option key={s.id} value={s.id}>{s.title}{s.date ? ` · ${s.date.split("-").reverse().slice(0, 2).join("/")}` : ""}</option>)}
-            </select>
-            <IconBtn name="plus" small title="Novo culto" onClick={newService} />
-        </> : null} actions={svc && form ? <>
-            <span className="pl-popwrap">
+    // The Culto panel's header (Rodada O, O7: what acts on the culto moves
+    // from the window's bar into the page): the Modelos menu that gathers
+    // the three template actions (Rodada C, fase b), and Exportar PDF.
+    const popAnchor = useRef(null);
+    const popRef = useRef(null);
+    usePlaced(popRef, popAnchor, { open: Boolean(pop) });
+    if (!svc || !form) return <div className="win-body" />;
+    const cultoActions = (
+        <>
+            <span className="pl-popwrap" ref={popAnchor}>
                 <Btn small on={pop === "tpl" || pop === "saveTpl"} onClick={() => setPop(pop ? null : "tpl")}>Modelos</Btn>
                 {pop === "tpl" && (
-                    <div className="kx-pop pl-pop">
+                    <div className="kx-pop pl-pop is-placed" ref={popRef}>
                         <div className="listhead"><span className="kx-section">Criar a partir de modelo</span></div>
                         {templates.length
                             ? templates.map((t) => <Row key={t.id} single icon="list" title={t.name} time={`${(t.items || []).length} itens`} onClick={() => { setPop(null); fromTemplate(t); }} />)
@@ -229,27 +363,11 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         <Row single icon="copy" title="Duplicar o culto anterior" meta={previous ? `copia a setlist de ${previous.title}` : "não há culto anterior"} onClick={() => { if (!previous) return; setPop(null); duplicatePrevious(); }} />
                     </div>
                 )}
-                {pop === "saveTpl" && <div className="kx-pop pl-pop"><div className="pl-pad"><Field icon={null} value={tplName} onChange={setTplName} placeholder="Nome do modelo" inputProps={{ autoFocus: true }} onKeyDown={(e) => { if (e.key === "Enter") saveTemplate(); }} /><Btn small kind="outline" onClick={saveTemplate}>Salvar modelo</Btn></div></div>}
+                {pop === "saveTpl" && <div className="kx-pop pl-pop is-placed" ref={popRef}><div className="pl-pad"><Field icon={null} value={tplName} onChange={setTplName} placeholder="Nome do modelo" inputProps={{ autoFocus: true }} onKeyDown={(e) => { if (e.key === "Enter") saveTemplate(); }} /><Btn small kind="outline" onClick={saveTemplate}>Salvar modelo</Btn></div></div>}
             </span>
             <Btn small kind="outline" disabled={!items.length} onClick={() => run(exportServiceToPdf({ ...svc, ...form }, items, church), "PDF gerado.")}>Exportar PDF</Btn>
-        </> : null} />
+        </>
     );
-    if (!svc || !form) {
-        return (
-            <>
-            {bar}
-            <div className="win-body">
-            <div className="col center"><Panel noHead>
-                <Empty icon="list" title={services.length ? "Escolha um culto" : "Nenhum culto ainda"}>Crie um culto para planejar a setlist.</Empty>
-                <div className="pl-pad">
-                    {services.slice(0, 12).map((s) => <Row key={s.id} single icon="list" title={s.title} time={s.date ? s.date.split("-").reverse().slice(0, 2).join("/") : ""} onClick={() => setServiceId(s.id)} />)}
-                    <Btn kind="brand" onClick={newService}><Icon name="plus" />Novo culto</Btn>
-                </div>
-            </Panel></div>
-            </div>
-            </>
-        );
-    }
 
     const f = (key) => ({ value: form[key], onChange: (v) => setForm({ ...form, [key]: v }), onBlur: () => commit(key), onKeyDown: (e) => { if (e.key === "Enter") e.currentTarget.blur(); } });
     const pickList = !adding ? [] : adding === "SONG"
@@ -272,10 +390,9 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
 
     return (
         <>
-            {bar}
             <div className="win-body">
             <div className="col" style={colCulto.style}>
-                <Panel title="Culto" style={{ flex: "none" }}>
+                <Panel title="Culto" style={{ flex: "none" }} actions={cultoActions}>
                     <CfgGroup id="planner.culto" title="Dados" fold={false}>
                     <div className="frm pl-frm">
                         <span className="k">Nome</span><Field label="Nome" icon={null} {...f("title")} placeholder="Culto de domingo" />

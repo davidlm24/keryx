@@ -10,8 +10,39 @@ import { TABS_MENU_TITLE } from "@/lib/console/panelTabs";
 // A row of tabs the operator trims (the Biblioteca's, the panel beside the
 // Prévia): only the tabs that show. Which ones is the chooser (the eye) in
 // the panel's header (TabsPlus).
-export function TabRow({ tabs, active, onPick }) {
+//
+// With `onClose`, tabs that close as in a browser (Planejar o culto's
+// cultos, Rodada O, O9): each tab's × (out of the Tab order: Delete on the
+// focused tab closes it), an optional dot before its name (`dot`: what it
+// means, said to screen readers too) and its right click (`onMenu(e, tab)`).
+export function TabRow({ tabs, active, onPick, onClose = null, onMenu = null, label }) {
     const anyOn = tabs.some((t) => t.id === active);
+    if (onClose) return (
+        <div className="kx-tabs tabrow tabrow-close" role="tablist" aria-label={label} onKeyDown={onTabsKey}>
+            {tabs.map((t, i) => {
+                const on = active === t.id;
+                return (
+                    <span key={t.id} className={`kx-tc ${on ? "is-on" : ""}`} onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(e, t); } : undefined}>
+                        <button type="button" role="tab" aria-selected={on} tabIndex={tabStop(i, on, anyOn)} className="kx-t kx-tc-t" title={t.title || t.name}
+                            aria-label={t.dot ? `${t.name} · ${t.dot}` : undefined} onClick={() => onPick(t.id)}
+                            onKeyDown={(e) => {
+                                if (e.key !== "Delete") return;
+                                e.preventDefault();
+                                e.stopPropagation();
+                                // The focus goes on to the tab now in front.
+                                const list = e.currentTarget.closest("[role='tablist']");
+                                onClose(t.id);
+                                requestAnimationFrame(() => list?.querySelector("[role='tab'][aria-selected='true']")?.focus());
+                            }}>
+                            {t.dot && <span className="kx-tc-dot" aria-hidden="true" />}
+                            <span className="kx-tc-l">{t.name}</span>
+                        </button>
+                        <button type="button" className="kx-t kx-tc-x" tabIndex={-1} title="Fechar a aba · Delete" aria-label={`Fechar a aba ${t.name}`} onClick={() => onClose(t.id)}><Icon name="x" /></button>
+                    </span>
+                );
+            })}
+        </div>
+    );
     return (
         <div className="kx-tabs tabrow" role="tablist" onKeyDown={onTabsKey}>
             {tabs.map((t, i) => <button type="button" role="tab" aria-selected={active === t.id} tabIndex={tabStop(i, active === t.id, anyOn)} key={t.id} className={`kx-t ${active === t.id ? "is-on" : ""}`} onClick={() => onPick(t.id)}>{t.name}</button>)}

@@ -15,6 +15,14 @@ test("a detached page sends what goes to the Prévia or on air; the console runs
     assert.ok(checkMessage({ type: "console.open", what: "novidades" }, "janela"));
     assert.ok(checkMessage({ type: "console.open", what: "settings", section: "console" }, "janela"));
     assert.ok(checkMessage({ type: "console.hello" }, "janela"));
+    // Planejar o culto's "Usar no console" (O9), and the console's culto back.
+    assert.ok(checkMessage({ type: "service.use", id: "s1" }, "janela"));
+    assert.ok(checkMessage({ type: "service.use", id: null }, "janela"), "its culto deleted there");
+    assert.equal(checkMessage({ type: "service.use", id: "" }, "janela"), null);
+    assert.equal(checkMessage({ type: "service.use" }, "janela"), null);
+    assert.ok(checkMessage({ type: "console.service", id: "s1" }, "console"));
+    assert.ok(checkMessage({ type: "console.service", id: null }, "console"));
+    assert.equal(checkMessage({ type: "console.service", id: "s1" }, "janela"), null);
     // The console answers with its Prévia.
     assert.ok(checkMessage({ type: "console.prev", stage }, "console"));
     assert.ok(checkMessage({ type: "console.prev", stage: null }, "console"));

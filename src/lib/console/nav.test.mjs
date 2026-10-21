@@ -96,7 +96,9 @@ test("detachSpec: every page of the window can leave for its own, and comes back
     const back = (spec) => stackFromParams(new URLSearchParams(spec.query));
     const cases = [
         [openStack({ page: "config" }), { section: "temas" }, "config", { section: "temas" }],
-        [openStack({ page: "planner" }), { serviceId: "s9" }, "planner", { serviceId: "s9" }],
+        // The planner carries the culto of its tab in front (O9), never the console's.
+        [openStack({ page: "planner", props: { serviceId: "s9" } }), { serviceId: "other" }, "planner", { serviceId: "s9" }],
+        [openStack({ page: "planner" }), { serviceId: "other" }, "planner", {}],
         [openStack({ page: "media", props: { intent: "upload" } }), {}, "media", {}],
         [openStack({ page: "notice", props: { id: "n1" } }), {}, "notice", { id: "n1" }],
         [openStack({ page: "song", props: { id: "s1" } }), {}, "song", { id: "s1" }],

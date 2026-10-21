@@ -77,6 +77,12 @@ function useMediaFiles(rows) {
 export const useThemes = () => useList("ProjectionTheme", ["name"]).data;
 // The service templates (their look: papel de parede and theme, serviceLook.js).
 export const useServiceTemplates = () => useList("ServiceTemplate", ["name"]).data;
+// The cultos (the same list and cache as useRundown's), and whether the list
+// has answered: Planejar o culto's tabs close only for a culto really gone.
+export function useServices() {
+    const q = useList("Service", ["-date"]);
+    return { services: q.data, loaded: answered(q) };
+}
 
 // Mídia and the background library are separate (owner's decision
 // 2026-10-13): files sent as backgrounds are Media rows of category

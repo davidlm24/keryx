@@ -28,7 +28,7 @@ import "@/components/console/console.css";
 import { WinCtx, useLiveRegion } from "@/components/console/kx";
 import { winPage } from "@/components/console/WinPages";
 import { useStamp, useToast, useLiveOps, THEME_IN_USE_KEY } from "@/components/console/useConsole";
-import { useLibrary, useRundown, pickDefaultService } from "@/components/console/useConsoleData";
+import { useLibrary } from "@/components/console/useConsoleData";
 import { useLiveState } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useWindowTitle } from "@/hooks/useChurch";
@@ -78,9 +78,12 @@ function useJanelaConsole() {
     const { toast, toastAction, say, holdToast } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
+    // The console's culto (Planejar o culto's green dot), as it says it.
+    const [consoleService, setConsoleService] = useState(null);
     useEffect(() => {
         const off = relayListen("janela", (m) => {
             if (m.type === "console.prev") setPrevMirror(m.stage);
+            else if (m.type === "console.service") setConsoleService(m.id);
             // The PDFs' pages are the console's work: their progress comes from
             // it, and Tentar de novo goes back to it (Rodada H, HB).
             else if (m.type === "pages.progress") setRelayedProgress(m.pages);
@@ -96,7 +99,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
+    return { live, cur: live, bgPrefs, themeId, prev, setPrev, consoleService, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,
@@ -121,21 +124,18 @@ export default function Janela() {
     useWinPageFocus(boxRef, stack);
     useWindowTitle(winTop ? PAGE_TITLES[winTop.page] : "");
 
-    // Configurações' section, and the culto Planejar o culto shows (the
-    // console's when it was detached; changing it here changes only here).
+    // Configurações' section, and the console's culto (Planejar o culto's
+    // green dot: the console says it; its tabs are the planner's own, O9).
     const [cfgAt, setCfgAt] = useState(() => resolveSection(stack[0]?.page === "config" && stack[0].props.section ? stack[0].props.section : "igreja"));
     const cfg = cfgAt?.id || null;
     const setCfg = useCallback((id, tab) => setCfgAt(id ? resolveSection(tab ? `${id}/${tab}` : id) : null), []);
-    const [serviceId, setServiceId] = useState(() => stack[0]?.props?.serviceId || null);
-    const { services } = useRundown(serviceId);
-    useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
 
     // The URL follows the first page, so a reload (F5) reopens it.
     useEffect(() => {
-        const spec = stack.length ? detachSpec([stack[0]], { section: cfg, serviceId }) : null;
+        const spec = stack.length ? detachSpec([stack[0]], { section: cfg }) : null;
         if (!spec) return;
         try { window.history.replaceState(null, "", `${window.location.pathname}?${spec.query}`); } catch { /* the URL is cosmetic */ }
-    }, [stack, cfg, serviceId]);
+    }, [stack, cfg]);
 
     // The last level left (its guard said yes): the pages unmount first —
     // their unsaved-changes holds go with them — then the window closes.
@@ -213,7 +213,8 @@ export default function Janela() {
         cfg, setCfg, uiLayout: null, setUiLayout: () => {}, restoreLayout: () => {},
         openScreen: (path) => setStack((s) => winPush(s, { page: "screen", props: { path: path || "/Projection" } }, "Telas e saídas")),
         openWhatsNew: () => toConsole("console.open", { what: "novidades" }, "As novidades abriram no console."),
-        services, serviceId, setServiceId, plannerFocus: null,
+        // "Usar no console": the console changes its culto and says so back.
+        serviceId: c.consoleService, setServiceId: (id) => toConsole("service.use", { id: id || null }), plannerFocus: null,
     };
 
     // Keys: Esc closes what is on top (a menu, a question, the library, then
