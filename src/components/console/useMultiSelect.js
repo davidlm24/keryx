@@ -39,9 +39,11 @@ export function useMultiSelect({ order, existing = order, mode = "gallery", regi
         // A click on item `id`: true = it was a selection click (the list
         // must not prepare, send or open anything).
         click(id, e) {
-            const r = clickSelection(sel, order, id, e, { mode, picking });
-            setSel(r.sel);
-            return r.handled;
+            const mods = { ctrlKey: e?.ctrlKey, metaKey: e?.metaKey, shiftKey: e?.shiftKey };
+            // From the latest selection (two clicks before React renders
+            // still add up); `handled` hangs on the keys and the mode only.
+            setSel((s) => clickSelection(s, order, id, mods, { mode, picking }).sel);
+            return clickSelection(sel, order, id, mods, { mode, picking }).handled;
         },
         // The arrows moved to index `to` of `order`; Shift extends.
         step: (to, e) => setSel((s) => stepSelection(s, order, to, { shift: Boolean(e?.shiftKey) })),

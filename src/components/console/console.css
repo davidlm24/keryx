@@ -1747,6 +1747,13 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The "Excluir?" question (ConfirmDialog.jsx): over everything but the right-click menu. */
 .console .confirm-scrim { z-index: var(--z-confirm-scrim); }
 .console .dialog.confirm-dialog { z-index: var(--z-confirm); }
+/* Excluir several (bulkDelete.js): the names that go, then what is in use, in amber. */
+.console .confirm-body { display: grid; gap: var(--space-2); }
+.console .confirm-body:empty { display: none; }
+.console .confirm-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; color: var(--fg-1); }
+.console .confirm-list li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .confirm-warn { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--warn-tint); color: var(--fg-1); font-size: var(--fs-ui); }
+.console .confirm-warn .kx-i { flex: none; margin-top: 1px; color: var(--warn-fg); }
 /* "Fontes do computador" (Rodada HF1, LocalFontsDialog.jsx): the PC's
    families as rows drawn in themselves, the chosen one a background state
    (the forced-colours block gives it a ring), the preview line below. */
@@ -1858,6 +1865,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    bundle.css, the outputs in screen.css) and the colour swatches. */
 .console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
 @media (forced-colors: active) {
+  .console .confirm-warn { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* The amber mark of a video that may not play keeps an edge. */
   .console .codec-mark { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* Floating surfaces lose their shadow: an edge instead. */
