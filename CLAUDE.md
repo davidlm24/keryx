@@ -779,10 +779,30 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   content goes in the page — Configurações' search at the top of its nav,
   the Editor da tela's Mostrar com in the canvas header, the Editor de
   temas' theme select and Excluir… in the form's header, the Mídia's search
-  and Adicionar in its filter row, the song editor's ☆, Dados/Letra,
+  and list buttons in its chips row, the song editor's ☆, Dados/Letra,
   Excluir… and Imprimir in the Música panel, Relatórios' Período and search
   at the top of the page, Sincronizar's Velocidade in the media's header
-  (Planejar o culto's bar is the tabs' own). **A window's side menu is
+  (Planejar o culto's bar is the tabs' own). **The library windows**
+  (owner 2026-10-22, "Bibliotecas" B3; the background library and the
+  Mídia, the same variant): flat on the window (no card), the galleries as
+  tabs in the bar beside the title (`WinTabs`, kx.jsx; `WinBar tabs`), what
+  adds on the bar's right (Do computador…, Link do YouTube…, Trazer da
+  Mídia…), a chips row of the church's categories (`FilterChips`,
+  library/FilterChips.jsx: the chips, "Categorias…", then the page's search
+  and list buttons), the grid or the list, and the side panel always on
+  screen behind a `line-soft` rule (the Mídia's `MediaDetail`: the file
+  chosen, its category and actions; several marked = how many and the group
+  actions; none = "Escolha um arquivo para ver aqui"). **The Mídia's
+  categories are the church's** (B4 = A, `src/lib/console/mediaCategories.js`,
+  tested): `User.media_categories` names and orders them (null = Pregação,
+  Louvor, Avisos, Testemunho, Outros), `Media.category` holds the name — an
+  old row's key (sermon, worship, announcement, testimony, other) reads as
+  its name (`mediaCategoryOf`) and is rewritten only when the file moves;
+  "background" and "font" (and the old keys) are never a category's name;
+  edited in "Categorias…" (`CategoriesEditor` in library/FundoCategories.jsx,
+  one editor for both libraries); a rename moves the files, a delete sends
+  them to "Outros", never renamed or deleted; files sent with a chip on land
+  in it. **A window's side menu is
   always `WinNav`** (kx.jsx; owner 2026-10-22, "Bibliotecas" B2 = A,
   "standard for all windows"): docked on the window's surface, never a
   card or a Panel, a `line-soft` rule on its right, 240 px down to 180 as

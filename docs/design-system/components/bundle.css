@@ -423,6 +423,10 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-win-nav { flex: 0 0 clamp(180px, 20vw, 240px); min-width: 0; padding: var(--space-2) 0 var(--space-1); border-right: 1px solid var(--line-soft); overflow: auto; }
 .kx .kx-win-nav-h { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
 .kx .win-body > .kx-win-nav { margin: calc(-1 * var(--gutter)) var(--gutter) calc(-1 * var(--gutter)) calc(-1 * var(--gutter)); }
+/* A library's galleries as tabs beside the title (WinTabs, "Bibliotecas" B3): the bar's height, the line
+   under the tab on is the bar's own rule. */
+.kx .kx-win-bar .kx-win-tabs { align-self: stretch; height: auto; border-bottom: 0; margin-left: var(--space-3); flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.kx .kx-win-bar .kx-win-tabs > button { flex: none; white-space: nowrap; }
 .kx .kx-win-bar .kx-win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
 .kx .kx-win-bar .kx-win-gap { flex: 1; }
 

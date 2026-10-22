@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop, SelectManyBtn, SelBar, RowMark } from "./kx";
+import { Btn, IconBtn, Field, Empty, WinBar, SelectManyBtn, RowMark } from "./kx";
 import { useMultiSelect } from "./useMultiSelect";
 import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
 import { deleteSeveral } from "./bulkActions";
@@ -23,12 +23,15 @@ import { mediaIcon, copyingRows } from "@/lib/console/libraryRows";
 import CodecMark from "@/components/console/CodecMark";
 import { keyHint } from "@/lib/console/keys";
 import { menuItem } from "@/lib/console/menuLabels";
+import { usePrefs } from "@/hooks/useUser";
+import { mediaCategoryOf, managedMediaCategories, mediaCategoriesInUse, FALLBACK_CATEGORY } from "@/lib/console/mediaCategories";
+import FilterChips from "./library/FilterChips";
+import { MediaCategories } from "./library/FundoCategories";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
 const KIND = { video: "Vídeo", image: "Imagem", gif: "GIF", pdf: "PDF", powerpoint: "PowerPoint", audio: "Áudio" };
-export const CATEGORY = [["sermon", "Pregação"], ["worship", "Louvor"], ["announcement", "Avisos"], ["testimony", "Testemunho"], ["other", "Outros"]];
-const catLabel = (c) => CATEGORY.find(([k]) => k === c)?.[1] || "Outros";
+const ALL = "__all";
 const isYouTube = (m) => m.type === "video" && /youtu/.test(m.file_url || "");
 // A thumbnail with a picture: the image itself, a local video's frame, or a
 // PDF's first page once its pages are made (Rodada F3).
@@ -38,19 +41,24 @@ const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(
 const bytes = (n) => (n >= 1e9 ? `${(n / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} GB` : n >= 1e6 ? `${Math.round(n / 1e6)} MB` : n > 0 ? `${Math.max(1, Math.round(n / 1e3))} KB` : "");
 const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().includes(q));
 
-// The media library as a view inside the console (canvas artboard
-// "Biblioteca de mídia"): every file in a grid or a list, by kind and
-// category; send several at once ("Do computador"), add a YouTube link,
-// rename, recategorise, find a lost file again ("Localizar…"), take rows
-// out (the files stay in the media folder). A click selects (Ctrl/Shift
-// for more), a double click or Enter sends to air, "Tocar todos"
-// plays the selection (or everything shown) one after the other.
+// The media library as a page of THE window, a library window like the
+// backgrounds' (owner 2026-10-22, "Bibliotecas" B3): the kinds as tabs in
+// the bar, Do computador… and Link do YouTube… on its right; flat on the
+// window, the church's categories as chips (edited in "Categorias…",
+// mediaCategories.js) with the search and the list's buttons, the grid or
+// the list, and on the right, always, the file chosen (MediaDetail): what
+// it is, its category, what can be done with it — or the marked ones and
+// what can be done with them all. Find a lost file again ("Localizar…"),
+// take rows out (the files stay in the media folder). A click selects
+// (Ctrl/Shift for more), a double click or Enter sends to air, "Tocar
+// todos" plays the selection (or everything shown) one after the other.
 export default function MediaView({ c, media, onSend, onClose, escRef, active = true, askText = null, intent = null }) {
     const [cat, setCat] = useState("todas");
-    const [category, setCategory] = useState("");
+    const [category, setCategory] = useState(ALL);
+    const [editCats, setEditCats] = useState(false);
+    const storedCats = usePrefs().media_categories;
     const [view, setView] = useState(() => { try { return localStorage.getItem("keryx.media.view") || "grid"; } catch { return "grid"; } });
     const [q, setQ] = useState("");
-    const [adding, setAdding] = useState(false); // the Adicionar menu in the bar
     const menu = useContextMenu();
     const gridRef = useRef(null);
     const [renaming, setRenaming] = useState(null);
@@ -63,7 +71,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const airId = liveStageId(c.cur);
 
     useEffect(() => { try { localStorage.setItem("keryx.media.view", view); } catch { /* not remembered */ } }, [view]);
-    const shown = useMemo(() => media.filter((m) => inCat(m, cat) && (!category || (m.category || "other") === category) && match(ql, m.title, m.description, KIND[m.type])), [media, cat, category, ql]);
+    const shown = useMemo(() => media.filter((m) => inCat(m, cat) && (category === ALL || mediaCategoryOf(m) === category) && match(ql, m.title, m.description, KIND[m.type])), [media, cat, category, ql]);
     // The selection (src/lib/console/multiSelect.js, the model every list
     // shares since 2026-10-21; it began here). A page of THE window: Esc
     // clears it through escRef, not the console's (register: false).
@@ -79,6 +87,13 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const copies = copyingRows(copyingFiles, media, { kinds: CAT_KINDS[cat] || null, q: ql });
     const totalSize = media.reduce((a, m) => a + (m.size || 0), 0);
     const hasDocs = media.some((m) => inCat(m, "doc"));
+    // The chips: the categories that have a file; one that empties (a rename,
+    // the last file out) leaves its filter: back to Todos.
+    const chips = useMemo(() => mediaCategoriesInUse(storedCats, media), [storedCats, media]);
+    const allCats = useMemo(() => managedMediaCategories(storedCats, media), [storedCats, media]);
+    useEffect(() => { if (category !== ALL && !chips.includes(category)) setCategory(ALL); }, [category, chips]);
+    // Files sent or linked with a chip on go in that category.
+    const into = category === ALL ? FALLBACK_CATEGORY : category;
 
     const fail = (err) => c.say(err?.message || "Não foi possível.");
     // A click picks one; Ctrl/Shift mark more; with Selecionar vários on a
@@ -121,13 +136,13 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         const list = Array.from(files || []);
         if (!list.length) return;
         setUploads({ names: list.map((f) => f.name), at: 0, failed: [] });
-        const result = await importMediaFiles(list, { category: category || "other", onProgress: (i) => setUploads((u) => (u ? { ...u, at: i } : u)) });
+        const result = await importMediaFiles(list, { category: into, onProgress: (i) => setUploads((u) => (u ? { ...u, at: i } : u)) });
         const { created } = result;
         setUploads(null);
         c.say(importSummary(result));
         if (created.length) ms.set(created.map((r) => r.id));
     };
-    // Link do YouTube… (the Adicionar menu): the url comes from one question
+    // Link do YouTube… (the bar): the url comes from one question
     // (PromptDialog), not a field always on screen (Rodada C, fase b).
     // Opened from the menu bar (Mídia › Do computador… / Link do YouTube…):
     // the page opens on that step, once.
@@ -143,7 +158,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         if (!url) return;
         if (!/youtu\.?be/.test(url)) { c.say("Isso não parece um link do YouTube."); return; }
         try {
-            const row = await mediaFromYouTube(url, { category: category || "other" });
+            const row = await mediaFromYouTube(url, { category: into });
             ms.set([row.id]);
             setRenaming(row.id);
             c.say('Link adicionado como "Vídeo do YouTube" · dê um nome.');
@@ -154,7 +169,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         const t = title.trim();
         if (t && t !== m.title) keryx.entities.Media.update(m.id, { title: t }).catch(fail);
     };
-    const recategorise = (value) => Promise.all(picked.map((m) => keryx.entities.Media.update(m.id, { category: value }))).then(() => c.say(`Categoria: ${catLabel(value)}.`)).catch(fail);
+    const recategorise = (value, rows = picked) => Promise.all(rows.map((m) => keryx.entities.Media.update(m.id, { category: value }))).then(() => c.say(`Categoria: ${value}.`)).catch(fail);
     // Excluir asks first (useConfirm, as every Excluir does); the files stay
     // in the media folder.
     // One question for one file or many (bulkActions.js, M5 = A): it names
@@ -214,7 +229,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     // to a dialog over the page (its own scrim does not count) and sleep
     // while another page covers this one; the console's B and L still
     // reach the screens.
-    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(false); else if (renaming) setRenaming(null); else if (ms.count || ms.picking) ms.clear(); else onClose(); };
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (editCats) setEditCats(false); else if (renaming) setRenaming(null); else if (ms.count || ms.picking) ms.clear(); else onClose(); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
         if (e.key === "Escape" || !active) return;
@@ -244,38 +259,31 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
             onKeyDown={(e) => { if (e.key === "Enter") rename(m, e.currentTarget.value); if (e.key === "Escape") { e.stopPropagation(); setRenaming(null); } }} onBlur={(e) => rename(m, e.currentTarget.value)} />
     );
 
+    const kinds = CATS.filter(([k]) => k !== "doc" || hasDocs);
     return (
         <>
-        <WinBar title="Mídia" sub={`${media.length} ${media.length === 1 ? "arquivo" : "arquivos"}${totalSize ? ` · ${bytes(totalSize)}` : ""}`} />
-        <div className="win-body">
-        <div className="col center mv">
-            <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                <input ref={fileRef} type="file" multiple hidden accept="video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
-                <input ref={locateRef} type="file" hidden onChange={(e) => { located(e.target.files?.[0]); e.target.value = ""; }} />
-                <div className="mv-bar">
-                    <div className="kx-tabs mv-cats" role="tablist" aria-label="Tipo de mídia" onKeyDown={onTabsKey}>
-                        {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label], i, shown) => <button type="button" role="tab" aria-selected={cat === k} tabIndex={tabStop(i, cat === k, shown.some(([x]) => x === cat))} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
-                    </div>
-                    <select className="pl-pick" value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Categoria">
-                        <option value="">Todas as categorias</option>
-                        {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-                    </select>
-                    {/* The search and Adicionar live here, with the filters
-                        (Rodada O, O7: the bar keeps only the window's). */}
-                    <Field value={q} onChange={setQ} placeholder="Pesquisar na Mídia" style={{ flex: "0 1 240px", minWidth: 150 }} />
-                    <span style={{ flex: 1 }} />
-                    <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar todos</Btn>
-                    <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />
-                    <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
-                    <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
-                    <span className="pl-popwrap">
-                        <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn>
-                        {adding && <div className="kx-pop pl-pop">
-                            <Row single icon="folder" title="Do computador…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
-                            <Row single icon="youtube" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
-                        </div>}
+        <WinBar title="Mídia" sub={`${media.length} ${media.length === 1 ? "arquivo" : "arquivos"}${totalSize ? ` · ${bytes(totalSize)}` : ""}`}
+            tabs={{ label: "Tipo de mídia", options: kinds, value: cat, onChange: setCat }}
+            actions={<>
+                <Btn small onClick={() => fileRef.current?.click()} title="Vídeos, áudios, imagens, PDF"><Icon name="download" />Do computador…</Btn>
+                <Btn small onClick={addLink}><Icon name="youtube" />Link do YouTube…</Btn>
+            </>} />
+        <div className="win-body mv">
+            <input ref={fileRef} type="file" multiple hidden accept="video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
+            <input ref={locateRef} type="file" hidden onChange={(e) => { located(e.target.files?.[0]); e.target.value = ""; }} />
+            <div className="mv-main">
+                {editCats ? <div className="mv-cats-edit"><MediaCategories c={c} media={media} onDone={() => setEditCats(false)} /></div> : <>
+                <FilterChips options={[[ALL, "Todos"], ...chips.map((k) => [k, k])]} value={category} onChange={setCategory} onEdit={() => setEditCats(true)}>
+                    {/* The search and the list's buttons, with the filters
+                        (the bar keeps the window's: the kinds, adding). */}
+                    <span className="mv-tools">
+                        <Field value={q} onChange={setQ} placeholder="Pesquisar na Mídia" style={{ width: 200 }} />
+                        <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar todos</Btn>
+                        <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />
+                        <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
+                        <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
                     </span>
-                </div>
+                </FilterChips>
                 {uploads && (
                     <div className="mv-up">
                         <div className="listhead"><span className="kx-section">Enviando <span className="kx-count">· {Math.min(uploads.at + 1, uploads.names.length)} de {uploads.names.length} {uploads.names.length === 1 ? "arquivo" : "arquivos"}</span></span></div>
@@ -289,19 +297,8 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                         ))}
                     </div>
                 )}
-                <SelBar count={picked.length} onClear={ms.clear}>
-                    {picked.length === 1 && <Btn small onClick={() => c.setPrev(stageFromMedia(picked[0]))} title="Pôr na Prévia do console">Prévia</Btn>}
-                    {picked.length === 1 && <Btn small onClick={() => send(picked[0])} title={sendTip(false)}>{SEND_LABEL}</Btn>}
-                    {picked.length === 1 && <Btn small onClick={() => setRenaming(picked[0].id)} title="Renomear · F2">Renomear</Btn>}
-                    <select className="pl-pick" value="" onChange={(e) => e.target.value && recategorise(e.target.value)} aria-label="Mudar categoria">
-                        <option value="">Categoria…</option>
-                        {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-                    </select>
-                    <Btn small onClick={() => exportRows()} title="Exportar num pacote do KERYX, com os arquivos">Exportar…</Btn>
-                    <Btn small onClick={() => remove()} title="Excluir da Mídia · Delete">Excluir…</Btn>
-                </SelBar>
                 <div className={`mv-body ${ms.picking ? "is-picking" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) ms.clear(); }}>
-                    {!shown.length && !copies.length && <Empty icon="media" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Do computador… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
+                    {!shown.length && !copies.length && <Empty icon="media" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Do computador… (vídeos, áudios, imagens, PDF) ou Link do YouTube…, na barra."}</Empty>}
                     {view === "grid" && (shown.length > 0 || copies.length > 0) && (
                         <div className="mv-grid" ref={gridRef}>
                             {copies.map((p) => (
@@ -355,7 +352,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             <span className="kx-glyph"><Icon name={mediaIcon(m)} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title" title={m.title}>{m.title}</div>}
-                                <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : <>{[isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}</div>
+                                <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], mediaCategoryOf(m), bytes(m.size)].filter(Boolean).join(" · ")} /> : <>{[isYouTube(m) ? "YouTube" : KIND[m.type], mediaCategoryOf(m), bytes(m.size)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}</div>
                             </div>
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>
                             <span className="kx-row-acts">
@@ -368,9 +365,70 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                         </div>
                     ))}
                 </div>
-            </Panel>
-        </div>
+                </>}
+            </div>
+            <MediaDetail picked={picked} categories={allCats} kind={(m) => (isYouTube(m) ? "YouTube" : KIND[m.type] || m.type)} length={mmss} size={bytes}
+                onPrev={(m) => c.setPrev(stageFromMedia(m))} onSend={send} onRename={(m) => { ms.set([m.id]); setRenaming(m.id); }} onLocate={locate}
+                onCategory={recategorise} onExport={exportRows} onRemove={remove} onPlay={sequence} onClear={ms.clear} />
         </div>
         </>
+    );
+}
+
+// The Mídia's right side, always on screen (owner 2026-10-22, "Bibliotecas"
+// B3-2 = C): the file chosen — its picture, what it is, its length and size,
+// its category, and what can be done with it —; with several marked, how
+// many and what can be done with them all; with none, where to start.
+function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onRename, onLocate, onCategory, onExport, onRemove, onPlay, onClear }) {
+    const catSelect = (value, rows) => (
+        <select className="pl-pick" value={value} onChange={(e) => e.target.value && onCategory(e.target.value, rows)} aria-label="Categoria">
+            {!value && <option value="">Mudar para…</option>}
+            {categories.map((k) => <option key={k} value={k}>{k}</option>)}
+        </select>
+    );
+    if (!picked.length) {
+        return <aside className="mv-side is-empty" aria-label="Arquivo escolhido"><Empty icon="media" title="Escolha um arquivo para ver aqui">Um clique escolhe; Ctrl ou Shift marcam vários.</Empty></aside>;
+    }
+    if (picked.length > 1) {
+        return (
+            <aside className="mv-side" aria-label="Arquivos marcados">
+                <div className="mv-side-t">{selectionCount(picked.length)}</div>
+                <div className="mv-meta"><span className="k">Categoria</span>{catSelect("", picked)}</div>
+                <div className="mv-side-acts">
+                    <Btn small onClick={onPlay} title="Um após o outro">Tocar em sequência</Btn>
+                    <Btn small onClick={() => onExport(picked)} title="Exportar num pacote do KERYX, com os arquivos">Exportar…</Btn>
+                    <Btn small onClick={() => onRemove(picked)} title="Excluir da Mídia · Delete"><Icon name="trash" />Excluir…</Btn>
+                    <Btn small onClick={onClear} title="Esc"><Icon name="x" />Limpar a seleção</Btn>
+                </div>
+            </aside>
+        );
+    }
+    const m = picked[0];
+    const ok = !m.missing && !m.syncing;
+    const yt = m.type === "video" && /youtu/.test(m.file_url || "");
+    const still = m.missing ? null : (m.type === "image" || m.type === "gif") ? m.file_url : (m.type === "video" || m.type === "pdf") && m.thumbnail_url && !m.posterSyncing ? m.thumbnail_url : null;
+    return (
+        <aside className="mv-side" aria-label="Arquivo escolhido">
+            <div className="mv-side-screen">
+                {still ? <img src={still} alt="" />
+                    : m.type === "video" && !yt && !m.missing ? <video src={`${m.file_url}#t=1`} preload="metadata" muted />
+                    : <span className="mv-th-t"><Icon name={m.syncing ? "download" : mediaIcon(m)} size={28} />{m.syncing ? "Baixando…" : m.missing ? "Arquivo não encontrado" : kind(m)}</span>}
+            </div>
+            <div className="mv-side-t" title={m.title}>{m.title}</div>
+            <div className="mv-meta">
+                <span className="k">Tipo</span><span>{kind(m)}{m.type === "video" && <> <CodecMark row={m} /></>}</span>
+                {m.duration > 0 && <><span className="k">Duração</span><span>{length(m.duration)}</span></>}
+                {size(m.size) && <><span className="k">Tamanho</span><span>{size(m.size)}</span></>}
+                {(m.type === "pdf" || m.type === "powerpoint") && !m.missing && <><span className="k">Páginas</span><span><PagesMeta row={m} /></span></>}
+                <span className="k">Categoria</span>{catSelect(mediaCategoryOf(m), [m])}
+            </div>
+            <div className="mv-side-acts">
+                {ok && <Btn small onClick={() => onPrev(m)} title="Pôr na Prévia do console">Pôr na prévia</Btn>}
+                {ok && <Btn small onClick={() => onSend(m)} title={sendTip(false)}>{SEND_LABEL}</Btn>}
+                {m.missing && !m.syncing && <Btn small kind="outline" onClick={() => onLocate(m)}><Icon name="folder" />Localizar…</Btn>}
+                <Btn small onClick={() => onRename(m)} title="F2"><Icon name="edit" />Renomear</Btn>
+                <Btn small onClick={() => onRemove([m])} title="Excluir da Mídia · Delete"><Icon name="trash" />Excluir…</Btn>
+            </div>
+        </aside>
     );
 }

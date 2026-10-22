@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import Icon from "./Icon";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import { tabStep } from "@/lib/console/tablist";
+import { tabStep, tabStop } from "@/lib/console/tablist";
 import { SELECT_MANY, selectionCount } from "@/lib/console/multiSelect";
 export { tabStop } from "@/lib/console/tablist";
 
@@ -97,7 +97,7 @@ export function Btn({ kind = "", small, on, className = "", children, ...rest })
 // "Bibliotecas" B1 = C: no border, the arrow and the words; it left the side
 // menus, where Rodada O's O8 had put it).
 export const WinCtx = createContext(null);
-export function WinBar({ title, sub, tools, actions, detach }) {
+export function WinBar({ title, sub, tabs, tools, actions, detach }) {
     const w = useContext(WinCtx) || {};
     const onDetach = detach || w.onDetach;
     return (
@@ -106,6 +106,7 @@ export function WinBar({ title, sub, tools, actions, detach }) {
             {/* Where the focus lands when the page opens with the mouse, or
                 has no control (C-12): inside the window, holding no keys. */}
             <span className="kx-section win-title kx-win-title" title={sub ? `${title} · ${sub}` : title} tabIndex={-1} data-live-keys="">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
+            {tabs && <WinTabs {...tabs} />}
             {tools && <span className="win-tools kx-win-tools">{tools}</span>}
             <span className="win-gap kx-win-gap" />
             {actions}
@@ -124,6 +125,18 @@ export function WinBack() {
         <button type="button" className="kx-btn kx-btn-back kx-t" onClick={w.onBack} title={`Voltar a ${w.back} · Esc`}>
             <Icon name="arrow-left" />{w.back}
         </button>
+    );
+}
+
+// A library window's galleries, as tabs in its bar beside the title (owner
+// 2026-10-22, "Bibliotecas" B3: the backgrounds' Temas · Imagens · Vídeos…,
+// the Mídia's Todas · Vídeos · Imagens…). `options`: [[key, name]].
+export function WinTabs({ label, options, value, onChange }) {
+    const has = options.some(([k]) => k === value);
+    return (
+        <div className="kx-tabs kx-win-tabs" role="tablist" aria-label={label} onKeyDown={onTabsKey}>
+            {options.map(([k, name], i) => <button type="button" key={k} role="tab" aria-selected={value === k} tabIndex={tabStop(i, value === k, has)} className={`kx-t ${value === k ? "is-on" : ""}`} onClick={() => onChange(k)}>{name}</button>)}
+        </div>
     );
 }
 

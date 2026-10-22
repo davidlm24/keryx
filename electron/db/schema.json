@@ -964,7 +964,7 @@
         },
         "category": {
           "type": "text",
-          "default": "other"
+          "default": "Outros"
         },
         "font": {
           "type": "json"
@@ -1943,6 +1943,9 @@
           "type": "json"
         },
         "background_categories": {
+          "type": "json"
+        },
+        "media_categories": {
           "type": "json"
         },
         "song_duplicates_kept": {

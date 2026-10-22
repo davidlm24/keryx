@@ -912,6 +912,7 @@ const NOT_A_FILE = {
     "ProjectionTheme.background_fit": "cover or contain",
     "ProjectionTheme.background_generator": "a generated background's numbers (shared/generators.mjs)",
     "User.background_categories": "the categories' names",
+    "User.media_categories": "the categories' names",
     "User.logo_corner": "a corner",
     "User.logo_size": "a size",
     "User.media_transition": "a transition's name",

@@ -302,6 +302,11 @@ compositions), it is given.
   rule on its right, `clamp(180px, 20vw, 240px)`, fixed (no splitter), an
   optional head (a search); in a `.win-body` it reaches the window's edges
   and keeps one gutter before the content, which alone resizes. `kx-win-edge` × 8 resize the window.
+- **Library windows** (the background library and the Mídia, one
+  variant): flat on `bg-1`, no card; the galleries as tabs in the bar
+  (`kx-win-tabs`, `WinTabs`), the category chips row (`fg-filters`,
+  `FilterChips`: chips, Categorias…, then the page's search and buttons),
+  the grid, and a side panel always on screen behind a `line-soft` rule.
 - **Variants.** Padrão and `is-editor` (the frame eases between them);
   `is-sized` (stretched: it follows the pointer at once); `is-detached`
   (`/Janela`: it fills its own window, no shadow, no edges).

@@ -78,6 +78,9 @@ export const PREF_FIELDS = {
     // The background library's categories, in order (backgroundPrefs.js
     // categoryList): null = never edited, the suggestions.
     background_categories: { default: null, normalize: normalizeCategories },
+    // The Mídia's, the same way (mediaCategories.js mediaCategoryList):
+    // null = never edited, today's five.
+    media_categories: { default: null, normalize: normalizeCategories },
     // Músicas repetidas the church kept apart (Configurações › Sincronização,
     // Manter as duas): pairKeys "a|b" (shared/syncDuplicates.mjs).
     song_duplicates_kept: { default: [], normalize: (v) => (Array.isArray(v) ? v.filter((k) => typeof k === "string" && /^[^|]{1,100}\|[^|]{1,100}$/.test(k)).slice(0, 5000) : []) },

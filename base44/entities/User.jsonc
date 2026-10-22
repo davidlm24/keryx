@@ -110,6 +110,11 @@
       "items": { "type": "string" },
       "description": "Categorias da biblioteca de fundos, na ordem (Configuracoes › Temas e fundos). Nulo = as sugestoes de fabrica"
     },
+    "media_categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Categorias da Midia, na ordem (a Midia › Categorias...). Nulo = Pregacao, Louvor, Avisos, Testemunho e Outros"
+    },
     "song_duplicates_kept": {
       "type": "array",
       "items": { "type": "string" },

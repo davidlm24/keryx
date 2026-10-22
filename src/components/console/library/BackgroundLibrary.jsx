@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "../Icon";
-import { Btn, IconBtn, Seg, onTabsKey, tabStop, SelectManyBtn, SelBar, RowMark } from "../kx";
+import { Btn, IconBtn, Seg, WinTabs, SelectManyBtn, SelBar, RowMark } from "../kx";
 import { useMultiSelect } from "../useMultiSelect";
 import { pickedOf } from "@/lib/console/multiSelect";
 import { backgroundQuestion, backgroundSay, backgroundAction, backgroundRemoval, prefsAfterDelete } from "@/lib/console/bulkDelete";
@@ -19,6 +19,7 @@ import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
 import { visibleBackgrounds, categoriesOf, managedCategories, sourceOf, backgroundActions, OWN_IMAGES, OWN_VIDEOS } from "@/lib/console/backgroundPrefs";
 import FundoCategories from "./FundoCategories";
+import FilterChips from "./FilterChips";
 import { cleanSpec, bgArgs, bgSpec, bgLabel, sameBg } from "@/lib/console/backgroundSpec";
 import { themeStyle, themeBackgroundArgs, themeName, themeHasBackground } from "@/lib/console/themes";
 import { GENERATORS } from "@/lib/generators";
@@ -276,9 +277,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
             <div className="lib-dialog" role="dialog" aria-label={title}>
                 <div className="win-bar kx-win-bar">
                     <span className="kx-section win-title kx-win-title">{title}</span>
-                    <div className="kx-tabs lib-tabs" role="tablist" aria-label="Biblioteca de fundos" onKeyDown={onTabsKey}>
-                        {tabs.map(([k, name], i) => <button type="button" key={k} role="tab" aria-selected={tab === k} tabIndex={tabStop(i, tab === k, tabs.some(([x]) => x === tab))} className={`kx-t ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{name}</button>)}
-                    </div>
+                    <WinTabs label="Biblioteca de fundos" options={tabs} value={tab} onChange={setTab} />
                     <span className="win-gap kx-win-gap" />
                     {(kinds.includes("image") || kinds.includes("video")) && <>
                         {(tab === "image" || tab === "video") && <Btn small on={view === "media"} onClick={() => setView(view === "media" ? "grid" : "media")} title="Usar como fundo uma imagem ou vídeo que já está na Mídia">Trazer da Mídia…</Btn>}
@@ -325,15 +324,9 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                             </>
                         )}
                         {(tab === "image" || tab === "video") && view === "grid" && <>
-                            <div className="fg-filters">
-                                <div className="fg-chips" role="radiogroup" aria-label="Categoria">
-                                    {[[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Excluídos · ${hiddenCount}`]] : [])].map(([k, name]) => (
-                                        <button type="button" key={k} role="radio" aria-checked={filter === k} className={`kx-t fg-chip ${filter === k ? "is-on" : ""}`} onClick={() => setFilter(k)}>{name}</button>
-                                    ))}
-                                </div>
-                                <button type="button" className="kx-t fg-chip fg-chip-edit" title="Criar, renomear, ordenar e excluir as categorias" onClick={() => setView("categories")}><Icon name="edit" size={12} />Categorias…</button>
+                            <FilterChips options={[[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Excluídos · ${hiddenCount}`]] : [])]} value={filter} onChange={setFilter} onEdit={() => setView("categories")}>
                                 {selectable && <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />}
-                            </div>
+                            </FilterChips>
                             {selectable && <SelBar count={picked.length} onClear={ms.clear}>
                                 {picked.some((b) => b.hidden) && <Btn small onClick={() => restoreMany()}>Restaurar</Btn>}
                                 <Btn small onClick={() => removeMany()} title="Os de fábrica vão para Excluídos · os enviados do computador são excluídos · os da Mídia só saem dos fundos · Delete"><Icon name={pickedAction.icon} />{pickedAction.label}</Btn>
