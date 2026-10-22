@@ -87,3 +87,31 @@ test("get: LRCLIB lyrics by id; letras.mus.br is pasted", async () => {
     await assert.rejects(() => lyrics.get("letras:coral-kemuel/algo-novo"), /cole aqui/);
     await assert.rejects(() => lyrics.get("vagalume:3ade68b8g"), (e) => e.status === 400, "old Vagalume ids are no longer served");
 });
+
+test("título – artista searches LRCLIB by title and artist; timed uploads are kept and say so (Rodada P12)", async () => {
+    const { splitQuery, lrclibSearchUrl } = require("./lyrics.cjs");
+    assert.deepEqual(splitQuery("Bondade de Deus – Isaías Saad"), { track: "Bondade de Deus", artist: "Isaías Saad" });
+    assert.deepEqual(splitQuery("Bondade de Deus - Isaías Saad"), { track: "Bondade de Deus", artist: "Isaías Saad" });
+    assert.deepEqual(splitQuery("Algo novo — Kemuel"), { track: "Algo novo", artist: "Kemuel" });
+    assert.equal(splitQuery("bondade de deus"), null, "free text stays free");
+    assert.equal(splitQuery("Graça-maior"), null, "a hyphen inside a word is no separator");
+    assert.equal(splitQuery("x – y"), null);
+    assert.equal(lrclibSearchUrl("Bondade de Deus – Isaías Saad"), "https://lrclib.net/api/search?track_name=Bondade%20de%20Deus&artist_name=Isa%C3%ADas%20Saad");
+    assert.equal(lrclibSearchUrl("bondade"), "https://lrclib.net/api/search?q=bondade");
+    // The same song twice: the upload with timed lines wins, in the first one's place.
+    const r = parseLrclibSearch(JSON.stringify([
+        { id: 1, trackName: "Bondade de Deus", artistName: "Isaías Saad", plainLyrics: "Te amo" },
+        { id: 2, trackName: "Outra", artistName: "X", plainLyrics: "a" },
+        { id: 3, trackName: "Bondade de Deus", artistName: "Isaías Saad", plainLyrics: "Te amo", syncedLyrics: "[00:12.00]Te amo" },
+    ]));
+    assert.deepEqual(r.map((x) => [x.id, x.timed]), [["lrclib:3", true], ["lrclib:2", false]]);
+    const song = parseLrclibSong(JSON.stringify({ trackName: "B", artistName: "I", plainLyrics: "Te amo", syncedLyrics: "[00:12.00]Te amo\r\n", duration: 245.6 }));
+    assert.deepEqual(song, { title: "B", artist: "I", lyrics: "Te amo", synced: "[00:12.00]Te amo", duration: 246 });
+    assert.equal(parseLrclibSong(LRCLIB_SONG).synced, undefined);
+    // The search asks LRCLIB by title and artist, letras.mus.br with both words.
+    const asked = [];
+    const svc = createLyrics({ fetchImpl: async (url) => { asked.push(url); return { ok: true, status: 200, text: async () => (url.includes("lrclib") ? "[]" : LETRAS) }; } });
+    await svc.search("Algo novo – Kemuel");
+    assert.ok(asked.some((u) => u.includes("track_name=Algo%20novo&artist_name=Kemuel")));
+    assert.ok(asked.some((u) => u.includes("q=Algo%20novo%20Kemuel")));
+});

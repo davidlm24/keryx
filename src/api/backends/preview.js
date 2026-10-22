@@ -4,7 +4,7 @@
 // and live engine of scripts/preview/server.cjs: same shape as
 // electron/preload.cjs, over HTTP and Server-Sent Events. Data, the live
 // state and media are real; what needs the computer itself (monitors, Bible
-// downloads, lyrics on the web, the network server, backups, audio meters)
+// downloads, the network server, backups, audio meters)
 // answers with a pt-BR message or a harmless default. Output pages open in
 // browser tabs and follow the live state through the same server.
 // Production builds never include this file (the branch in client.js is
@@ -223,7 +223,9 @@ export function createPreviewBridge() {
             },
             reply: (id, answer) => request("remote-result", { method: "POST", body: { ...answer, id } }),
         },
-        lyrics: { call: unavailable },
+        // Procurar letra na internet: the preview server asks LRCLIB and
+        // letras.mus.br with the app's own module (electron/lyrics.cjs).
+        lyrics: { call: (op, args) => request("lyrics", { method: "POST", body: { op, args } }) },
         meters: { report() {}, onLevel: () => () => {}, sendLevel() {}, onSystemLevel: () => () => {} },
         system: { call: previewSystem },
         // This PC's fonts, read by the preview server with the app's own

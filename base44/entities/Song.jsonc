@@ -46,6 +46,18 @@
       "maximum": 12,
       "description": "Como a letra vira slides: 0 = uma estrofe por slide, 1 a 12 = no maximo tantas linhas por slide (editor de musica); a letra nunca e reescrita por isso"
     },
+    "follow_mode": {
+      "type": "string",
+      "enum": ["", "off", "marks", "time"],
+      "default": "",
+      "description": "Avançar sozinha (Rodada P7): off = Não, marks = Pelas marcas (Sincronizar), time = Por tempo (banda, sem mídia: slide_seconds por slide, a duration de um slide é a exceção dele); vazio = pelas marcas quando houver (src/lib/console/lyricSync.js followModeOf)"
+    },
+    "slide_seconds": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 120,
+      "description": "Por tempo: segundos de cada slide (vazio = 8)"
+    },
     "slides": {
       "type": "array",
       "items": {
@@ -71,7 +83,7 @@
           },
           "duration": {
             "type": "number",
-            "description": "Dura\u00e7\u00e3o do slide em segundos"
+            "description": "Dura\u00e7\u00e3o do slide em segundos; em Por tempo (follow_mode time) \u00e9 a exce\u00e7\u00e3o do slide, gravada s\u00f3 quando escolhida"
           }
         }
       },

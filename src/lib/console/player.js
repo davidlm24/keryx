@@ -92,24 +92,13 @@ export function clock(seconds) {
 // ---------- Letra automática (owner 2026-10-15, Rodada D4) ----------
 // A song on air whose slides have marks follows its video, its playback (on
 // the audio channel) or the live clock (content.follow, live-state.mjs).
+// The chip's words and its click are followWords.js's (followLabel,
+// followAction): this module rides in every output's chunk.
 
 // Whether the player's item is what the lyrics follow.
-export const followsItem = (follow, item) => Boolean(follow && item && follow.source !== "clock" && item.url === follow.url);
-
-// The chip's words: what the lyrics follow, or that following is paused.
-export function followLabel(follow) {
-    if (!follow) return "";
-    if (follow.source === "clock" && !follow.clock) return "Letra automática · esperando Iniciar";
-    if (follow.paused) return "Letra parada · clique para retomar";
-    return follow.source === "clock" ? "Relógio ao vivo" : follow.source === "video" ? "Letra segue o vídeo" : "Letra segue o playback";
-}
-
-// The chip's click (or the clock's Iniciar): the content.follow action.
-export function followAction(follow) {
-    if (!follow) return null;
-    if (follow.source === "clock" && !follow.clock) return "start";
-    return follow.paused ? "resume" : "pause";
-}
+export const followsItem = (follow, item) => Boolean(follow?.url && item && item.url === follow.url);
+// The lyrics run on the live clock (no media): the clock, or Por tempo.
+export const clockFollow = (follow) => Boolean(follow) && !follow.url;
 
 // One tick per marked slide on a time bar of `duration` seconds, where the
 // slide comes in on that bar (its mark less the follow's offset). -> [{ i, pct, label }]
