@@ -309,8 +309,12 @@ export function SelBar({ count, feminine = false, onClear, children }) {
     if (!count) return null;
     return (
         <div className="kx-selbar" role="toolbar" aria-label="Itens selecionados">
-            <span className="kx-selbar-n" aria-live="polite">{selectionCount(count, { feminine })}</span>
-            {/* One group: where it does not fit beside the count, it goes under it whole. */}
+            {/* Narrow, only the number shows (bundle.css' container query); the
+                words stay in the tooltip and for screen readers. */}
+            <span className="kx-selbar-n" aria-live="polite" title={selectionCount(count, { feminine })}>
+                <span className="kx-selbar-full">{selectionCount(count, { feminine })}</span>
+                <span className="kx-selbar-short" aria-hidden="true">{count}</span>
+            </span>
             <span className="kx-selbar-acts">
                 {children}
                 <IconBtn name="x" small title="Limpar a seleção · Esc" onClick={onClear} />
