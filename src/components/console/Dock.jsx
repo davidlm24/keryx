@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Split, onTabsKey } from "./kx";
-import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct, dockMotion, easesBetween } from "@/lib/console/dock";
+import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct, dockMotion, easesBetween, PANEL_HEAD } from "@/lib/console/dock";
 
 // Ver › Editar disposição for the culto environment (2026-10-13; the
 // prototype "Disposição do console", model Livre): the console as a tree of
@@ -128,7 +128,7 @@ export function DockHint({ drag }) {
     if (!t) return ghost || null;
     const r = t.el.getBoundingClientRect();
     const inset = 6;
-    const head = Math.min(32, r.height / 3);
+    const head = Math.min(PANEL_HEAD, r.height / 3);
     const line = {
         left: { left: r.left, top: r.top + inset, width: LINE, height: r.height - inset * 2 },
         right: { left: r.right - LINE, top: r.top + inset, width: LINE, height: r.height - inset * 2 },

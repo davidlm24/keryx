@@ -31,8 +31,9 @@ export const shownDensity = (layout, height) => {
     const d = densityOf(layout);
     return d === "auto" ? (height < AUTO_COMPACT_H ? "compact" : "comfortable") : d;
 };
-// A panel's header at that density (.kx-panel-h; console.css).
-export const panelHead = (density) => (density === "compact" ? 28 : 32);
+// A panel's header at that density (.kx-panel-h: the tokens panel-head and
+// panel-head-compact, Rodada O, O5).
+export const panelHead = (density) => (density === "compact" ? 32 : 36);
 
 export const DEFAULT_LAYOUT = {
     hidden: {},

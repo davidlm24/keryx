@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PANEL_HEAD, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -178,7 +178,7 @@ test("the player rides the Programa until it is placed, and goes home instead of
     assert.deepEqual(nodeAt(placed.tree, [0, 3]), split("col", [g("camadas"), g("temas"), g("player"), g("setlist")], [280, TEMAS_H, 100, null]));
     const underCamadas = moveModules(defaultDock(W), ["player"], { kind: "group", path: [0, 3, 1], zone: "bottom" });
     assert.deepEqual(nodeAt(underCamadas.tree, [0, 3]).sizes, [280, 120, 100, null], "a fixed neighbour gives up just that (down to its minimum)");
-    assert.equal(minSize(g("player"), false, { playerDocked: false }), 96, "its panel header counts");
+    assert.equal(minSize(g("player"), false, { playerDocked: false }), 100, "its panel header counts");
     assert.deepEqual(pathOf(placed.tree, "player"), [0, 3, 2]);
     const hidden = hideModule(placed, "player");
     assert.equal(pathOf(hidden.tree, "player"), null);
@@ -240,7 +240,7 @@ test("sizes: fixed children keep theirs, then give way toward their minimums", (
 test("fitting: what does not fit side by side becomes tabs, the dock itself unchanged", () => {
     const d = defaultDock(W);
     const whole = fitDock(d, 1908, 1000);
-    assert.deepEqual(whole.children.map((c) => [c.size, c.fold, c.gone]), [[890, undefined, undefined], [ONAIR_H, true, false]], "the No ar strip under every column");
+    assert.deepEqual(whole.children.map((c) => [c.size, c.fold, c.gone]), [[886, undefined, undefined], [ONAIR_H, true, false]], "the No ar strip under every column");
     const wide = whole.children[0].frame;
     assert.deepEqual(wide.children.map((c) => c.size), [260, 300, 1010, 320]);
     assert.equal(JSON.stringify(wide).includes('"collapsed"'), false);
@@ -249,8 +249,8 @@ test("fitting: what does not fit side by side becomes tabs, the dock itself unch
     const mid = fitDock(d, 1200, 700).children[0].frame;
     assert.deepEqual(mid.children.map((c) => Math.round(c.size)), [260, 300, 320, 302]);
     const bottom = mid.children[2].frame.children[1];
-    assert.equal(Math.round(bottom.size), 332, "its 250 and what the Programa cannot use: 590 − 6 − 250 − (320 · 9/16 + 72)");
-    assert.deepEqual({ ...bottom.frame, w: Math.round(bottom.frame.w), h: Math.round(bottom.frame.h) }, { kind: "group", path: [0, 2, 1], tabs: ["previa", "abas"], active: "previa", w: 320, h: 332, collapsed: true, target: [0, 2, 1, 0] });
+    assert.equal(Math.round(bottom.size), 328, "its 250 and what the Programa cannot use: 586 − 6 − 250 − (320 · 9/16 + 72)");
+    assert.deepEqual({ ...bottom.frame, w: Math.round(bottom.frame.w), h: Math.round(bottom.frame.h) }, { kind: "group", path: [0, 2, 1], tabs: ["previa", "abas"], active: "previa", w: 320, h: 328, collapsed: true, target: [0, 2, 1, 0] });
     // 1000 px: the Biblioteca and the Slides join as tabs (the pair that
     // gives back the most room without touching the Programa); the rest stays.
     const small = fitDock(d, 1000, 700).children[0].frame;
@@ -306,7 +306,7 @@ test("the Programa never takes more than its 16:9: the rest goes to its neighbou
     assert.equal(nodeAt(d.tree, [0, 2]).sizes[1], 250);
     // With the strip on air the Programa is shorter than its 16:9: nothing moves.
     const onAir = fitDock(d, 1908, 1000).children[0].frame.children[2].frame;
-    assert.deepEqual(onAir.children.map((c) => c.size), [890 - 6 - 250, 250]);
+    assert.deepEqual(onAir.children.map((c) => c.size), [886 - 6 - 250, 250]);
     // The operator's splitter still makes the band bigger (the Programa then
     // shorter than its 16:9), never the Programa past it.
     const taller = resizeChild(d, [0, 2], 1, 400);
@@ -391,12 +391,12 @@ test("locked heights: the console's, exact, with no splitter, only down a column
 test("folded panels (Rodada F4): a header down a column, a strip across a row, one open child kept", () => {
     const d = defaultDock(W);
     const at = (f) => f.children.map((c) => [c.frame.tabs?.[0], c.size, Boolean(c.locked), Boolean(c.folded)]);
-    // The right column (890 px under the 104 px strip): Camadas folded to its
+    // The right column (886 px under the 108 px strip): Camadas folded to its
     // header — the fold wins over its measured height — Temas measured, the
     // Setlist the rest.
     const f = fitDock(d, 1908, 1000, { folded: ["camadas"], locked: { camadas: 152, temas: 220 }, head: 28 });
     const side = f.children[0].frame.children[3].frame;
-    assert.deepEqual(at(side), [["camadas", 28, true, true], ["temas", 220, true, false], ["setlist", 890 - 28 - 220 - 12, false, false]]);
+    assert.deepEqual(at(side), [["camadas", 28, true, true], ["temas", 220, true, false], ["setlist", 886 - 28 - 220 - 12, false, false]]);
     assert.deepEqual(side.children.map((c) => c.frame.fold), [{ dir: "col", on: true, can: true }, { dir: "col", on: false, can: true }, { dir: "col", on: false, can: true }]);
     // Across a row: the Biblioteca a 28 px strip, the Programa's column grows.
     const r = fitDock(d, 1908, 1000, { folded: ["lib"] }).children[0].frame;
@@ -405,11 +405,11 @@ test("folded panels (Rodada F4): a header down a column, a strip across a row, o
     // The Setlist and Temas folded: Camadas is the last open one — its
     // chevron cannot fold it, and it takes the rest instead of its list's height.
     const last = fitDock(d, 1908, 1000, { folded: ["setlist", "temas"], locked: { camadas: 152, temas: 220 } }).children[0].frame.children[3].frame;
-    assert.deepEqual(at(last), [["camadas", 890 - 64 - 12, false, false], ["temas", 32, true, true], ["setlist", 32, true, true]]);
+    assert.deepEqual(at(last), [["camadas", 886 - 72 - 12, false, false], ["temas", PANEL_HEAD, true, true], ["setlist", PANEL_HEAD, true, true]]);
     assert.deepEqual(last.children[0].frame.fold, { dir: "col", on: false, can: false });
     // All three folded (a save from another width): the flexible one stays open.
     const all = fitDock(d, 1908, 1000, { folded: ["camadas", "temas", "setlist"] }).children[0].frame.children[3].frame;
-    assert.deepEqual(at(all), [["camadas", 32, true, true], ["temas", 32, true, true], ["setlist", 890 - 64 - 12, false, false]]);
+    assert.deepEqual(at(all), [["camadas", PANEL_HEAD, true, true], ["temas", PANEL_HEAD, true, true], ["setlist", 886 - 72 - 12, false, false]]);
     assert.deepEqual(all.children[2].frame.fold, { dir: "col", on: false, can: false });
     // The No ar strip folded is its header; gone (no lyrics on air), no room at all.
     assert.deepEqual(fitDock(d, 1908, 1000, { folded: ["onair"], locked: { onair: 150 }, head: 28 }).children.map((c) => c.size), [1000 - 6 - 28, 28]);
@@ -443,11 +443,11 @@ test("the Bíblia's panels never fold (owner 2026-10-16)", () => {
 
 test("the No ar strip is as tall as the slide with the most lines", () => {
     assert.equal(onAirHeight([]), ONAIR_H, "never under the default strip");
-    assert.equal(onAirHeight([{ text: "a\nb" }]), Math.max(ONAIR_H, 72 + 2 * 18));
-    assert.equal(onAirHeight([{ text: "a\nb" }, { text: "a\nb\nc\nd" }]), 72 + 4 * 18, "4 lines a slide (the song's editor)");
+    assert.equal(onAirHeight([{ text: "a\nb" }]), Math.max(ONAIR_H, 76 + 2 * 18));
+    assert.equal(onAirHeight([{ text: "a\nb" }, { text: "a\nb\nc\nd" }]), 76 + 4 * 18, "4 lines a slide (the song's editor)");
     assert.ok(onAirHeight([{ text: "1\n2\n3\n4\n5\n6" }]) > onAirHeight([{ text: "1\n2\n3\n4" }]), "a whole stanza");
-    assert.equal(onAirHeight([{ text: "a\nb\nc" }], 28), 72 + 3 * 18 - 4, "a compact header is 4 px shorter");
-    assert.equal(onAirHeight([{ text: "", image_url: "p1.jpg", label: "Página 1" }]), 72 + ONAIR_PAGE_LINES * 18, "a presentation's page: a thumbnail of ONAIR_PAGE_LINES lines");
+    assert.equal(onAirHeight([{ text: "a\nb\nc" }], 32), 76 + 3 * 18 - 4, "a compact header is 4 px shorter");
+    assert.equal(onAirHeight([{ text: "", image_url: "p1.jpg", label: "Página 1" }]), 76 + ONAIR_PAGE_LINES * 18, "a presentation's page: a thumbnail of ONAIR_PAGE_LINES lines");
 });
 
 // The Bíblia's dock: the same engine, its own modules.

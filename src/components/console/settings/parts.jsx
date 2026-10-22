@@ -148,7 +148,9 @@ export function useCfgGroup(id, defaultOpen = true) {
 // 180 ms, none with reduced motion), so a search still finds its rows: a
 // jump to one (`pending`) opens the group at once (`.is-instant`, no
 // transition). `k` is the search's label (data-cfg-k), `title` what it
-// shows (the label by default). State: useCfgGroup.
+// shows (the label by default). A static group right under a panel's
+// title leaves its own title to screen readers (Rodada O, O10;
+// console.css). State: useCfgGroup.
 export function CfgGroup({ id, k, title = k, summary = "", actions = null, defaultOpen = true, fold = true, className = "", children }) {
     const [open, setOpen] = useCfgGroup(id, defaultOpen);
     const shown = fold ? open : true;
@@ -177,7 +179,7 @@ export function CfgGroup({ id, k, title = k, summary = "", actions = null, defau
                         <Icon name="chevron-down" size={12} className="cfg-group-chev kx-group-chev" /><span className="kx-section">{title}</span>
                     </CfgKey>
                 ) : (
-                    <CfgKey k={k} className="cfg-group-t kx-group-t"><span className="cfg-group-chev kx-group-chev" aria-hidden="true" /><span className="kx-section">{title}</span></CfgKey>
+                    <CfgKey k={k} className="cfg-group-t kx-group-t"><span className="kx-section">{title}</span></CfgKey>
                 )}
                 {showSummary ? <span id={sumId} className="kx-meta cfg-group-s kx-group-s">{summary}</span> : null}
                 {actions ? <span className="cfg-group-acts kx-group-acts">{actions}</span> : null}

@@ -83,24 +83,24 @@ export function Btn({ kind = "", small, on, className = "", children, ...rest })
 // has the Configurações frame). The console provides the navigation through
 // WinCtx — the Voltar chip (level 2 on: "← where it came from", as Esc),
 // the (x) "Fechar · Esc" that closes the whole stack — and the page brings
-// its own title, context (`sub`, muted), tools (the page's search, filters)
-// and actions (Salvar, Cancelar). There is no "← Console" any more: the
+// its own title, context (`sub`, muted) and actions (Salvar, Cancelar). There is no "← Console" any more: the
 // first level's Esc and (x) just close. A double click on the bar's empty
 // area gives the window its default size back (onResetSize, Rodada D3).
 // The ⧉ "Destacar em janela" (Rodada F5, every page): the host gives
 // onDetach when the page can move to a window of its own (nav.js
 // detachSpec); a detached window gives none (`detached` instead).
+// Lean bars (Rodada O, O7): the bar holds the title and what acts on the
+// whole window (Desfazer/Refazer, Cancelar, Salvar, Destacar, the ×); a
+// control that acts on the content goes in the page, so `tools` is only for
+// what has no place there. A page with a side menu (Configurações, the
+// Editor da tela) puts Voltar at its top (`menuBack`, WinBack there, O8).
 export const WinCtx = createContext(null);
-export function WinBar({ title, sub, tools, actions, detach }) {
+export function WinBar({ title, sub, tools, actions, detach, menuBack = false }) {
     const w = useContext(WinCtx) || {};
     const onDetach = detach || w.onDetach;
     return (
         <div className="win-bar kx-win-bar" onDoubleClick={(e) => { if (e.target === e.currentTarget || e.target.classList?.contains("kx-win-gap")) w.onResetSize?.(); }}>
-            {w.back && (
-                <button type="button" className="kx-btn kx-btn-outline kx-btn-back kx-t" onClick={w.onBack} title={`Voltar a ${w.back} · Esc`}>
-                    <Icon name="arrow-left" />{w.back}
-                </button>
-            )}
+            {!menuBack && <WinBack />}
             {/* Where the focus lands when the page opens with the mouse, or
                 has no control (C-12): inside the window, holding no keys. */}
             <span className="kx-section win-title kx-win-title" title={sub ? `${title} · ${sub}` : title} tabIndex={-1} data-live-keys="">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
@@ -110,6 +110,18 @@ export function WinBar({ title, sub, tools, actions, detach }) {
             {onDetach && <IconBtn name="external" title="Destacar em janela: esta página numa janela própria, para usar vendo outra tela" onClick={onDetach} />}
             {!w.systemFrame && <IconBtn name="x" title="Fechar · Esc" onClick={w.onCloseAll} />}
         </div>
+    );
+}
+
+// The Voltar chip ("← where it came from", as Esc), from the second level
+// on: at the bar's left, or at the top of the page's side menu (O8).
+export function WinBack() {
+    const w = useContext(WinCtx);
+    if (!w?.back) return null;
+    return (
+        <button type="button" className="kx-btn kx-btn-outline kx-btn-back kx-t" onClick={w.onBack} title={`Voltar a ${w.back} · Esc`}>
+            <Icon name="arrow-left" />{w.back}
+        </button>
     );
 }
 
