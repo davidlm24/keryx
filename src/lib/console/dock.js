@@ -33,8 +33,12 @@ const PX_MAX = 4000;
 // A new group's size along its split when nothing better is known.
 export const NEW_PX = 320;
 // The No ar strip's height in the default dock: its header and one row of
-// cards (2026-10-14: one row, ~104 px, across the whole window).
-export const ONAIR_H = 104;
+// cards (2026-10-14: one row across the whole window; 108 px since the
+// header is 36, Rodada O5).
+export const ONAIR_H = 108;
+// A panel's header in Confortável (the token panel-head; Compacta passes its
+// own as `head`, layout.js panelHead).
+export const PANEL_HEAD = 36;
 // The Temas card's height under Camadas: its header, a row of theme
 // screens, Novo tema and the song's line.
 export const TEMAS_H = 220;
@@ -73,10 +77,10 @@ export const MODULES = {
     // nor moved beside another module, it can only leave for the tray and
     // come back there.
     onair: { name: "No ar", minW: 220, minH: 96, fold: true, pinned: "bottom" },
-    // As a module of its own: the panel's header (32) over the slot (64); in
+    // As a module of its own: the panel's header (36) over the slot (64); in
     // a column it comes in at its own height (`size.col`), not half of its
     // neighbour's.
-    player: { name: "Player", minW: 280, minH: 96, home: "programa", size: { col: 100 }, noFold: true },
+    player: { name: "Player", minW: 280, minH: 100, home: "programa", size: { col: 100 }, noFold: true },
     // The Bíblia (BibleEnv.jsx): the three pickers (the version and the
     // search live in their headers since 2026-10-14; an old save's "Versão
     // e busca" module is dropped by clean); the text; what is on air with
@@ -768,7 +772,7 @@ export function dockMotion(frame) {
 // Whether the change from one dockMotion to the next is eased (see above).
 export const easesBetween = (a, b) => Boolean(a && b) && a.w === b.w && a.h === b.h && a.shape === b.shape && a.motion !== b.motion;
 
-export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head = 32 } = {}) {
+export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head = PANEL_HEAD } = {}) {
     if (!dock?.tree) return null;
     const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
     const shut = new Set(folded.filter(canFoldModule));
@@ -793,14 +797,14 @@ const lockedPx = (node, ctx) => {
 export const ONAIR_LINE = 18;
 // The panel's header, the list's padding, a card's label (Verso, Refrão…)
 // and its padding.
-const ONAIR_CHROME = 32 + 12 + 16 + 12;
-// `head`: the panel header at the density on screen (28 compact, else 32).
+const ONAIR_CHROME = PANEL_HEAD + 12 + 16 + 12;
+// `head`: the panel header at the density on screen (32 compact, else 36).
 // A presentation's page (a picture, no text: Rodada F3) is a thumbnail as
 // tall as this many lines (console.css, .kx-slide-page).
 export const ONAIR_PAGE_LINES = 3;
-export function onAirHeight(slides, head = 32) {
+export function onAirHeight(slides, head = PANEL_HEAD) {
     const lines = Math.max(1, ...(slides || []).map((s) => (!s?.text && s?.image_url ? ONAIR_PAGE_LINES : String(s?.text ?? "").split("\n").length)));
-    return Math.max(ONAIR_H, ONAIR_CHROME + lines * ONAIR_LINE) - (32 - head);
+    return Math.max(ONAIR_H, ONAIR_CHROME + lines * ONAIR_LINE) - (PANEL_HEAD - head);
 }
 
 const folds = (node) => leaves(node).every((id) => MODULES[id]?.fold);
@@ -850,7 +854,7 @@ function fitNode(node, path, w, h, ctx) {
     }
     const open = shown.length - shut.length;
     const foldOf = (i) => (foldable(node.children[i]) ? { dir: node.dir, on: shut.includes(i), can: shut.includes(i) || open > 1 } : null);
-    const foldPx = row ? FOLD_STRIP : Math.round(ctx.head || 32);
+    const foldPx = row ? FOLD_STRIP : Math.round(ctx.head || PANEL_HEAD);
     let items = node.children.map((c, i) => {
         if (shut.includes(i)) return { at: [i], min: foldPx, size: foldPx, locked: true, folded: true };
         const px = row ? null : lockedPx(c, ctx);

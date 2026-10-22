@@ -270,7 +270,7 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
     const body = (
         <>
             <div className="col nv-l" style={colAjustes.style}>
-                <Panel noHead={hosted} title={<>Tema <span className="kx-count">· {themeTitle}{dirty ? " · não salvo" : ""}</span></>} actions={!hosted && <>{pickTheme}{deleteBtn}</>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={hosted ? "Tema" : <>Tema <span className="kx-count">· {themeTitle}{dirty ? " · não salvo" : ""}</span></>} actions={<>{pickTheme}{deleteBtn}</>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-scroll">
                         <CfgGroup id="tema.nome" k="tema.nome" title="Nome e padrão" summary={""} fold={false}>
                             <div className="frm nv-frm">
@@ -496,10 +496,8 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
     return (
         <>
             <WinBar title="Editor de temas" sub={`${themeTitle}${dirty ? " · não salvo" : ""}`}
-                tools={pickTheme}
                 actions={<>
                     <UndoRedo history={history} />
-                    {deleteBtn}
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={busy || !bg} onClick={save} title={bg ? "Ctrl+S" : NEEDS_BG}>Salvar tema</Btn>
                 </>}

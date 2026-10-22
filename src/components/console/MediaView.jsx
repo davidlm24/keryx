@@ -236,15 +236,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
 
     return (
         <>
-        <WinBar title="Mídia" sub={`${media.length} ${media.length === 1 ? "arquivo" : "arquivos"}${totalSize ? ` · ${bytes(totalSize)}` : ""}`}
-            tools={<Field value={q} onChange={setQ} placeholder="Pesquisar na Mídia" style={{ flex: "0 1 280px", minWidth: 160 }} />}
-            actions={<span className="pl-popwrap">
-                <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn>
-                {adding && <div className="kx-pop pl-pop">
-                    <Row single icon="folder" title="Do computador…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
-                    <Row single icon="youtube" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
-                </div>}
-            </span>} />
+        <WinBar title="Mídia" sub={`${media.length} ${media.length === 1 ? "arquivo" : "arquivos"}${totalSize ? ` · ${bytes(totalSize)}` : ""}`} />
         <div className="win-body">
         <div className="col center mv">
             <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
@@ -258,11 +250,21 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                         <option value="">Todas as categorias</option>
                         {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                     </select>
+                    {/* The search and Adicionar live here, with the filters
+                        (Rodada O, O7: the bar keeps only the window's). */}
+                    <Field value={q} onChange={setQ} placeholder="Pesquisar na Mídia" style={{ flex: "0 1 240px", minWidth: 150 }} />
                     <span style={{ flex: 1 }} />
                     <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar todos</Btn>
                     <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />
                     <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
                     <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
+                    <span className="pl-popwrap">
+                        <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn>
+                        {adding && <div className="kx-pop pl-pop">
+                            <Row single icon="folder" title="Do computador…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
+                            <Row single icon="youtube" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
+                        </div>}
+                    </span>
                 </div>
                 {uploads && (
                     <div className="mv-up">

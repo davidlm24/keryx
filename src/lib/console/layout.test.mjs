@@ -47,7 +47,7 @@ test("density: Automática, Confortável or Compacta, anything else falls back t
     assert.equal(shownDensity({ density: "auto" }, 990), "comfortable");
     assert.equal(shownDensity({ density: "comfortable" }, 700), "comfortable");
     assert.equal(shownDensity({ density: "compact" }, 990), "compact");
-    assert.deepEqual([panelHead("compact"), panelHead("comfortable")], [28, 32]);
+    assert.deepEqual([panelHead("compact"), panelHead("comfortable")], [32, 36]);
     assert.equal(densityOf({ density: "compact" }), "compact");
     assert.equal(densityOf({ density: "comfortable" }), "comfortable");
     assert.equal(densityOf({}), DEFAULT_LAYOUT.density); // a layout saved before densities existed

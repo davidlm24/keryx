@@ -2133,7 +2133,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // find a setting, Enter opens its section with the row lit, Esc clears.
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("/");
-        result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .win-bar .cfg-search input')"), 3000);
+        result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .cfg-nav .cfg-search input')"), 3000);
         await type("fundo de espera");
         result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Qualquer outro culto')"), 3000);
         await press("Escape");
@@ -2601,9 +2601,9 @@ async function checkConsole(webContents, { live, outputs }) {
             await sleep(200);
             return true;
         };
-        // The YouTube link comes from the bar's Adicionar menu + one question
+        // The YouTube link comes from the filter row's Adicionar menu + one question
         // (PromptDialog), not a field always on screen (Rodada C, fase b).
-        await click(".win-bar button", "Adicionar");
+        await click(".mv-bar button", "Adicionar");
         await click(".pl-pop .kx-row", "Link do YouTube…");
         await waitFor(() => js("Boolean(document.querySelector('.confirm-dialog .kx-field input'))"), 4000);
         await setVal(".confirm-dialog .kx-field input", "https://youtu.be/dQw4w9WgXcQ");

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Panel, Row, Field, Empty, WinBar } from "../kx";
+import { Panel, Row, Field, Empty, WinBar, WinBack } from "../kx";
 import { SECTIONS, SECTION_SCOPE, SCOPE_LABEL, sectionOf } from "@/lib/console/settings";
 import { searchSettings, groupHits, countBySection } from "@/lib/console/settingsSearch";
 import { searchTerms, highlightParts } from "@/lib/bibleSearch";
@@ -17,7 +17,6 @@ import ConsoleSection from "./ConsoleSection";
 import DadosSection from "./DadosSection";
 import SobreSection from "./SobreSection";
 import SyncSection from "./SyncSection";
-import { useWinCol } from "../winLayout";
 
 const BODIES = {
     sobre: SobreSection,
@@ -40,20 +39,19 @@ function Marked({ text, terms }) {
 const FLASH_MS = 1600;
 
 // Configurações: a page of THE window (Rodada C, src/lib/console/nav.js),
-// with the frame bar it always had — the title, the search, the (x) —
-// now drawn by WinBar; the sections on the left
+// the bar only its title, Destacar and the (x) (Rodada O, O7); the
+// sections on the left, in a fixed nav that starts with Voltar (when there
+// is somewhere to go back to) and the search (O8)
 // (src/lib/console/settings.js), the chosen one on the right. What is behind
 // stays as it was: nothing here changes what is on air (Tela ociosa only
 // changes an idle screen), and behind it only the emergency keys act
 // (Console.jsx). Opening a screen or a theme from here pushes the editor
 // onto the same window ("← Temas", "← Telas e saídas").
-// The search in the bar (/ goes there) finds a setting by any word,
+// The search at the top of the nav (/ goes there) finds a setting by any word,
 // without accents (src/lib/console/settingsSearch.js): the results replace
 // the section, the left column counts them, and Enter or a click opens the
 // section and lights the row up.
 export default function SettingsView({ c, section, setSection, onClose, escRef, active = true, layout, setLayout, restoreLayout, onOpenScreen, onWhatsNew }) {
-    // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colNav = useWinCol("config.secoes", { name: "Seções", def: 240, min: 180, max: 400 });
     const current = sectionOf(section);
     const [q, setQ] = useState("");
     const [activeHit, setActiveHit] = useState(0);
@@ -94,7 +92,17 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
         let timer = null;
         const find = () => {
             const el = [...document.querySelectorAll(".win-dialog .cfg [data-cfg-k]")].find((n) => n.getAttribute("data-cfg-k") === pending && !n.closest(".cfg-group:not(.is-open)"));
-            if (el) { el.scrollIntoView({ block: "center" }); setFlash(pending); setPending(null); return; }
+            if (el) {
+                // A group whose title the panel's already says keeps it only
+                // for screen readers (Rodada O, O10): the jump lands on the
+                // group's first row instead, which is what can be seen.
+                const hidden = el.getBoundingClientRect().width <= 1;
+                const target = hidden ? el.closest(".kx-group")?.querySelector(".kx-group-in [data-cfg-k]") : el;
+                (target || el.closest(".kx-group") || el).scrollIntoView({ block: "center" });
+                setFlash(target ? target.getAttribute("data-cfg-k") : null);
+                setPending(null);
+                return;
+            }
             tries += 1;
             if (tries < 60) timer = setTimeout(find, 50);
             else setPending(null);
@@ -162,13 +170,15 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
 
     return (
         <CfgFlash.Provider value={flashCtx}>
-            <WinBar title="Configurações" tools={
-                <span className="cfg-search">
-                    <Field value={q} onChange={setQ} placeholder="Buscar nas configurações" inputRef={inputRef} onKeyDown={onSearchKey} kbd={q ? null : keyHint("search", letters)} />
-                </span>
-            } />
+            <WinBar title="Configurações" menuBack />
             <div className="cfg-dialog-b">
-                    <nav className="cfg-nav" aria-label="Seções" style={colNav.style}>
+                    <nav className="cfg-nav" aria-label="Seções">
+                        <div className="cfg-nav-h">
+                            <WinBack />
+                            <span className="cfg-search">
+                                <Field value={q} onChange={setQ} placeholder="Buscar nas configurações" inputRef={inputRef} onKeyDown={onSearchKey} kbd={q ? null : keyHint("search", letters)} />
+                            </span>
+                        </div>
                         {SECTIONS.map(({ id, icon, name }) => (
                             <Row key={id} single icon={icon} title={name} current={!searching && id === current.id ? "page" : undefined} state={`${!searching && id === current.id ? "is-selected" : ""} ${searching && !counts[id] ? "is-dim" : ""}`}
                                 onClick={() => { setQ(""); setSection(id); }}>
@@ -176,7 +186,6 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
                             </Row>
                         ))}
                     </nav>
-                    {colNav.split}
                     <div className="cfg">
                         <Panel title={searching ? `Resultados · ${hits.length}` : current.name} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
                             {!searching && SCOPE_LABEL[SECTION_SCOPE[current.id]] && <div className="listhead"><span className="kx-meta">{SCOPE_LABEL[SECTION_SCOPE[current.id]]}</span></div>}

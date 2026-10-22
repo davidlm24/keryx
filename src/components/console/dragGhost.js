@@ -42,7 +42,9 @@ function blankImage(e) {
     setTimeout(() => el.remove(), 0);
 }
 
-export function setDragGhost(e, { label = "", icon = "", time = "" } = {}) {
+// `count`: several marked rows dragged together (Rodada O2): the grabbed
+// one is the card and a chip says how many go.
+export function setDragGhost(e, { label = "", icon = "", time = "", count = 0 } = {}) {
     if (!e?.dataTransfer) return;
     finish(cur, false);
     blankImage(e);
@@ -62,6 +64,7 @@ export function setDragGhost(e, { label = "", icon = "", time = "" } = {}) {
     name.textContent = label;
     card.appendChild(name);
     if (time) { const t = document.createElement("span"); t.className = "drag-card-time"; t.textContent = time; card.appendChild(t); }
+    if (count > 1) { const n = document.createElement("span"); n.className = "drag-card-n"; n.textContent = String(count); card.appendChild(n); }
     el.appendChild(card);
     // Held where the pointer took it (a synthetic event has no pointer: the corner).
     const g = { el, dx: clamp(e.clientX - src.left, 0, w), dy: clamp(e.clientY - src.top, 0, h), x: e.clientX, y: e.clientY, raf: 0, claimed: false, done: false };

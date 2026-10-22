@@ -71,13 +71,15 @@ export default function ReportsView({ c, onClose, escRef }) {
     return (
         <>
         <WinBar title="Relatórios" sub={`${church.line ? `${church.line} · ` : ""}${periodLabel} · ${plays.length} ${plays.length === 1 ? "projeção" : "projeções"} de músicas`}
-            tools={<>
-                <Seg small value={period} onChange={setPeriod} options={PERIODS} label="Período" />
-                <Field value={q} onChange={setQ} placeholder="Música, artista ou culto" style={{ flex: "0 1 240px", minWidth: 150 }} />
-            </>} />
+            />
         <div className="win-body">
         <div className="col center rp">
             <Panel noHead bodyStyle={{ overflow: "auto" }}>
+                {/* What the page shows, at its top (Rodada O, O7). */}
+                <div className="rp-bar">
+                    <Seg small value={period} onChange={setPeriod} options={PERIODS} label="Período" />
+                    <Field value={q} onChange={setQ} placeholder="Música, artista ou culto" style={{ flex: "0 1 240px", minWidth: 150 }} />
+                </div>
                 <div className="rp-grid">
                     <section className="rp-card rp-wide">
                         <div className="listhead"><span className="kx-section">Músicas mais projetadas <span className="kx-count">· {top.length}</span></span></div>

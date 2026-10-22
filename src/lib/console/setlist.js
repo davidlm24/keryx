@@ -128,3 +128,29 @@ export function parseMember(text) {
     const member_name = name.trim();
     return member_name ? { member_name, role: rest.join("·").trim() || "Equipe" } : null;
 }
+
+// What a stage dragged from the Biblioteca becomes in the Setlist:
+// { type, contentId } ("YT" is a link still to be saved as a Media row), or
+// null for what does not go in a setlist yet (a notice, a tool…).
+export function stageItem(stage) {
+    const id = String(stage?.id || "");
+    if (stage?.kind === "lyrics" && id.startsWith("song:")) return { type: "SONG", contentId: id.slice(5) };
+    if (id.startsWith("yt:")) return { type: "YT", contentId: "" };
+    if (id.startsWith("material:")) return { type: "MATERIAL", contentId: id.slice(9) };
+    if (id.startsWith("media:")) {
+        const k = stage.args?.kind;
+        const type = k === "video" || k === "youtube" ? "VIDEO" : k === "audio" ? "AUDIO" : k === "pdf" || k === "presentation" ? "PDF" : k === "powerpoint" ? "POWERPOINT" : "IMAGE";
+        return { type, contentId: id.slice(6) };
+    }
+    return null;
+}
+
+// The one toast after rows from the Biblioteca land in the Setlist (Rodada
+// O2: several marked rows dropped together say it once). `added` the titles
+// that went in, `left` how many could not.
+export function addedSay(added, left = 0) {
+    if (!added.length) return left > 1 ? "Esses itens ainda não entram na setlist; arraste para a Prévia ou o Programa." : "Esse item ainda não entra na setlist; arraste para a Prévia ou o Programa.";
+    const head = added.length === 1 ? `${added[0]} na setlist` : `${added.length} itens na setlist`;
+    const tail = left ? ` · ${left} ${left === 1 ? "não entra" : "não entram"}` : "";
+    return `${head}${tail}.`;
+}
