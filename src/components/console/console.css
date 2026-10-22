@@ -1713,6 +1713,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .le-hit { position: absolute; cursor: move; touch-action: none; user-select: none; }
 .console .le-hit:hover { outline: 1px solid color-mix(in srgb, var(--brand) 60%, transparent); outline-offset: -1px; }
 .console .le-hit.is-sel { outline: 2px solid var(--brand); outline-offset: -1px; }
+/* The optional grid (Rodada P, P8-3): lines every --le-grid of the screen,
+   only in the editor (never drawn on an output). */
+.console .le-over.has-grid { background-image: linear-gradient(to right, color-mix(in srgb, var(--fg-1) 16%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--fg-1) 16%, transparent) 1px, transparent 1px); background-size: var(--le-grid) var(--le-grid); }
 /* The element list (Rodada G2): its Aparece rule as a chip (none for
    Sempre), amber while the rule leaves it out of the state on the canvas;
    a dashed eye on a row the state (not the eye) leaves out. */
@@ -1884,6 +1887,20 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The Estilo row's N and I (Rodada HF2): 24 × 24 toggles, the letter drawn as it does. */
 .console .le-tb { min-width: 24px; justify-content: center; font-size: var(--fs-content); }
 .console .le-tb > i { font-style: italic; }
+/* The text bar (Rodada P, P8-1, TextBar.jsx): one row of the text's look over
+   the Editor de temas' form and an element's settings, fixed (it never
+   scrolls with the form), wrapping where the column is narrow. Controls 24 px
+   and 4 px apart in groups, a hairline between groups. */
+.console .tb-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--line-soft); }
+.console .tb-bar > select, .console .tb-bar .pl-input { height: var(--control-sm); }
+.console .tb-sep { width: 1px; height: 16px; background: var(--line); margin: 0 2px; flex: none; }
+.console .tb-group { display: inline-flex; gap: 2px; }
+.console .tb-drop { gap: 3px; }
+.console .le-tb > u { text-decoration: underline; text-underline-offset: 2px; }
+.console .tb-swatch { width: 12px; height: 12px; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--line-strong); background: var(--fg-1); }
+.console .addmenu-pop.tb-pop { width: auto; min-width: 0; padding: var(--space-2); }
+.console .tb-pop-row { display: flex; align-items: center; gap: var(--space-2); }
+.console .tb-pop-frm { grid-template-columns: auto auto; gap: var(--space-2) var(--space-3); padding: 0; }
 /* Configurações › Temas: the themes as small screens (as in the library). */
 .console .cfg .tmg { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); }
 .console .cfg .tmg-meta { font-size: var(--fs-meta); }

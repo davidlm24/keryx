@@ -275,16 +275,16 @@ function textStyle(style) {
     return { ...base, color, ...getTextEffect(style.text_effect || "shadow", color) };
 }
 
-// Camadas' extra text look: how see-through, how wide, capitals, a box
+// Camadas' extra text look: how see-through, how wide, a box
 // behind it (a band across the screen or a block around the text) and a fine
 // vertical nudge (% of the screen's height, in cqw); the theme's typography
-// (weight, italic, line and letter spacing, outline) is typography().
+// (weight, italic, capitals, underline, justify, line and letter spacing,
+// outline) is typography().
 const rgba = (hex, a) => { const n = parseInt(String(hex || "#000000").slice(1), 16); return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`; };
 function textExtra(style) {
     const out = typography(style);
     if (style.text_opacity != null) out.opacity = style.text_opacity;
     if (style.text_max_width != null) out.maxWidth = `${style.text_max_width}%`;
-    if (style.text_case === "upper") out.textTransform = "uppercase";
     if (style.text_box === "block" || style.text_box === "band") {
         out.boxDecorationBreak = "clone";
         out.WebkitBoxDecorationBreak = "clone";

@@ -16,17 +16,17 @@ import { printSong } from "@/lib/printSong";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
 import { styleMetrics } from "@/lib/console/fontMetrics";
-import { sizePreset } from "@/lib/textSize";
+import { sizeCqw } from "@/lib/textSize";
+import { STEP_OPTIONS, songStep, stepValue } from "@/lib/console/songSize";
 import { useContextMenu } from "./ContextMenu";
 import LinesPicker from "./LinesPicker";
-import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
+import { defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
 import { useWinCol } from "./winLayout";
 import { FontSelect } from "../editor/FontPicker";
 import { CfgGroup } from "./settings/parts";
 import { songThemeSummary, partThemesSummary, notesSummary } from "@/lib/console/pageGroups";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
-const SIZES = TEXT_SIZES;
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const SWATCHES = [["#ffffff", "Branco"], ["#f3e6c9", "Creme"], ["#c9dcff", "Azul claro"], ["#ffe08a", "Amarelo"], ["#1a1a1a", "Preto"]];
 // The slide previews' size, remembered on this computer.
@@ -38,7 +38,7 @@ const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); ret
 // picture stays in background_image too for whoever still reads only it.
 const songBg = (spec) => ({ background: spec || null, background_image: spec?.kind === "image" ? spec.value : "" });
 
-const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
+const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
 const unCR = (t) => String(t ?? "").replace(/\r\n?/g, "\n");
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
@@ -175,7 +175,9 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // starting from what it showed.
     const def = defaultTheme(themes);
     const following = followsTheme(song);
-    const lookOf = (t) => { const s = themeStyle(t); return { font_family: s.font_family, font_size: s.font_size, text_effect: s.text_effect, text_color: s.text_color, text_color_2: s.text_color_2 }; };
+    // The size is not part of the look (Rodada P, P8-2): it is a step from
+    // the theme's, kept whatever the look (songSize.js).
+    const lookOf = (t) => { const s = themeStyle(t); return { font_family: s.font_family, text_effect: s.text_effect, text_color: s.text_color, text_color_2: s.text_color_2 }; };
     const shown = following && def ? { ...song, ...lookOf(def) } : song;
     const setLook = (patch) => set({ ...(following && def ? lookOf(def) : {}), ...patch, style_mode: "own" });
     const applyTheme = (id) => {
@@ -429,7 +431,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => { setCifraKept(true); set({ chords: e.target.value }); }} aria-label="Cifra separada" /></div>
                         </CfgGroup>
                     )}
-                    <CfgGroup id="song.tema" title="Tema desta música" summary={songThemeSummary({ theme: look.theme, themeName: look.theme ? themeName(look.theme) : "", missing: look.missing, following })}>
+                    <CfgGroup id="song.tema" title="Tema desta música" summary={songThemeSummary({ theme: look.theme, themeName: look.theme ? themeName(look.theme) : "", missing: look.missing, following, step: songStep(song) })}>
                     <div className="frm">
                         <span className="k">Tema</span>
                         <select className="cfg-select" aria-label="Tema desta música"
@@ -442,6 +444,15 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             {look.missing && <option value={`t:${song.theme_id}`} disabled>(tema excluído)</option>}
                             <option value="own">Só desta música</option>
                         </select>
+                        {/* The size relative to the theme (Rodada P, P8-2 = B):
+                            −2…+2 steps, whatever theme or look the song has;
+                            the song keeps the whole theme. Beside it, the
+                            size it goes on air with (the stamped preview). */}
+                        <span className="k">Tamanho</span>
+                        <span className="nv-inline">
+                            <Seg small label="Tamanho em relação ao tema" value={String(songStep(song))} onChange={(v) => set({ font_size: stepValue(v) })} options={STEP_OPTIONS} />
+                            {doc?.content?.style?.font_size && <span className="kx-meta" title="O tamanho com que a letra vai ao ar, em % da largura da tela">{String(sizeCqw(doc.content.style.font_size)).replace(".", ",")} %</span>}
+                        </span>
                     </div>
                     {look.theme && (
                         <div className="ed-pad ed-linked">
@@ -455,7 +466,6 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     <div className="frm">
                         <span className="k">Fonte</span>
                         <FontSelect className="cfg-select" value={shown.font_family || "sans"} onChange={(v) => setLook({ font_family: v })} />
-                        <span className="k">Tamanho</span><Seg small label="Tamanho" value={sizePreset(shown.font_size)} onChange={(v) => setLook({ font_size: v })} options={SIZES} />
                         <span className="k">Cor do texto</span>
                         <div className="swatches">
                             {SWATCHES.map(([hex, name]) => <button type="button" key={hex} className={`kx-t ${(shown.text_color || "#ffffff").toLowerCase() === hex ? "is-on" : ""}`} style={{ background: hex }} aria-label={name} title={name} onClick={() => setLook({ text_color: hex })} />)}

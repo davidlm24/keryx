@@ -605,6 +605,14 @@ test("the theme's typography (Rodada HF2): a free size, bold, italic, spacing an
     assert.throws(() => run([["content.show", { ...song, style: { letter_spacing: "largo" } }]]), LiveError);
 });
 
+test("the text bar's keys (Rodada P, P8-1): underline, justify and Primeira Maiúscula", () => {
+    const s = run([["content.show", { ...song, style: { text_decoration: "underline", text_justify: "justify", text_case: "capitalize", text_align: "left" } }]]);
+    assert.deepEqual(s.content.style, { text_align: "left", text_case: "capitalize", text_decoration: "underline", text_justify: "justify" });
+    assert.throws(() => run([["content.show", { ...song, style: { text_decoration: "line-through" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { ...song, style: { text_justify: "yes" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { ...song, style: { text_case: "lower" } }]]), LiveError);
+});
+
 test("Camadas logo: opacity, margin and free width, clamped; null resets; no change, no broadcast", () => {
     let s = applyOp(emptyState(T0), "logo.set", { visible: true, opacity: 0.05, margin: 4, width: 50 }, T0);
     assert.deepEqual(s.logo, { visible: true, corner: "bottom-right", size: "medium", opacity: 0.2, margin: 4, width: 30 });

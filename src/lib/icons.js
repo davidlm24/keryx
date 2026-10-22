@@ -9,7 +9,7 @@
 // on screen) and synced (a song synced to its media), drawn in the same
 // format and box as Lucide's.
 import {
-    ArrowLeft, ArrowRight, Bell, Book, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight,
+    AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bell, Book, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight,
     ChevronUp, ChevronsDownUp, ChevronsUpDown, Circle, CircleHelp, Clock, Cloud, Copy, CornerDownLeft, Download,
     Ellipsis, Eraser, ExternalLink, Eye, EyeOff, Film, Folder, Footprints, GripVertical, History, Image, Info,
     Keyboard, Layers, LayoutGrid, LayoutPanelLeft, Library, List, ListChecks, Lock, LockOpen, Megaphone, Menu, Minus, Monitor, Music,
@@ -119,6 +119,11 @@ export const ICON_NODES = {
     presentation: Presentation,
     youtube: Youtube,
     synced: Synced,
+    // The text bar's alignment (Rodada P, P8-1).
+    alignLeft: AlignLeft,
+    alignCenter: AlignCenter,
+    alignRight: AlignRight,
+    alignJustify: AlignJustify,
 };
 
 export const ICON_NAMES = Object.keys(ICON_NODES);

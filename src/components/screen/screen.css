@@ -33,7 +33,8 @@
    a line too long even at the smallest size wraps (is-wrap). */
 .ks-text.ks-lines { white-space: pre; position: relative; }
 .ks-text.ks-lines.is-wrap { white-space: pre-wrap; }
-.ks-fit { display: inline-block; max-width: none; }
+/* inline-block takes no decoration from its parent: the theme's underline (Rodada P) is passed down. */
+.ks-fit { display: inline-block; max-width: none; text-decoration: inherit; }
 .is-wrap > .ks-fit { max-width: 100%; }
 .ks-fit-probe { position: absolute; left: 0; top: 0; width: max-content; white-space: pre; visibility: hidden; pointer-events: none; }
 /* Chords over the syllables, on the outputs that show them (content.show). */

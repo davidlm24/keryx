@@ -2,9 +2,11 @@
 // the text style it applies, the Fundo layer it sets, which theme starts
 // selected. Shared by Camadas (apply/save) and Configurações › Temas e fundos (the
 // editor). Pure, so node --test checks it.
-import { bgSpec, bgArgs, cleanSpec } from "./backgroundSpec.js";
+import { bgSpec, cleanSpec } from "./backgroundSpec.js";
+import { themeBackgroundArgs, defaultTheme } from "./themeCore.js";
 import { SIZE_PRESETS, sameSize, sizeCqw } from "../textSize.js";
 import { TRANSITIONS, NATURAL_MS } from "./look.js";
+import { steppedSize } from "./songSize.js";
 
 // The six size presets, smallest first: what a song or an aviso chooses,
 // and the shortcuts beside a theme's free size (a number in cqw since the
@@ -36,11 +38,14 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 // the box per theme and the item's own style still wins. Applying a theme on air
 // (Camadas › Temas) spreads the whole themeStyle: it resets them too — a theme is
 // a complete look. The typography of the Rodada HF2 (weight, italic, letter
-// spacing, outline; line_height now takes a number too) rides the same way.
+// spacing, outline; line_height now takes a number too) rides the same way,
+// and so do the text bar's (Rodada P, P8-1): text_decoration "underline",
+// text_justify "justify" (the text justified, the box still where
+// text_align puts it) and text_case "capitalize" (Primeira Maiúscula).
 // font_size is a number in cqw stored as a string ("4.8"), or an old
 // preset's name ("large"): compared with sameSize, never as a string.
 export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "transition", "transition_ms",
-    "font_weight", "font_style", "letter_spacing", "text_outline_px", "text_outline_color"];
+    "font_weight", "font_style", "letter_spacing", "text_outline_px", "text_outline_color", "text_decoration", "text_justify"];
 const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
 export const themeStyle = (t) => ({ font_size: t?.font_size || "large", font_family: t?.font_family || "sans", text_effect: t?.text_effect || "shadow", text_color: t?.text_color || "#ffffff", text_color_2: t?.text_color_2 || "", ...extra(t) });
 const sameKey = (k, a, v) => {
@@ -50,10 +55,10 @@ const sameKey = (k, a, v) => {
 };
 export const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v]) => sameKey(k, style?.[k], v));
 
-// The theme's background (ProjectionTheme.background, or the picture or
-// generated background saved before it; backgroundSpec.js), as
-// background.set's arguments; null when it has none.
-export const themeBackgroundArgs = (t) => bgArgs(bgSpec(t), t?.name || "Tema");
+// themeBackgroundArgs (a theme's background as background.set's arguments)
+// and defaultTheme (the one marked padrão) live in themeCore.js, which the
+// outputs import without the rest of this module.
+export { themeBackgroundArgs, defaultTheme };
 
 // A theme is saved with a background from the library (owner 2026-10-14):
 // without one, applying it dressed only the text and the previous theme's
@@ -68,14 +73,6 @@ export const themeHasBackground = (t) => Boolean(bgSpec(t));
 // = there is none at hand and the library is asked for one.
 export const newThemeBackground = (onAir, inUse) => cleanSpec(onAir) || bgSpec(inUse);
 
-// The default theme (Configurações › Temas e fundos, "Tornar padrão"):
-// the one marked, the most recently changed if several are; none when none
-// is (then the factory look applies — never the first theme by surprise).
-export function defaultTheme(themes) {
-    const marked = (themes || []).filter((t) => t?.is_default);
-    if (marked.length < 2) return marked[0] || null;
-    return [...marked].sort((a, b) => String(b.updated_date || "").localeCompare(String(a.updated_date || "")))[0];
-}
 export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?.id === t.id;
 
 // The theme in use (owner's decisions 2026-10-13/14): the one the operator
@@ -152,20 +149,28 @@ export const defaultChanges = (themes, id) => (themes || [])
 // defaults): with it, the item follows the default theme.
 export const FACTORY_LOOK = { font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", text_color_2: "" };
 const LOOK_KEYS = Object.keys(FACTORY_LOOK);
-// A size of "4.8" is the factory "large" (textSize.js sameSize).
-export const isFactoryLook = (row) => LOOK_KEYS.every((k) => (k === "font_size" ? sameSize(row?.[k] || FACTORY_LOOK[k], FACTORY_LOOK[k]) : (row?.[k] || FACTORY_LOOK[k]) === FACTORY_LOOK[k]));
+// A size of "4.8" is the factory "large" (textSize.js sameSize). `size`
+// false leaves the size out: a song's is a step from its theme's (songSize.js).
+export const isFactoryLook = (row, { size = true } = {}) => LOOK_KEYS.every((k) => (k === "font_size" ? !size || sameSize(row?.[k] || FACTORY_LOOK[k], FACTORY_LOOK[k]) : (row?.[k] || FACTORY_LOOK[k]) === FACTORY_LOOK[k]));
 // Whether a Song (style_mode) follows the default theme: "theme" yes,
-// "own" no; unset, when its look is still the factory one.
-export const followsTheme = (row) => row?.style_mode === "theme" || (row?.style_mode !== "own" && isFactoryLook(row));
+// "own" no; unset, when its look is still the factory one. Its size never
+// counts (Rodada P, P8-2): it is a step from the theme's, so a song made
+// bigger keeps following the theme — before, it silently became "own".
+export const followsTheme = (row) => row?.style_mode === "theme" || (row?.style_mode !== "own" && isFactoryLook(row, { size: false }));
 
 // content.show's arguments with the default theme filled in where the item
 // asks for it (args.inherit = { look, background }, set by content.js);
 // inherit never reaches the live state. Applied when an item is sent (and
 // in the Prévia), so a theme change never touches what is already on air.
-//   - look: the theme's text look replaces the factory one; its extras
-//     (box, case, ...) fill what the item leaves empty.
-//   - the theme's transition goes where the item has none (without one the
-//     screens play the factory transition, look.js NATURAL_MS).
+//   - look: the theme's text look replaces the factory one.
+//   - the theme's extras (box, position, spacing, weight, case, transition…)
+//     fill what the item leaves empty, its own look or not (Rodada P, P8-2:
+//     a song with a look of its own went out without the theme's box and
+//     position); `extras: false` (a song following a theme of its own,
+//     which is a complete look) takes only the transition, where the item
+//     has none (without one the screens play the factory transition,
+//     look.js NATURAL_MS).
+//   - step: a song's size, −2…+2 steps from the theme's (songSize.js).
 //   - background: the theme's (picture, video, generated or colour), when
 //     the item has none of its own, rides in args.fundo: it goes to the Fundo
 //     layer when the item is sent (backgroundSpec.js fundoOps), so it stays
@@ -183,13 +188,14 @@ export function withThemeDefaults(op, args, theme) {
     if (!theme) return rest;
     const style = { ...(rest.style || {}) };
     const t = themeStyle(theme);
-    if (inherit.look) {
-        for (const k of LOOK_KEYS) style[k] = t[k];
+    if (inherit.look) for (const k of LOOK_KEYS) style[k] = t[k];
+    if (inherit.extras !== false) {
         for (const k of EXTRA_KEYS) if (t[k] !== "" && (style[k] == null || style[k] === "")) style[k] = t[k];
     } else if (!style.transition && t.transition) {
         style.transition = t.transition;
         if (t.transition_ms !== "" && style.transition_ms == null) style.transition_ms = t.transition_ms;
     }
+    if (Number.isFinite(inherit.step)) style.font_size = steppedSize(t.font_size, inherit.step);
     // Whether the item's title shows over the slide is the theme's (Rodada B
     // 2026-10-14: show_item_title left the church's profile for the theme;
     // prefs v3 gave every theme the church's value) — even for an item with
@@ -220,7 +226,9 @@ export function fontSummary(t) {
     const parts = [name, `${String(sizeCqw(t?.font_size)).replace(".", ",")} %`];
     if (t?.font_weight === "bold") parts.push("negrito");
     if (t?.font_style === "italic") parts.push("itálico");
+    if (t?.text_decoration === "underline") parts.push("sublinhado");
     if (t?.text_case === "upper") parts.push("maiúsculas");
+    if (t?.text_case === "capitalize") parts.push("primeira maiúscula");
     return parts.join(" · ");
 }
 
@@ -240,7 +248,8 @@ export function boxSummary(t) {
 
 export function placeSummary(t) {
     const width = t?.text_box === "band" ? 100 : Number(t?.text_max_width) || 100;
-    return `${ALIGN_NAMES[t?.text_align] || "Centro"} · ${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}`;
+    const at = `${ALIGN_NAMES[t?.text_align] || "Centro"} · ${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}`;
+    return t?.text_justify === "justify" ? `${at} · justificado` : at;
 }
 
 export function fundoSummary(t) {

@@ -108,9 +108,11 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const wanted = prefs.bible_version;
     const setWanted = (v) => { updateUser({ bible_version: v }).catch(() => c.say("Não foi possível salvar a versão escolhida.")); };
     // The Bíblia's own theme (User.bible_theme_id; themes.js themeForKind):
-    // chosen in the background library, in theme mode.
+    // chosen in the background library, in theme mode. "O mesmo das músicas"
+    // is the theme in use, as a passage is stamped (Rodada P, answer 11: it
+    // showed the default theme).
     const themes = useThemes();
-    const bibleTheme = themeForKind(themes, "bible", prefs.bible_theme_id);
+    const bibleTheme = themeForKind(themes, "bible", prefs.bible_theme_id, c.themeId);
     const pickTheme = useLibraryPicker();
     const chooseTheme = async () => {
         const r = await pickTheme({ accept: "theme", value: prefs.bible_theme_id || bibleTheme?.id || null, title: "Tema da Bíblia", allowNone: true, noneLabel: "O mesmo das músicas", useLabel: "Usar na Bíblia" });

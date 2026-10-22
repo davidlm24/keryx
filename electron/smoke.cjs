@@ -2232,7 +2232,7 @@ async function checkConsole(webContents, { live, outputs }) {
             const name = document.querySelector(".win-dialog.is-editor .nv-frm input.pl-input");
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(name, "Tema Smoke");
             name.dispatchEvent(new Event("input", { bubbles: true }));
-            const font = document.querySelector(".win-dialog.is-editor .nv-frm select");
+            const font = document.querySelector(".win-dialog.is-editor .tb-bar select"); // the text bar's font (Rodada P, P8-1)
             font.value = "serif"; font.dispatchEvent(new Event("change", { bubbles: true }));
             return true;
         })()`);

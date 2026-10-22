@@ -106,8 +106,11 @@ export function isOnAir(live) {
 // and its reference (Configurações › Bíblia e músicas, src/lib/bibleDisplay.js).
 // title: the item's name over the slide, for this item (Camadas › Texto
 // principal); unset, the church's choice (Aparência › Títulos nas telas).
-// font_weight and font_style: the theme's bold and italic (Rodada HF2).
-export const STYLE_CHOICES = { text_case: ["none", "upper"], text_box: ["none", "band", "block"], verse_numbers: ["sup", "hide"], ref_line: ["full", "plain", "none"], title: ["show", "hide"], font_weight: ["normal", "bold"], font_style: ["normal", "italic"] };
+// font_weight and font_style: the theme's bold and italic (Rodada HF2);
+// text_decoration, text_justify and text_case "capitalize" (Primeira
+// Maiúscula): the Editor de temas' text bar (Rodada P, P8-1). text_justify
+// justifies the text where it stays, so text_align still places the box.
+export const STYLE_CHOICES = { text_case: ["none", "upper", "capitalize"], text_decoration: ["none", "underline"], text_justify: ["none", "justify"], text_box: ["none", "band", "block"], verse_numbers: ["sup", "hide"], ref_line: ["full", "plain", "none"], title: ["show", "hide"], font_weight: ["normal", "bold"], font_style: ["normal", "italic"] };
 export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color", "text_align", "text_position", "transition",
     ...Object.keys(STYLE_RANGES), ...Object.keys(STYLE_CHOICES), "line_height", "text_box_color", "text_outline_color"];
 export const BACKGROUND_FITS = ["cover", "contain"];
