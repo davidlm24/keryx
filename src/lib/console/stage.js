@@ -5,7 +5,7 @@
 import { songContent, passageContent, isVideoUrl } from "@/lib/console/content";
 import { noticeLabel } from "@/lib/console/notice";
 import { materialStage, materialMeta } from "@/lib/console/school";
-import { passageOf, chapterOf, chapterOnAir } from "@/lib/console/bibleVerses";
+import { passageOf, chapterOf, chapterOnAir, howOf, airPassage, slideWithVerse, verseNear } from "@/lib/console/bibleVerses";
 import { presentationStage, presentationBlock, pagesOf, playsInSequence } from "@/lib/presentation";
 
 const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", presentation: "Apresentação", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
@@ -25,17 +25,40 @@ export function stageFromPassage(passage, ref = {}) {
 // from there (only a move when that chapter is on air: `onAir` is the
 // content on air); several are that passage. Null when nothing fits.
 // pair: a second edition of the chapter ({ verses, version }, the Bíblia's
-// "2ª versão"): each slide carries its text (bibleVerses.js).
-export function stageFromVerses({ verses, nums, how = "auto", version, book, chapter, onAir = null, pair = null }) {
-    if (nums.length > 1) {
-        const p = passageOf({ verses, nums, how, version, book, chapter, pair });
-        return p ? stageFromPassage({ reference: p.reference, text: p.text, slides: p.slides, version }) : null;
-    }
+// "2ª versão"): each slide carries its text (bibleVerses.js). how: the
+// verses per slide, for a chapter too; look: the church's display now
+// (lookDefaults(…).bible), so a chapter on air shown otherwise is sent
+// again. A range keeps its verses in its ref (nums), so the Bíblia's bar
+// can rebuild it on air (stageRebuiltOnAir).
+export function stageFromVerses({ verses, nums, how = "auto", version, book, chapter, onAir = null, pair = null, look = null }) {
+    if (nums.length > 1) return rangeStage({ verses, nums, how, version, book, chapter, pair });
     if (!nums.length) return null;
-    const ch = chapterOf({ verses, n: nums[0], version, book, chapter, pair });
+    const ch = chapterOf({ verses, n: nums[0], how, version, book, chapter, pair });
     if (!ch) return null;
-    if (chapterOnAir(onAir, { book, chapter, version, version2: ch.ref.version2 })) return { ...stageAirSlide(onAir, ch.index, ch.id), title: ch.title };
+    // The chapter on air, grouped as now: the slide holding that verse.
+    if (chapterOnAir(onAir, { book, chapter, version, version2: ch.ref.version2, how, look })) return { ...stageAirSlide(onAir, slideWithVerse(onAir.slides, nums[0]), ch.id), title: ch.title };
     return { ...stageFromPassage(ch.passage, ch.ref), id: ch.id, title: ch.title, index: ch.index };
+}
+
+function rangeStage({ verses, nums, how, version, book, chapter, pair }) {
+    const p = passageOf({ verses, nums, how, version, book, chapter, pair });
+    if (!p) return null;
+    const version2 = p.slides.some((s) => s.pair) ? pair.version : null;
+    return stageFromPassage({ reference: p.reference, text: p.text, slides: p.slides, version }, { book, chapter, version, ...(version2 ? { version2 } : {}), how: howOf(how), nums: [...nums].sort((a, b) => a - b) });
+}
+
+// The passage on air rebuilt with the Bíblia bar's settings now (owner
+// 2026-10-22: they reach the screens at once): its chapter read again
+// (`verses`, in `version`, with `pair`), grouped by `how`, the verse on air
+// still on screen. Null when the content on air is not one the Bíblia can
+// rebuild (airPassage) or its verses are not in that edition.
+export function stageRebuiltOnAir(onAir, { verses, version, how, pair = null }) {
+    const t = airPassage(onAir);
+    if (!t || !verses?.length) return null;
+    const verse = verseNear(verses, t.verse);
+    const at = { verses, how, version, book: t.book, chapter: t.chapter, pair };
+    const st = t.nums ? rangeStage({ ...at, nums: t.nums }) : stageFromVerses({ ...at, nums: [verse] });
+    return st ? { ...st, index: slideWithVerse(st.slides, verse) } : null;
 }
 
 export function stageFromText(title, text) {

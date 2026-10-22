@@ -66,10 +66,6 @@
       "enum": ["sup", "hide"],
       "description": "Biblia: numeros dos versiculos pequenos no texto (sup) ou ocultos (hide). Nulo = sup"
     },
-    "bible_text_size": {
-      "type": "integer",
-      "description": "Biblia: tamanho do texto nas telas relativo ao tema da Biblia, em passos de -2 a 2 (A- / A / A+ embaixo da tela do No ar). Nulo = 0, o tamanho do tema"
-    },
     "bible_version_2": {
       "type": "string",
       "description": "Biblia: uma segunda versao mostrada junto da primeira nas telas (sigla, como bible_version). Nulo ou vazio = so uma versao"

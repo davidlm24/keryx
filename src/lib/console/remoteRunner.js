@@ -17,6 +17,7 @@ import { isSection } from "./setlist.js";
 import { playerLayer, playerLayers, playerOp, videoSwap, followsItem, clockFollow } from "./player.js";
 import { followAction } from "./followWords.js";
 import { referenceNums } from "./bibleVerses.js";
+import { lookDefaults } from "./lookDefaults.js";
 import { formatReference, BIBLE_VERSIONS } from "../bibleBooks.js";
 import { timerChoices } from "./timerPresets.js";
 import { orderPresets } from "./alertPresets.js";
@@ -82,11 +83,11 @@ async function reference(d, args) {
     if (!ref) return { error: refuse(args.ref !== undefined ? `Não entendi "${args.ref}". Escreva como jo 3 16.` : "Referência inválida.", 400) };
     // An edition of the list, or one of the church's own installed here.
     if (args.version && !BIBLE_VERSIONS.some((v) => v.id === args.version) && !(await d.bible?.())?.installed?.includes(args.version)) return { error: fail("not_found", `A versão ${args.version} não existe no KERYX.`) };
-    const { version, verses } = await d.referenceVerses(ref, args.version || null);
+    const { version, verses, pair = null } = await d.referenceVerses(ref, args.version || null);
     if (!verses?.length) return { error: notInBible(ref, version) };
     const nums = referenceNums(ref);
     if (nums.length && !verses.some((v) => nums.includes(v.number))) return { error: notInBible(ref, version) };
-    return { ref, version, verses, nums };
+    return { ref, version, verses, nums, pair };
 }
 
 // One entry per action of the contract (remoteProtocol.test checks the
@@ -193,7 +194,7 @@ export const REMOTE_HANDLERS = {
             const onAir = live?.content?.kind === "bible" ? live.content : null;
             // A chapter alone goes as its chapter, from verse 1 (the arrows walk it).
             const nums = r.nums.length ? r.nums : [r.verses[0].number];
-            const st = d.stages.verses({ verses: r.verses, nums, how: d.prefs.bible_verses_per_slide, version: r.version, book: r.ref.book, chapter: r.ref.chapter, onAir });
+            const st = d.stages.verses({ verses: r.verses, nums, how: d.prefs.bible_verses_per_slide, version: r.version, book: r.ref.book, chapter: r.ref.chapter, onAir, pair: r.pair, look: lookDefaults(d.prefs).bible });
             if (!st) return notInBible(r.ref, r.version);
             return send(() => st, `enviou ${formatReference(r.ref)}`);
         },

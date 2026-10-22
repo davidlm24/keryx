@@ -91,6 +91,7 @@ import { presentationBlock } from "@/lib/presentation";
 import { plan, playableItems, total, itemOnAir, stageItem, addedSay } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
+import { lookDefaults } from "@/lib/console/lookDefaults";
 import { readChapter } from "@/lib/bibleText";
 import { formatReference } from "@/lib/bibleBooks";
 
@@ -798,20 +799,23 @@ export default function Console() {
     // A reference from the palette, without leaving the console, in the
     // version chosen in the Bíblia (readChapter: online when not installed,
     // an installed one when that fails; said so). The controle remoto may ask
-    // for another edition.
+    // for another edition. pair: the Bíblia's 2ª versão of that chapter, when
+    // it can be read (else null: one edition, never the first one twice).
     const referenceVerses = async (ref, edition = null) => {
         const wanted = edition || bibleVersionWanted();
         const { verses, version, fellBack } = await readChapter(wanted, ref.book, ref.chapter);
         if (fellBack) c.say(`${fellBack} sem internet · usando a ${version}.`);
         else if (version !== wanted) c.say(`${wanted} não está instalada · usando a ${version}.`);
-        return { version, verses };
+        const w2 = getPrefs().bible_version_2;
+        const two = w2 && w2 !== version ? await readChapter(w2, ref.book, ref.chapter).catch(() => null) : null;
+        return { version, verses, pair: two?.version === w2 ? { version: w2, verses: two.verses } : null };
     };
     // Its verses in the Prévia (one verse: its chapter from there, as in the Bíblia).
     const prepareReference = async (ref) => {
         try {
-            const { version, verses } = await referenceVerses(ref);
+            const { version, verses, pair } = await referenceVerses(ref);
             const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
-            const st = stageFromVerses({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, onAir });
+            const st = stageFromVerses({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, onAir, pair, look: lookDefaults(prefs).bible });
             if (!st) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
             c.setPrev(st);
         } catch (err) { c.say(err?.message || "Não foi possível abrir a passagem."); }
@@ -819,8 +823,8 @@ export default function Console() {
     // Or as a passage at the end of the Setlist (never the whole chapter).
     const addReference = async (ref) => {
         try {
-            const { version, verses } = await referenceVerses(ref);
-            const passage = passageOf({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter });
+            const { version, verses, pair } = await referenceVerses(ref);
+            const passage = passageOf({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, pair });
             if (!passage) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
             const sid = await ensureService();
             const row = await keryx.entities.BiblePassage.create(passage);

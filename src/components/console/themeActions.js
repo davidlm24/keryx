@@ -26,9 +26,11 @@ export function pickTheme(c, theme) {
 // Aplicar no ar): its text look on the text on air (the item's title choice
 // kept), its background on the Fundo — unless Camadas' padlock holds the
 // Fundo. With nothing on air the theme still sets the Fundo, as in Holyrics.
-export async function applyThemeOnAir(c, theme) {
+// inUse: false for the Tema da Bíblia (its bar under the No ar screen),
+// which dresses the passage on air but is not the songs' theme in use.
+export async function applyThemeOnAir(c, theme, { inUse = true } = {}) {
     if (!theme) return;
-    c.setThemeId(theme.id);
+    if (inUse) c.setThemeId(theme.id);
     const content = c.cur?.content;
     try {
         if (content) {

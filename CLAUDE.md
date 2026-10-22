@@ -892,13 +892,30 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `installableEditions`), then "Instalar uma edição própria…" (the
   `OwnBibleDialog` of Configurações, the BKJ 1611's door) and "Bíblias
   instaladas…". **A bar under the No ar screen, always on screen** (Rodada
-  P, P2-1 = A; `.bbar`): Tema… (the Tema da Bíblia picker), A− / A / A+
-  (`User.bible_text_size`, −2…2 steps from the Bíblia's theme size,
-  `BIBLE_SIZE_STEPS` in `src/lib/console/lookDefaults.js`), Ref.
+  P, P2-1 = A; `.bbar`): Tema… (the Tema da Bíblia picker), Ref.
   (`bible_show_reference`), versículos por slide 1/2/3/Auto, the version
   and "+ 2ª versão" with Lado a lado | Empilhadas — church preferences
-  stamped at send (`withLookDefaults`), so they change the next send and
-  the Prévia, never what is on air. **The version list** (P3 = A): each
+  stamped at send (`withLookDefaults`). No size there (owner 2026-10-22:
+  the screens' size is the Bíblia theme's; `bible_text_size` is gone).
+  **The bar's changes reach what is on air at once** (owner 2026-10-22, as
+  in Holyrics: the Bíblia has no Prévia, the screen above the bar is No
+  ar), when a passage is on air and the screens are not locked: Tema
+  through `applyThemeOnAir(c, theme, { inUse: false })` (text look + Fundo,
+  padlock respected, never the songs' theme in use); Ref. and Lado a lado |
+  Empilhadas on its style (`airStyle`); 1/2/3/Auto, the version and the 2ª
+  versão read its chapter again and rebuild it (`stageRebuiltOnAir` in
+  stage.js; `airPassage`, `slideWithVerse`, `verseNear` in
+  bibleVerses.js, tested), re-stamped by `c.stamp`, in ONE
+  `content.update` (which takes `ref` now) that keeps the verse on air on
+  screen. A whole chapter, or a range the Bíblia sent (its ref keeps
+  `nums`), is rebuilt; a passage of the Setlist keeps its slides. Locked,
+  it says so, and the next send carries the change: `chapterOnAir` also
+  compares `ref.how`, `style.ref_line` and `style.pair` (its `look`,
+  `lookDefaults(…).bible`), so it sends again instead of a `content.goTo`.
+  **1/2/3/Auto group the chapter too** (`chapterOf(…, how)`): the verse
+  chosen starts its slide, the verses before it grouped on their own, and
+  that slide is the one shown; the Selecionado list shows the slides that
+  go out. **The version list** (P3 = A): each
   option the sigla and the full name in `<optgroup>`s — Instaladas, Ler
   pela internet, Da igreja (`versionGroups` in bibleEditions.js, tested;
   later one group per language) — while the closed box shows only the
@@ -914,8 +931,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `ref.version2` makes `chapterOnAir` send again rather than move);
   `style.pair` is the live state's choice, and ScreenRenderer draws two
   blocks (`.ks-pair`), each with its sigla, the reference line without
-  the version. Only the Bíblia environment sends a pair today (the
-  palette and the controle remoto send one edition). **"O mesmo das
+  the version. The Bíblia, the palette and the controle remoto send it
+  (`referenceVerses` in Console.jsx reads the 2ª versão too). **"O mesmo das
   músicas"** is the theme in use (`themeForKind(…, c.themeId)`), as stamp
   sends it (note 11). **The reading text's size** (P5 = A) is A− / A / A+
   in the text panel's header and Ctrl + the wheel over the text, five

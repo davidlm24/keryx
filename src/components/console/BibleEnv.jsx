@@ -13,18 +13,19 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { bibleBooks, BIBLE_VERSIONS, parseReference } from "@/lib/bibleBooks";
 import { editionCredit, editionOption, versionGroups, installableEditions } from "@/lib/bibleEditions";
 import OwnBibleDialog from "./settings/OwnBibleDialog";
-import { BIBLE_SIZE_MIN, BIBLE_SIZE_MAX, bibleSizeStep } from "@/lib/console/lookDefaults";
+import { lookDefaults } from "@/lib/console/lookDefaults";
 import { READ_SIZES, READ_DEFAULT, stepRead, readScale, readLabel, readStep, wheelStep } from "@/lib/console/bibleRead";
 import { useBibleEditions } from "./useBibleEditions";
 import { readChapter, preferredVersion, installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
-import { stageFromVerses } from "@/lib/console/stage";
+import { stageFromVerses, stageRebuiltOnAir } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
-import { rangeLabel, groupVerses, passageOf, chapterOnAir } from "@/lib/console/bibleVerses";
+import { rangeLabel, groupVerses, passageOf, chapterOnAir, airPassage, airStyle } from "@/lib/console/bibleVerses";
 import { verseNumbers } from "@/lib/verseMarks";
 import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 import { useLibraryPicker } from "./library/libraryContext";
 import { useThemes } from "./useConsoleData";
 import { themeForKind, themeName } from "@/lib/console/themes";
+import { applyThemeOnAir } from "./themeActions";
 import useKeepInView, { useFocusFollows } from "./useKeepInView";
 import { ScreenActions } from "./CenterPanel";
 import { captionParts, airInPlayer } from "@/lib/console/caption";
@@ -63,9 +64,9 @@ export const bibleVersionWanted = () => getPrefs().bible_version;
 //   - A click or ↑/↓ moves the selection (in Buscar, through the results);
 //     nothing changes on the screens.
 //   - Enter or a double click projects the selection. One verse goes out as
-//     the whole chapter (one verse per slide) starting there, so ←/→ keep
-//     walking the chapter; a range picked on purpose (Shift/Ctrl+click) goes
-//     out as that passage, grouped 1/2/3/Auto per slide.
+//     the whole chapter starting there, so ←/→ keep walking the chapter; a
+//     range picked on purpose (Shift/Ctrl+click) goes out as that passage;
+//     both grouped 1/2/3/Auto per slide.
 // Recentes, Favoritos and Anotações: a button with a dropdown list, side by
 // side on the left (the band stays one line high). The count is inside the
 // list, at its top, never on the button (owner 2026-10-16).
@@ -108,7 +109,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // Versículos por slide: the church's choice (Configurações › Bíblia e
     // músicas), changed here too.
     const how = usePrefs().bible_verses_per_slide;
-    const setHow = (v) => { updateUser({ bible_verses_per_slide: v }).catch(() => c.say("Não foi possível salvar.")); };
+    const setHow = (v) => { updateUser({ bible_verses_per_slide: v }).catch(() => c.say("Não foi possível salvar.")); rebuildAir({ bible_verses_per_slide: v }); };
     const [verses, setVerses] = useState([]);
     const [error, setError] = useState("");
     const [anchor, setAnchor] = useState(null);
@@ -139,6 +140,10 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         const id = r?.theme ? r.theme.id : r?.none ? "" : null;
         if (id === null) return;
         updateUser({ bible_theme_id: id }).then(() => c.say(id ? `Bíblia: tema ${themeName(r.theme)}.` : "Bíblia: o mesmo tema das músicas.")).catch(() => c.say("Não foi possível salvar o tema da Bíblia."));
+        // On the passage on air at once: its look and its Fundo (padlock
+        // respected), never the songs' theme in use.
+        const theme = r?.theme || themeForKind(themes, "bible", "", c.themeId);
+        if (theme && canTouchAir()) applyThemeOnAir(c, theme, { inUse: false });
     };
     // Bumped after an install, so the installed list and the version are read again.
     const [installRev, setInstallRev] = useState(0);
@@ -214,9 +219,13 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const pair = second && pairRead?.key === pairKey && !pairRead.failed ? pairRead : null;
     const pairFailed = Boolean(second && pairRead?.key === pairKey && pairRead.failed);
 
-    // What is on air, when it is this chapter (whatever second edition it has).
+    // What is on air, when it is this chapter (whatever second edition and
+    // grouping it has).
     const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
-    const airIsChapter = chapterOnAir(onAir, { book, chapter, version: ver, version2: onAir?.ref?.version2 });
+    const airIsChapter = chapterOnAir(onAir, { book, chapter, version: ver, version2: onAir?.ref?.version2, how: onAir?.ref?.how });
+    // The church's display now (Ref., Lado a lado | Empilhadas): a chapter on
+    // air shown otherwise is sent again, never only moved (bibleVerses.js).
+    const look = useMemo(() => lookDefaults(prefs).bible, [prefs]);
     const airHere = Boolean(onAir && (airIsChapter || String(onAir.ref?.reference || onAir.title).startsWith(`${book} ${chapter}:`)));
     const airSlideText = onAir ? String(onAir.slides[onAir.index]?.text || "") : "";
     const airVerseNums = useMemo(() => verseNumbers(airSlideText), [airSlideText]);
@@ -233,13 +242,15 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     useFocusFollows(readingRef, ".kx-verse", ".kx-verse.is-prev", [selKey, mode]);
     useFocusFollows(cellsRef, "button", "button.is-prev", [selKey]);
 
-    const verseStage = useCallback((n) => stageFromVerses({ verses, nums: [n], version: ver, book, chapter, onAir, pair }), [verses, ver, book, chapter, onAir, pair]);
-    const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir, pair }), [verses, how, ver, book, chapter, onAir, pair]);
+    const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir, pair, look }), [verses, how, ver, book, chapter, onAir, pair, look]);
+    const verseStage = useCallback((n) => stageFor([n]), [stageFor]);
     const picked = verses.filter((v) => sel.includes(v.number));
-    const slides = useMemo(() => groupVerses(picked, sel.length > 1 ? how : "1", pair), [picked, how, sel.length, pair]);
     // A chapter that cannot load has nothing selected (C-48), whatever was asked.
     const reference = sel.length && !error ? `${book} ${chapter}:${rangeLabel(sel)}` : "";
     const stage = useMemo(() => stageFor(sel), [stageFor, sel]);
+    // Selecionado: the slides that go out — a range's, or one verse's slide
+    // of its chapter, grouped as the bar says (1/2/3/Auto).
+    const slides = useMemo(() => (sel.length > 1 ? groupVerses(picked, how, pair) : stage?.slides?.[stage.index] ? [stage.slides[stage.index]] : []), [picked, how, sel.length, pair, stage]);
     // The console sends this stage on Enter / Ctrl+Enter in the Bible environment.
     useEffect(() => {
         if (!stageRef) return undefined;
@@ -259,10 +270,10 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             const got = await readChapter(version, r.book, r.chapter);
             // The 2ª versão of that chapter too, when it can be read.
             const two = want2 && want2 !== got.version ? await readChapter(want2, r.book, r.chapter).catch(() => null) : null;
-            const st = stageFromVerses({ verses: got.verses, nums: [r.verse], version: got.version, book: r.book, chapter: r.chapter, onAir, pair: two?.version === want2 ? { version: want2, verses: two.verses } : null });
+            const st = stageFromVerses({ verses: got.verses, nums: [r.verse], how, version: got.version, book: r.book, chapter: r.chapter, onAir, look, pair: two?.version === want2 ? { version: want2, verses: two.verses } : null });
             if (st) onSend(st);
         } catch (err) { c.say(err?.message || "Não foi possível abrir o capítulo."); }
-    }, [pickResult, version, want2, onAir, onSend, c]);
+    }, [pickResult, version, want2, how, onAir, look, onSend, c]);
 
     // ↑/↓ from the console: move the selection one verse (in Buscar, one
     // result), keep it in view.
@@ -350,11 +361,12 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     };
     // Comparar › Enviar: the selection in that version (one verse: its
     // chapter from there, as in Ler).
+    // The 2ª versão rides too (none when it is that version).
     const sendVersion = (v, vs) => {
-        const st = stageFromVerses({ verses: vs, nums: sel, how, version: v, book, chapter, onAir });
+        const st = stageFromVerses({ verses: vs, nums: sel, how, version: v, book, chapter, onAir, pair, look });
         if (st) onSend(st);
     };
-    const switchVersion = (v) => { setWanted(v); c.say(`Bíblia na ${v}.`); };
+    const switchVersion = (v) => { chooseVersion(v); c.say(`Bíblia na ${v}.`); };
 
     const marked = notesApi.versesWithNotes(book, chapter);
     const oneVerse = sel.length === 1 ? verses.find((v) => v.number === sel[0]) : null;
@@ -423,11 +435,9 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         { label: "Bíblias instaladas…", icon: "sliders", title: "Configurações › Bíblia e músicas", onClick: () => onSettings?.("biblia") },
     ];
     // The bar under the No ar screen (P2-1 = A): what the screens show of a
-    // passage, saved for the church (User), stamped at send (look.js).
+    // passage, saved for the church (User), stamped at send (lookDefaults.js).
     const savePref = (patch, said) => { updateUser(patch).then(() => { if (said) c.say(said); }).catch(() => c.say("Não foi possível salvar.")); };
-    const sizeStep = bibleSizeStep(prefs.bible_text_size);
-    const setSize = (n) => savePref({ bible_text_size: Math.max(BIBLE_SIZE_MIN, Math.min(BIBLE_SIZE_MAX, n)) });
-    const sizeNow = sizeStep ? ` · agora ${sizeStep > 0 ? "+" : "−"}${Math.abs(sizeStep)}` : "";
+    const chooseVersion = (v) => { setWanted(v); rebuildAir({ bible_version: v }); };
     const showRef = prefs.bible_show_reference !== false;
     const themeLabel = bibleTheme ? themeName(bibleTheme) : "estilo de fábrica";
     const pairTip = !want2 ? "Uma segunda versão nas telas, junto da primeira"
@@ -449,6 +459,48 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         el.addEventListener("wheel", onWheel, { passive: false });
         wheelOff.current = () => el.removeEventListener("wheel", onWheel);
     }, []);
+
+    // The bar's changes reach what is on air at once (owner 2026-10-22, as
+    // in Holyrics: the Bíblia has no Prévia, the screen above the bar is No
+    // ar), when it is a passage and the screens are not locked: the theme
+    // through applyThemeOnAir (chooseTheme), Ref. and Lado a lado |
+    // Empilhadas on its style, and the grouping, the version and the 2ª
+    // versão rebuild it (stageRebuiltOnAir: a whole chapter, or a range the
+    // Bíblia sent), the verse on air still on screen, in ONE change. A
+    // passage of the Setlist keeps its slides. Locked, the next send carries
+    // them (chapterOnAir sends the chapter again).
+    const live = useRef(null);
+    live.current = { c, prefs };
+    const bibleOnAir = () => { const on = live.current.c.cur?.content; return on?.kind === "bible" ? on : null; };
+    const canTouchAir = () => {
+        if (!bibleOnAir()) return false;
+        if (live.current.c.locked) { live.current.c.say("Telas travadas · a passagem no ar muda quando for enviada de novo."); return false; }
+        return true;
+    };
+    const restyleAir = (patch) => {
+        if (!canTouchAir()) return;
+        const on = bibleOnAir();
+        const now = lookDefaults({ ...live.current.prefs, ...patch }).bible;
+        live.current.c.callOp("content.update", { style: airStyle(on.style, now, on.slides.some((x) => x.pair)) }).catch(() => { /* callOp said why */ });
+    };
+    const rebuildAir = async (patch) => {
+        if (!canTouchAir()) return;
+        const on = bibleOnAir();
+        const t = airPassage(on);
+        if (!t) return;
+        const next = { ...live.current.prefs, ...patch };
+        try {
+            const got = await readChapter(next.bible_version, t.book, t.chapter);
+            const w2 = next.bible_version_2;
+            const two = w2 && w2 !== got.version ? await readChapter(w2, t.book, t.chapter).catch(() => null) : null;
+            const st = stageRebuiltOnAir(on, { verses: got.verses, version: got.version, how: next.bible_verses_per_slide, pair: two?.version === w2 ? { version: w2, verses: two.verses } : null });
+            // Something else went on air meanwhile, or the screens locked: leave it.
+            const cc = live.current.c;
+            if (!st || bibleOnAir()?.startedAt !== on.startedAt || cc.locked) return;
+            const args = cc.stamp("content.show", { ...st.args, index: st.index });
+            await cc.callOp("content.update", { title: args.title, slides: args.slides, style: args.style, ref: args.ref, index: st.index });
+        } catch (err) { if (err?.message) live.current.c.say(err.message); }
+    };
 
     // What the No ar pill's dot says (the Programa's tones, ProgramaPill).
     const airCap = captionParts(c.cur).title;
@@ -596,22 +648,17 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 <div className="bbar" role="group" aria-label="Como a Bíblia aparece nas telas">
                     <div className="bbar-row">
                         <Btn small onClick={chooseTheme} title={`Tema da Bíblia · ${themeLabel}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`}>Tema…</Btn>
-                        <div className="kx-seg is-small" role="group" aria-label={`Tamanho do texto nas telas${sizeNow}`}>
-                            <button type="button" className="kx-t" disabled={sizeStep <= BIBLE_SIZE_MIN} onClick={() => setSize(sizeStep - 1)} title={`Texto menor nas telas${sizeNow}`}>A−</button>
-                            <button type="button" className={`kx-t ${sizeStep === 0 ? "is-on" : ""}`} aria-pressed={sizeStep === 0} onClick={() => setSize(0)} title={`O tamanho do tema da Bíblia${sizeNow}`}>A</button>
-                            <button type="button" className="kx-t" disabled={sizeStep >= BIBLE_SIZE_MAX} onClick={() => setSize(sizeStep + 1)} title={`Texto maior nas telas${sizeNow}`}>A+</button>
-                        </div>
-                        <Btn small on={showRef} onClick={() => savePref({ bible_show_reference: !showRef }, showRef ? "Telas sem a referência." : "Telas com a referência.")} title={showRef ? "A referência (João 3:16) aparece nas telas · clique para tirar" : "Sem a referência nas telas · clique para mostrar"}>Ref.</Btn>
+                        <Btn small on={showRef} onClick={() => { savePref({ bible_show_reference: !showRef }, showRef ? "Telas sem a referência." : "Telas com a referência."); restyleAir({ bible_show_reference: !showRef }); }} title={showRef ? "A referência (João 3:16) aparece nas telas · clique para tirar" : "Sem a referência nas telas · clique para mostrar"}>Ref.</Btn>
                         <div className="kx-seg is-small" role="group" aria-label="Versículos por slide">
                             {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} aria-pressed={how === v} onClick={() => setHow(v)} title={v === "auto" ? "Versículos por slide: pelo tamanho do texto" : `${v} versículo${v === "1" ? "" : "s"} por slide`}>{l}</button>)}
                         </div>
                     </div>
                     <div className="bbar-row">
-                        <VersionSelect value={wanted} groups={groups} onChange={setWanted} shown={wanted} dot={Boolean(badge)}
+                        <VersionSelect value={wanted} groups={groups} onChange={chooseVersion} shown={wanted} dot={Boolean(badge)}
                             label={badge ? `Versão: ${badge.text}` : "Versão"} tip={[badge?.text, credit].filter(Boolean).join(" · ") || "Versão da Bíblia"} />
-                        <VersionSelect value={want2} groups={groups2} none="Sem 2ª versão" onChange={(v) => savePref({ bible_version_2: v }, v ? `2ª versão nas telas: ${v}.` : "Uma versão só nas telas.")}
+                        <VersionSelect value={want2} groups={groups2} none="Sem 2ª versão" onChange={(v) => { savePref({ bible_version_2: v }, v ? `2ª versão nas telas: ${v}.` : "Uma versão só nas telas."); rebuildAir({ bible_version_2: v }); }}
                             shown={want2 ? `2ª: ${want2}` : "+ 2ª versão"} dot={pairFailed || Boolean(want2 && want2 === (ver || wanted))} label={`Segunda versão nas telas · ${want2 || "nenhuma"}`} tip={pairTip} />
-                        {want2 && <Seg small label="Onde fica a 2ª versão" value={prefs.bible_pair} onChange={(v) => savePref({ bible_pair: v })}
+                        {want2 && <Seg small label="Onde fica a 2ª versão" value={prefs.bible_pair} onChange={(v) => { savePref({ bible_pair: v }); restyleAir({ bible_pair: v }); }}
                             options={[["side", "Lado a lado", { title: "As duas versões lado a lado" }], ["stack", "Empilhadas", { title: "A 2ª versão embaixo da primeira, um pouco menor" }]]} />}
                     </div>
                 </div>

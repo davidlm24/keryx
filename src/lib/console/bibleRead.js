@@ -2,7 +2,7 @@
 // P5 = A): five steps, P M G GG GGG, M the console's own. A− / A / A+ in
 // the text panel's header and Ctrl + the mouse wheel over the text; kept on
 // this computer (layout.bibleRead, like bibleGrid). It never changes the
-// screens: that is the bar under the No ar screen (User.bible_text_size).
+// screens: their size is the Bíblia theme's.
 // Pure, tested in bibleRead.test.mjs.
 export const READ_SIZES = [["P", 0.85], ["M", 1], ["G", 1.15], ["GG", 1.3], ["GGG", 1.5]];
 export const READ_DEFAULT = 1;
