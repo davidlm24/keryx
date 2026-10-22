@@ -92,7 +92,17 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
         let timer = null;
         const find = () => {
             const el = [...document.querySelectorAll(".win-dialog .cfg [data-cfg-k]")].find((n) => n.getAttribute("data-cfg-k") === pending && !n.closest(".cfg-group:not(.is-open)"));
-            if (el) { el.scrollIntoView({ block: "center" }); setFlash(pending); setPending(null); return; }
+            if (el) {
+                // A group whose title the panel's already says keeps it only
+                // for screen readers (Rodada O, O10): the jump lands on the
+                // group's first row instead, which is what can be seen.
+                const hidden = el.getBoundingClientRect().width <= 1;
+                const target = hidden ? el.closest(".kx-group")?.querySelector(".kx-group-in [data-cfg-k]") : el;
+                (target || el.closest(".kx-group") || el).scrollIntoView({ block: "center" });
+                setFlash(target ? target.getAttribute("data-cfg-k") : null);
+                setPending(null);
+                return;
+            }
             tries += 1;
             if (tries < 60) timer = setTimeout(find, 50);
             else setPending(null);

@@ -182,7 +182,7 @@ export default function SyncView({ title = "", slides = [], media = "", duration
                 </>} />
             <div className="win-body sync">
                 <div className="col center">
-                    <Panel className="sync-media" title={sourceWord} actions={<>
+                    <Panel className="is-head-wrap" title={sourceWord} actions={<>
                         {/* How fast the media plays: the media's (Rodada O, O7). */}
                         <Seg small label="Velocidade" value={String(speed)} onChange={(v) => toSpeed(Number(v))} options={SPEEDS.map((v) => [String(v), `${String(v).replace(".", ",")}×`, { title: `Tocar a ${String(v).replace(".", ",")}× · [ e ]` }])} />
                         {rec === null

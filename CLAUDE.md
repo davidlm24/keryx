@@ -943,7 +943,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   2026-10-14, `layout.onairSpan` "columns", the default; "window" puts it
   under every column, edge to edge — Editar disposição › No ar, dock.js
   `withBand`/`moveBand`/`bandOf`; a structure with no Setlist column
-  falls back to the window band); the strip is at least `ONAIR_H` (104 px)
+  falls back to the window band); the strip is at least `ONAIR_H` (108 px)
   and as tall as its slides' lines (`onAirHeight`; the cards at 13 px,
   each line one line);
   medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas, Temas and the

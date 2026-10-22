@@ -1623,6 +1623,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    inside the canvas, as .cfg-prev does for the settings previews. */
 .console .le-screen { position: relative; width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); isolation: isolate; background: var(--bg-0); contain: layout paint; container-type: size; }
 .console .le-use { width: auto; flex: none; }
+/* A window page's header that took a content control from the bar (Rodada
+   O, O7: the Editor da tela's Mostrar com, Sincronizar's Velocidade):
+   narrow, it breaks into a second line before its title or a control is
+   cut. Only in THE window; the console's headers stay one line. */
+.console .win-body .kx-panel.is-head-wrap > .kx-panel-h { height: auto; min-height: var(--panel-head); flex-wrap: wrap; row-gap: var(--space-1); padding-block: 6px; }
+.console .win-body .kx-panel.is-head-wrap > .kx-panel-h > .kx-section { flex: 1 0 auto; max-width: 100%; }
 /* The Editor de telas' Telas menu: a fixed column (Rodada O, O7), Voltar
    in its header when there is one (O8). */
 .console .win-body > .col.le-menu-col { flex: 0 0 190px; min-width: 0; }
@@ -1818,10 +1824,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The media big with the slide that plays over it, the time line with one
    marker per slide, the slides with their times on the right. Gold = the
    slide playing now (as on air), green = the next one Espaço marks. */
-/* The media's header holds Velocidade too (Rodada O, O7): narrow, it breaks
-   into a second line before its title or a button is cut. */
-.console .sync .sync-media > .kx-panel-h { height: auto; min-height: var(--panel-head); flex-wrap: wrap; row-gap: var(--space-1); padding-block: 6px; }
-.console .sync .sync-media > .kx-panel-h > .kx-section { flex: 1 0 auto; max-width: 100%; }
 .console .sync .sync-stage { position: relative; flex: 1 1 0; min-height: 160px; width: 100%; background: var(--screen-bg); border-radius: var(--radius-control); overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .console .sync .sync-stage > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .console .sync .sync-lyric { position: relative; z-index: var(--z-screen); max-width: 86%; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: var(--screen-fg); font-size: clamp(14px, 2.4vw, 28px); line-height: 1.25; font-weight: 600; text-shadow: var(--stage-text); }

@@ -552,7 +552,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
             </div>
             {colAjustes.split}
             <div className="col center">
-                <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!isStream && <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel className="is-head-wrap" title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!isStream && <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {isStream || !draft ? (
                         <Empty icon={isStream ? "text" : "monitor"} title={isStream ? "Sem canvas" : "Abrindo a tela…"}>
                             {isStream ? "A legenda da Transmissão segue os ajustes ao lado." : null}

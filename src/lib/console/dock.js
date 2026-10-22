@@ -33,8 +33,9 @@ const PX_MAX = 4000;
 // A new group's size along its split when nothing better is known.
 export const NEW_PX = 320;
 // The No ar strip's height in the default dock: its header and one row of
-// cards (2026-10-14: one row, ~104 px, across the whole window).
-export const ONAIR_H = 104;
+// cards (2026-10-14: one row across the whole window; 108 px since the
+// header is 36, Rodada O5).
+export const ONAIR_H = 108;
 // A panel's header in Confortável (the token panel-head; Compacta passes its
 // own as `head`, layout.js panelHead).
 export const PANEL_HEAD = 36;
@@ -79,7 +80,7 @@ export const MODULES = {
     // As a module of its own: the panel's header (36) over the slot (64); in
     // a column it comes in at its own height (`size.col`), not half of its
     // neighbour's.
-    player: { name: "Player", minW: 280, minH: 96, home: "programa", size: { col: 100 }, noFold: true },
+    player: { name: "Player", minW: 280, minH: 100, home: "programa", size: { col: 100 }, noFold: true },
     // The Bíblia (BibleEnv.jsx): the three pickers (the version and the
     // search live in their headers since 2026-10-14; an old save's "Versão
     // e busca" module is dropped by clean); the text; what is on air with
