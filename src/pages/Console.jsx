@@ -88,7 +88,7 @@ import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, total, itemOnAir } from "@/lib/console/setlist";
+import { plan, playableItems, total, itemOnAir, stageItem, addedSay } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { readChapter } from "@/lib/bibleText";
@@ -627,32 +627,50 @@ export default function Console() {
         } catch (err) { c.say(err?.message || "Não foi possível salvar as notas."); throw err; }
     }, [serviceId, ensureService, c]);
 
-    // A library item dropped on the Setlist: a ServiceItem at that position.
-    const addStageToSetlist = useCallback(async (stage, index) => {
-        let type = null;
-        let contentId = "";
-        if (stage.kind === "lyrics" && stage.id?.startsWith("song:")) { type = "SONG"; contentId = stage.id.slice(5); }
-        else if (stage.id?.startsWith("yt:")) type = "YT"; // resolved to a Media row below
-        else if (stage.id?.startsWith("material:")) { type = "MATERIAL"; contentId = stage.id.slice(9); }
-        else if (stage.id?.startsWith("media:")) {
-            contentId = stage.id.slice(6);
-            const k = stage.args?.kind;
-            type = k === "video" || k === "youtube" ? "VIDEO" : k === "audio" ? "AUDIO" : k === "pdf" || k === "presentation" ? "PDF" : k === "powerpoint" ? "POWERPOINT" : "IMAGE";
-        }
-        if (!type) { c.say("Esse item ainda não entra na setlist; arraste para a Prévia ou o Programa."); return; }
+    // A library row dropped on the Prévia prepares it, on the Programa sends
+    // it. Several marked rows (Rodada O2, the mockup's words): only the first,
+    // and only to the Prévia — a group is never sent blind.
+    const dropStage = (s, where, n = 1) => {
+        c.setPrev(s);
+        if (n > 1) { c.say("Só o primeiro vai para a prévia."); return; }
+        if (where === "air") sendStage(s);
+    };
+    // Library items dropped on the Setlist: ServiceItems at that position, in
+    // the order they came (several marked rows dragged together, Rodada O2),
+    // the rows below renumbered once and one toast.
+    const addStageToSetlist = useCallback(async (given, index) => {
+        const stages = (Array.isArray(given) ? given : [given]).filter(Boolean);
+        const rows = stages.map((stage) => ({ stage, item: stageItem(stage) })).filter((r) => r.item);
+        const left = stages.length - rows.length;
+        if (!rows.length) { c.say(addedSay([], left)); return; }
         const at = Math.max(0, Math.min(items.length, index ?? items.length));
+        const added = [];
         try {
             const sid = await ensureService();
-            if (type === "YT") {
-                const row = await mediaFromYouTube(stage.args?.url || stage.id.slice(3));
-                type = "VIDEO";
-                contentId = row.id;
-            }
             // Renumber from the end first, so two rows never share an order.
-            for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || defaultDuration(type, getPrefs()) });
-            c.say(`${stage.title} na setlist.`);
-        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
+            for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + rows.length });
+            for (const { stage, item } of rows) {
+                let { type, contentId } = item;
+                if (type === "YT") {
+                    const row = await mediaFromYouTube(stage.args?.url || stage.id.slice(3));
+                    type = "VIDEO";
+                    contentId = row.id;
+                }
+                await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at + added.length, duration: stage.args?.duration || defaultDuration(type, getPrefs()) });
+                added.push(stage.title);
+            }
+            c.say(addedSay(added, left));
+        } catch (err) {
+            // Stopped part way (a YouTube link that would not save): the rows
+            // below close the gap the missing ones left, and the toast says
+            // how many went in.
+            const gap = rows.length - added.length;
+            if (added.length && gap) {
+                try { for (let i = at; i < items.length; i++) await keryx.entities.ServiceItem.update(items[i].id, { order: i + added.length }); } catch { /* the order keeps a gap; it still sorts */ }
+            }
+            const why = err?.message || "Não foi possível adicionar.";
+            c.say(added.length ? `${addedSay(added, left + gap)} ${why}` : why);
+        }
     }, [c, items, ensureService]);
 
     // Escola bíblica › Setlist: a material at the end of the setlist.
@@ -1104,7 +1122,9 @@ export default function Console() {
         ] });
     };
     const setlistPanel = (
-        <Panel title="Setlist" className={`setlist-panel ${coverCls}`} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+        // The count is only "n itens · tempo" (Rodada O3): the culto's name is
+        // the header's tooltip (with no items too), and Planejar o culto's.
+        <Panel title="Setlist" className={`setlist-panel ${coverCls}`} tip={service?.title} count={!service ? "nenhum culto" : setPlan.count ? `${setPlan.count} ${setPlan.count === 1 ? "item" : "itens"} · ${total(setPlan.seconds)}` : null}
             actions={<>{coverTag}<AutoplaySwitch on={Boolean(service?.autoplay)} onChange={setAutoplay} /><SelectManyBtn on={setlistPicking} onToggle={setSetlistPicking} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
@@ -1227,7 +1247,7 @@ export default function Console() {
         <Panel bare className="prog-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerDocked ? playerSlot : null}
                 items={playable} multiview={multiview} still={winOpen} pill={programaPill}
-                onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
+                onDropStage={dropStage}
                 onProgMenu={progMenu} />
         </Panel>
     );
@@ -1235,7 +1255,7 @@ export default function Console() {
     // is on screen). Enter, a double click or its menu send it.
     const previaPanel = (
         <PreviaPanel c={c} logoUrl={logoUrl} notesInTab={panelOnScreen && tabLists.panel.includes("notas")}
-            onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
+            onSend={() => sendStage()} onDropStage={dropStage}
             onPrevMenu={(e) => openMenu(e, { title: "Prévia", items: [
                 { label: "Limpar a prévia", icon: "x", disabled: !c.prev, onSelect: () => c.setPrev(null) },
                 menuItem("enviarAoAr", { air: true, disabled: !c.prev || c.locked, onSelect: () => sendStage() }, letters),

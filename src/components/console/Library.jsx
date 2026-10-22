@@ -31,10 +31,18 @@ import { setDragGhost, stageGhost } from "./dragGhost";
 // A library row can be dragged onto the Prévia (prepares), the Programa
 // (sends) or the Setlist (adds the item there).
 // The pointer carries a card of the row's size (dragGhost.js: its icon, name
-// and length), never a picture of the row with its buttons.
-const dragProps = (stage, time = "") => ({
+// and length), never a picture of the row with its buttons. `many()` (Rodada
+// O2): the stages of every marked row when this one is marked with others,
+// in the list's order — the card counts them and the Setlist takes them all.
+const dragProps = (stage, time = "", many = null) => ({
     draggable: true,
-    onDragStart: (e) => { setDragStage(stage); e.dataTransfer.setData(STAGE_MIME, stage.id || "1"); e.dataTransfer.effectAllowed = "copyMove"; setDragGhost(e, { ...stageGhost(stage), time }); },
+    onDragStart: (e) => {
+        const list = many?.() || null;
+        setDragStage(list || stage);
+        e.dataTransfer.setData(STAGE_MIME, stage.id || "1");
+        e.dataTransfer.effectAllowed = "copyMove";
+        setDragGhost(e, { ...stageGhost(stage), time, count: list ? list.length : 0 });
+    },
     onDragEnd: () => clearDragStage(),
 });
 
@@ -206,6 +214,9 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const listKeys = (e) => ms.keyDown(e, { onDelete: () => removeRows(picked) });
     const exportRows = (rows) => exportItems(tab === "letras" ? "songs" : mediaKinds ? "media" : "notices", rows);
     const openItem = menuItem("abrirPacote", { onClick: () => openPackage() });
+    // Dragging a marked row with others marked takes them all (Rodada O2).
+    const stageOfRow = tab === "letras" ? (s) => stageFromSong(s, {}, data.themes) : mediaKinds ? (m) => stageFromMedia(m) : (p) => stageFromPiece(p);
+    const dragOf = (id, stage, time) => dragProps(stage, time, () => (picked.length > 1 && ms.has(id) ? picked.map(stageOfRow) : null));
     const addItems = tab === "letras"
         ? [
             menuItem("novaMusica", { onClick: () => onEditSong?.("new") }),
@@ -274,7 +285,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                     menuItem("excluir", { onSelect: () => removeRows([s]) }),
                                     onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) }),
                                 ] }))}
-                                dragProps={dragProps(stageFromSong(s, {}, data.themes), s.duration ? mmss(s.duration) : "")}
+                                dragProps={dragOf(s.id, stageFromSong(s, {}, data.themes), s.duration ? mmss(s.duration) : "")}
                                 actions={<>
                                     <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label={`Favorita: ${s.title}`} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
                                     {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label={`Editar ${s.title}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}
@@ -322,7 +333,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             menuItem("excluir", { onSelect: () => removeRows([m]) }),
                             onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromMedia(m)) }),
                         ] }))}
-                        dragProps={dragProps(stageFromMedia(m), m.duration ? mmss(m.duration) : "")}
+                        dragProps={dragOf(m.id, stageFromMedia(m), m.duration ? mmss(m.duration) : "")}
                         {...rowProps(m)}
                         item
                         actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label={`${m.title}: pôr na prévia para as telas de vídeo`}><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
@@ -367,7 +378,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }} onKeyDown={listKeys}>
                             {!pieces.length && data.loaded?.pieces !== false && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
-                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={`${state(`piece:${p.id}`)} ${marked(p.id)}`} lead={mark} onClick={rowClick(p.id, () => onPrepare(stageFromPiece(p)))} onDoubleClick={rowGo(() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
+                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={`${state(`piece:${p.id}`)} ${marked(p.id)}`} lead={mark} onClick={rowClick(p.id, () => onPrepare(stageFromPiece(p)))} onDoubleClick={rowGo(() => onGo(stageFromPiece(p)))} dragProps={dragOf(p.id, stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
                                     onContextMenu={rowMenu(p.id, (e) => menu(e, { title: p.title || p.text, items: [
                                         menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromPiece(p)) }),
                                         onEditNotice && menuItem("editar", { onSelect: () => onEditNotice(p.id) }),

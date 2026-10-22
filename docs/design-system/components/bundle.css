@@ -112,6 +112,11 @@
 .kx .kx-switch.is-on:not(:disabled):hover { background: var(--fg-2); }
 .kx .kx-switch.is-on:not(:disabled):hover::after { background: var(--bg-0); }
 .kx .kx-switch:disabled { opacity: var(--dim); }
+/* kx-switch-sm (Rodada O3, owner 2026-10-21): 24 × 14, a 10 px knob, beside a header's 24 px controls
+   (the Setlist's Autoplay) — the button that holds it keeps the 24 px a pointer needs. */
+.kx .kx-switch.kx-switch-sm { width: 24px; height: 14px; }
+.kx .kx-switch.kx-switch-sm::after { top: 2px; left: 2px; width: 10px; height: 10px; }
+.kx .kx-switch.kx-switch-sm.is-on::after { left: 12px; }
 
 /* ---- Check (kx-check in a kx-checks row; the app's Ajustes › Conteúdo): a 24 px chip with role=checkbox ----
    Off: bg-2, fg-3, no mark. On: bg-3, fg-1, the check glyph and a line-strong ring. Several in a wrapping row. */
@@ -548,6 +553,8 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
   .kx .kx-switch::after { top: 2px; left: 2px; background: ButtonText; }
   .kx .kx-switch.is-on { border-color: Highlight; background: Highlight; }
   .kx .kx-switch.is-on::after { left: 14px; background: HighlightText; }
+  .kx .kx-switch.kx-switch-sm::after { top: 1px; left: 1px; }
+  .kx .kx-switch.kx-switch-sm.is-on::after { left: 11px; }
   .kx .kx-switch:disabled { border-color: GrayText; }
   .kx .kx-switch:disabled::after { background: GrayText; }
   .kx .kx-switch.is-on:disabled { background: GrayText; }

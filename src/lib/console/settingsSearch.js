@@ -85,7 +85,7 @@ export const SETTINGS_INDEX = [
     e("culto", "Modelos de culto", "renomear, excluir e o visual (papel de parede e tema) que cada modelo traz ao culto", ["modelo", "template", "setlist", "visual", "visual do culto", "tema do culto", "fundo do culto", "papel de parede"]),
     e("culto", "Equipe de louvor", "os músicos e cantores para escalar no culto", ["equipe", "músicos", "louvor", "vocal", "banda", "membro"]),
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
-    e("culto", "Pausa entre itens", "com Avançar sozinho ligado, quanto a Setlist espera antes de mandar o próximo", ["avançar sozinho", "setlist automática", "pausa", "próximo", "automático", "segundos", "contagem"]),
+    e("culto", "Pausa entre itens", "com Avançar sozinho ligado, quanto a Setlist espera antes de mandar o próximo", ["avançar sozinho", "autoplay", "setlist automática", "pausa", "próximo", "automático", "segundos", "contagem"]),
 
     e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas, No ar e Setlist · deste computador", ["biblioteca", "slides", "camadas", "temas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "automática, confortável ou compacta · da igreja, viaja no backup", ["automática", "compacta", "confortável", "linhas", "altura", "notebook", "tela pequena"]),

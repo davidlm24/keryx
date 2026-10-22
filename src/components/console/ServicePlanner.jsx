@@ -16,7 +16,7 @@ import useRowStep from "./useRowStep";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { takeOut, takeOutQuestion, takeOutMany } from "./setlistActions";
 import useSortable from "./useSortable";
-import { moveTo } from "@/lib/console/dropOrder";
+import { moveTo, moveManyTo } from "@/lib/console/dropOrder";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readChapter } from "@/lib/bibleText";
 import { bibleVersionWanted } from "./BibleEnv";
@@ -99,12 +99,6 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const renumber = async (list) => {
         for (const [i, it] of list.entries()) if (it.order !== i) await keryx.entities.ServiceItem.update(it.id, { order: i });
     };
-    // A row dropped at a slot of the setlist, lit in gold while it is dragged
-    // (useSortable; dropOrder.js).
-    const sort = useSortable({ keys: items.map((it) => it.id), onDrop: (from, over) => { if (from >= 0) run(renumber(moveTo(items, from, over))); } });
-    // Without dragging (C-16): the row's menu (Subir, Descer) and Alt+↑ /
-    // Alt+↓ on a focused row; Enter or Space opens its details (Row).
-    const step = useRowStep({ ids: items.map((it) => it.id), listRef: sort.listProps.ref, onMove: (from, over) => run(renumber(moveTo(items, from, over))) });
     const menu = useContextMenu();
     const updateItem = (id, patch) => run(keryx.entities.ServiceItem.update(id, patch));
     const duplicate = async (it) => {
@@ -125,6 +119,14 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const allIds = useMemo(() => items.map((it) => it.id), [items]);
     const ms = useMultiSelect({ order, existing: allIds, mode: "air", register: false });
     const picked = pickedOf(ms.sel, items);
+    // A row dropped at a slot of the setlist, lit in gold while it is dragged
+    // (useSortable; dropOrder.js). A marked row grabbed with others marked
+    // takes them all, in the list's order, one renumber (Rodada O2).
+    const markedIdxs = (k) => (picked.length > 1 && !isSection(items[k]) && ms.has(items[k]?.id) ? items.flatMap((it, i) => (ms.has(it.id) && !isSection(it) ? [i] : [])) : null);
+    const sort = useSortable({ keys: items.map((it) => it.id), group: markedIdxs, onDrop: (from, over, _carry, group) => { if (group) run(renumber(moveManyTo(items, group, over))); else if (from >= 0) run(renumber(moveTo(items, from, over))); } });
+    // Without dragging (C-16): the row's menu (Subir, Descer) and Alt+↑ /
+    // Alt+↓ on a focused row; Enter or Space opens its details (Row).
+    const step = useRowStep({ ids: items.map((it) => it.id), listRef: sort.listProps.ref, onMove: (from, over) => run(renumber(moveTo(items, from, over))) });
     const takeOutPicked = async () => {
         const rows = picked;
         if (!rows.length) return;
@@ -389,6 +391,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                 </div>
                             );
                         })}
+                        {sort.slot}
                         {items.length > 0 && <div className="rund-tail" data-sort-tail="" />}
                     </div>
                     <SelBar count={picked.length} onClear={ms.clear}>
