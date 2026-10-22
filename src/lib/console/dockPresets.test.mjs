@@ -58,6 +58,8 @@ test("changed: the dock differs from its preset; the tab in front does not count
     const q = { id: "b", name: "Abas", dock: tabs };
     assert.equal(presetChanged(q, setActive(tabs, [0, 0], "lib")), false);
     assert.equal(presetChanged(null, dock), false, "Padrão: nothing to compare");
+    // Travar fora da edição is the environment's switch, not the arrangement (Rodada P4-1).
+    assert.equal(presetChanged(p, { ...moved, lock: true }), false);
 });
 
 test("each environment has its own arrangements: the same name in both, each counted apart", () => {

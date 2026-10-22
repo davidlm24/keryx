@@ -187,3 +187,21 @@ test("the songs' second line (Rodada G1): the artist off, the key and length on,
     assert.equal(withStore({ libShowArtist: true }, () => loadLayout("x")).libShowArtist, true);
     assert.equal(withStore({ libShowArtist: "yes" }, () => loadLayout("x")).libShowArtist, false);
 });
+
+test("Travar fora da edição is the culto's, across the tiers (Rodada P4-1)", () => {
+    const big = { tree: { tabs: ["programa"], active: "programa" }, hidden: [], lock: true };
+    const small = { tree: { tabs: ["previa"], active: "previa" }, hidden: [] };
+    const made = { tree: { tabs: ["setlist"], active: "setlist" }, hidden: [] };
+    // Locked on the big monitor, to a tier never arranged: the console's own, locked.
+    const onNotebook = switchTier({ ...DEFAULT_LAYOUT, dock: big, dockTier: "wide" }, "medium", () => made);
+    assert.deepEqual(onNotebook.dock, { ...made, lock: true });
+    // Without the console's own at hand it stays the console's, as before.
+    assert.equal(switchTier({ ...DEFAULT_LAYOUT, dock: big, dockTier: "wide" }, "medium").dock, null);
+    // A tier arranged before takes the switch as it is now: on, then off.
+    const withSmall = { ...DEFAULT_LAYOUT, dock: big, dockTier: "wide", tierDocks: { medium: { dock: small, dockPreset: null } } };
+    assert.equal(switchTier(withSmall, "medium").dock.lock, true);
+    const unlocked = { ...withSmall, dock: { ...big, lock: undefined }, tierDocks: { medium: { dock: { ...small, lock: true }, dockPreset: null } } };
+    assert.equal(switchTier(unlocked, "medium").dock.lock, undefined);
+    // Unlocked and never arranged: null, the console's own (it follows the width).
+    assert.equal(switchTier({ ...DEFAULT_LAYOUT, dock: small, dockTier: "wide" }, "medium", () => made).dock, null);
+});

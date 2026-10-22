@@ -6,7 +6,7 @@
 import { DEFAULT_ORDER, DEFAULT_STACKS, normalizeArrangement } from "./arrange.js";
 import { DEFAULT_TILES, normalizeTiles } from "./multiview.js";
 import { DEFAULT_TABS, normalizeTabs } from "./panelTabs.js";
-import { normalizeDock, onairSpanOf, canFoldModule, envModules } from "./dock.js";
+import { normalizeDock, onairSpanOf, canFoldModule, envModules, dockLocked, setDockLock, withLockOf } from "./dock.js";
 import { normalizePresets } from "./dockPresets.js";
 // Ver's module switches and the densities (layoutChoices.js: plain data the
 // church's preferences read without loading the dock).
@@ -145,15 +145,20 @@ export function restoreEnv(layout, env) {
 // console's own for that tier, fromArrangement). A save from before the tiers
 // had one dock: it belongs to the wide tier, where it was most likely made.
 export const TIERS = ["wide", "medium", "narrow"];
-export function switchTier(layout, tier) {
+// Travar fora da edição is the environment's (Rodada P4-1): the tier that
+// comes in takes the switch as it is on screen; one never arranged comes in
+// as `fresh(tier)` (the console's own for that tier) with the lock on it.
+export function switchTier(layout, tier, fresh = null) {
     if (!TIERS.includes(tier)) return layout;
     const from = TIERS.includes(layout.dockTier) ? layout.dockTier : layout.dock ? "wide" : tier;
     if (from === tier) return layout.dockTier === tier ? layout : { ...layout, dockTier: tier };
     const back = layout.tierDocks?.[tier] || {};
+    const locked = dockLocked(layout.dock);
+    const incoming = back.dock ? withLockOf(back.dock, layout.dock) : locked && fresh ? setDockLock(fresh(tier), true) : null;
     return {
         ...layout,
         tierDocks: { ...layout.tierDocks, [from]: { dock: layout.dock || null, dockPreset: layout.dockPreset || null } },
-        dock: back.dock || null,
+        dock: incoming,
         dockPreset: back.dockPreset || null,
         dockTier: tier,
     };
