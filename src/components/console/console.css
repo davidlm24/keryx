@@ -121,8 +121,11 @@
 .console .pop { position: absolute; z-index: var(--z-pop); }
 /* The right-click menu (ContextMenu.jsx): over everything, its own clear
    backdrop; fixed, so it is placed in window coordinates (the pointer's)
-   whatever the console's own offset. */
-.console .ctx-scrim { position: fixed; z-index: var(--z-menu); }
+   whatever the console's own offset. `.scrim.ctx-scrim`, not `.ctx-scrim`:
+   the generic `.console .scrim` below has the same weight and comes later, so
+   it took the backdrop down to the popovers' layer, under THE window and the
+   dialogs, and a click away inside a page left the menu open. */
+.console .scrim.ctx-scrim { position: fixed; z-index: var(--z-menu); }
 /* Every popover and menu (Ver, Saídas, the (+) menus, right-click menus,
    the tabs lists) stands out from the panels under it: a deeper shadow than
    the design system's --shadow-popover (owner 2026-10-14, who liked the
