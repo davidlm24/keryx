@@ -253,6 +253,20 @@ test("a Bible chapter sent whole: each slide keeps its own reference", () => {
     assert.equal(applyOp(s, "content.next", {}, T0).content.index, 1, "the arrows walk the chapter");
 });
 
+test("a passage in two editions: each slide carries the second one's text and sigla (Rodada P)", () => {
+    const s = run([["content.show", { kind: "bible", title: "Atos 11", slides: [{ text: "3 Dizendo: Entraste", ref: "Atos 11:3 · ACF", pair: { text: "3 e disseram: Você entrou", version: "NVI", extra: 1 } }, { text: "4 Mas Pedro" }], style: { pair: "stack" } }]]);
+    assert.deepEqual(s.content.slides[0].pair, { text: "3 e disseram: Você entrou", version: "NVI" }, "only the text and the sigla ride");
+    assert.equal(s.content.slides[1].pair, undefined, "a slide without one shows one edition");
+    assert.equal(s.content.style.pair, "stack");
+    assert.equal(run([["content.show", { kind: "bible", slides: [{ text: "x", pair: { text: "y", version: "NVI" } }] }]]).content.style.pair, undefined, "no choice: the renderer puts them side by side");
+    assert.throws(() => run([["content.show", { kind: "bible", slides: [{ text: "x", pair: "NVI" }] }]]), LiveError);
+    assert.throws(() => run([["content.show", { kind: "bible", slides: [{ text: "x" }], style: { pair: "grid" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { kind: "bible", slides: [{ text: "x", pair: { text: "y", version: "SIGLA-LONGA-DEMAIS" } }] }]]), LiveError);
+    // A live edit keeps it (content.update runs the same slide check).
+    const up = applyOp(s, "content.update", { slides: [{ text: "3 a", pair: { text: "3 b", version: "ARA" } }] }, T0);
+    assert.equal(up.content.slides[0].pair.version, "ARA");
+});
+
 test("Camadas' eye: a layer hidden stays on air; a new send or Fundo shows it again", () => {
     const pic = { kind: "image", value: "keryx-media://a.webp" };
     let s = run([["content.show", song], ["background.set", pic]]);

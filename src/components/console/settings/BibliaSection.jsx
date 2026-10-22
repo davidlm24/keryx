@@ -6,7 +6,7 @@ import { FormRow, Switch, CfgGroup } from "./parts";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { lookDefaults, withLookDefaults } from "@/lib/console/look";
+import { lookDefaults, withLookDefaults } from "@/lib/console/lookDefaults";
 import { groupVerses } from "@/lib/console/bibleVerses";
 import BibliasSection from "./BibliasSection";
 import { booksSummary } from "@/lib/console/cfgSummaries";

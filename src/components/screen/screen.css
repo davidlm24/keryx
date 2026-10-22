@@ -42,6 +42,15 @@
 .ks .ns-seg { display: inline-block; vertical-align: bottom; white-space: pre; text-align: left; }
 .ks .ns-ch { display: block; min-height: 1.1em; font-size: .5em; line-height: 1.1; font-weight: 700; color: #f2c14e; -webkit-text-fill-color: #f2c14e; text-shadow: 0 .1em .4em #000000b3; }
 .ks .ns-tx { white-space: pre; }
+/* Two editions of a passage (slide.pair): side by side, or the second
+   under the first, a little smaller and fainter (style.pair); each says
+   its sigla. */
+.ks-pair { display: grid; gap: 3cqw; width: 100%; }
+.ks-pair.is-side { grid-template-columns: 1fr 1fr; align-items: start; }
+.ks-pair.is-side .ks-text { font-size: calc(var(--ks-size, 4.8cqw) * .7); }
+.ks-pair.is-stack { gap: 2cqw; }
+.ks-pair.is-stack .ks-text + .ks-text { font-size: calc(var(--ks-size, 4.8cqw) * .7); opacity: .85; }
+.ks-sigla { display: block; margin-top: .5em; font-size: max(.4em, 1.4cqw); letter-spacing: .12em; font-weight: 500; opacity: .7; }
 .ks-ref { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .8; }
 /* The slide change. The class sits on a display: contents wrapper (keyed by
    slide, so it remounts), which has no box of its own and animates nothing:
