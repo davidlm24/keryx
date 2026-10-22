@@ -265,6 +265,10 @@ test("a passage in two editions: each slide carries the second one's text and si
     // A live edit keeps it (content.update runs the same slide check).
     const up = applyOp(s, "content.update", { slides: [{ text: "3 a", pair: { text: "3 b", version: "ARA" } }] }, T0);
     assert.equal(up.content.slides[0].pair.version, "ARA");
+    // The Bíblia's bar rebuilds the passage on air in one change: slides, ref, slide (owner 2026-10-22).
+    const re = applyOp(s, "content.update", { slides: ["3 a 4 b", "5 c"], ref: { book: "Atos", chapter: 11, version: "ARA", how: "2", wholeChapter: true }, index: 1 }, T0);
+    assert.deepEqual([re.content.ref.version, re.content.ref.how, re.content.index, re.content.slides.length], ["ARA", "2", 1, 2]);
+    assert.deepEqual(applyOp(s, "content.update", { style: {} }, T0).content.ref, s.content.ref, "no ref: kept");
 });
 
 test("Camadas' eye: a layer hidden stays on air; a new send or Fundo shows it again", () => {

@@ -31,10 +31,9 @@ export const PREF_FIELDS = {
     bible_show_reference: { default: true, normalize: (v) => v !== false },
     bible_show_version: { default: true, normalize: (v) => v !== false },
     bible_verse_numbers: { default: "sup", normalize: oneOf(["sup", "hide"], "sup") },
-    // The Bíblia's bar under its screen (Rodada P, P2): the size on the
-    // screens in steps from the Bíblia's theme (look.js BIBLE_SIZE_STEPS), a
-    // second edition beside the first ("" = none) and how the two share it.
-    bible_text_size: { default: 0, normalize: (v) => (v !== null && v !== "" && Number.isInteger(Number(v)) && Math.abs(Number(v)) <= 2 ? Number(v) : 0) },
+    // The Bíblia's bar under its screen (Rodada P, P2): a second edition
+    // beside the first ("" = none) and how the two share the screen. The
+    // size on the screens is the Bíblia theme's (owner 2026-10-22).
     bible_version_2: { default: "", normalize: (v) => (typeof v === "string" && /^[A-Za-z0-9]{1,12}$/.test(v.trim()) ? renamedVersion(v.trim()) : "") },
     bible_pair: { default: "side", normalize: oneOf(["side", "stack"], "side") },
     service_start_time: { default: "", normalize: (v) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : "") },

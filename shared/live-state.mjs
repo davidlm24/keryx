@@ -702,6 +702,8 @@ const OPS = {
         const next = { ...current };
         if (a.slides !== undefined) next.slides = slides(a.slides);
         if (a.title !== undefined) next.title = text(a.title, "Título", { max: 500 });
+        // A Bíblia passage rebuilt on air by the Bíblia's bar (its edition, its grouping).
+        if (a.ref !== undefined) next.ref = loose(a.ref, "Referência") || {};
         if (a.artist !== undefined) next.artist = text(a.artist, "Artista", { max: 500 });
         if (a.style !== undefined) next.style = style(a.style);
         if (a.stage !== undefined) next.stage = loose(a.stage, "Dados do palco") || {};
