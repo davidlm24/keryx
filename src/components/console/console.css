@@ -1983,6 +1983,57 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .sync .sync-time.is-bad { box-shadow: inset 0 0 0 1px var(--warn); }
 .console .sync .sync-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; opacity: .35; }
 .console .sync .sync-row:hover .sync-acts, .console .sync .sync-row.is-sel .sync-acts, .console .sync .sync-row:focus-within .sync-acts { opacity: 1; }
+/* Buscar marcas (the mockup "Sincronizar · marcas do LRCLIB", S1–S4): the
+   marks from the internet dashed in gold until the first slide is set, the
+   note above the stage (gold while it asks, plain once they moved), the
+   empty stage's two doors. */
+.console .sync .sync-mk.is-sug { background: var(--bg-1); color: var(--prev-fg); box-shadow: none; outline: 1px dashed var(--prev); outline-offset: -1px; }
+.console .sync .sync-time.is-sug { background: transparent; color: var(--prev-fg); box-shadow: none; outline: 1px dashed color-mix(in srgb, var(--prev) 60%, transparent); outline-offset: -1px; }
+.console .sync .sync-note { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); }
+.console .sync .sync-note.is-ask { background: color-mix(in srgb, var(--prev) 18%, var(--bg-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prev) 40%, transparent); }
+.console .sync .sync-step { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--prev); color: var(--bg-1); font-weight: 700; font-size: var(--fs-ui); }
+.console .sync .sync-ok { flex: none; color: var(--ok-fg); }
+.console .sync .sync-note-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.console .sync .sync-note-t b { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); }
+.console .sync .sync-note-t > span { font-size: var(--fs-meta); color: var(--fg-2); }
+.console .sync .sync-note kbd { font-family: inherit; font-size: var(--fs-meta); font-weight: 600; padding: 1px 6px; border-radius: 4px; color: var(--fg-1); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .sync .sync-empty { position: relative; z-index: var(--z-screen); max-width: 520px; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; color: var(--fg-2); font-size: var(--fs-content); line-height: 1.5; padding: var(--space-3); }
+.console .sync .sync-empty-b { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+.console .sync .sync-lyric > .kx-meta { font-size: var(--fs-ui); font-weight: 400; text-shadow: none; }
+/* Its dialog (SyncMarks.jsx), on the Importar músicas frame. */
+.console .dialog.confirm-dialog.import-dialog.sync-marks { width: min(620px, calc(100% - 32px)); }
+.console .sync-marks .sm-head { display: flex; flex-direction: column; gap: 4px; padding: var(--space-3) var(--space-3) var(--space-2); }
+.console .sync-marks .sm-h { font-size: var(--fs-content-lg); font-weight: 600; color: var(--fg-1); }
+.console .sync-marks .sm-head .kx-meta { color: var(--fg-2); font-size: var(--fs-ui); }
+.console .sync-marks .sm-body { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-3) var(--space-2); min-height: 0; overflow: auto; }
+.console .sync-marks .sm-q { display: flex; gap: var(--space-2); }
+.console .sync-marks .sm-q .kx-field { flex: 1; }
+.console .sync-marks .sm-wait { display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 120px; color: var(--fg-2); }
+.console .sync-marks .sm-msg { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) 0; }
+.console .sync-marks .sm-msg > div { display: flex; flex-direction: column; gap: 4px; color: var(--fg-2); line-height: 1.5; }
+.console .sync-marks .sm-msg b { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); }
+.console .sync-marks .sm-warn { flex: none; color: var(--warn-fg); margin-top: 2px; }
+.console .sync-marks .sm-info { display: flex; gap: var(--space-3); }
+.console .sync-marks .sm-info b { color: var(--fg-1); font-weight: 500; }
+.console .sync-marks .sm-list { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--line-soft); padding-top: var(--space-1); }
+.console .sync-marks .sm-row { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: var(--space-2); align-items: start; padding: var(--space-2); border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.console .sync-marks .sm-row:hover:not(:disabled) { background: var(--bg-3); }
+.console .sync-marks .sm-row.is-prev { background: var(--prev-bg); box-shadow: var(--prev-ring); }
+.console .sync-marks .sm-row:disabled { cursor: default; opacity: var(--dim); }
+.console .sync-marks .sm-radio { width: 14px; height: 14px; margin-top: 2px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--fg-3); }
+.console .sync-marks .sm-row.is-prev .sm-radio { box-shadow: inset 0 0 0 4px var(--prev); }
+.console .sync-marks .sm-row:disabled .sm-radio { box-shadow: none; outline: 1px dashed var(--fg-3); outline-offset: -1px; }
+.console .sync-marks .sm-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.console .sync-marks .sm-ttl { display: flex; justify-content: space-between; gap: var(--space-2); }
+.console .sync-marks .sm-ttl b { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .sync-marks .sm-dur { font-size: var(--fs-ui); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.console .sync-marks .sm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.console .sync-marks .sm-chip { font-size: var(--fs-meta); padding: 1px 8px; border-radius: 99px; color: var(--fg-2); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.console .sync-marks .sm-chip.is-ok { color: var(--ok-fg); background: var(--ok-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 35%, transparent); }
+.console .sync-marks .sm-chip.is-warn { color: var(--warn-fg); background: var(--warn-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 35%, transparent); }
+.console .sync-marks .sm-check { display: flex; flex-direction: column; gap: var(--space-2); color: var(--fg-2); line-height: 1.5; padding: var(--space-2) 0; }
+.console .sync-marks .sm-card { display: flex; flex-direction: column; gap: 6px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); }
+.console .sync-marks .sm-src { flex: 1; }
 
 /* ---- While live (audit 0.2.19, Minors C-45/46) ---- */
 /* An empty layer (Camadas: nothing on air, nothing on the Fundo, no overlay
@@ -2026,6 +2077,11 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .tabrow-close .kx-tc-x { opacity: 1; }
   /* The amber mark of a video that may not play keeps an edge. */
   .console .codec-mark { outline: 1px solid CanvasText; outline-offset: -1px; }
+  /* Buscar marcas: the recording chosen is the Prévia's dashed ring, the
+     note that asks for Espaço and the chips keep an edge. */
+  .console .sync-marks .sm-row.is-prev { outline: 2px dashed LinkText; outline-offset: -2px; }
+  .console .sync-marks .sm-row.is-prev .sm-radio { background: LinkText; }
+  .console :is(.sync .sync-note, .sync-marks .sm-chip) { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* Floating surfaces lose their shadow: an edge instead. */
   .console :is(.pop, .kx-pop, .ctx-menu, .dialog, .palette, .qj, .verif-overlay, .addmenu-pop, .lyr, .pl-pop, .lib-dialog, .media-peek) { outline: 1px solid CanvasText; }
   /* Slides, No ar cards, verses, Setlist, Biblioteca and Mídia rows, the

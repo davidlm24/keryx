@@ -63,7 +63,7 @@ test("search merges the sources, LRCLIB first; one failing never hides the other
     const letrasDown = createLyrics({ fetchImpl: fakeFetch([["solr.sscdn.co", { status: 503, body: "" }], ["lrclib.net/api/search", { body: LRCLIB }]]) });
     const r4 = await letrasDown.search("bondade de deus");
     assert.equal(r4.results.filter((x) => x.hasLyrics).length, 2);
-    assert.match(r4.errors.join(" "), /letras.mus.br indisponível agora/);
+    assert.match(r4.errors.join(" "), /letras.mus.br está ocupado agora/, "a 503 is a busy server");
 
     const offline = createLyrics({ fetchImpl: fakeFetch([["solr.sscdn.co", new Error("ENOTFOUND")], ["lrclib.net", new Error("ENOTFOUND")]]) });
     const r5 = await offline.search("algo novo");
@@ -114,4 +114,40 @@ test("título – artista searches LRCLIB by title and artist; timed uploads are
     await svc.search("Algo novo – Kemuel");
     assert.ok(asked.some((u) => u.includes("track_name=Algo%20novo&artist_name=Kemuel")));
     assert.ok(asked.some((u) => u.includes("q=Algo%20novo%20Kemuel")));
+});
+
+test("recordings (Buscar marcas): every take with its length and times; busy answers are tried again", async () => {
+    const { parseLrclibRecordings } = require("./lyrics.cjs");
+    const body = JSON.stringify([
+        { id: 1, trackName: "Bondade De Deus", artistName: "Pedras Vivas", albumName: "Bondade De Deus", duration: 296.0, instrumental: false, plainLyrics: "Te amo, Deus", syncedLyrics: "" },
+        { id: 2, trackName: "Bondade de Deus", artistName: "Pedras Vivas", albumName: "", duration: 295.6, instrumental: false, plainLyrics: "Te amo, Deus", syncedLyrics: "[00:13.35] Te amo, Deus\r\n" },
+        { id: 3, trackName: "Bondade de Deus (Ao Vivo)", artistName: "Pedras Vivas", albumName: "Ao Vivo", duration: 321, instrumental: false, plainLyrics: "Te amo, Deus", syncedLyrics: "[00:20.00] Te amo, Deus" },
+        { id: 4, trackName: "Bondade de Deus", artistName: "Pedras Vivas", duration: 296, instrumental: true, plainLyrics: "" },
+    ]);
+    const r = parseLrclibRecordings(body);
+    assert.deepEqual(r.map((x) => x.id), ["lrclib:2", "lrclib:3"], "the same take folded, the timed upload kept; a live take is another recording");
+    assert.deepEqual([r[0].duration, r[0].synced, r[0].album], [296, "[00:13.35] Te amo, Deus", ""]);
+
+    // Busy twice, then the answer.
+    let calls = 0;
+    const asked = [];
+    const busy = createLyrics({ retryMs: 1, fetchImpl: async (url) => { asked.push(url); calls++; return calls < 3 ? { ok: false, status: 503, text: async () => "" } : { ok: true, status: 200, text: async () => body }; } });
+    const got = await busy.recordings({ title: "Bondade de Deus", artist: "Pedras Vivas" });
+    assert.equal(got.results.length, 2);
+    assert.equal(calls, 3);
+    assert.ok(asked[0].includes("track_name=Bondade%20de%20Deus&artist_name=Pedras%20Vivas"));
+
+    // Busy every time: says so (status 503), after three tries.
+    calls = 0;
+    const always = createLyrics({ retryMs: 1, fetchImpl: async () => { calls++; return { ok: false, status: 503, text: async () => "" }; } });
+    await assert.rejects(() => always.recordings({ title: "Bondade de Deus" }), (e) => e.status === 503 && /ocupado/.test(e.message));
+    assert.equal(calls, 3);
+
+    // Nothing by that artist: the title alone.
+    const urls = [];
+    const fallback = createLyrics({ fetchImpl: async (url) => { urls.push(url); return { ok: true, status: 200, text: async () => (url.includes("artist_name") ? "[]" : body) }; } });
+    assert.equal((await fallback.recordings("Bondade de Deus – Outro")).results.length, 2);
+    assert.equal(urls.length, 2);
+    assert.ok(!urls[1].includes("artist_name"));
+    await assert.rejects(() => fallback.recordings({ title: "a" }), (e) => e.status === 400);
 });

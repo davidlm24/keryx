@@ -318,6 +318,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     });
     const openSync = () => onSync?.({
         title: song.title || "Música",
+        artist: song.artist || "",
         slides: slides.map(({ text, label }) => ({ text, ...(label ? { label } : {}) })),
         media,
         duration: mediaRef.current?.duration || parseDuration(durationText) || song.duration || null,
