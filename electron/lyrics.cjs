@@ -139,20 +139,58 @@ function parseLrclibSong(body) {
     };
 }
 
+// The recordings of one song, for Sincronizar's "Buscar marcas…" (owner
+// 2026-10-22, src/lib/console/lrcPick.js): every upload with lyrics, its
+// length and its timed lines, so the console can measure each against the
+// church's playback. Only exact repeats are folded (same title, artist and
+// length, the timed one kept): a live take and the studio one differ.
+function parseLrclibRecordings(body) {
+    let data;
+    try { data = typeof body === "string" ? JSON.parse(body) : body; } catch { throw new LyricsError("LRCLIB respondeu num formato desconhecido."); }
+    if (!Array.isArray(data)) throw new LyricsError("LRCLIB respondeu num formato desconhecido.");
+    const seen = new Map();
+    const out = [];
+    for (const d of data) {
+        if (!d || !d.id || !d.trackName || d.instrumental || !String(d.plainLyrics || "").trim()) continue;
+        const duration = Number(d.duration) > 0 ? Math.round(Number(d.duration)) : null;
+        const synced = String(d.syncedLyrics || "").replace(/\r\n/g, "\n").trim();
+        const key = `${fold(d.trackName)}|${fold(d.artistName)}|${duration}`;
+        const row = { id: `lrclib:${d.id}`, title: clean(d.trackName), artist: clean(d.artistName), album: clean(d.albumName), duration, synced };
+        if (seen.has(key)) {
+            if (synced && !out[seen.get(key)].synced) out[seen.get(key)] = row;
+            continue;
+        }
+        if (out.length >= MAX_RESULTS) continue;
+        seen.set(key, out.length);
+        out.push(row);
+    }
+    return out;
+}
+
 // -- The service -----------------------------------------------------------------
 
-function createLyrics({ fetchImpl = fetch, timeoutMs = LYRICS_TIMEOUT_MS } = {}) {
-    const getText = async (url, label) => {
-        try {
-            return await withDeadline(async (signal) => {
-                const res = await fetchImpl(url, { headers: { "User-Agent": UA, Accept: "application/json,text/javascript,*/*" }, signal });
-                if (!res.ok) throw new LyricsError(`${label} indisponível agora (HTTP ${res.status}).`, 502);
-                return res.text();
-            }, timeoutMs);
-        } catch (err) {
-            if (err instanceof LyricsError) throw err;
-            if (err instanceof TimeoutError) throw new LyricsError(`${label} não respondeu a tempo.`, 504);
-            throw new LyricsError(`${label}: sem conexão com a internet.`, 503);
+// LRCLIB answers 503 "server busy" (or 429) often (22/10: about half the
+// first tries): such an answer is tried again, after 1 s, then 2 s.
+const BUSY = new Set([429, 503]);
+const RETRY_MS = 1000;
+
+function createLyrics({ fetchImpl = fetch, timeoutMs = LYRICS_TIMEOUT_MS, retryMs = RETRY_MS } = {}) {
+    const getText = async (url, label, { retries = 0 } = {}) => {
+        for (let attempt = 0; ; attempt++) {
+            try {
+                return await withDeadline(async (signal) => {
+                    const res = await fetchImpl(url, { headers: { "User-Agent": UA, Accept: "application/json,text/javascript,*/*" }, signal });
+                    if (BUSY.has(res.status)) throw new LyricsError(`${label} está ocupado agora. Tente de novo em um minuto.`, 503);
+                    if (!res.ok) throw new LyricsError(`${label} indisponível agora (HTTP ${res.status}).`, 502);
+                    return res.text();
+                }, timeoutMs);
+            } catch (err) {
+                const busy = err instanceof LyricsError && err.status === 503;
+                if (busy && attempt < retries) { await new Promise((r) => setTimeout(r, retryMs * (attempt + 1))); continue; }
+                if (err instanceof LyricsError) throw err;
+                if (err instanceof TimeoutError) throw new LyricsError(`${label} não respondeu a tempo.`, 504);
+                throw new LyricsError(`${label}: sem conexão com a internet.`, 503);
+            }
         }
     };
 
@@ -162,7 +200,7 @@ function createLyrics({ fetchImpl = fetch, timeoutMs = LYRICS_TIMEOUT_MS } = {})
         if (q.length < 2) throw new LyricsError("Digite pelo menos duas letras do título ou do artista.", 400);
         const parts = splitQuery(q);
         const jobs = [
-            getText(lrclibSearchUrl(q), "LRCLIB").then(parseLrclibSearch),
+            getText(lrclibSearchUrl(q), "LRCLIB", { retries: 2 }).then(parseLrclibSearch),
             getText(letrasSearchUrl(parts ? `${parts.track} ${parts.artist}` : q), "letras.mus.br").then(parseLetrasSearch),
         ];
         const settled = await Promise.allSettled(jobs);
@@ -183,11 +221,25 @@ function createLyrics({ fetchImpl = fetch, timeoutMs = LYRICS_TIMEOUT_MS } = {})
     // -> { title, artist, lyrics } (LRCLIB; letras.mus.br pages are pasted)
     async function get(id) {
         const lr = /^lrclib:(\d+)$/.exec(String(id || ""));
-        if (lr) return parseLrclibSong(await getText(lrclibSongUrl(lr[1]), "LRCLIB"));
+        if (lr) return parseLrclibSong(await getText(lrclibSongUrl(lr[1]), "LRCLIB", { retries: 2 }));
         throw new LyricsError("A letra do letras.mus.br abre no navegador: copie e cole aqui.", 400);
     }
 
-    return { search, get };
+    // -> { results: [{ id, title, artist, album, duration, synced }] }
+    // "título – artista" (or { title, artist }) asks for that title by that
+    // artist and, when the artist has none, for the title alone.
+    async function recordings(args) {
+        const typed = typeof args === "string" ? (splitQuery(args) || { track: args.trim() }) : { track: String(args?.title || "").trim(), artist: String(args?.artist || "").trim() };
+        if ((typed.track || "").length < 2) throw new LyricsError("Digite pelo menos duas letras do título.", 400);
+        const ask = (artist) => getText(artist
+            ? `https://lrclib.net/api/search?track_name=${encodeURIComponent(typed.track)}&artist_name=${encodeURIComponent(artist)}`
+            : `https://lrclib.net/api/search?track_name=${encodeURIComponent(typed.track)}`, "LRCLIB", { retries: 2 }).then(parseLrclibRecordings);
+        let results = await ask(typed.artist);
+        if (!results.length && typed.artist) results = await ask("");
+        return { results };
+    }
+
+    return { search, get, recordings };
 }
 
-module.exports = { createLyrics, LyricsError, parseLetrasSearch, parseLrclibSearch, parseLrclibSong, splitQuery, lrclibSearchUrl };
+module.exports = { createLyrics, LyricsError, parseLetrasSearch, parseLrclibSearch, parseLrclibSong, parseLrclibRecordings, splitQuery, lrclibSearchUrl };

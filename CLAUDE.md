@@ -1942,7 +1942,23 @@ recording repeats never pulls the slides ahead, a slide not found stays
 unmarked) plus the recording's length; the dialog says they are that
 recording's times (its playback or video), not a band's. No other lyric
 source (owner 2026-10-22: Letras has no public API, Vagalume's terms are
-unclear; the letras.mus.br suggestions stay search-only). **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
+unclear; the letras.mus.br suggestions stay search-only). **Buscar marcas…**
+(owner 2026-10-22, the mockup "Sincronizar · marcas do LRCLIB", S1 = C,
+S2 = B, S3 = C, S4 = A): Sincronizar's header (and its empty stage) asks
+LRCLIB for the song's recordings (`lyrics` op `recordings`: every take with
+its length and LRC, a busy 503/429 tried again after 1 s and 2 s) and
+`rankRecordings` (`src/lib/console/lrcPick.js`, tested) measures each
+against the playback: same length (±3 s) and how many slides `lrcMarks`
+finds. A take of the playback's length with 80 % of the slides found is
+used at once (`autoPick`), else `SyncMarks.jsx` lists them (fewer than half
+found = another song with that name, "Usar mesmo assim"). The marks come in
+dashed (`sug`, Aplicar off) in that recording's times; Espaço while it
+plays sets the first one where the singing starts and every mark moves by
+the same amount (`anchorMarks`, "andaram +5,1 s" with Desfazer); Pular keeps
+them; any other edit makes them ordinary marks and moves only that slide.
+Measured on two lyric videos of the church's playbacks (22/10): the LRC
+times hit within a second at the median. The Biblioteca's "Na internet…"
+still imports a take's marks (S1 = C). **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.

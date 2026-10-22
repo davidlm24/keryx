@@ -16,7 +16,7 @@
 //   POST /__keryx/bible-file?version=&name= (bytes) installs an edition of the list from a file
 //   POST /__keryx/bible-own-read?name= (bytes) reads a file for an edition of the church's own
 //   POST /__keryx/bible-own { op: install|remove, … } installs that reading, or deletes one
-//   POST /__keryx/lyrics       { op: search | get, args } lyrics from the web (electron/lyrics.cjs)
+//   POST /__keryx/lyrics       { op: search | get | recordings, args } lyrics from the web (electron/lyrics.cjs)
 //   GET  /__keryx/fonts        this PC's installed fonts (electron/systemFonts.cjs)
 //   GET  /__keryx/font?id=     one face's file (a collection's face cut out)
 //   POST /__keryx/media?name=  the file's bytes -> { data: { fileName } }
@@ -210,7 +210,7 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
             // Procurar letra na internet, as the desktop's main process does it.
             if (route === "lyrics" && req.method === "POST") {
                 const { op, args } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
-                if (!["search", "get"].includes(op)) return json(res, 200, failure({ message: `Operação desconhecida: ${op}.`, status: 400 }));
+                if (!["search", "get", "recordings"].includes(op)) return json(res, 200, failure({ message: `Operação desconhecida: ${op}.`, status: 400 }));
                 try { return json(res, 200, { data: await lyrics[op](args) }); } catch (err) { return json(res, 200, failure(err)); }
             }
             // The Bíblia's online chapters and Instalar, as the desktop's main process does them.
