@@ -92,15 +92,17 @@ export function Btn({ kind = "", small, on, className = "", children, ...rest })
 // Lean bars (Rodada O, O7): the bar holds the title and what acts on the
 // whole window (Desfazer/Refazer, Cancelar, Salvar, Destacar, the ×); a
 // control that acts on the content goes in the page, so `tools` is only for
-// what has no place there. A page with a side menu (Configurações, the
-// Editor da tela) puts Voltar at its top (`menuBack`, WinBack there, O8).
+// what has no place there. Voltar is always the bar's first thing, before the
+// title, on every page that has a level to go back to (owner 2026-10-22,
+// "Bibliotecas" B1 = C: no border, the arrow and the words; it left the side
+// menus, where Rodada O's O8 had put it).
 export const WinCtx = createContext(null);
-export function WinBar({ title, sub, tools, actions, detach, menuBack = false }) {
+export function WinBar({ title, sub, tools, actions, detach }) {
     const w = useContext(WinCtx) || {};
     const onDetach = detach || w.onDetach;
     return (
         <div className="win-bar kx-win-bar" onDoubleClick={(e) => { if (e.target === e.currentTarget || e.target.classList?.contains("kx-win-gap")) w.onResetSize?.(); }}>
-            {!menuBack && <WinBack />}
+            <WinBack />
             {/* Where the focus lands when the page opens with the mouse, or
                 has no control (C-12): inside the window, holding no keys. */}
             <span className="kx-section win-title kx-win-title" title={sub ? `${title} · ${sub}` : title} tabIndex={-1} data-live-keys="">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
@@ -114,14 +116,29 @@ export function WinBar({ title, sub, tools, actions, detach, menuBack = false })
 }
 
 // The Voltar chip ("← where it came from", as Esc), from the second level
-// on: at the bar's left, or at the top of the page's side menu (O8).
+// on, at the bar's left: no border (B1 = C), a tint on hover.
 export function WinBack() {
     const w = useContext(WinCtx);
     if (!w?.back) return null;
     return (
-        <button type="button" className="kx-btn kx-btn-outline kx-btn-back kx-t" onClick={w.onBack} title={`Voltar a ${w.back} · Esc`}>
+        <button type="button" className="kx-btn kx-btn-back kx-t" onClick={w.onBack} title={`Voltar a ${w.back} · Esc`}>
             <Icon name="arrow-left" />{w.back}
         </button>
+    );
+}
+
+// A window's side menu (owner 2026-10-22, "Bibliotecas" B2 = A: "standard
+// for all windows"): docked on the window's surface like Configurações' —
+// no card, a thin rule on its right, one width everywhere — never a Panel.
+// `head`: what goes above the list (Configurações' search); `children`: the
+// listheads and Rows. Inside a page's `.win-body` it reaches the window's
+// edges (bundle.css, Window).
+export function WinNav({ label, head, className = "", children }) {
+    return (
+        <nav className={`kx-win-nav ${className}`} aria-label={label}>
+            {head && <div className="kx-win-nav-h">{head}</div>}
+            {children}
+        </nav>
     );
 }
 

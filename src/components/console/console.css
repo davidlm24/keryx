@@ -75,7 +75,6 @@
 .console .envtabs > button.is-on::after { bottom: 8px; background: var(--brand); height: 2px; border-radius: 1px; }
 .console .envtabs > button:disabled { opacity: .4; cursor: default; }
 /* The way back from a full-screen view: first in its header, outlined, never a ghost. */
-.console .kx-panel-h .kx-btn-back { height: 26px; padding: 0 10px 0 6px; gap: 4px; margin-left: -6px; margin-right: var(--space-1); flex: none; font-weight: 500; }
 .console .markbtn { height: 32px; width: 32px; display: inline-grid; place-items: center; border-radius: var(--radius-round); flex: none; margin-right: var(--space-1); }
 .console .markbtn img { width: 26px; height: 26px; border-radius: 999px; object-fit: cover; box-shadow: 0 0 0 1px var(--line); }
 .console .markbtn .kx-mark { width: 24px; height: 24px; }
@@ -956,21 +955,16 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .win-body .col > :not(.kx-split) + :not(.kx-split) { margin-top: var(--gutter); }
 
 /* ---------- Configurações (canvas artboard 20) ---------- */
-/* The config page: nav left, the section right, on the window's bg-1. The
-   nav is fixed (Rodada O, O7: no splitter) and starts with Voltar, when
-   there is somewhere to go back to, and the search (O8). */
-.console .cfg-nav-h { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
-.console .cfg-nav-h .kx-btn-back { height: 26px; padding: 0 10px 0 6px; gap: 4px; flex: none; font-weight: 500; max-width: 100%; }
-.console .cfg-nav-h .cfg-search, .console .cfg-nav-h .cfg-search .kx-field { width: 100%; }
+/* The config page: the window's docked menu (WinNav, bundle.css) left,
+   its head the search, the section right, on the window's bg-1. */
+.console .cfg-nav .cfg-search .kx-field { width: 100%; }
 .console .cfg-nav .kx-row.is-dim { opacity: .45; }
 .console .cfg-nav .cfg-hitcount { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-meta); font-variant-numeric: tabular-nums; color: var(--fg-1); background: var(--bg-3); }
 .console .cfg-results mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(--fg-1); border-radius: 2px; padding: 0 1px; }
 .console .cfg .is-flash { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 16%, transparent); border-radius: var(--radius-control); transition: background .4s, box-shadow .4s; }
 .console .cfg-dialog-b { flex: 1; min-height: 0; display: flex; background: var(--bg-1); }
-.console .cfg-nav { flex: 0 0 240px; min-width: 0; padding: var(--space-2) 0 var(--space-1); border-right: 1px solid var(--line-soft); overflow: auto; }
 .console .cfg-dialog-b .cfg { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .console .cfg-dialog-b .cfg > .kx-panel { flex: 1; border-radius: 0; }
-@media (max-width: 760px) { .console .cfg-nav { flex-basis: 180px; } }
 .console .cfg .frm { display: grid; grid-template-columns: 140px 1fr; gap: var(--space-2) var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); }
 .console .cfg .frm .k { font-size: var(--fs-meta); color: var(--fg-3); }
 .console .cfg .frm-v { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
@@ -1691,7 +1685,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .win-body .kx-panel.is-head-wrap > .kx-panel-h > .kx-section { flex: 1 0 auto; max-width: 100%; }
 /* The Editor de telas' Telas menu: a fixed column (Rodada O, O7), Voltar
    in its header when there is one (O8). */
-.console .win-body > .col.le-menu-col { flex: 0 0 190px; min-width: 0; }
 /* In the form's header (Rodada O, O7): a header control's height, and it
    gives way before the title does. */
 .console .kx-panel-h .le-use { height: var(--control-sm); flex: 0 1 auto; min-width: 96px; max-width: 220px; }

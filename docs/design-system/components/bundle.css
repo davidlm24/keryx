@@ -412,7 +412,17 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-win-bar .kx-win-title { flex: 0 1 auto; color: var(--fg-1); font-size: var(--fs-ui); min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kx .kx-win-bar .kx-win-title .kx-count { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--fg-3); }
 .kx .kx-win-bar .kx-win-title:focus { outline: none; } /* the focus parks here; it is not a control */
-.kx .kx-win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
+/* Voltar: the bar's first thing, before the title — no border (owner 2026-10-22, B1 = C), the arrow and the
+   words in fg-2, a tint on hover. */
+.kx .kx-win-bar .kx-btn-back { height: 26px; margin-left: -6px; padding: 0 10px 0 6px; gap: 4px; flex: none; font-weight: 500; color: var(--fg-2); background: none; box-shadow: none; }
+.kx .kx-win-bar .kx-btn-back:hover { background: var(--bg-2); color: var(--fg-1); }
+/* A window's side menu (WinNav, B2 = A: the same in every window): docked on the window's surface, no card, a
+   thin rule on its right, 240 px on a wide window and down to 180 as it narrows (20vw: 180 from 900 px
+   down), so the Editor da tela's canvas keeps its room at 960. In a page's .win-body it reaches the window's edges (the
+   negative margins undo the body's gutter) and keeps one gutter before the content. */
+.kx .kx-win-nav { flex: 0 0 clamp(180px, 20vw, 240px); min-width: 0; padding: var(--space-2) 0 var(--space-1); border-right: 1px solid var(--line-soft); overflow: auto; }
+.kx .kx-win-nav-h { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
+.kx .win-body > .kx-win-nav { margin: calc(-1 * var(--gutter)) var(--gutter) calc(-1 * var(--gutter)) calc(-1 * var(--gutter)); }
 .kx .kx-win-bar .kx-win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
 .kx .kx-win-bar .kx-win-gap { flex: 1; }
 
@@ -551,6 +561,9 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
    the Escola's questions, Sincronizar) carry the same cues in console.css's block. */
 .kx-mon-screen, .kx-pip { forced-color-adjust: none; }
 @media (forced-colors: active) {
+  /* Voltar has no border in the normal look (B1 = C): under a contrast theme it keeps a button's edge. */
+  .kx-win-bar .kx-btn-back { border: 1px solid ButtonText; }
+  .kx-win-nav { border-right-color: CanvasText; }
   .kx-panel:not(.kx-panel-bare) { outline: 1px solid CanvasText; outline-offset: -1px; }
   .kx-pop, .kx-tip { outline: 1px solid CanvasText; }
   .kx :is(.kx-toast, .kx-win) { outline: 1px solid CanvasText; }

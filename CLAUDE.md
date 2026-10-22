@@ -763,8 +763,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tab never deletes the culto. Modelos and Exportar PDF are the Culto panel's
   header.
   **One floating window over the live console**, the Configurações frame
-  on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2, the
-  title, the window's actions, the (x) "Fechar · Esc"; there is
+  on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2 at the
+  bar's left, before the title — no border, the arrow and the words, a
+  tint on hover (owner 2026-10-22, "Bibliotecas" B1 = C) —, the title, the window's actions, the (x) "Fechar · Esc"; there is
   no "← Console" BackBtn any more). **The window is one surface**
   (owner 2026-10-21, Rodada O7 = A): `bg-1` under the bar and the page, the
   bar parted only by its `line-soft` rule, a faint ring and a deep
@@ -781,10 +782,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and Adicionar in its filter row, the song editor's ☆, Dados/Letra,
   Excluir… and Imprimir in the Música panel, Relatórios' Período and search
   at the top of the page, Sincronizar's Velocidade in the media's header
-  (Planejar o culto's bar is the tabs' own). **Side menus are fixed** (no
-  splitter: Configurações' nav, the Editor da tela's and the Tela ociosa's
-  Telas) **and start with Voltar** (O8: `WinBack`, `WinBar menuBack`);
-  a page without one keeps Voltar at the bar's left. The Window component of bundle.css
+  (Planejar o culto's bar is the tabs' own). **A window's side menu is
+  always `WinNav`** (kx.jsx; owner 2026-10-22, "Bibliotecas" B2 = A,
+  "standard for all windows"): docked on the window's surface, never a
+  card or a Panel, a `line-soft` rule on its right, 240 px down to 180 as
+  the window narrows (`kx-win-nav` in bundle.css), fixed (no splitter),
+  its `head` slot for a search (Configurações'); in a `.win-body` it
+  reaches the window's edges and keeps one gutter before the content (no
+  `kx-gap` beside it). Configurações' sections and the Editor da tela's /
+  Tela ociosa's Telas use it; a list that edits (the Escola's Turmas) is
+  not a menu. Voltar is never in a side menu. The Window component of bundle.css
   (`kx-win`, beside the old `.win-dialog`; the `.win-scrim` and the
   `.win-body` layout stay in console.css), two sizes (Padrão, and `.is-editor` for the editors; the
   frame animates between them). **The window stretches by its 4 edges and 4 corners** (owner

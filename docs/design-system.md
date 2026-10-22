@@ -289,16 +289,19 @@ compositions), it is given.
   Configurações, the editors and the views (`nav.js`).
 - **Anatomy.** One surface of `bg-1`: `kx-win-bar` (40 px, the page's colour,
   parted from it only by a `line-soft` rule): *← Voltar* from the second level
-  (`kx-btn-back`, outlined) when the page has no side menu, `kx-win-title`
+  (`kx-btn-back`, always first, before the title: no border, `fg-2`, a
+  `bg-2` tint on hover; a contrast theme gives it a `ButtonText` edge), `kx-win-title`
   (gives way first; its context in `fg-3`, normal case), `kx-win-gap` (a
   double click restores the size), the window's actions — Desfazer/Refazer,
   Cancelar, Salvar —, ⧉ *Destacar em janela*, the (x) *Fechar · Esc*. Then
   `kx-win-page`, one per level (pages under the top stay mounted, hidden),
   its panels starting right under the rule and one grey step up (`bg-2`,
   fields `bg-3`, pressed `bg-4`; `.win-body` in console.css). A side menu
-  (Configurações' sections, the Editor da tela's Telas) is fixed, no
-  splitter, and starts with *← Voltar* (`WinBack`, `WinBar menuBack`); only
-  the content beside it resizes. `kx-win-edge` × 8 resize the window.
+  is always `kx-win-nav` (`WinNav`; Configurações' sections, the Editor da
+  tela's Telas): docked on the window's surface, no card, a `line-soft`
+  rule on its right, `clamp(180px, 20vw, 240px)`, fixed (no splitter), an
+  optional head (a search); in a `.win-body` it reaches the window's edges
+  and keeps one gutter before the content, which alone resizes. `kx-win-edge` × 8 resize the window.
 - **Variants.** Padrão and `is-editor` (the frame eases between them);
   `is-sized` (stretched: it follows the pointer at once); `is-detached`
   (`/Janela`: it fills its own window, no shadow, no edges).

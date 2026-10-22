@@ -59,7 +59,6 @@ export default function IdleEditor({ say, live: liveState, screens, onClose, onS
     const body = (
         <>
             <ScreensMenu path={IDLE_SCREEN} screens={screens} onPick={(p) => { if (p !== IDLE_SCREEN) onSwitch?.(p); }} />
-            <div className="kx-gap" />
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel title="Tela ociosa" bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-scroll cfg">
@@ -129,7 +128,7 @@ export default function IdleEditor({ say, live: liveState, screens, onClose, onS
     if (!hosted) return body;
     return (
         <>
-            <WinBar title="Editor da tela" sub="Tela ociosa" detach={onDetach} menuBack />
+            <WinBar title="Editor da tela" sub="Tela ociosa" detach={onDetach} />
             <div className="win-body is-ed">{body}</div>
         </>
     );
