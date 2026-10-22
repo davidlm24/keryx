@@ -58,6 +58,9 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
     const [pending, setPending] = useState(null);
     const [flash, setFlash] = useState(null);
     const inputRef = useRef(null);
+    // The section on screen may take Esc first (Temas: its marks); each render
+    // starts empty, so a section left behind never keeps it.
+    const sectionEsc = useRef(null);
     const { themes } = useLibrary();
     // The church's themes are found by name too.
     const extra = useMemo(() => (themes || []).filter((t) => t?.name).map((t) => ({ section: "temas", tab: null, label: t.name, hint: "Tema", keywords: [], target: "Temas" })), [themes]);
@@ -141,6 +144,7 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
         }
     };
 
+    sectionEsc.current = null;
     let body;
     if (searching) {
         body = hits.length ? (
@@ -162,11 +166,12 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
         ) : <Empty icon="search" title={`Nada encontrado para “${q.trim()}”`}>Tente outra palavra: PIN, fundo, backup, transição, logo…</Empty>;
     } else if (current.id === "telas") body = <TelasSection c={c} onOpenScreen={onOpenScreen} />;
     else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
-    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} onWhatsNew={onWhatsNew} onSection={(id) => setSection(id)} />; }
+    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} onWhatsNew={onWhatsNew} onSection={(id) => setSection(id)} escRef={sectionEsc} />; }
 
     // Esc, the scrim and the (x) ask here; nothing to guard — everything
-    // in Configurações saves as changed.
-    if (escRef) escRef.current = (mode) => onClose(mode === "all");
+    // in Configurações saves as changed. A section with something marked
+    // (Temas, multiSelect.js) clears it first: Esc once more leaves.
+    if (escRef) escRef.current = (mode) => { if (mode === "esc" && sectionEsc.current?.()) return; onClose(mode === "all"); };
 
     return (
         <CfgFlash.Provider value={flashCtx}>

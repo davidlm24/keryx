@@ -253,6 +253,8 @@ export default function Console() {
         setLibReq((prev) => { prev?.resolve(null); return { ...opts, resolve }; });
     }), []);
     const closeLibrary = useCallback((result = null) => setLibReq((prev) => { prev?.resolve(result); return null; }), []);
+    // Esc asks the library first: it clears its marks before it closes (multiSelect.js).
+    const libEsc = useRef(null);
     // "Excluir…" asks first (ConfirmDialog.jsx): one question at a time.
     const [confirmReq, setConfirmReq] = useState(null);
     // A text question from a panel's + menu (PromptDialog): the text, or null.
@@ -873,7 +875,7 @@ export default function Console() {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else if (importReq) closeImport(); else setReporting(false); }
-                    else if (top === "library") closeLibrary(null);
+                    else if (top === "library") { if (!libEsc.current?.()) closeLibrary(null); }
                     else if (top === "popover") setOpen(null);
                     else if (top === "window") winEsc("esc");
                     else if (top === "countdown") autoplay.cancel();
@@ -1485,7 +1487,7 @@ export default function Console() {
                     })}
                 </div>
             )}
-            {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
+            {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} escRef={libEsc} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             {open && <div className={`scrim ${winOpen ? "over-win" : ""} ${open === "palette" || open === "atalhos" || open === "passos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}

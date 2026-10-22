@@ -158,6 +158,8 @@ export default function Janela() {
         setLibReq((prev) => { prev?.resolve(null); return { ...opts, resolve }; });
     }), []);
     const closeLibrary = useCallback((result = null) => setLibReq((prev) => { prev?.resolve(result); return null; }), []);
+    // Esc asks the library first: it clears its marks before it closes (multiSelect.js).
+    const libEsc = useRef(null);
     const [confirmReq, setConfirmReq] = useState(null);
     const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
     const answerConfirm = useCallback((yes) => setConfirmReq((prev) => { prev?.resolve(Boolean(yes)); return null; }), []);
@@ -236,7 +238,7 @@ export default function Janela() {
             e.preventDefault();
             if (top === "menu") setCtxMenu(null);
             else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else setReporting(false); }
-            else if (top === "library") closeLibrary(null);
+            else if (top === "library") { if (!libEsc.current?.()) closeLibrary(null); }
             else if (top === "window") winEsc("esc");
             return;
         }
@@ -290,7 +292,7 @@ export default function Janela() {
                     })}
                 </div>
             )}
-            {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
+            {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} escRef={libEsc} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
             <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />

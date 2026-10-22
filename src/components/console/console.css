@@ -1725,6 +1725,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .fg-tile:not(.is-on):hover .fg-img { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px var(--line-strong); }
 .console .lib-swatch:not(.is-on):hover { box-shadow: inset 0 0 0 1px var(--swatch-edge), 0 0 0 2px var(--line-strong); }
 .console .lyr-gen:not(.is-on):hover { color: var(--fg-1); box-shadow: 0 0 0 2px var(--line-strong); }
+/* Marked (several selected, multiSelect.js, owner 2026-10-21): the Travado blue ring, hovered too, and while
+   Selecionar vários is on the box in the picture's top-right corner, as on the Mídia's cards (kx-pick). */
+.console :is(.fg-tile.is-marked, .fg-tile.is-marked:hover) .fg-img { box-shadow: 0 0 0 2px var(--rh-fg); }
+.console .fg-tile.is-on.is-marked .fg-img { box-shadow: 0 0 0 2px var(--fg-1), 0 0 0 4px var(--rh-fg); }
+.console .fg-img .kx-pick { position: absolute; top: var(--space-1); right: var(--space-1); z-index: var(--z-mark); background: var(--chrome-mark); border-color: var(--fg-1); }
+.console .fg-tile.is-marked .fg-img .kx-pick { background: var(--rh-fg); border-color: var(--rh-fg); }
 .console .lyr-preset:not(.is-on):hover { color: var(--fg-1); box-shadow: 0 0 0 1px var(--line-strong); }
 /* No image drags out of the console (C-58): the browser's ghost, and a
    127.0.0.1 media URL typed into the field it lands on. */
