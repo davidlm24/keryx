@@ -5,7 +5,7 @@ import { useLiveState } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
 import { emptyToasts, pushToast, nextToast, dropToast } from "@/lib/console/toastQueue";
-import { lookDefaults, withLookDefaults } from "@/lib/console/look";
+import { lookDefaults, withLookDefaults } from "@/lib/console/lookDefaults";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
 import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName } from "@/lib/console/themes";
@@ -46,7 +46,7 @@ export { LOCKED_SAY };
 export function useStamp(themeId) {
     // The Bíblia's display preferences (Configurações › Bíblia e músicas,
     // on User), stamped into each passage that goes on air
-    // (src/lib/console/look.js). The transition is the theme's alone.
+    // (src/lib/console/lookDefaults.js). The transition is the theme's alone.
     const user = useUser();
     const look = useMemo(() => lookDefaults(user), [user]);
     // Each background's dim and blur (Aparência › Fundos), a starting point

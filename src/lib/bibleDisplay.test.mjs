@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { refLine } from "./bibleDisplay.js";
+import { refLine, refVersion } from "./bibleDisplay.js";
 import { withoutVerseMarks } from "./verseMarks.js";
 
 test("reference line: full, without the version, or none", () => {
@@ -15,4 +15,11 @@ test("reference line: full, without the version, or none", () => {
 test("verse numbers can be hidden, other numbers stay", () => {
     assert.equal(withoutVerseMarks("16 Porque Deus amou 17 Porque Deus enviou"), "Porque Deus amou Porque Deus enviou");
     assert.equal(withoutVerseMarks("5 Adão viveu ao todo 930 anos"), "Adão viveu ao todo 930 anos");
+});
+
+test("the sigla a reference ends with: the first edition's tag beside a second one", () => {
+    assert.equal(refVersion("João 3:16 · NVI"), "NVI");
+    assert.equal(refVersion("Atos 11:3-5 · BLIVRE "), "BLIVRE");
+    assert.equal(refVersion("João 3:16"), "");
+    assert.equal(refVersion(null), "");
 });

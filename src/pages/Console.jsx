@@ -1009,11 +1009,19 @@ export default function Console() {
     // Capítulos as tall as its cells (owner 2026-10-16), like Camadas, up
     // to 40 % of the column: past it (Salmos' 150) it scrolls.
     const [chaptersFitH, setChaptersFitH] = useState(0);
-    const chaptersH = chaptersFitH ? PANEL_HEAD + Math.min(chaptersFitH, Math.round(mainSize.h * 0.4)) : 0;
+    // Livros and Versículos the same way (Rodada P, P4-3 = A), each up to
+    // 40 % too; when all three lock down a column, the last one takes the
+    // rest (fitDock), so Versículos still fills it.
+    const [booksFitH, setBooksFitH] = useState(0);
+    const [versesFitH, setVersesFitH] = useState(0);
+    const fitCap = (px) => (px ? PANEL_HEAD + Math.min(px, Math.round(mainSize.h * 0.4)) : 0);
+    const chaptersH = fitCap(chaptersFitH);
+    const booksH = fitCap(booksFitH);
+    const versesH = fitCap(versesFitH);
     const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h, {
-        locked: chaptersH ? { chapters: chaptersH } : {},
+        locked: { ...(chaptersH ? { chapters: chaptersH } : {}), ...(booksH ? { books: booksH } : {}), ...(versesH ? { verses: versesH } : {}) },
         folded: folded ? folded.split(",") : [], head: PANEL_HEAD,
-    }), [bibleDock, mainSize.w, mainSize.h, folded, PANEL_HEAD, chaptersH]);
+    }), [bibleDock, mainSize.w, mainSize.h, folded, PANEL_HEAD, chaptersH, booksH, versesH]);
     const setBibleDock = (next) => setLayout({ ...layout, bibleDock: next });
     // Editing moves the modules of the environment on screen.
     const envDock = env === "biblia" ? bibleDock : dock;
@@ -1508,7 +1516,8 @@ export default function Console() {
             {/* Behind THE window nothing takes the focus (C-12); its keys still listen on window. */}
             <main className="main" ref={mainRef} inert={winOpen ? "" : undefined}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
-                    grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH}
+                    grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH} onBooksH={setBooksFitH} onVersesH={setVersesFitH}
+                    readSize={layout.bibleRead} setReadSize={(v) => setLayout({ ...layout, bibleRead: v })} onSettings={openSettings}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold, onPickSplit: pickSplit }} />}
                 {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} onPickSplit={pickSplit} />}
             </main>

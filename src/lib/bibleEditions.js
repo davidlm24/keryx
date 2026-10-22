@@ -36,3 +36,30 @@ export function siglaProblem(sigla, taken = []) {
     if ([...taken, ...RETIRED_VERSIONS].some((t) => String(t).trim().toUpperCase() === s)) return `Já existe uma edição com a sigla ${s}.`;
     return null;
 }
+
+// ---- The Bíblia's version list and its (+) (Rodada P, P3 = A) ----
+// One option: the sigla and the full name ("ACF · Almeida Corrigida Fiel");
+// the closed box shows only the sigla (BibleEnv lays it over the select).
+export const editionOption = (v) => (v?.name && v.name !== v.id ? `${v.id} · ${v.name}` : v?.id || "");
+// The select's <optgroup>s, in order: Instaladas, Ler pela internet and Da
+// igreja (the church's own files); an edition that can be neither read here
+// nor online (NVI, AA and the open ones not installed) is left to the (+),
+// unless it is the one chosen (`wanted`): then it is listed alone, so the
+// box still says what was asked for. Later one group per language.
+// -> [{ id, label, items: [edition] }], the empty groups left out.
+export function versionGroups(editions, installed = [], wanted = "") {
+    const here = new Set(installed);
+    const list = editions || [];
+    const groups = [
+        { id: "installed", label: "Instaladas", items: list.filter((v) => !v.own && here.has(v.id)) },
+        { id: "online", label: "Ler pela internet", items: list.filter((v) => !v.own && !here.has(v.id) && v.online) },
+        { id: "own", label: "Da igreja", items: list.filter((v) => v.own) },
+    ];
+    if (wanted && !groups.some((g) => g.items.some((v) => v.id === wanted))) {
+        groups.push({ id: "wanted", label: "Não instalada", items: [list.find((v) => v.id === wanted) || { id: wanted, name: "" }] });
+    }
+    return groups.filter((g) => g.items.length);
+}
+// What the (+) offers to install: the editions of the list not installed on
+// this computer (an installed one was listed as "Instalar" too, note 5).
+export const installableEditions = (editions, installed = []) => (editions || []).filter((v) => v.install && !installed.includes(v.id));

@@ -11,7 +11,7 @@
 // Travar telas holds in applyOp; the slide keys are not even sent while
 // locked, as the console's moveSlide refuses them. Pure: node --test checks it.
 
-import { liveAction } from "./console/keys.js";
+import { liveAction } from "./console/liveKeys.js";
 import { withTransitions } from "./console/transitions.js";
 
 // e: a keydown event (key, modifiers, target); live: the live state; prefs:

@@ -11,7 +11,10 @@ import BibleCompareView from "./BibleCompareView";
 import { useBibleNotes } from "./useBibleNotes";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { bibleBooks, BIBLE_VERSIONS, parseReference } from "@/lib/bibleBooks";
-import { editionCredit } from "@/lib/bibleEditions";
+import { editionCredit, editionOption, versionGroups, installableEditions } from "@/lib/bibleEditions";
+import OwnBibleDialog from "./settings/OwnBibleDialog";
+import { BIBLE_SIZE_MIN, BIBLE_SIZE_MAX, bibleSizeStep } from "@/lib/console/lookDefaults";
+import { READ_SIZES, READ_DEFAULT, stepRead, readScale, readLabel, readStep, wheelStep } from "@/lib/console/bibleRead";
 import { useBibleEditions } from "./useBibleEditions";
 import { readChapter, preferredVersion, installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
 import { stageFromVerses } from "@/lib/console/stage";
@@ -79,7 +82,24 @@ function ListMenu({ icon, label, unit, empty, rows }) {
     );
 }
 
-export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid, onChaptersH }) {
+// The version select (Rodada P, P3 = A): the sigla and the full name in
+// groups (versionGroups), the closed box only the sigla — laid over the
+// select, which stays the control (the keyboard, the screen reader).
+// `none`: the label of an option "" (the 2ª versão's "Sem 2ª versão").
+function VersionSelect({ value, groups, onChange, label, shown, tip, dot, none }) {
+    return (
+        <span className={`bver ${none && !value ? "is-none" : ""}`} title={tip}>
+            <span className="bver-v" aria-hidden="true">{shown}</span>
+            <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
+                {none && <option value="">{none}</option>}
+                {groups.map((g) => <optgroup key={g.id} label={g.label}>{g.items.map((v) => <option key={v.id} value={v.id}>{editionOption(v)}</option>)}</optgroup>)}
+            </select>
+            {dot && <i className="bver-dot" aria-hidden="true" />}
+        </span>
+    );
+}
+
+export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid, onChaptersH, onBooksH, onVersesH, readSize = READ_DEFAULT, setReadSize, onSettings }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
@@ -108,9 +128,9 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const wanted = prefs.bible_version;
     const setWanted = (v) => { updateUser({ bible_version: v }).catch(() => c.say("Não foi possível salvar a versão escolhida.")); };
     // The Bíblia's own theme (User.bible_theme_id; themes.js themeForKind):
-    // chosen in the background library, in theme mode. "O mesmo das músicas"
-    // is the theme in use, as a passage is stamped (Rodada P, answer 11: it
-    // showed the default theme).
+    // chosen in the background library, in theme mode. "O mesmo das
+    // músicas" is the theme in use (c.themeId), as stamp() sends it — not
+    // the default theme (note 11, Rodada P).
     const themes = useThemes();
     const bibleTheme = themeForKind(themes, "bible", prefs.bible_theme_id, c.themeId);
     const pickTheme = useLibraryPicker();
@@ -173,9 +193,30 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         return () => { alive = false; };
     }, [version, book, chapter, installRev]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // What is on air, when it is this chapter.
+    // The 2ª versão (User.bible_version_2, Rodada P, P2-2 = C): the same
+    // chapter in a second edition, which each slide carries (bibleVerses.js
+    // pair) and the screens draw beside or under the first (User.bible_pair,
+    // stamped by look.js). One that cannot be read now (not installed and
+    // not online, or no internet) is left out, and the bar says so: never
+    // the first edition twice.
+    const want2 = prefs.bible_version_2;
+    const second = want2 && want2 !== ver ? want2 : "";
+    const pairKey = `${second}|${book}|${chapter}`;
+    const [pairRead, setPairRead] = useState(null); // { key, version, verses } | { key, failed }
+    useEffect(() => {
+        if (!second || !ver) return undefined;
+        let alive = true;
+        readChapter(second, book, chapter).then((r) => {
+            if (alive) setPairRead(r.version === second ? { key: pairKey, version: second, verses: r.verses } : { key: pairKey, failed: true });
+        }).catch(() => { if (alive) setPairRead({ key: pairKey, failed: true }); });
+        return () => { alive = false; };
+    }, [second, book, chapter, ver, installRev]); // eslint-disable-line react-hooks/exhaustive-deps
+    const pair = second && pairRead?.key === pairKey && !pairRead.failed ? pairRead : null;
+    const pairFailed = Boolean(second && pairRead?.key === pairKey && pairRead.failed);
+
+    // What is on air, when it is this chapter (whatever second edition it has).
     const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
-    const airIsChapter = chapterOnAir(onAir, { book, chapter, version: ver });
+    const airIsChapter = chapterOnAir(onAir, { book, chapter, version: ver, version2: onAir?.ref?.version2 });
     const airHere = Boolean(onAir && (airIsChapter || String(onAir.ref?.reference || onAir.title).startsWith(`${book} ${chapter}:`)));
     const airSlideText = onAir ? String(onAir.slides[onAir.index]?.text || "") : "";
     const airVerseNums = useMemo(() => verseNumbers(airSlideText), [airSlideText]);
@@ -192,10 +233,10 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     useFocusFollows(readingRef, ".kx-verse", ".kx-verse.is-prev", [selKey, mode]);
     useFocusFollows(cellsRef, "button", "button.is-prev", [selKey]);
 
-    const verseStage = useCallback((n) => stageFromVerses({ verses, nums: [n], version: ver, book, chapter, onAir }), [verses, ver, book, chapter, onAir]);
-    const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir }), [verses, how, ver, book, chapter, onAir]);
+    const verseStage = useCallback((n) => stageFromVerses({ verses, nums: [n], version: ver, book, chapter, onAir, pair }), [verses, ver, book, chapter, onAir, pair]);
+    const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir, pair }), [verses, how, ver, book, chapter, onAir, pair]);
     const picked = verses.filter((v) => sel.includes(v.number));
-    const slides = useMemo(() => (sel.length > 1 ? groupVerses(picked, how) : picked.map((v) => ({ text: `${v.number} ${v.text}` }))), [picked, how, sel.length]);
+    const slides = useMemo(() => groupVerses(picked, sel.length > 1 ? how : "1", pair), [picked, how, sel.length, pair]);
     // A chapter that cannot load has nothing selected (C-48), whatever was asked.
     const reference = sel.length && !error ? `${book} ${chapter}:${rangeLabel(sel)}` : "";
     const stage = useMemo(() => stageFor(sel), [stageFor, sel]);
@@ -216,10 +257,12 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         pickResult(r);
         try {
             const got = await readChapter(version, r.book, r.chapter);
-            const st = stageFromVerses({ verses: got.verses, nums: [r.verse], version: got.version, book: r.book, chapter: r.chapter, onAir });
+            // The 2ª versão of that chapter too, when it can be read.
+            const two = want2 && want2 !== got.version ? await readChapter(want2, r.book, r.chapter).catch(() => null) : null;
+            const st = stageFromVerses({ verses: got.verses, nums: [r.verse], version: got.version, book: r.book, chapter: r.chapter, onAir, pair: two?.version === want2 ? { version: want2, verses: two.verses } : null });
             if (st) onSend(st);
         } catch (err) { c.say(err?.message || "Não foi possível abrir o capítulo."); }
-    }, [pickResult, version, onAir, onSend, c]);
+    }, [pickResult, version, want2, onAir, onSend, c]);
 
     // ↑/↓ from the console: move the selection one verse (in Buscar, one
     // result), keep it in view.
@@ -295,7 +338,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     };
     // Adds the selected verses as a passage (never the whole chapter).
     const addToService = async () => {
-        const passage = passageOf({ verses, nums: sel, how, version: ver, book, chapter });
+        const passage = passageOf({ verses, nums: sel, how, version: ver, book, chapter, pair });
         if (!passage) { c.say("Selecione versículos do capítulo."); return; }
         try {
             const sid = serviceId || await ensureService?.();
@@ -360,6 +403,53 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // select's tooltip (owner 2026-10-20, b3 = sobre: Sobre says it too).
     const editions = useBibleEditions();
     const credit = editionCredit(editions.find((v) => v.id === (ver || wanted)));
+    // The version list (P3): Instaladas, Ler pela internet, Da igreja; the
+    // 2ª versão's the same, without the first edition.
+    const groups = useMemo(() => versionGroups(editions, installed, wanted), [editions, installed, wanted]);
+    const groups2 = useMemo(() => versionGroups(editions, installed, want2).map((g) => ({ ...g, items: g.items.filter((v) => v.id !== wanted || v.id === want2) })).filter((g) => g.items.length), [editions, installed, want2, wanted]);
+    // The (+): only what is missing here (note 5), then the church's own
+    // file (the BKJ 1611's door, note 1) and Configurações.
+    const [ownOpen, setOwnOpen] = useState(false);
+    const bibleBridge = useRef(typeof window === "undefined" ? null : window.keryxDesktop?.bible);
+    const openOwn = () => { if (bibleBridge.current) setOwnOpen(true); else c.say("Instalar Bíblias funciona no KERYX do computador."); };
+    const toInstall = installableEditions(editions, installed);
+    const installItems = [
+        { head: "Instalar neste computador" },
+        ...(toInstall.length
+            ? toInstall.map((v) => ({ label: `${editionOption(v)}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))
+            : [{ label: "Todas as versões da lista estão instaladas", icon: "check", disabled: true }]),
+        "sep",
+        { label: "Instalar uma edição própria…", icon: "plus", title: "Uma Bíblia que a igreja tem em arquivo (a BKJ 1611 e outras)", onClick: openOwn },
+        { label: "Bíblias instaladas…", icon: "sliders", title: "Configurações › Bíblia e músicas", onClick: () => onSettings?.("biblia") },
+    ];
+    // The bar under the No ar screen (P2-1 = A): what the screens show of a
+    // passage, saved for the church (User), stamped at send (look.js).
+    const savePref = (patch, said) => { updateUser(patch).then(() => { if (said) c.say(said); }).catch(() => c.say("Não foi possível salvar.")); };
+    const sizeStep = bibleSizeStep(prefs.bible_text_size);
+    const setSize = (n) => savePref({ bible_text_size: Math.max(BIBLE_SIZE_MIN, Math.min(BIBLE_SIZE_MAX, n)) });
+    const sizeNow = sizeStep ? ` · agora ${sizeStep > 0 ? "+" : "−"}${Math.abs(sizeStep)}` : "";
+    const showRef = prefs.bible_show_reference !== false;
+    const themeLabel = bibleTheme ? themeName(bibleTheme) : "estilo de fábrica";
+    const pairTip = !want2 ? "Uma segunda versão nas telas, junto da primeira"
+        : pairFailed ? `A ${want2} não pôde ser lida agora (sem internet ou não instalada): as telas mostram só a ${ver || wanted}.`
+            : want2 === (ver || wanted) ? `A ${want2} já é a primeira versão: as telas mostram uma só.` : `2ª versão nas telas: ${want2}`;
+    // The reading text's size (P5 = A): this computer's, never the screens'.
+    const readNow = readStep(readSize);
+    const zoomRead = useRef(null);
+    zoomRead.current = (d) => setReadSize?.(stepRead(readNow, d));
+    // Ctrl + the wheel over the text: a listener that is not passive, so it
+    // never zooms the whole console; a callback ref, since the dock may
+    // mount the panel again elsewhere.
+    const wheelOff = useRef(null);
+    const readRef = useCallback((el) => {
+        wheelOff.current?.();
+        wheelOff.current = null;
+        if (!el) return;
+        const onWheel = (e) => { const d = wheelStep(e); if (d === null) return; e.preventDefault(); zoomRead.current?.(d); };
+        el.addEventListener("wheel", onWheel, { passive: false });
+        wheelOff.current = () => el.removeEventListener("wheel", onWheel);
+    }, []);
+
     // What the No ar pill's dot says (the Programa's tones, ProgramaPill).
     const airCap = captionParts(c.cur).title;
     const airIdle = airCap === "nada" && !airInPlayer(c.cur);
@@ -375,14 +465,10 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const modules = {
         books: (
             <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={<>
-                <span className="bver" title={[badge?.text, credit].filter(Boolean).join(" · ") || "Versão da Bíblia"}>
-                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"}>{editions.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
-                    {badge && <i className="bver-dot" aria-hidden="true" />}
-                </span>
                 <Seg small label="Nomes dos livros" value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
-                <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
+                <AddMenu title="Instalar uma versão da Bíblia" items={installItems} />
                 <IconBtn name="more" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
-                    { label: `Tema da Bíblia… · ${bibleTheme ? themeName(bibleTheme) : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`, icon: "star", onSelect: chooseTheme },
+                    { label: `Tema da Bíblia… · ${themeLabel}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`, icon: "star", onSelect: chooseTheme },
                     "sep",
                     // A narrow column hides Abrev | Nomes (console.css, C-47): then it is here.
                     ...(namesInMenu(e) ? [
@@ -395,14 +481,18 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     { label: "Células grandes", icon: grid === "large" ? "check" : undefined, onSelect: () => setGrid?.("large") },
                 ] })} />
             </>}>
-                {ver && ver !== wanted && (
-                    <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
-                        {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
+                {/* As tall as its books, like Capítulos (P4-3 = A; Console.jsx
+                    locks the height, capped): past that it scrolls. */}
+                <Measure onHeight={onBooksH}>
+                    {ver && ver !== wanted && (
+                        <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
+                            {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
+                        </div>
+                    )}
+                    <div className={`bgrid is-${grid}`} ref={gridRef}>
+                        {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} aria-label={b.name} aria-current={b.name === book ? "true" : undefined} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
                     </div>
-                )}
-                <div className={`bgrid is-${grid}`} ref={gridRef}>
-                    {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} aria-label={b.name} aria-current={b.name === book ? "true" : undefined} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
-                </div>
+                </Measure>
             </Panel>
         ),
         chapters: (
@@ -417,8 +507,9 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         ),
         verses: (
             <Panel className="bpick-verses" title="Versículos" count={`${book} ${chapter}`}>
+                {/* As tall as its cells too (P4-3 = A). */}
                 {!error && verses.length > 0 && (
-                    <div className="bverses"><div ref={cellsRef} className={`verse-cells is-${grid}`} role="group" aria-label={`Versículos de ${book} ${chapter}`}>
+                    <Measure onHeight={onVersesH}><div className="bverses"><div ref={cellsRef} className={`verse-cells is-${grid}`} role="group" aria-label={`Versículos de ${book} ${chapter}`}>
                         {verses.map((v) => (
                             <button type="button" key={v.number}
                                 className={`kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}
@@ -426,14 +517,20 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                                 onClick={(e) => pickCell(v.number, e)} onDoubleClick={() => sendCell(v.number)}
                                 title={`${book} ${chapter}:${v.number} · clique seleciona · 2 cliques projetam`}>{v.number}<SrState cls={`${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`} /></button>
                         ))}
-                    </div></div>
+                    </div></div></Measure>
                 )}
             </Panel>
         ),
         reading: (
+
             <Panel className="bread bible-center" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}`}
                 actions={<>
                     {mode === "ler" && <><IconBtn small name="checks" className="bread-sel" title="Selecionar todos" onClick={() => setSel(verses.map((v) => v.number))} /><IconBtn small name="x" className="bread-sel" title="Limpar seleção" onClick={() => setSel([])} /></>}
+                    <div className="kx-seg is-small bread-size" role="group" aria-label={`Tamanho do texto da leitura · ${readLabel(readNow)}`}>
+                        <button type="button" className="kx-t" disabled={readNow === 0} onClick={() => zoomRead.current(-1)} title="Letra menor na leitura · Ctrl + roda do mouse">A−</button>
+                        <button type="button" className={`kx-t ${readNow === READ_DEFAULT ? "is-on" : ""}`} aria-pressed={readNow === READ_DEFAULT} onClick={() => setReadSize?.(READ_DEFAULT)} title={`Letra da leitura: ${readLabel(readNow)} · A volta ao M · não muda as telas`}>A</button>
+                        <button type="button" className="kx-t" disabled={readNow === READ_SIZES.length - 1} onClick={() => zoomRead.current(1)} title="Letra maior na leitura · Ctrl + roda do mouse">A+</button>
+                    </div>
                     <Seg small label="Modo do texto" value={mode} onChange={setMode} options={MODES} />
                 </>}>
                 <div className="bband-lists">
@@ -444,7 +541,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     <ListMenu icon="text" label="Anotações" unit={["anotação", "anotações"]} empty="Selecione um versículo e escreva à direita."
                         rows={notesApi.notes.map((n) => ({ key: n.id, icon: "text", title: n.reference, meta: n.note_text, onPick: () => { if (goRef(n.reference)) setMode("ler"); } }))} />
                 </div>
-                <div className="bread-b">
+                <div className={`bread-b ${readNow === READ_DEFAULT ? "" : "is-sized"}`} ref={readRef} style={{ "--bread-k": readScale(readNow) }}>
                     {mode === "ler" && (
                         <>
                             {error && (
@@ -496,17 +593,35 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                         <div className={`prog-pill kx-pill scr-pill is-${airTone}`} role="group" aria-label={`No ar · ${airSaid}`} title={airSaid}><i className="pp-dot kx-pill-dot" aria-hidden="true" /><ScreenActions c={c} onEnd={onEnd} /></div>
                     </div></div>
                 </div>
+                <div className="bbar" role="group" aria-label="Como a Bíblia aparece nas telas">
+                    <div className="bbar-row">
+                        <Btn small onClick={chooseTheme} title={`Tema da Bíblia · ${themeLabel}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`}>Tema…</Btn>
+                        <div className="kx-seg is-small" role="group" aria-label={`Tamanho do texto nas telas${sizeNow}`}>
+                            <button type="button" className="kx-t" disabled={sizeStep <= BIBLE_SIZE_MIN} onClick={() => setSize(sizeStep - 1)} title={`Texto menor nas telas${sizeNow}`}>A−</button>
+                            <button type="button" className={`kx-t ${sizeStep === 0 ? "is-on" : ""}`} aria-pressed={sizeStep === 0} onClick={() => setSize(0)} title={`O tamanho do tema da Bíblia${sizeNow}`}>A</button>
+                            <button type="button" className="kx-t" disabled={sizeStep >= BIBLE_SIZE_MAX} onClick={() => setSize(sizeStep + 1)} title={`Texto maior nas telas${sizeNow}`}>A+</button>
+                        </div>
+                        <Btn small on={showRef} onClick={() => savePref({ bible_show_reference: !showRef }, showRef ? "Telas sem a referência." : "Telas com a referência.")} title={showRef ? "A referência (João 3:16) aparece nas telas · clique para tirar" : "Sem a referência nas telas · clique para mostrar"}>Ref.</Btn>
+                        <div className="kx-seg is-small" role="group" aria-label="Versículos por slide">
+                            {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} aria-pressed={how === v} onClick={() => setHow(v)} title={v === "auto" ? "Versículos por slide: pelo tamanho do texto" : `${v} versículo${v === "1" ? "" : "s"} por slide`}>{l}</button>)}
+                        </div>
+                    </div>
+                    <div className="bbar-row">
+                        <VersionSelect value={wanted} groups={groups} onChange={setWanted} shown={wanted} dot={Boolean(badge)}
+                            label={badge ? `Versão: ${badge.text}` : "Versão"} tip={[badge?.text, credit].filter(Boolean).join(" · ") || "Versão da Bíblia"} />
+                        <VersionSelect value={want2} groups={groups2} none="Sem 2ª versão" onChange={(v) => savePref({ bible_version_2: v }, v ? `2ª versão nas telas: ${v}.` : "Uma versão só nas telas.")}
+                            shown={want2 ? `2ª: ${want2}` : "+ 2ª versão"} dot={pairFailed || Boolean(want2 && want2 === (ver || wanted))} label={`Segunda versão nas telas · ${want2 || "nenhuma"}`} tip={pairTip} />
+                        {want2 && <Seg small label="Onde fica a 2ª versão" value={prefs.bible_pair} onChange={(v) => savePref({ bible_pair: v })}
+                            options={[["side", "Lado a lado", { title: "As duas versões lado a lado" }], ["stack", "Empilhadas", { title: "A 2ª versão embaixo da primeira, um pouco menor" }]]} />}
+                    </div>
+                </div>
                 <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
                     <span className="kx-section">Selecionado <span className="kx-count">· {error ? `${book} ${chapter} indisponível nesta versão` : sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
-                    {reference && sel.length > 1 && (
-                        <div className="kx-seg is-small" role="group" aria-label="Versículos por slide">
-                            {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} aria-pressed={how === v} onClick={() => setHow(v)} title={v === "auto" ? "Pelo tamanho do texto" : `${v} por slide`}>{l}</button>)}
-                        </div>
-                    )}
+
                 </div>
                 <div className="vgroup" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
                     {!slides.length && <Empty title="Nenhum versículo selecionado">{error ? null : "Clique num versículo ou use ↑ ↓. Enter projeta."}</Empty>}
-                    {slides.map((s, i) => <div key={i} className="vslide"><b>{i + 1}</b><span>{s.text}</span></div>)}
+                    {slides.map((s, i) => <div key={i} className="vslide"><b>{i + 1}</b><span>{s.text}{s.pair && <small className="vslide-2"><b>{s.pair.version}</b> {s.pair.text}</small>}</span></div>)}
                 </div>
                 {oneVerse && (
                     <div className="be-note">
@@ -524,5 +639,13 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         ),
     };
 
-    return dockProps ? <DockView {...dockProps} render={(id, fold) => (modules[id] ? React.cloneElement(modules[id], { key: id, fold }) : null)} playerDocked={false} /> : null;
+    return dockProps ? (
+        <>
+            <DockView {...dockProps} render={(id, fold) => (modules[id] ? React.cloneElement(modules[id], { key: id, fold }) : null)} playerDocked={false} />
+            {/* Instalar uma edição própria… from the (+): the dialog of Configurações › Bíblia e músicas. */}
+            <OwnBibleDialog open={ownOpen} taken={editions.map((v) => v.id)} bible={bibleBridge.current} say={c.say}
+                onInstalled={() => { forgetInstalledVersions(); setInstallRev((n) => n + 1); }} onClose={() => setOwnOpen(false)} />
+        </>
+    ) : null;
+
 }

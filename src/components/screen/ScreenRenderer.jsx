@@ -13,7 +13,7 @@ import { noticeTime, fileAt, clockOf } from "@/lib/console/notice";
 import { ringBell } from "@/lib/bell";
 import { usePrefs } from "@/hooks/useUser";
 import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
-import { refLine } from "@/lib/bibleDisplay";
+import { refLine, refVersion } from "@/lib/bibleDisplay";
 import { fitScale } from "@/lib/console/lyricFit";
 import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
 import ActivityView from "./ActivityView";
@@ -370,6 +370,9 @@ function Content({ content, showTitle = true, still = false }) {
     const key = `${content.startedAt}:${content.index}`;
     const { textRef, probeRef, fit } = useFitWidth(lyrics, [key, slide.text, chorded, size, style.font_family, style.text_max_width, style.text_box, style.text_case, style.font_weight, style.font_style, style.letter_spacing, style.text_outline_px]);
     const body = bible ? verseNodes(slide.text, style.verse_numbers) : chorded ? <ChordedLines chorded={chorded} /> : slide.text;
+    // Two editions: each block says its sigla, so the reference drops it.
+    const pair = bible && slide.pair?.text ? slide.pair : null;
+    const refMode = pair && style.ref_line !== "none" ? "plain" : style.ref_line;
     return (
         <>
             {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: fontStack(style.font_family) }}>{content.title}</div>}
@@ -377,7 +380,15 @@ function Content({ content, showTitle = true, still = false }) {
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {show.labels && !bible && slide.label && <div className="ks-chorus">{slide.label}</div>}
                     {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}
-                    {(slide.text || !slide.image_url) && (
+                    {/* A second edition (slide.pair, Rodada P): two blocks, beside
+                        or under each other (style.pair), each with its sigla. */}
+                    {pair ? (
+                        <div className={`ks-pair is-${style.pair || "side"}`}>
+                            {[[body, refVersion(reference)], [verseNodes(pair.text, style.verse_numbers), pair.version]].map(([b, v], i) => (
+                                <div key={i} className="ks-text" style={{ ...textStyle(style), ...textExtra(style) }}>{b}{v && <span className="ks-sigla">{v}</span>}</div>
+                            ))}
+                        </div>
+                    ) : (slide.text || !slide.image_url) && (
                         <div ref={textRef} className={`ks-text ${lyrics ? `ks-lines ${fit.wrap ? "is-wrap" : ""}` : ""}`} style={{ ...textStyle(style), ...textExtra(style) }}>
                             {lyrics ? <>
                                 <span className="ks-fit" style={fit.scale < 1 ? { fontSize: `${fit.scale}em` } : undefined}>{body}</span>
@@ -385,7 +396,7 @@ function Content({ content, showTitle = true, still = false }) {
                             </> : body}
                         </div>
                     )}
-                    {bible && refLine(reference, style.ref_line) && <div className="ks-ref" style={{ color: style.text_color || "#ffffff" }}>{refLine(reference, style.ref_line)}</div>}
+                    {bible && refLine(reference, refMode) && <div className="ks-ref" style={{ color: style.text_color || "#ffffff" }}>{refLine(reference, refMode)}</div>}
                 </div>
             </div>
         </>

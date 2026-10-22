@@ -1469,10 +1469,10 @@ async function checkConsole(webContents, { live, outputs }) {
         // A select left with the focus (a Tab, or a list closed without a
         // pick) never takes the live keys (audit C-03): "j" still opens the
         // quick jump, and the edition stays.
-        const edition = await js("(() => { const s = document.querySelector('.bpick-books .bver select'); if (s) s.focus(); return s && document.activeElement === s ? s.value : null; })()");
+        const edition = await js("(() => { const s = document.querySelector('.bbar .bver select'); if (s) s.focus(); return s && document.activeElement === s ? s.value : null; })()");
         await press("j");
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
-        result.selectLeavesJump = edition !== null && result.quickOpened && await js(`(document.querySelector(".bpick-books .bver select") || {}).value === ${JSON.stringify(edition)}`);
+        result.selectLeavesJump = edition !== null && result.quickOpened && await js(`(document.querySelector(".bbar .bver select") || {}).value === ${JSON.stringify(edition)}`);
         await type("o 3 16");
         result.quickRead = await js("[...document.querySelectorAll('.qj-step b')].map((n) => n.textContent).join('|')");
         // Space completed the book: the field holds the full name. The
