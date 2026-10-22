@@ -14,6 +14,7 @@ import { useImportSongs, SONG_FILE, SONG_ACCEPT } from "./importSongs";
 import { usePackages } from "./packages";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { songRow, mmss, mediaIcon, copyingRows } from "@/lib/console/libraryRows";
+import CodecMark from "@/components/console/CodecMark";
 import { mediaFromYouTube } from "@/lib/mediaImport";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles, importSummary } from "@/lib/mediaImport";
@@ -307,7 +308,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         key={m.id}
                         icon={mediaIcon(m)}
                         title={m.title}
-                        meta={m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
+                        meta={m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : <>{[MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}
                         metaClass={m.missing && !m.syncing ? "kx-warn" : ""}
                         state={`${m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)} ${marked(m.id)}`}
                         lead={mark}
