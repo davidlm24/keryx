@@ -292,10 +292,10 @@
    the Biblioteca, the Setlist, the search palette, the Mídia, the planner
    (its item rows too, whose buttons are in the details they open). */
 .console.is-comfortable :is(.kx-row:has(> .kx-row-acts), .kx-row.pl-item) .kx-row-title { display: block; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: unset; }
-/* Compacta (chosen, or Automática on a short grid): panel headers of 28 px
-   (Console.jsx panelHead keeps the locked heights in step) and slide rows a
-   little tighter. */
-.console.is-compact .kx-panel-h { height: 28px; }
+/* Compacta (chosen, or Automática on a short grid): panel headers of 32 px
+   instead of 36 (--panel-head; layout.js panelHead keeps the locked heights
+   in step) and slide rows a little tighter. */
+.console.is-compact { --panel-head: var(--panel-head-compact); }
 /* Live controls: bigger targets than the dense lists (an occasional
    volunteer under pressure). Rows stay 28 px; these are 36 px. */
 .console .kx-btn-live { height: 32px; padding: 0 var(--space-3); }
@@ -452,7 +452,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .kx-btn.kx-fold[aria-expanded="true"]:not(:hover):not(:active) { background: none; color: var(--fg-2); }
 .console .kx-btn.kx-fold.is-stuck { opacity: var(--dim); cursor: default; }
 .console .kx-btn.kx-fold.is-stuck:hover { background: none; }
-.console.is-compact .kx-panel.is-collapsed { height: 28px; }
 .console .kx-strip-b { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: 4px 0 var(--space-3); border: 0; border-radius: inherit; background: none; color: var(--fg-3); overflow: hidden; }
 .console.is-compact .kx-strip-b { padding-top: 2px; }
 .console .kx-strip-b:hover { background: var(--bg-2); color: var(--fg-1); }
@@ -938,8 +937,17 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    its own wider 140 px grid (.cfg .frm). */
 /* One spacing (Rodada D3, the Editor da tela's): no flex gap — between two
    columns the splitter (or a kx-gap) IS the 6 px, as in the console; two
-   panels stacked in a column are 6 px apart too. */
-.console .win-body { --win-label: 96px; flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 0; padding: var(--gutter); }
+   panels stacked in a column are 6 px apart too. The panels start right
+   under the bar's rule (Rodada O, O7: no strip of ground between them). */
+.console .win-body { --win-label: 96px; flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 0; padding: 0 var(--gutter) var(--gutter); }
+/* THE window is one bg-1 surface (bundle.css, Window); its pages' panels
+   sit one grey step up, everything inside them with them: the panel bg-2,
+   its fields and hover bg-3, pressed and selected bg-4. The steps are read
+   on the window, where the tokens are still the console's, and handed to
+   the panels, so a panel inside a panel never climbs twice. Configurações
+   is the window's own surface (no card), as its page always was. */
+.console .kx-win { --win-bg-1: var(--bg-2); --win-bg-2: var(--bg-3); --win-bg-3: var(--bg-4); }
+.console .win-body .kx-panel:not(.kx-panel-bare) { --bg-1: var(--win-bg-1); --bg-2: var(--win-bg-2); --bg-3: var(--win-bg-3); }
 .console .win-body > .col.center { min-width: 0; }
 .console .win-body .kx-gap { flex: none; width: var(--gutter); }
 /* Inside a column: 6 px between two things stacked, or the splitter itself. */
@@ -947,16 +955,18 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .win-body .col > :not(.kx-split) + :not(.kx-split) { margin-top: var(--gutter); }
 
 /* ---------- Configurações (canvas artboard 20) ---------- */
-/* The config page: nav left, the section right, on bg-1 as its window
-   always was; its search rides the win-bar's tools. */
-.console .win-bar .cfg-search { flex: 0 1 340px; min-width: 160px; }
-.console .win-bar .cfg-search .kx-field { width: 100%; }
+/* The config page: nav left, the section right, on the window's bg-1. The
+   nav is fixed (Rodada O, O7: no splitter) and starts with Voltar, when
+   there is somewhere to go back to, and the search (O8). */
+.console .cfg-nav-h { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
+.console .cfg-nav-h .kx-btn-back { height: 26px; padding: 0 10px 0 6px; gap: 4px; flex: none; font-weight: 500; max-width: 100%; }
+.console .cfg-nav-h .cfg-search, .console .cfg-nav-h .cfg-search .kx-field { width: 100%; }
 .console .cfg-nav .kx-row.is-dim { opacity: .45; }
 .console .cfg-nav .cfg-hitcount { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-meta); font-variant-numeric: tabular-nums; color: var(--fg-1); background: var(--bg-3); }
 .console .cfg-results mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(--fg-1); border-radius: 2px; padding: 0 1px; }
 .console .cfg .is-flash { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 16%, transparent); border-radius: var(--radius-control); transition: background .4s, box-shadow .4s; }
 .console .cfg-dialog-b { flex: 1; min-height: 0; display: flex; background: var(--bg-1); }
-.console .cfg-nav { flex: 0 0 240px; min-width: 0; padding: var(--space-1) 0; border-right: 1px solid var(--line-soft); overflow: auto; }
+.console .cfg-nav { flex: 0 0 240px; min-width: 0; padding: var(--space-2) 0 var(--space-1); border-right: 1px solid var(--line-soft); overflow: auto; }
 .console .cfg-dialog-b .cfg { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .console .cfg-dialog-b .cfg > .kx-panel { flex: 1; border-radius: 0; }
 @media (max-width: 760px) { .console .cfg-nav { flex-basis: 180px; } }
@@ -975,6 +985,14 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .nv-scroll.cfg .frm .cfg-disc, .console .nv-scroll.cfg .frm .cfg-subrows { margin-left: 0; }
 @media (prefers-reduced-motion: reduce) { .console .cfg .frm .cfg-disc .kx-i { transition: none; } }
 .console .listhead + .cfg-group, .console .cfg-group + .listhead { margin-top: var(--space-3); }
+/* A panel with a title (Culto, Música, Tema, a section of Configurações)
+   whose first area is a static group: the group's title would repeat it
+   (Rodada O, O10 = C). Its header goes, unless it carries actions; the
+   title stays for screen readers and the settings search (data-cfg-k). */
+.console .kx-panel:has(> .kx-panel-h > .kx-section:not(:empty)) > .kx-panel-b > :is(.kx-group.is-static:first-child, .listhead:first-child + .kx-group.is-static) > .kx-group-h:not(:has(.kx-group-acts)),
+.console .kx-panel:has(> .kx-panel-h > .kx-section:not(:empty)) > .kx-panel-b > :is(.kx-group.is-static:first-child, .listhead:first-child + .kx-group.is-static) > .kx-group-h .kx-group-t,
+.console .kx-panel:has(> .kx-panel-h > .kx-section:not(:empty)) > .kx-panel-b > .nv-scroll:first-child > .kx-group.is-static:first-child > .kx-group-h:not(:has(.kx-group-acts)),
+.console .kx-panel:has(> .kx-panel-h > .kx-section:not(:empty)) > .kx-panel-b > .nv-scroll:first-child > .kx-group.is-static:first-child > .kx-group-h .kx-group-t { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .console .cfg-group-in > .listhead:not(:first-child) { margin-top: var(--space-3); }
 /* A search jump lands with room above the row (C-87 neighbour: scroll-margin). */
 .console .cfg [data-cfg-k] { scroll-margin-block: var(--space-3); }
@@ -1121,7 +1139,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    scrolling. */
 .console .song-ed-l .frm .kx-seg { height: auto; flex-wrap: wrap; row-gap: 2px; }
 /* The video panel's header buttons wrap rather than clip. */
-.console .ed-video > .kx-panel-h { height: auto; min-height: 32px; flex-wrap: wrap; padding-top: 2px; padding-bottom: 2px; }
+.console .ed-video > .kx-panel-h { height: auto; min-height: var(--panel-head); flex-wrap: wrap; padding-top: 2px; padding-bottom: 2px; }
 
 /* Service planner (Planejador de culto, canvas artboard 17) */
 .console .pl-frm { display: grid; grid-template-columns: var(--win-label, 96px) 1fr; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-2); }
@@ -1338,6 +1356,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 
 /* Relatórios */
 .console .rp .kx-panel-b { padding: var(--space-2); }
+/* Período and the search, at the top of the page (Rodada O, O7). */
+.console .rp-bar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; padding: var(--space-1) var(--space-3) 0; }
 .console .rp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); padding: var(--space-2) var(--space-3); }
 .console .rp-card { background: var(--bg-2); border-radius: var(--radius-control); padding-bottom: var(--space-2); min-width: 0; }
 .console .rp-card .listhead { gap: var(--space-1); flex-wrap: wrap; height: auto; min-height: var(--row); }
@@ -1642,6 +1662,18 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    inside the canvas, as .cfg-prev does for the settings previews. */
 .console .le-screen { position: relative; width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); isolation: isolate; background: var(--bg-0); contain: layout paint; container-type: size; }
 .console .le-use { width: auto; flex: none; }
+/* A window page's header that took a content control from the bar (Rodada
+   O, O7: the Editor da tela's Mostrar com, Sincronizar's Velocidade):
+   narrow, it breaks into a second line before its title or a control is
+   cut. Only in THE window; the console's headers stay one line. */
+.console .win-body .kx-panel.is-head-wrap > .kx-panel-h { height: auto; min-height: var(--panel-head); flex-wrap: wrap; row-gap: var(--space-1); padding-block: 6px; }
+.console .win-body .kx-panel.is-head-wrap > .kx-panel-h > .kx-section { flex: 1 0 auto; max-width: 100%; }
+/* The Editor de telas' Telas menu: a fixed column (Rodada O, O7), Voltar
+   in its header when there is one (O8). */
+.console .win-body > .col.le-menu-col { flex: 0 0 190px; min-width: 0; }
+/* In the form's header (Rodada O, O7): a header control's height, and it
+   gives way before the title does. */
+.console .kx-panel-h .le-use { height: var(--control-sm); flex: 0 1 auto; min-width: 96px; max-width: 220px; }
 .console .le-screen .kl { pointer-events: none; }
 /* Ver como: the output-context wrapper between the canvas and the renderer. */
 .console .le-fill { position: absolute; inset: 0; pointer-events: none; }

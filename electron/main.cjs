@@ -47,6 +47,10 @@ const PORT = process.env.KERYX_PORT !== undefined ? Number(process.env.KERYX_POR
 // window paints it before the page loads, and the Windows title bar uses it so
 // the bar and the app read as one surface. Keep it in step with the token.
 const BG = "#0d0d0c";
+// A detached page's window (/Janela) is THE window's surface (--bg-1; Rodada
+// O, O7): the system's caption buttons sit on the page's colour, never on a
+// darker block. src/lib/designTokens.test.mjs holds both to tokens.json.
+const JANELA_BG = "#171715";
 const TITLEBAR_SYMBOLS = "#bbb6ac"; // --fg-2
 const TITLEBAR_HEIGHT = 32;
 // A detached page's bar (.win-bar in console.css, 40 px with its 1 px line
@@ -350,9 +354,9 @@ function janelaWindowOptions(kind) {
         ...janelaPlacement(kind).bounds,
         minWidth: windowState.JANELA.min.width,
         minHeight: windowState.JANELA.min.height,
-        backgroundColor: BG,
+        backgroundColor: JANELA_BG,
         ...(process.platform === "win32"
-            ? { titleBarStyle: "hidden", titleBarOverlay: { color: BG, symbolColor: TITLEBAR_SYMBOLS, height: JANELA_BAR_HEIGHT } }
+            ? { titleBarStyle: "hidden", titleBarOverlay: { color: JANELA_BG, symbolColor: TITLEBAR_SYMBOLS, height: JANELA_BAR_HEIGHT } }
             : {}),
     };
 }

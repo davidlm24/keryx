@@ -24,7 +24,6 @@ const PHRASES = [["none", "Nenhuma"], ["church", "Nome da igreja"], ["own", "Out
 // puts it on the screens (useConsole). A page of THE window, hosted like the
 // screen editor, with the same screens menu.
 export default function IdleEditor({ say, live: liveState, screens, onClose, onSwitch, escRef = null, hosted = false, onDetach = null }) {
-    const colTelas = useWinCol("screen.telas", { name: "Telas", def: 190, min: 160, max: 360 });
     const colAjustes = useWinCol("screen.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
     const prefs = usePrefs();
     const church = useChurch();
@@ -59,8 +58,8 @@ export default function IdleEditor({ say, live: liveState, screens, onClose, onS
 
     const body = (
         <>
-            <ScreensMenu path={IDLE_SCREEN} screens={screens} onPick={(p) => { if (p !== IDLE_SCREEN) onSwitch?.(p); }} style={colTelas.style} />
-            {colTelas.split}
+            <ScreensMenu path={IDLE_SCREEN} screens={screens} onPick={(p) => { if (p !== IDLE_SCREEN) onSwitch?.(p); }} />
+            <div className="kx-gap" />
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel title="Tela ociosa" bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-scroll cfg">
@@ -130,7 +129,7 @@ export default function IdleEditor({ say, live: liveState, screens, onClose, onS
     if (!hosted) return body;
     return (
         <>
-            <WinBar title="Editor da tela" sub="Tela ociosa" detach={onDetach} />
+            <WinBar title="Editor da tela" sub="Tela ociosa" detach={onDetach} menuBack />
             <div className="win-body is-ed">{body}</div>
         </>
     );
