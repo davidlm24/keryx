@@ -835,9 +835,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    at its end, and the countdown on the next row ("Próximo em 5 s · Cancelar";
    amber when it stopped instead). */
 .console .setlist-panel > .kx-panel-h { container: setlist-h / inline-size; }
-.console .rund-auto { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-sm); padding: 0 var(--space-1); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: 500 var(--fs-ui)/1 var(--font-sans); white-space: nowrap; cursor: pointer; }
-.console .rund-auto:not(:disabled):hover { background: var(--bg-3); color: var(--fg-1); }
-.console .rund-auto[aria-checked="true"] { color: var(--fg-1); }
+.console .rund-auto, .console .dock-lock { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-sm); padding: 0 var(--space-1); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: 500 var(--fs-ui)/1 var(--font-sans); white-space: nowrap; cursor: pointer; }
+.console .rund-auto:not(:disabled):hover, .console .dock-lock:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .rund-auto[aria-checked="true"], .console .dock-lock[aria-checked="true"] { color: var(--fg-1); }
 .console .rund-auto:disabled { opacity: var(--dim); cursor: default; }
 /* The word "Autoplay" (Rodada O3) stays beside the switch; the count "· n
    itens · tempo" ellipsizes first (the title's kx-section shrinks). Only

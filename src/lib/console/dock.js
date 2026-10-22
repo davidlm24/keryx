@@ -102,47 +102,81 @@ const envOf = (id) => MODULES[id]?.env || "culto";
 export const envModules = (env) => Object.keys(MODULES).filter((id) => envOf(id) === env);
 export const dockEnv = (d) => (d?.env === "biblia" ? "biblia" : "culto");
 // A dock object for an environment (the culto's carries no env).
-// `from`: the dock it came from — its Livre | Por % mode rides along (modeOf).
+// `from`: the dock it came from — its Livre | Por % | Exato mode and its
+// Travar fora da edição ride along (modeOf).
 const make = (env, tree, hidden, from = null) => ({ ...(env === "culto" ? { tree, hidden } : { env, tree, hidden }), ...modeOf(from) });
 export const MODULE_IDS = envModules("culto");
 
-// ---------- Livre | Por % (owner 2026-10-15, Rodada D) ----------
+// ---------- Livre | Por % | Exato (owner 2026-10-15, Rodada D; Exato 2026-10-22, Rodada P4-2) ----------
 // Editar disposição sizes the panels either freely (pixels, as always) or
 // by percent: then the dock keeps `mode: "pct"` and `ref`, the box its sizes
 // were made for, and fitDock scales every fixed size by the box on screen
 // over `ref` — the proportions survive a smaller window or another monitor
 // (minimums and locked heights still win). Splitters snap in PCT_STEP.
-export const DOCK_MODES = ["free", "pct"];
+// Exato (`mode: "exact"`, with `ref` too) keeps the proportions as WEIGHTS:
+// every split carries `weights` (one per child, summing 100) and its open
+// children share the room by them, so 33 · 33 · 34 is exactly that at any
+// window size, with no 5 % snap and no flexible child taking the rest.
+// Minimums, locked heights and folds still win (fitNode); `sizes` stay in
+// step with the weights as drawn in `ref` (syncExact), so a structural edit
+// or leaving Exato keeps what is on screen.
+export const DOCK_MODES = ["free", "pct", "exact"];
 export const PCT_STEP = 5;
-export const dockMode = (d) => (d?.mode === "pct" ? "pct" : "free");
+export const dockMode = (d) => (d?.mode === "pct" || d?.mode === "exact" ? d.mode : "free");
+const scaled = (d) => d?.mode === "pct" || d?.mode === "exact";
 const okRef = (r) => Number.isFinite(r?.w) && Number.isFinite(r?.h) && r.w > 0 && r.h > 0;
-// The mode fields a dock carries over (make): nothing in free mode.
+// The fields a dock carries over (make): its mode (nothing in free mode)
+// and its lock.
 function modeOf(d) {
-    if (d?.mode !== "pct") return {};
-    return okRef(d.ref) ? { mode: "pct", ref: { w: Math.round(d.ref.w), h: Math.round(d.ref.h) } } : { mode: "pct" };
+    const lock = d?.lock === true ? { lock: true } : {};
+    if (!scaled(d)) return lock;
+    return { mode: d.mode, ...(okRef(d.ref) ? { ref: { w: Math.round(d.ref.w), h: Math.round(d.ref.h) } } : {}), ...lock };
 }
+
+// ---------- Travar fora da edição (owner 2026-10-22, Rodada P4-1 = A) ----------
+// One switch per environment (the culto's dock, the Bíblia's): while it is on
+// and the arrangement is not being edited, the splitters are inert (Dock.jsx
+// draws plain gaps: no drag, no arrow keys, no double click). The flag rides
+// on the dock (`lock: true`) beside its mode, so it survives normalizeDock,
+// the named arrangements and the tier docks (layout.js switchTier carries
+// it to the tier that comes in).
+export const dockLocked = (d) => d?.lock === true;
+export function setDockLock(dock, on) {
+    if (!dock?.tree || dockLocked(dock) === Boolean(on)) return dock;
+    const { lock: _l, ...rest } = dock; // eslint-disable-line no-unused-vars
+    return on ? { ...rest, lock: true } : rest;
+}
+// `dock` with the lock of `from` (a named arrangement or another tier's
+// dock coming in keeps the environment's switch as it is).
+export const withLockOf = (dock, from) => (dock?.tree ? setDockLock(dock, dockLocked(from)) : dock);
+
 // Every fixed size times kx across a row, ky down a column.
 function scaleTree(node, kx, ky) {
     if (!isSplit(node)) return node;
     const k = node.dir === "row" ? kx : ky;
     return { ...node, sizes: node.sizes.map((s) => (s === null ? null : Math.round(s * k))), children: node.children.map((c) => scaleTree(c, kx, ky)) };
 }
-// The tree as it is drawn in a w × h box (pct mode); the tree itself otherwise.
-const treeFor = (d, w, h) => (d?.mode === "pct" && okRef(d.ref) && w > 0 && h > 0 ? scaleTree(d.tree, w / d.ref.w, h / d.ref.h) : d?.tree);
-// A pct dock made for the w × h box on screen (its sizes are what is drawn
-// there), so a splitter's pixels apply to it as they are.
+// The tree as it is drawn in a w × h box (pct and exact modes); the tree itself otherwise.
+const treeFor = (d, w, h) => (scaled(d) && okRef(d.ref) && w > 0 && h > 0 ? scaleTree(d.tree, w / d.ref.w, h / d.ref.h) : d?.tree);
+// A pct (or exact) dock made for the w × h box on screen (its sizes are
+// what is drawn there), so a splitter's pixels apply to it as they are.
 export function rebaseDock(dock, w, h) {
-    if (dock?.mode !== "pct" || !dock.tree || !(w > 0 && h > 0)) return dock;
+    if (!scaled(dock) || !dock.tree || !(w > 0 && h > 0)) return dock;
     return { ...dock, tree: treeFor(dock, w, h), ref: { w: Math.round(w), h: Math.round(h) } };
 }
-// Livre ↔ Por %: what is on screen stays as it is, only how it follows the
-// box changes.
-export function setDockMode(dock, mode, w, h) {
-    if (!dock?.tree || !(w > 0 && h > 0)) return dock;
-    const now = rebaseDock(dock, w, h);
-    if (mode === "pct") return { ...now, mode: "pct", ref: { w: Math.round(w), h: Math.round(h) } };
+// Livre ↔ Por % ↔ Exato: what is on screen stays as it is, only how it
+// follows the box changes. `frame`: what fitDock draws now in that box (its
+// sizes become the weights going into Exato, and the pixels coming out).
+export function setDockMode(dock, mode, w, h, frame = null) {
+    if (!dock?.tree || !(w > 0 && h > 0) || dockMode(dock) === dockMode({ mode })) return dock;
+    const fr = frame || fitDock(dock, w, h);
+    const now = dock.mode === "exact" ? { ...dock, tree: drawnTree(dock.tree, fr) } : rebaseDock(dock, w, h);
+    const ref = { w: Math.round(w), h: Math.round(h) };
+    if (mode === "exact") return normalizeDock({ ...now, mode: "exact", ref, tree: weighedTree(now.tree, fr) });
+    const tree = stripWeights(now.tree);
+    if (mode === "pct") return { ...now, tree, mode: "pct", ref };
     const { mode: _m, ref: _r, ...free } = now; // eslint-disable-line no-unused-vars
-    return free;
+    return { ...free, tree };
 }
 // px along a split of `total` px, snapped to the nearest step of PCT_STEP %
 // (never 0 % or 100 %).
@@ -150,6 +184,155 @@ export function snapPct(px, total, step = PCT_STEP) {
     if (!(total > 0) || !Number.isFinite(px)) return px;
     const p = Math.min(100 - step, Math.max(step, Math.round((px / total) * 100 / step) * step));
     return Math.round((p / 100) * total);
+}
+
+// The weights of a split, one per child, or null when it has none that fit.
+const okWeights = (node) => (isSplit(node) && Array.isArray(node.weights) && node.weights.length === node.children.length && node.weights.every((x) => Number.isFinite(x) && x > 0) ? node.weights : null);
+// Numbers made a split's weights: in proportion, summing 100, two decimals.
+export function toWeights(list) {
+    const xs = (list || []).map((x) => (Number.isFinite(x) && x > 0 ? x : 0));
+    const sum = xs.reduce((a, b) => a + b, 0);
+    if (!(sum > 0)) return xs.map(() => Math.round(10000 / Math.max(1, xs.length)) / 100);
+    return xs.map((x) => Math.round(Math.max(0.01, (x / sum) * 100) * 100) / 100);
+}
+function stripWeights(node) {
+    if (!isSplit(node)) return node;
+    const { weights: _w, ...rest } = node; // eslint-disable-line no-unused-vars
+    return { ...rest, children: node.children.map(stripWeights) };
+}
+// The tree with every split's fixed sizes as `frame` draws them (leaving
+// Exato: the pixels on screen become the dock's).
+function drawnTree(tree, frame) {
+    const t = stripWeights(clone(tree));
+    const walk = (f) => {
+        if (f?.kind !== "split") return;
+        const node = nodeAt(t, f.path);
+        if (!isSplit(node)) return;
+        for (const ch of f.children) {
+            if (ch.at.length === 1 && !ch.gone && node.sizes[ch.at[0]] !== null) node.sizes[ch.at[0]] = pxOrNull(ch.size) ?? node.sizes[ch.at[0]];
+            walk(ch.frame);
+        }
+    };
+    walk(frame);
+    return t;
+}
+// The tree with weights from what `frame` draws (going into Exato): each
+// split's children in proportion to their size on screen; one not drawn on
+// its own (joined as tabs, gone) by its size in the dock. A split the frame
+// does not draw gets its weights from its sizes (syncExact).
+function weighedTree(tree, frame) {
+    const t = stripWeights(clone(tree));
+    const walk = (f) => {
+        if (f?.kind !== "split") return;
+        const node = nodeAt(t, f.path);
+        if (!isSplit(node)) return;
+        const px = node.sizes.map((s) => s ?? NEW_PX);
+        for (const ch of f.children) {
+            if (ch.at.length === 1 && !ch.gone && ch.size > 0) px[ch.at[0]] = ch.size;
+            else if (!ch.gone) ch.at.forEach((i) => { px[i] = ch.size / ch.at.length; });
+            walk(ch.frame);
+        }
+        node.weights = toWeights(px);
+    };
+    walk(frame);
+    return t;
+}
+// Room shared by weights (Exato), each child kept at its minimum at least:
+// a child whose share would be under its minimum takes the minimum, and the
+// others share what is left, by their weights.
+export function allocateWeights(weights, mins, avail) {
+    const out = weights.map(() => 0);
+    let open = weights.map((_, i) => i);
+    let room = avail;
+    while (open.length) {
+        const sum = open.reduce((a, i) => a + Math.max(0, weights[i]), 0);
+        const share = (i) => (sum > 0 ? (room * Math.max(0, weights[i])) / sum : room / open.length);
+        const under = open.filter((i) => share(i) < mins[i]);
+        if (!under.length) { open.forEach((i) => { out[i] = share(i); }); break; }
+        under.forEach((i) => { out[i] = mins[i]; room -= mins[i]; });
+        open = open.filter((i) => !under.includes(i));
+    }
+    return out;
+}
+// An exact dock's splits made whole: a split without weights that fit (a
+// structural edit, a save from before) takes them from its sizes as drawn
+// in `ref`; then every fixed size follows the weights there.
+function syncExact(tree, ref) {
+    const box = okRef(ref) ? ref : { w: 1908, h: 900 };
+    const t = clone(tree);
+    const ctx = contextOf(t);
+    const walk = (node, w, h) => {
+        if (!isSplit(node)) return;
+        const row = node.dir === "row";
+        const avail = Math.max(0, (row ? w : h) - G * (node.children.length - 1));
+        const mins = node.children.map((c) => minSize(c, row, ctx));
+        if (!okWeights(node)) node.weights = toWeights(allocate(node.sizes, mins, avail));
+        const px = allocateWeights(node.weights, mins, avail);
+        node.sizes = node.sizes.map((s, i) => (s === null ? null : pxOrNull(px[i]) ?? PX_MIN));
+        node.children.forEach((c, i) => walk(c, row ? px[i] : w, row ? h : px[i]));
+    };
+    walk(t, box.w, box.h);
+    return t;
+}
+// The weights of the split at `path` set to `list` (Editar disposição's
+// 50 · 50, 33 · 33 · 34, 25 · 50 · 25, or what was typed): one number per
+// child, in proportion. An exact dock only, and only a list as long as the
+// split's children.
+export function setSplitWeights(dock, path, list) {
+    const d = normalizeDock(dock);
+    if (d.mode !== "exact") return d;
+    const tree = clone(d.tree);
+    const sp = nodeAt(tree, path);
+    if (!isSplit(sp) || !Array.isArray(list) || list.length !== sp.children.length || !list.every((x) => Number.isFinite(x) && x > 0)) return d;
+    sp.weights = toWeights(list);
+    return normalizeDock(make(dockEnv(d), tree, d.hidden, d));
+}
+// The one-click splits of the banner, by how many children a split has.
+export const WEIGHT_PRESETS = [[50, 50], [33, 33, 34], [25, 50, 25]];
+export const presetsForSplit = (n) => WEIGHT_PRESETS.filter((p) => p.length === n);
+// A split's weights written for a person, one decimal at most: "33 · 33 · 34".
+export const weightsLabel = (list) => (list || []).map((x) => String(Math.round(x * 10) / 10).replace(".", ",")).join(" · ");
+// What the operator typed ("33 33 34", "33,5 · 66,5", "1/2") as numbers;
+// null when it is not one positive number per child.
+export function parseWeights(text, n) {
+    const xs = String(text ?? "").replace(/(\d),(\d)/g, "$1.$2").split(/[^\d.]+/).filter(Boolean).map(Number);
+    return xs.length === n && xs.every((x) => Number.isFinite(x) && x > 0) ? xs : null;
+}
+// A splitter of an exact split (Dock.jsx): the gap between the children
+// `a` and `b` of the split frame `f` (indices into f.children, both open)
+// moved so `a` is `px` along the split. Only those two trade weight, each
+// kept at its minimum; `step`: what the weights round to (a drag and the
+// arrows: whole %; 0: as typed).
+export function resizeExact(dock, f, a, b, px, step = 1) {
+    const d = normalizeDock(dock);
+    const sp = nodeAt(d.tree, f?.path);
+    const ca = f?.children?.[a];
+    const cb = f?.children?.[b];
+    if (d.mode !== "exact" || !okWeights(sp) || !ca || !cb || !(f.room > 0) || !(f.wsum > 0) || !Number.isFinite(px)) return d;
+    const wOf = (ch) => ch.at.reduce((s, i) => s + sp.weights[i], 0);
+    const pair = wOf(ca) + wOf(cb);
+    const k = f.wsum / f.room;
+    const lo = ca.min * k;
+    const hi = pair - cb.min * k;
+    if (hi < lo) return d;
+    const r = (x) => (step > 0 ? Math.round(x / step) * step : x);
+    const wa = Math.min(hi, Math.max(lo, r(px * k)));
+    const tree = clone(d.tree);
+    const node = nodeAt(tree, f.path);
+    const spread = (ch, total) => { const was = wOf(ch); ch.at.forEach((i) => { node.weights[i] = (sp.weights[i] / was) * total; }); };
+    spread(ca, wa);
+    spread(cb, pair - wa);
+    node.weights = toWeights(node.weights);
+    return normalizeDock(make(dockEnv(d), tree, d.hidden, d));
+}
+// A splitter's double click in Exato: the two sides of the gap share their
+// weight evenly.
+export function evenExact(dock, f, a, b) {
+    const ca = f?.children?.[a];
+    const cb = f?.children?.[b];
+    if (!ca || !cb || !(f.wsum > 0)) return normalizeDock(dock);
+    const share = (ca.weight + cb.weight) / 2;
+    return resizeExact(dock, f, a, b, (share * f.room) / f.wsum, 0);
 }
 export const ZONES = ["center", "left", "right", "top", "bottom"];
 
@@ -218,6 +401,10 @@ function clean(node, seen, env) {
     const dir = node.dir === "col" ? "col" : "row";
     const kids = [];
     const sizes = [];
+    // Exato's weights ride along (a child that leaves takes its own; a
+    // merged split's children share their slot's), when the split has them.
+    const ws = okWeights(node);
+    const weights = [];
     node.children.forEach((c, i) => {
         const k = clean(c, seen, env);
         if (!k) return;
@@ -226,18 +413,23 @@ function clean(node, seen, env) {
             // The merged split's flexible child takes the slot's size when
             // the slot had one (what is left of it after its siblings).
             const fixed = k.sizes.reduce((a, x) => a + (x ?? 0), 0) + G * (k.children.length - 1);
+            const kw = okWeights(k);
+            const ksum = kw ? kw.reduce((a, x) => a + x, 0) : 0;
             k.children.forEach((cc, j) => {
                 kids.push(cc);
                 sizes.push(k.sizes[j] === null && s !== null ? pxOrNull(s - fixed) ?? PX_MIN : k.sizes[j]);
+                weights.push(ws && kw ? (ws[i] * kw[j]) / ksum : null);
             });
         } else {
             kids.push(k);
             sizes.push(s);
+            weights.push(ws ? ws[i] : null);
         }
     });
     if (!kids.length) return null;
     if (kids.length === 1) return kids[0];
-    return withOneFlex({ dir, children: kids, sizes });
+    const sp = withOneFlex({ dir, children: kids, sizes });
+    return weights.every((x) => x !== null) ? { ...sp, weights: toWeights(weights) } : sp;
 }
 
 // A required module that is missing comes back at the right of the console.
@@ -306,6 +498,8 @@ export function normalizeDock(saved) {
     for (const id of savedHidden) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
     // A module the save does not know (a newer KERYX) starts in the tray.
     for (const id of ids) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
+    // Exato keeps every split's weights whole; the other modes have none.
+    if (tree) tree = saved?.mode === "exact" ? syncExact(tree, saved.ref) : stripWeights(tree);
     return make(env, tree, hidden, saved);
 }
 
@@ -777,7 +971,7 @@ export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head 
     const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
     const shut = new Set(folded.filter(canFoldModule));
     const tree = treeFor(dock, w, h);
-    return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked, shut, head });
+    return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked, shut, head, exact: dock.mode === "exact" });
 }
 
 // The module a node is when the operator can fold it there: a group of one.
@@ -897,7 +1091,22 @@ function fitNode(node, path, w, h, ctx) {
         const target = firstGroupPath(node, path);
         return tabsFrame([node], path, w, h, target);
     }
-    const dims = allocate(items.map((it) => it.size), items.map((it) => it.min), avail - G * (items.length - 1));
+    // Exato: the open children share what the locked and folded ones leave
+    // by their weights (a group of tabs by the sum of its children's), each
+    // at its minimum at least; the last open one takes the rounding.
+    const ws = ctx.exact ? okWeights(node) : null;
+    const wOf = (it) => it.at.reduce((a, i) => a + ws[i], 0);
+    const room = avail - G * (items.length - 1);
+    let dims;
+    let exact = null;
+    if (ws) {
+        const free = items.map((it, k) => (it.locked ? -1 : k)).filter((k) => k >= 0);
+        const taken = items.reduce((a, it) => a + (it.locked ? it.size : 0), 0);
+        const share = allocateWeights(free.map((k) => wOf(items[k])), free.map((k) => items[k].min), Math.max(0, room - taken));
+        dims = items.map((it) => (it.locked ? it.size : 0));
+        free.forEach((k, j) => { dims[k] = share[j]; });
+        exact = { room: Math.max(0, room - taken), wsum: free.reduce((a, k) => a + wOf(items[k]), 0), flex: free[free.length - 1] ?? -1 };
+    } else dims = allocate(items.map((it) => it.size), items.map((it) => it.min), room);
     // The Programa's room past its 16:9 goes to its neighbour.
     const pi = items.findIndex((it) => it.at.length === 1 && !it.locked && isProgramaAlone(node.children[it.at[0]]));
     if (pi >= 0) {
@@ -915,7 +1124,8 @@ function fitNode(node, path, w, h, ctx) {
             ? fitNode(node.children[it.at[0]], first, cw, ch, ctx)
             : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first));
         const frame = fold ? { ...sub, fold } : sub;
-        const child = { index: it.at[0], at: it.at, size: dims[k], fixed: it.size !== null, frame, ...(it.locked && one ? { locked: true } : {}), ...(it.folded && one ? { folded: true } : {}) };
+        const fixed = exact ? k !== exact.flex : it.size !== null;
+        const child = { index: it.at[0], at: it.at, size: dims[k], fixed, frame, ...(it.locked && one ? { locked: true } : {}), ...(it.folded && one ? { folded: true } : {}), ...(exact ? { min: it.min, weight: wOf(it) } : {}) };
         return it.at.length === 1 && folds(node.children[it.at[0]]) ? { ...child, fold: true, gone: false } : child;
     });
     // The gone ones in their places, at no size.
@@ -923,5 +1133,7 @@ function fitNode(node, path, w, h, ctx) {
         const frame = fitNode(node.children[i], [...path, i], row ? 0 : w, row ? h : 0, ctx);
         children.splice(children.filter((c) => c.index < i).length, 0, { index: i, at: [i], size: 0, fixed: true, fold: true, gone: true, frame });
     }
-    return { kind: "split", path, dir: node.dir, w, h, children };
+    // Exato: the room the weights share and their sum, for its splitters
+    // (resizeExact turns a splitter's pixels into weight).
+    return { kind: "split", path, dir: node.dir, w, h, children, ...(exact ? { exact: true, room: exact.room, wsum: exact.wsum } : {}) };
 }
