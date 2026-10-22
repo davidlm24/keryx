@@ -3,10 +3,12 @@ import Icon from "./Icon";
 import { IconBtn, Seg } from "./kx";
 import { livePosition } from "@shared/live-state.mjs";
 import { useLiveNow } from "@/hooks/useLiveState";
-import { playerLayers, playerLayer, playerOp, videoSwap, LAYER_LABEL, clock, followsItem, followLabel, followAction, followTicks, clockLength, seekAt, SEEK_KEY_SECONDS } from "@/lib/console/player";
+import { playerLayers, playerLayer, playerOp, videoSwap, LAYER_LABEL, clock, followsItem, clockFollow, followTicks, clockLength, seekAt, SEEK_KEY_SECONDS } from "@/lib/console/player";
 import { levelsNow, useReportedDuration, useMeterFeed } from "./meterStore";
 import { useFramePreview } from "./useFramePreview";
 import { slideNameAt, tipLeft, tipPicture, FRAME_W, FRAME_H } from "@/lib/console/seekPreview";
+import { followLabel, followAction } from "@/lib/console/followWords";
+import { followStart } from "@/lib/console/lyricSync";
 
 const HOT = 0.95; // about -3 dBFS
 const FALL_PER_FRAME = 0.035;
@@ -104,10 +106,10 @@ function FollowChip({ follow, onAction, disabled }) {
     const action = followAction(follow);
     if (!follow || !action) return null;
     if (action === "start") {
+        const start = followStart(follow);
         return (
-            <button type="button" className="kx-btn kx-btn-brand kx-t pl-follow-go" disabled={disabled} onClick={() => onAction("start")}
-                title="Aperte na introdução: a letra avança sozinha nos tempos marcados · ← → acertam o relógio">
-                <Icon name="play" /><span className="lbl">Iniciar letra automática</span>
+            <button type="button" className="kx-btn kx-btn-brand kx-t pl-follow-go" disabled={disabled} onClick={() => onAction("start")} title={start.title}>
+                <Icon name="play" /><span className="lbl">{start.label}</span>
             </button>
         );
     }
@@ -115,7 +117,7 @@ function FollowChip({ follow, onAction, disabled }) {
     return (
         <button type="button" className={`kx-btn kx-t pl-follow ${state}`} disabled={disabled} onClick={() => onAction(action)}
             title={follow.paused ? "Retomar: a letra volta a seguir, do slide no ar" : "Pausar a letra automática · ← → continuam acertando o relógio"}>
-            <Icon name={follow.source === "clock" ? "clock" : "music"} /><span className="lbl">{followLabel(follow)}</span>
+            <Icon name={clockFollow(follow) ? "clock" : "music"} /><span className="lbl">{followLabel(follow)}</span>
         </button>
     );
 }
@@ -230,7 +232,7 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
     // A song on air that follows the live clock, with nothing else playing:
     // the player is that clock (Iniciar, pause, its time and the marks).
     const follow = cur?.content?.follow || null;
-    const clockOnly = !media && follow?.source === "clock";
+    const clockOnly = !media && clockFollow(follow);
     const item = media || (clockOnly ? { title: cur.content.title, kind: "clock", playback: follow.clock } : null);
     const reported = useReportedDuration(layer, media?.url);
     // A song's playback or video the file has not told its length yet: the song's.

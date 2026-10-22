@@ -7,6 +7,7 @@ import { followsTheme, isFactoryLook } from "./themes.js";
 import { withSongThemes, songTheme } from "./songTheme.js";
 import { bgSpec, bgArgs } from "./backgroundSpec.js";
 import { songStep, steppedSize } from "./songSize.js";
+import { followModeOf, slideSeconds, timedLength, withFollowStarts } from "./lyricSync.js";
 
 // A song's audio_url may be its video clip (sent to the video screen) or a
 // playback track (sent to the audio channel, Rodada D4: with the player's
@@ -15,9 +16,16 @@ export const isVideoUrl = (url) => Boolean(url) && (url.includes(".mp4") || url.
 
 // What a song's automatic lyrics follow (content.follow, owner 2026-10-15,
 // Rodada D4): its video, its playback, or — no media, the musicians play —
-// the live clock the operator starts. null when no slide has a start.
+// the live clock the operator starts; "Por tempo" (Rodada P7) that clock
+// with a time for every slide. null when it does not advance (Avançar
+// sozinha: Não, or no slide has a start).
 export function songFollow(song, slides) {
-    if (!(slides || []).some((it) => Number.isFinite(it?.start))) return null;
+    const mode = followModeOf(song, slides);
+    if (mode === "time" && slides?.length) {
+        const each = slideSeconds(song);
+        return { source: "time", each, length: timedLength(slides, each) };
+    }
+    if (mode === "off" || !(slides || []).some((it) => Number.isFinite(it?.start))) return null;
     const url = song.audio_url || "";
     const length = Number.isFinite(song.duration) && song.duration > 0 ? song.duration : null;
     return { source: !url ? "clock" : isVideoUrl(url) ? "video" : "audio", ...(url ? { url } : {}), ...(length ? { length } : {}) };
@@ -33,14 +41,16 @@ export function songContent(song, ref = {}, themes = []) {
     // The song's own background (any kind) goes to the Fundo layer when it
     // is sent (args.fundo; backgroundSpec.js fundoOps).
     const fundo = bgArgs(bgSpec(song), song.title || "");
+    const follow = songFollow(song, built.slides);
     return withSongThemes({
         title: song.title || "",
         artist: song.artist || "",
-        slides: built.slides,
+        // Every slide with the start the follow goes by (lyricSync.js).
+        slides: withFollowStarts(built.slides, follow),
         // The playback goes to the audio channel (stage.playback), never
         // content.audio any more (it played on every output, untransported).
         audio: null,
-        ...(songFollow(song, built.slides) ? { follow: songFollow(song, built.slides) } : {}),
+        ...(follow ? { follow } : {}),
         // The size is a step from the theme's (songSize.js, Rodada P): over
         // the factory look here; withThemeDefaults moves the theme's, and
         // withSongThemes the song's own theme's.

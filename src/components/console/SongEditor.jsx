@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { keryx } from "@/api/keryxClient";
 import { uploadFile } from "@/lib/mediaImport";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Empty, WinBar, useUnloadGuard } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
@@ -10,7 +10,7 @@ import { songTheme, songParts, cleanPartThemes } from "@/lib/console/songTheme";
 import { applyWithFundo, bgSpec } from "@/lib/console/backgroundSpec";
 import BgChip from "./library/BgChip";
 import { parseChords, slidesFromLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
-import { fitMarks } from "@/lib/console/lyricSync";
+import { fitMarks, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength } from "@/lib/console/lyricSync";
 import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeInline, transposeChords, transposeChord } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
@@ -38,7 +38,7 @@ const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); ret
 // picture stays in background_image too for whoever still reads only it.
 const songBg = (spec) => ({ background: spec || null, background_image: spec?.kind === "image" ? spec.value : "" });
 
-const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
+const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false, follow_mode: "", slide_seconds: null };
 const unCR = (t) => String(t ?? "").replace(/\r\n?/g, "\n");
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
@@ -67,6 +67,10 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // there, and kept on screen while it is being edited (emptied included).
     const [cifraKept, setCifraKept] = useState(false);
     const [starts, setStarts] = useState([]);
+    // Por tempo (Rodada P7): each slide's own time, its exception (null:
+    // the song's). Read from a song saved Por tempo only — another mode's
+    // durations are the gaps between its marks, not exceptions.
+    const [secs, setSecs] = useState([]);
     const [busy, setBusy] = useState("");
     // One save at a time: a held Ctrl+S or a double click created a new
     // song twice before the page swapped "new" for its id.
@@ -107,6 +111,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             setSplit(linesLimit(row.lines_per_slide));
             setDurationText(formatDuration(row.duration));
             setStarts((row.slides || []).map((s) => (Number.isFinite(s.start) ? s.start : null)));
+            setSecs(row.follow_mode === "time" ? (row.slides || []).map((s) => (s.duration > 0 ? s.duration : null)) : []);
             setResplit(!(row.slides || []).length);
         }).catch((err) => { if (alive) setError(err?.message || "Música não encontrada."); });
         return () => { alive = false; };
@@ -120,11 +125,16 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // The slides the song will have: its saved ones until the lyrics or the
     // split change, then the live split of the lyrics (each with its chorded
     // twin, saved for the screens that show chords).
+    // Por tempo, the marks stay (Pelas marcas again finds them) and the
+    // durations are the exceptions alone.
     const slides = useMemo(() => {
         if (!song) return [];
         const base = resplit ? slidesFromLyrics(song.lyrics, { lines: split, chorded: true }) : (song.slides || []);
+        if (song.follow_mode === "time") {
+            return base.map(({ start: _start, duration: _duration, ...rest }, i) => ({ ...rest, ...(Number.isFinite(starts[i]) ? { start: starts[i] } : {}), ...(secs[i] > 0 ? { duration: secs[i] } : {}) }));
+        }
         return withTimings(base.map(({ start: _start, ...rest }) => rest), starts, mediaRef.current?.duration || song.duration || null);
-    }, [song, resplit, split, starts]);
+    }, [song, resplit, split, starts, secs]);
 
     // The split is the song's setting, never a rewrite of the lyrics (owner
     // 2026-10-14; before, 2/4 linhas rewrote the text and could not be
@@ -135,6 +145,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         if (lines === split && resplit) return;
         const count = slidesFromLyrics(song.lyrics, { lines }).length;
         setSplit(lines); setResplit(true); setDirty(true);
+        if (count !== slides.length) setSecs([]);
         if (starts.some((x) => Number.isFinite(x)) && count !== slides.length) {
             setStarts([]);
             c.say(`${count} ${count === 1 ? "slide" : "slides"} · marque os tempos de novo.`);
@@ -382,6 +393,12 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const media = song.audio_url;
     const video = isVideoUrl(media);
     const marked = starts.filter((x) => Number.isFinite(x)).length;
+    // Avançar sozinha (Rodada P7): Não, Pelas marcas or Por tempo.
+    const advance = followModeOf(song, starts.map((start) => ({ start })));
+    const each = slideSeconds(song);
+    const at = Math.min(sel, Math.max(0, slides.length - 1));
+    const setSec = (i, n) => { setSecs((list) => { const out = fitMarks(list, slides.length); out[i] = n; return out; }); setDirty(true); };
+    const exceptions = slides.flatMap((s, i) => (s.duration > 0 ? [`${s.label ? s.label : `Slide ${i + 1}`} ${s.duration} s`] : []));
     // Narrow, one column shows Dados or Letra: the switch rides in the
     // header of whichever is on screen.
     const foldSeg = narrow && <Seg small value={fold} onChange={setFold} label="O que a coluna mostra" options={[["dados", "Dados"], ["letra", "Letra"]]} />;
@@ -556,7 +573,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             return (
                             <button type="button" key={i} className={`ed-th kx-t ${i === sel ? "is-sel" : ""}`} onClick={() => setSel(i)} onContextMenu={(e) => slideMenu(e, i)} title={s.label || `Slide ${i + 1}`}>
                                 <ScreenRenderer state={{ ...doc, content: { ...doc.content, index: i, ...(showChords ? { show: { chords: true, labels: true } } : {}) } }} preview />
-                                <span className="n">{i + 1}{Number.isFinite(starts[i]) ? ` · ${mmss(starts[i])}` : ""}</span>
+                                <span className="n">{i + 1}{advance === "time" ? (s.duration > 0 ? ` · ${s.duration} s` : "") : Number.isFinite(starts[i]) ? ` · ${mmss(starts[i])}` : ""}</span>
                                 {s.label && (i === 0 || slides[i - 1].label !== s.label) && <span className="lab">{s.label}</span>}
                                 <span className={"fit" + (fit.wraps.length ? " is-warn" : "")} title={fitTitle}>{fit.lines} l · {fit.chars} c{fit.wraps.length ? " · fonte menor" : ""}</span>
                             </button>
@@ -569,9 +586,9 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     {onSync && <Btn small kind="outline" disabled={!slides.length} onClick={openSync} title="Marcar onde cada slide entra: com o vídeo, o playback ou, sem mídia, um relógio (para os músicos ao vivo)">Sincronizar…</Btn>}
                     <Btn small disabled={busy === "audio_url"} onClick={() => fileRef.current?.click()}>{busy === "audio_url" ? "Enviando…" : media ? "Trocar…" : "Vídeo ou playback…"}</Btn>
                     {media && <Btn small onClick={() => set({ audio_url: "" })} title="As marcas ficam: sem mídia, a letra segue o relógio ao vivo">Remover</Btn>}
-                </>} bodyStyle={{ display: "flex", flexDirection: media ? "row" : "column", gap: "var(--space-2)", padding: "0 var(--space-2) var(--space-2)", overflow: "hidden" }}>
+                </>} bodyStyle={{ display: "flex", flexDirection: media ? "row" : "column", gap: "var(--space-2)", padding: "0 var(--space-2) var(--space-2)", overflow: "auto" }}>
                     <input ref={fileRef} type="file" accept="video/*,audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload(f, "audio_url"); }} />
-                    {!media && <Empty icon="film" title="Sem vídeo nem playback">Um vídeo vai para as telas de vídeo junto com a letra; um playback toca no canal de áudio. Sem mídia, a letra pode seguir os músicos: marque em Sincronizar… e, no ar, aperte Iniciar letra automática.</Empty>}
+                    {!media && <Empty icon="film" title="Sem vídeo nem playback">Um vídeo vai para as telas de vídeo junto com a letra; um playback toca no canal de áudio. Sem mídia, a letra pode seguir a banda: pelas marcas (Sincronizar…) ou por tempo, e no ar o Iniciar do player começa.</Empty>}
                     {media && (
                         <div className="ed-media">{video
                             ? <video ref={mediaRef} src={media} controls preload="metadata" />
@@ -580,11 +597,34 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         </div>
                     )}
                     <div className="ed-syncstat">
-                        <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} marcados</span>
-                        <span className="kx-meta">{!marked ? "Sem marcas: a letra não avança sozinha."
-                            : !media ? "No ar: Iniciar letra automática no player, na introdução."
-                            : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>
-                        {marked > 0 && resplit && <span className="kx-meta kx-warn">A letra mudou: confira as marcas em Sincronizar…</span>}
+                        <div className="ed-adv">
+                            <span className="k">Avançar sozinha</span>
+                            <Seg small label="Avançar sozinha" value={advance} onChange={(m) => set({ follow_mode: m })} options={FOLLOW_MODES} />
+                        </div>
+                        {advance === "time" && <>
+                            <div className="ed-adv">
+                                <span className="k">Cada slide</span>
+                                <NumBox label="Segundos de cada slide" value={each} min={SLIDE_SECONDS_RANGE[0]} max={SLIDE_SECONDS_RANGE[1]} unit="s" onChange={(n) => set({ slide_seconds: n })} />
+                                <span className="kx-meta">{mmss(timedLength(slides, each))} no total</span>
+                            </div>
+                            {slides.length > 0 && (
+                                <div className="ed-adv">
+                                    <span className="k" title="O slide escolhido nas prévias acima">{slides[at]?.label || `Slide ${at + 1}`}</span>
+                                    <NumBox label={`Segundos do slide ${at + 1}`} value={slides[at]?.duration > 0 ? slides[at].duration : each} min={SLIDE_SECONDS_RANGE[0]} max={SLIDE_SECONDS_RANGE[1]} unit="s" onChange={(n) => setSec(at, n === each ? null : n)} />
+                                    {slides[at]?.duration > 0 && <Btn small onClick={() => setSec(at, null)} title={`Volta aos ${each} s da música`}>Igual aos outros</Btn>}
+                                </div>
+                            )}
+                            <span className="kx-meta">{exceptions.length ? `Exceções: ${exceptions.join(" · ")}` : "Sem exceções: escolha um slide acima para dar a ele um tempo seu."}</span>
+                            <span className="kx-meta">No ar: Iniciar letra por tempo no player, quando a banda começar. ← → continuam valendo, e o tempo segue do slide escolhido.</span>
+                        </>}
+                        {advance === "marks" && <>
+                            <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} marcados</span>
+                            <span className="kx-meta">{!marked ? "Sem marcas: marque em Sincronizar…"
+                                : !media ? "No ar: Iniciar letra automática no player, na introdução."
+                                : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>
+                            {marked > 0 && resplit && <span className="kx-meta kx-warn">A letra mudou: confira as marcas em Sincronizar…</span>}
+                        </>}
+                        {advance === "off" && <span className="kx-meta">{marked ? "A letra não avança sozinha; as marcas ficam guardadas." : "A letra não avança sozinha: as setas mudam o slide."}</span>}
                     </div>
                 </Panel>
             </div>

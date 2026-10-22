@@ -51,8 +51,10 @@ export const TOOL_MODES = ["clock", "stopwatch", "timer", "freetext"];
 export const ALERT_TYPES = ["alert", "message"];
 // What a song's automatic lyrics follow (owner 2026-10-15, Rodada D4): its
 // video, its playback on the audio channel, or a clock the operator starts
-// when the musicians play (no media at all).
-export const FOLLOW_SOURCES = ["video", "audio", "clock"];
+// when the musicians play (no media at all) — or that clock with a time
+// for every slide (`time`, Rodada P7: `each` seconds a slide; the console
+// fills the starts, src/lib/console/lyricSync.js `followStarts`).
+export const FOLLOW_SOURCES = ["video", "audio", "clock", "time"];
 export const FOLLOW_ACTIONS = ["start", "pause", "resume"];
 // Escola bíblica activities (owner 2026-10-16, Rodada E4): a slide may carry
 // one (slide.activity), drawn by the renderer instead of plain text, and
@@ -386,14 +388,17 @@ const slides = (value, label = "Slides") => list(value ?? [], label, MAX_SLIDES)
 // A song's automatic lyrics (content.follow): the slide on air follows the
 // source's position plus `offset` (the arrows re-sync it, never turn it
 // off: owner 2026-10-15). `clock`: the live clock's own playback, null until
-// the operator starts it. Only with slides that have a start.
+// the operator starts it; a follow with no url runs on it (clock, time).
+// Only with slides that have a start.
 function followOf(value, items) {
     if (value === undefined || value === null) return null;
     if (!isPlainObject(value)) throw new LiveError("Letra automática inválida.");
     const source = oneOf(value.source, FOLLOW_SOURCES, "Fonte da letra automática");
     if (!items.some((it) => Number.isFinite(it.start))) return null;
-    const out = { source, paused: source === "clock", offset: 0, clock: null, pausedIndex: null };
-    if (source !== "clock") out.url = text(value.url, "Endereço da mídia", { max: MAX_URL, required: true });
+    const clocked = source === "clock" || source === "time";
+    const out = { source, paused: clocked, offset: 0, clock: null, pausedIndex: null };
+    if (!clocked) out.url = text(value.url, "Endereço da mídia", { max: MAX_URL, required: true });
+    if (value.each != null) out.each = ranged(value.each, [1, 600], "Tempo de cada slide");
     if (value.length !== undefined && value.length !== null) out.length = count(value.length, "Duração");
     return out;
 }
@@ -699,7 +704,7 @@ const OPS = {
         if (a.follow !== undefined) {
             const f = followOf(a.follow, next.slides);
             const keep = f && current.follow && current.follow.source === f.source && current.follow.url === f.url;
-            next.follow = keep ? { ...current.follow, ...(f.length !== undefined ? { length: f.length } : {}) } : f;
+            next.follow = keep ? { ...current.follow, ...(f.length !== undefined ? { length: f.length } : {}), ...(f.each ? { each: f.each } : {}) } : f;
         } else if (current.follow && !next.slides.some((it) => Number.isFinite(it.start))) next.follow = null;
         return { content: next };
     },
@@ -723,11 +728,11 @@ const OPS = {
         oneOf(action, FOLLOW_ACTIONS, "Comando da letra automática");
         const at = current.slides[current.index];
         let next;
-        if (action === "start" || (action === "resume" && f.source === "clock" && !f.clock)) {
+        if (action === "start" || (action === "resume" && !f.url && !f.clock)) {
             // The live clock starts where the slide on air comes in (the
             // first one: from 0, the introduction).
             const position = current.index > 0 && Number.isFinite(at?.start) ? at.start : 0;
-            next = { ...f, paused: false, offset: 0, pausedIndex: null, clock: f.source === "clock" ? { paused: false, position, at: now } : f.clock };
+            next = { ...f, paused: false, offset: 0, pausedIndex: null, clock: !f.url ? { paused: false, position, at: now } : f.clock };
         } else if (action === "pause") {
             if (f.paused) return null;
             const clock = f.clock && !f.clock.paused ? { paused: true, position: livePosition(f.clock, now), at: now } : f.clock;
@@ -1164,7 +1169,7 @@ export function livePosition(playback, now) {
 export function followPosition(state, now) {
     const f = state?.content?.follow;
     if (!f) return null;
-    if (f.source === "clock") return f.clock ? livePosition(f.clock, now) : null;
+    if (!f.url) return f.clock ? livePosition(f.clock, now) : null;
     for (const k of ["video", "audio", "media"]) {
         const l = state[k];
         if (l && l.url === f.url && l.playback) return livePosition(l.playback, now);

@@ -735,7 +735,7 @@ test("Esc puts the papel de parede back with the look it was given (0.2.18)", ()
 });
 
 test("slides keep their start; a song with marks follows its source", () => {
-    assert.deepEqual(FOLLOW_SOURCES, ["video", "audio", "clock"]);
+    assert.deepEqual(FOLLOW_SOURCES, ["video", "audio", "clock", "time"]);
     let s = run([["content.show", { ...timed, follow: { source: "audio", url: "/media/a.mp3", length: 200 } }]]);
     assert.equal(s.content.slides[1].start, 10);
     assert.deepEqual(s.content.follow, { source: "audio", paused: false, offset: 0, clock: null, pausedIndex: null, url: "/media/a.mp3", length: 200 });
@@ -802,6 +802,32 @@ test("the live clock: waits for Iniciar, pauses, resumes from the slide moved to
     assert.throws(() => applyOp(t, "content.follow", { action: "dance" }, T0), LiveError);
     // Locked: the clock does not start.
     assert.throws(() => run([["content.show", { ...timed, follow: { source: "clock" } }], ["screens.lock", { locked: true }], ["content.follow", { action: "start" }]]), (e) => e.status === 423);
+});
+
+test("letra por tempo (Rodada P7): the live clock over the starts the console filled, from the slide on air", () => {
+    // 8 s a slide, the third one 12 s: the console sends the starts 0, 8, 16, 28.
+    const band = { title: "Banda", slides: [{ text: "um", start: 0 }, { text: "dois", start: 8 }, { text: "três", start: 16, duration: 12 }, { text: "quatro", start: 28 }] };
+    let s = run([["content.show", { ...band, follow: { source: "time", each: 8, length: 36 } }]]);
+    assert.deepEqual(s.content.follow, { source: "time", paused: true, offset: 0, clock: null, pausedIndex: null, each: 8, length: 36 }, "no url: it waits for Iniciar");
+    assert.equal(s.content.slides[2].duration, 12);
+    assert.throws(() => run([["content.show", { ...band, follow: { source: "time", each: "x" } }]]), LiveError);
+    assert.equal(run([["content.show", { ...band, follow: { source: "time", each: 9999 } }]]).content.follow.each, 600);
+    s = applyOp(s, "content.follow", { action: "start" }, T0);
+    assert.deepEqual(s.content.follow.clock, { paused: false, position: 0, at: T0 });
+    assert.equal(followIndex(s, T0 + 9 * S), 1);
+    assert.equal(followIndex(s, T0 + 27 * S), 2, "the exception holds the third slide 12 s");
+    assert.equal(followIndex(s, T0 + 29 * S), 3);
+    // The arrows go on from the slide chosen.
+    s = applyOp(s, "content.goTo", { index: 3 }, T0 + 2 * S);
+    assert.equal(s.content.follow.offset, 26);
+    // Started on the third slide: the clock starts at its start.
+    const t = run([["content.show", { ...band, index: 2, follow: { source: "time", each: 8 } }], ["content.follow", { action: "start" }]]);
+    assert.equal(t.content.follow.clock.position, 16);
+    assert.equal(followIndex(t, T0 + 1 * S), 2, "never back to the first slide");
+    // A song saved on air with another time keeps the running clock.
+    const u = applyOp(s, "content.update", { slides: band.slides, follow: { source: "time", each: 10 } }, T0 + 3 * S);
+    assert.equal(u.content.follow.each, 10);
+    assert.equal(u.content.follow.clock.at, T0);
 });
 
 test("saving the song on air keeps the follow running; a restart pauses it", () => {

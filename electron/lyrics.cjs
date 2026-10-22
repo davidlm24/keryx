@@ -4,7 +4,11 @@
 //     for apps (no key; it asks for a User-Agent naming the app): search and
 //     the full lyrics. Community-made: good on well-known worship songs,
 //     thin on old hymns. It lists the same song many times (live, acoustic,
-//     each upload): duplicates are folded.
+//     each upload): duplicates are folded. "Título – artista" searches that
+//     title by that artist (Rodada P12, more precise); anything else is a
+//     free search. An upload with timed lines (LRC) is "com tempo": its
+//     times come in as the song's marks (lrcMarks, src/lib/songImport.js),
+//     the times of THAT recording.
 //   - letras.mus.br, through the public suggestion index its own search box
 //     uses: search only. Its lyric pages refuse automated access, so KERYX
 //     does not fetch them; the operator opens the page in the browser and
@@ -66,24 +70,38 @@ function parseLetrasSearch(body) {
 
 // -- LRCLIB -------------------------------------------------------------------
 
-const lrclibSearchUrl = (q) => `https://lrclib.net/api/search?q=${encodeURIComponent(q)}`;
+// "Título – artista" (an en or em dash, or a hyphen between spaces):
+// { track, artist }; null for a free search.
+function splitQuery(query) {
+    const m = /^(.+?)\s+[-–—]\s+(.+)$/.exec(String(query || "").trim());
+    if (!m || m[1].trim().length < 2 || m[2].trim().length < 2) return null;
+    return { track: m[1].trim(), artist: m[2].trim() };
+}
+
+function lrclibSearchUrl(q) {
+    const parts = splitQuery(q);
+    return parts
+        ? `https://lrclib.net/api/search?track_name=${encodeURIComponent(parts.track)}&artist_name=${encodeURIComponent(parts.artist)}`
+        : `https://lrclib.net/api/search?q=${encodeURIComponent(q)}`;
+}
 const lrclibSongUrl = (id) => `https://lrclib.net/api/get/${encodeURIComponent(id)}`;
 const fold = (s) => clean(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-// An array of { id, trackName, artistName, albumName, instrumental, plainLyrics }.
-// Only songs with lyrics; one per title and artist (accents and case aside).
+// An array of { id, trackName, artistName, albumName, instrumental,
+// plainLyrics, syncedLyrics }. Only songs with lyrics; one per title and
+// artist (accents and case aside), an upload with timed lines preferred
+// ("com tempo": `timed`).
 function parseLrclibSearch(body) {
     let data;
     try { data = typeof body === "string" ? JSON.parse(body) : body; } catch { throw new LyricsError("LRCLIB respondeu num formato desconhecido."); }
     if (!Array.isArray(data)) throw new LyricsError("LRCLIB respondeu num formato desconhecido.");
-    const seen = new Set();
+    const seen = new Map();
     const out = [];
     for (const d of data) {
         if (!d || !d.id || !d.trackName || d.instrumental || !String(d.plainLyrics || "").trim()) continue;
         const key = `${fold(d.trackName)}|${fold(d.artistName)}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({
+        const timed = Boolean(String(d.syncedLyrics || "").trim());
+        const row = {
             source: "lrclib",
             sourceLabel: "LRCLIB",
             id: `lrclib:${d.id}`,
@@ -92,18 +110,33 @@ function parseLrclibSearch(body) {
             extra: clean(d.albumName),
             pageUrl: "",
             hasLyrics: true,
-        });
-        if (out.length >= MAX_RESULTS) break;
+            timed,
+        };
+        if (seen.has(key)) {
+            if (timed && !out[seen.get(key)].timed) out[seen.get(key)] = row;
+            continue;
+        }
+        if (out.length >= MAX_RESULTS) continue;
+        seen.set(key, out.length);
+        out.push(row);
     }
     return out;
 }
 
+// The lyrics, and — when the upload has them — its timed lines (LRC) and the
+// recording's length in seconds.
 function parseLrclibSong(body) {
     let data;
     try { data = typeof body === "string" ? JSON.parse(body) : body; } catch { throw new LyricsError("LRCLIB respondeu num formato desconhecido."); }
     const text = String(data?.plainLyrics || "").replace(/\r\n/g, "\n").trim();
     if (!text) throw new LyricsError("Letra não encontrada no LRCLIB.", 404);
-    return { title: clean(data.trackName), artist: clean(data.artistName), lyrics: text };
+    const synced = String(data.syncedLyrics || "").replace(/\r\n/g, "\n").trim();
+    const duration = Number(data.duration);
+    return {
+        title: clean(data.trackName), artist: clean(data.artistName), lyrics: text,
+        ...(synced ? { synced } : {}),
+        ...(Number.isFinite(duration) && duration > 0 ? { duration: Math.round(duration) } : {}),
+    };
 }
 
 // -- The service -----------------------------------------------------------------
@@ -127,9 +160,10 @@ function createLyrics({ fetchImpl = fetch, timeoutMs = LYRICS_TIMEOUT_MS } = {})
     async function search(query) {
         const q = String(query || "").trim();
         if (q.length < 2) throw new LyricsError("Digite pelo menos duas letras do título ou do artista.", 400);
+        const parts = splitQuery(q);
         const jobs = [
             getText(lrclibSearchUrl(q), "LRCLIB").then(parseLrclibSearch),
-            getText(letrasSearchUrl(q), "letras.mus.br").then(parseLetrasSearch),
+            getText(letrasSearchUrl(parts ? `${parts.track} ${parts.artist}` : q), "letras.mus.br").then(parseLetrasSearch),
         ];
         const settled = await Promise.allSettled(jobs);
         const results = [];
@@ -156,4 +190,4 @@ function createLyrics({ fetchImpl = fetch, timeoutMs = LYRICS_TIMEOUT_MS } = {})
     return { search, get };
 }
 
-module.exports = { createLyrics, LyricsError, parseLetrasSearch, parseLrclibSearch, parseLrclibSong };
+module.exports = { createLyrics, LyricsError, parseLetrasSearch, parseLrclibSearch, parseLrclibSong, splitQuery, lrclibSearchUrl };

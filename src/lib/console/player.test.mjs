@@ -70,7 +70,8 @@ test("clock", () => {
 });
 
 test("letra automática: the chip, its click, the ticks (Rodada D4)", async () => {
-    const { followsItem, followLabel, followAction, followTicks, clockLength } = await import("./player.js");
+    const { followsItem, followTicks, clockLength } = await import("./player.js");
+    const { followLabel, followAction } = await import("./followWords.js");
     const audio = { source: "audio", url: "/a.mp3", paused: false, offset: 0, clock: null };
     assert.equal(followsItem(audio, { url: "/a.mp3" }), true);
     assert.equal(followsItem(audio, { url: "/b.mp3" }), false);
@@ -92,4 +93,32 @@ test("letra automática: the chip, its click, the ticks (Rodada D4)", async () =
     assert.equal(clockLength(slides, { length: 210 }), 210);
     assert.equal(clockLength(slides, {}), 65);
     assert.equal(clockLength([{ text: "x" }], {}), null);
+});
+
+test("letra por tempo (Rodada P7): the chip says it, Iniciar starts it; a song sends its starts", async () => {
+    const { clockFollow, followsItem } = await import("./player.js");
+    const { followLabel, followAction } = await import("./followWords.js");
+    const { followStart } = await import("./lyricSync.js");
+    const { songFollow, songContent } = await import("./content.js");
+    const waiting = { source: "time", each: 8, paused: true, offset: 0, clock: null };
+    assert.equal(clockFollow(waiting), true);
+    assert.equal(clockFollow({ source: "video", url: "/v.mp4" }), false);
+    assert.equal(followsItem(waiting, { url: "/a.mp3" }), false);
+    assert.equal(followLabel(waiting), "Letra por tempo · esperando Iniciar");
+    assert.equal(followStart(waiting).label, "Iniciar letra por tempo");
+    assert.equal(followStart({ source: "clock" }).label, "Iniciar letra automática");
+    assert.equal(followAction(waiting), "start");
+    const running = { ...waiting, paused: false, clock: { paused: false, position: 0, at: 0 } };
+    assert.equal(followLabel({ ...running, each: 7.5 }), "Por tempo · 7,5 s por slide");
+    assert.equal(followAction(running), "pause");
+    // The song: Por tempo whatever its media and marks; Não never follows.
+    const song = { title: "Banda", lyrics: "a\n\nb\n\nc", audio_url: "/a.mp3", follow_mode: "time", slide_seconds: 6, slides: [{ text: "a", start: 40 }, { text: "b", duration: 10 }, { text: "c" }] };
+    assert.deepEqual(songFollow(song, song.slides), { source: "time", each: 6, length: 22 });
+    assert.deepEqual(songContent(song).slides.map((s) => s.start), [0, 6, 16]);
+    assert.equal(songFollow({ ...song, follow_mode: "off" }, song.slides), null);
+    assert.equal(songContent({ ...song, follow_mode: "off" }).follow, undefined);
+    // Pelas marcas (or "" with marks): as before, the unmarked slides filled.
+    const marked = { ...song, follow_mode: "", audio_url: "", duration: 60, slides: [{ text: "a", start: 0 }, { text: "b" }, { text: "c", start: 20 }] };
+    assert.deepEqual(songFollow(marked, marked.slides), { source: "clock", length: 60 });
+    assert.deepEqual(songContent(marked).slides.map((s) => s.start), [0, 10, 20]);
 });
