@@ -7,7 +7,7 @@
 // church's User.autoplay_gap).
 import { livePosition } from "../../../shared/live-state.mjs";
 import { isSection, itemOnAir } from "./setlist.js";
-import { clockLength } from "./player.js";
+import { clockLength, clockFollow } from "./player.js";
 
 // What an item does when it ends, with the switch on. "" (and the old
 // autoAdvance: true) = "next".
@@ -106,7 +106,7 @@ export function itemEnded({ live, item, now, reported = null, song = null }) {
     // Its file is what ends it: still loading, or taken off (no `ended`).
     if (t === "VIDEO" || t === "AUDIO" || url) return false;
     const f = live.content?.follow;
-    if (t === "SONG" && f?.source === "clock") {
+    if (t === "SONG" && clockFollow(f)) {
         if (!f.clock || !itemOnAir(live, [item])) return false;
         const length = clockLength(live.content.slides, f);
         return length > 0 && livePosition(f.clock, now) >= length;

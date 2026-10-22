@@ -14,7 +14,8 @@
 // (remoteRunner.test.mjs).
 import { PROTOCOL, EMERGENCY, remoteKind, remoteState, remoteSay, passagePreview, refFromArgs, libraryPage, backItemOf } from "./remote.js";
 import { isSection } from "./setlist.js";
-import { playerLayer, playerLayers, playerOp, videoSwap, followAction, followsItem } from "./player.js";
+import { playerLayer, playerLayers, playerOp, videoSwap, followsItem, clockFollow } from "./player.js";
+import { followAction } from "./followWords.js";
 import { referenceNums } from "./bibleVerses.js";
 import { formatReference, BIBLE_VERSIONS } from "../bibleBooks.js";
 import { timerChoices } from "./timerPresets.js";
@@ -50,7 +51,7 @@ async function player({ d, live, args }) {
     const item = layer ? live[layer] : null;
     const follow = live?.content?.follow || null;
     // The live clock with nothing playing: Tocar is the follow's (the console's player too).
-    if (!item && !args.layer && follow?.source === "clock" && args.do === "toggle") {
+    if (!item && !args.layer && clockFollow(follow) && args.do === "toggle") {
         await d.callOp("content.follow", { action: followAction(follow) });
         return ok(remoteSay("follow", FOLLOW_WORD[followAction(follow)]));
     }

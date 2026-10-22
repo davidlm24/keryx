@@ -915,6 +915,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .lyr-paste textarea { width: 100%; flex: 1; min-height: 180px; resize: none; background: var(--bg-3); padding: var(--space-2); font-size: var(--fs-content); line-height: 19px; user-select: text; }
 .console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line-soft); flex: none; font-size: var(--fs-ui); }
 .console .lyr-legal { max-width: 360px; }
+/* "com tempo" (Rodada P12): the result brings its recording's timed lines. */
+.console .lyr-timed { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 6px; border-radius: 5px; background: var(--bg-3); color: var(--fg-2); font-size: var(--fs-meta); white-space: nowrap; }
+.console .lyr-note { display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--fs-content); color: var(--fg-2); }
+.console .lyr-note > svg { flex: none; margin-top: 2px; color: var(--fg-3); }
 
 .console .win-scrim { z-index: var(--z-window-scrim); }
 .console .scrim.over-win { z-index: var(--z-window-over); } /* a popover opened over the window backdrops above it */
@@ -1129,6 +1133,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .ed-syncstat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-1); }
 .console .ed-syncn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-content); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .ed-syncn.is-on { color: var(--fg-1); }
+/* Avançar sozinha (Rodada P7): a label column, then the controls. */
+.console .ed-adv { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: var(--control-sm); }
+.console .ed-adv > .k { flex: 0 0 110px; font-size: var(--fs-content); color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .ed-acts { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); padding: 0 2px; }
 /* A narrow left column: the PP…GGG seg breaks into two rows instead of
    scrolling. */

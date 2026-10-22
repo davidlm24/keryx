@@ -1822,8 +1822,42 @@ operator starts with "Iniciar letra automática" in the player. The console
 moves the slide (`useConsole`, `followIndex`, `content.goTo` with
 `auto`); **the arrows never turn it off**: any other `content.goTo`
 re-syncs `follow.offset` so it goes on from the new slide; the player's
-chip (`FollowChip`, `followLabel` in player.js) pauses/resumes on
-purpose. The Biblioteca says "sincronizada". **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
+chip (`FollowChip`; its words `followLabel`/`followAction` in
+`src/lib/console/followWords.js`, kept apart because player.js rides in
+every output's chunk and the phone has an output's budget) pauses/resumes
+on purpose. The Biblioteca says "sincronizada". **Avançar sozinha** (owner
+2026-10-22, Rodada P7 = A/A): the Editor de música's "Avançar sozinha: Não
+| Pelas marcas | Por tempo" is `Song.follow_mode` (off | marks | time; ""
+= by the marks when there are any, as before; `followModeOf`). **Por
+tempo** is the band's mode, no media: `Song.slide_seconds` a slide ("Cada
+slide", a NumBox, 8 s by default) and a slide's own `duration` its
+exception (the slide chosen in the previews gets its NumBox; "Igual aos
+outros" clears it) — saved only Por tempo: in the other modes `duration`
+is the gap between marks (`withTimings`), never read as an exception. On
+air it is the `time` source of `content.follow` (`each` seconds; a follow
+with no url runs on the live clock, `clockFollow` in player.js): it waits
+for the player's "Iniciar letra por tempo" (P7-2 = A), the arrows go on
+from the slide chosen, the clock's length is the song's (`timedLength`),
+so the Setlist's Autoplay sees it end. **The console fills every slide's
+start before it sends** (`withFollowStarts`/`followStarts` in
+lyricSync.js, from `songContent`): Por tempo one after the other, and by
+the marks a slide with none takes its share of the gap it sits in (from 0
+before the first mark, up to the song's length after the last, else at the
+marks' pace) — before P7 the follow skipped unmarked slides and Iniciar on
+one went back to slide 1. The live state stays tiny (it is in every
+output's chunk): it only learned `time` and `each`. **Procurar letra na
+internet** (`LyricsSearch.jsx`, `electron/lyrics.cjs`; the browser preview
+asks through the preview server too): "título – artista" (en/em dash, or a
+hyphen between spaces: `splitQuery`) searches LRCLIB by `track_name` +
+`artist_name`, anything else is free text; an LRCLIB upload with timed
+lines (`syncedLyrics`, LRC) is preferred among duplicates and says **"com
+tempo"**, and Importar brings its times in as the slides' marks
+(`parseLrc`/`lrcMarks` in songImport.js, tested: in order, a chorus the
+recording repeats never pulls the slides ahead, a slide not found stays
+unmarked) plus the recording's length; the dialog says they are that
+recording's times (its playback or video), not a band's. No other lyric
+source (owner 2026-10-22: Letras has no public API, Vagalume's terms are
+unclear; the letras.mus.br suggestions stay search-only). **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.
