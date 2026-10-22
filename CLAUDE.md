@@ -1236,7 +1236,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   selectionStore.js; keys.js ESC_ORDER "selection"), a page of THE window
   through its escRef. The Mídia page is the reference; the Biblioteca, Setlist,
   Planejar o culto, Temas, the background library (manage only) and the Escola
-  follow; the Temas panel and the short settings lists stay single.
+  follow (Temas and the Escola in "air" mode: a plain click still edits or
+  prepares; the library's marks get ONE question, "Excluir…" with the trash when
+  a file sent there goes for good, else "Tirar dos fundos…" (`backgroundRemoval`,
+  `backgroundAction` and `backgroundQuestion` in bulkDelete.js, out of the
+  outputs' bundle), its Esc through the host's `escRef`); the Temas panel and the
+  short settings lists stay single.
   **The KERYX package, `.keryx`** (M6 = A; Rodada O, O1-1 = A, O1-2 = C): one
   file for every kind — songs, themes, avisos, media, Escola materials — with
   what each uses (its themes, the Media rows and files it names, their

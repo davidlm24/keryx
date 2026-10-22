@@ -35,7 +35,8 @@ export function useSaveBackgroundPref(say) {
                 await made;
             }
             if (message) say(message);
-        } catch (err) { say(err?.message || "Não foi possível salvar o fundo."); }
+            return true;
+        } catch (err) { say(err?.message || "Não foi possível salvar o fundo."); return false; }
     }, [say]);
 }
 
