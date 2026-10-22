@@ -507,16 +507,23 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
-/* Livros' header carries the version, Abrev | Nomes, the install + and the
-   view menu beside its title. Like every header's controls they are 24 px
-   tall and 8 px apart; the select and the two buttons are narrow, so the
-   title still reads at the column's 300 px. The edition says nothing while
-   it is installed here; from the internet, missing or the preview's samples
-   it is an amber dot on the select, the words in its tooltip (owner
-   2026-10-16: no line of text under the header). */
-.console .bpick-books .bver { position: relative; flex: none; display: inline-flex; }
-.console .bpick-books .bver > select { width: 52px; padding: 0 2px; }
-.console .bpick-books .bver-dot { position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--bg-1); pointer-events: none; }
+/* Livros' header carries Abrev | Nomes, the install + and the view menu
+   beside its title (the version left for the bar under the No ar screen,
+   Rodada P). Like every header's controls they are 24 px tall and 8 px
+   apart. */
+/* The version selects (the bar under the No ar screen, Rodada P, P3 = A):
+   the list says the sigla and the full name in groups, the closed box only
+   the sigla — .bver-v laid over the select, whose own text is transparent
+   (it stays the control). The edition says nothing while it is installed
+   here; from the internet, missing or the preview's samples it is an amber
+   dot on the select, the words in its tooltip (owner 2026-10-16). */
+.console .bver { position: relative; flex: none; display: inline-flex; }
+.console .bver > select { width: 64px; padding: 0 2px; color: transparent; }
+.console .bver > select :is(option, optgroup) { color: var(--fg-1); background: var(--bg-2); }
+.console .bver-v { position: absolute; inset: 0 18px 0 6px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; font-size: var(--fs-ui); color: var(--fg-1); pointer-events: none; }
+.console .bver.is-none .bver-v { color: var(--fg-2); }
+.console .bver + .bver > select { width: 96px; }
+.console .bver-dot { position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--bg-1); pointer-events: none; }
 .console .bpick-books > .kx-panel-h .kx-seg > button { padding: 0 4px; }
 .console .kx-panel-h .addmenu > .kx-btn-icon { width: var(--control-sm); height: var(--control-sm); }
 /* Livros, Capítulos and Versículos in three cell sizes (owner 2026-10-14:
@@ -539,12 +546,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The title never gives way (audit C-47: "LIVR…" at 1366): when the
    header cannot hold it all, Abrev | Nomes leaves it and lives in the view
    menu (BibleEnv's grid button lists it while the Seg is hidden). The header
-   needs 272 px — title 57, select 52, Seg 83, + and grid 24 each, four 8 px
-   gaps — so the column's default 300 px (276 inside) keeps the Seg; a
-   change to those widths changes this number. */
+   needs 212 px — title 57, Seg 83, + and grid 24 each, three 8 px gaps —
+   so the column's default 300 px (276 inside) keeps the Seg; a change to
+   those widths changes this number. */
 .console .bpick-books > .kx-panel-h { container: bbooks-h / inline-size; }
 .console .bpick-books > .kx-panel-h > .kx-section { flex: 1 0 auto; }
-@container bbooks-h (width < 276px) { .console .bpick-books > .kx-panel-h > .kx-seg { display: none; } }
+@container bbooks-h (width < 216px) { .console .bpick-books > .kx-panel-h > .kx-seg { display: none; } }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
 /* Its header is one line, like every panel's: the chapter, two icons
@@ -554,7 +561,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    icons first, and the header's overflow only clips past that. */
 .console .bread > .kx-panel-h { overflow: hidden; container: bread-h / inline-size; }
 .console .bread > .kx-panel-h > .kx-section { flex: 1 0 auto; }
-@container bread-h (width < 330px) { .console .bread > .kx-panel-h > .bread-sel { display: none; } }
+@container bread-h (width < 400px) { .console .bread > .kx-panel-h > .bread-sel { display: none; } }
+@container bread-h (width < 320px) { .console .bread > .kx-panel-h > .bread-size { display: none; } }
+/* The reading text's size (Rodada P, P5 = A: A− / A / A+, Ctrl + the
+   wheel; bibleRead.js): M is the look above, untouched; the others scale
+   the verses' text and their line. */
+.console .bread-b.is-sized :is(.kx-verse, .bc-cell) { font-size: calc(var(--fs-content-lg) * var(--bread-k, 1)); line-height: 1.4; }
 .console .bread > .kx-panel-b { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 .console .bread-b { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .console .bread-b > .reading { overflow: visible; }
@@ -872,6 +884,14 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    selection and the actions below it stay in view on short windows. */
 .console .bible-air-col .kx-panel-b { container-type: size; }
 .console .bible-air { padding: var(--space-1); flex: none; display: flex; justify-content: center; }
+/* The bar under the No ar screen (Rodada P, P2-1 = A): how a passage shows
+   on the screens — Tema…, A− / A / A+, Ref., verses per slide; the version,
+   a 2ª versão and where it goes. Always on screen, two rows that wrap. */
+.console .bbar { flex: none; display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
+.console .bbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.console .vslide-2 { display: block; margin-top: 2px; color: var(--fg-2); font-size: var(--fs-meta); }
+.console .vslide-2 > b { color: var(--fg-3); font-weight: 600; margin-right: 4px; }
+
 .console .bible-air .kx-mon { width: min(100%, calc(35cqh * 16 / 9)); }
 
 /* "+" beside a search field: the menu of what can be added there. */

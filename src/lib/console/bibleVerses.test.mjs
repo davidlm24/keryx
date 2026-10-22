@@ -51,3 +51,44 @@ test("the chapter on air is recognised only in the same version", () => {
     assert.equal(chapterOnAir({ ref: { book: "João", chapter: 3, version: "NVI" } }, at), false);
     assert.equal(chapterOnAir(null, at), false);
 });
+
+// Rodada P (P2-2): a second edition on screen, joined to each slide by verse number.
+const nvi = [1, 2, 3, 5].map((n) => ({ number: n, text: `outra ${n}` }));
+const pair = { version: "ACF", verses: nvi };
+
+test("a second edition rides each slide by verse number, with its sigla", () => {
+    const s = groupVerses(verses.slice(0, 4), "2", pair);
+    assert.deepEqual(s.map((x) => x.pair), [{ text: "1 outra 1 2 outra 2", version: "ACF" }, { text: "3 outra 3", version: "ACF" }], "verse 4 is not in it: left out");
+    assert.equal(groupVerses([verses[3]], "1", pair)[0].pair, undefined, "a slide with none of its verses has no pair");
+    assert.equal(groupVerses(verses, "1")[0].pair, undefined, "no second edition: as before");
+    assert.equal(groupVerses(verses, "1", { version: "ACF", verses: [] })[0].pair, undefined);
+});
+
+test("with two editions, auto puts half as much on a slide", () => {
+    const mid = [{ number: 1, text: "a".repeat(90) }, { number: 2, text: "b".repeat(60) }];
+    assert.equal(groupVerses(mid, "auto").length, 1);
+    assert.equal(groupVerses(mid, "auto", { version: "ACF", verses: mid }).length, 2);
+});
+
+test("a passage and a chapter carry the second edition; the same edition twice is one", () => {
+    const p = passageOf({ verses, nums: [2, 3], how: "1", ...at, pair });
+    assert.deepEqual(p.slides.map((s) => s.pair?.text), ["2 outra 2", "3 outra 3"]);
+    assert.equal(p.reference, "João 3:2-3 · NVI", "the reference stays the first edition's");
+    assert.equal(passageOf({ verses, nums: [2, 3], how: "1", ...at, pair: { version: "NVI", verses: nvi } }).slides[0].pair, undefined);
+    const ch = chapterOf({ verses, n: 2, ...at, pair });
+    assert.equal(ch.id, "chapter:João:3:NVI+ACF");
+    assert.equal(ch.ref.version2, "ACF");
+    assert.deepEqual(ch.passage.slides[4].pair, { text: "5 outra 5", version: "ACF" });
+    assert.equal(ch.passage.slides[3].pair, undefined);
+    assert.equal(chapterOf({ verses, n: 2, ...at, pair: { version: "NVI", verses: nvi } }).ref.version2, undefined);
+});
+
+test("the chapter on air is the same only with the same second edition", () => {
+    const one = { ref: { wholeChapter: true, book: "João", chapter: 3, version: "NVI" } };
+    const two = { ref: { ...one.ref, version2: "ACF" } };
+    assert.equal(chapterOnAir(one, { ...at, version2: "" }), true);
+    assert.equal(chapterOnAir(one, { ...at, version2: "ACF" }), false, "a second edition asked for: sent again");
+    assert.equal(chapterOnAir(two, { ...at, version2: "ACF" }), true);
+    assert.equal(chapterOnAir(two, at), false, "the second edition taken away: sent again");
+    assert.equal(chapterOnAir(one, { ...at, version2: "NVI" }), true, "the same edition twice is one");
+});

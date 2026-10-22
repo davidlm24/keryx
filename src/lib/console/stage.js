@@ -24,15 +24,17 @@ export function stageFromPassage(passage, ref = {}) {
 // Verses of one chapter (bibleVerses.js): one verse is its whole chapter
 // from there (only a move when that chapter is on air: `onAir` is the
 // content on air); several are that passage. Null when nothing fits.
-export function stageFromVerses({ verses, nums, how = "auto", version, book, chapter, onAir = null }) {
+// pair: a second edition of the chapter ({ verses, version }, the Bíblia's
+// "2ª versão"): each slide carries its text (bibleVerses.js).
+export function stageFromVerses({ verses, nums, how = "auto", version, book, chapter, onAir = null, pair = null }) {
     if (nums.length > 1) {
-        const p = passageOf({ verses, nums, how, version, book, chapter });
+        const p = passageOf({ verses, nums, how, version, book, chapter, pair });
         return p ? stageFromPassage({ reference: p.reference, text: p.text, slides: p.slides, version }) : null;
     }
     if (!nums.length) return null;
-    const ch = chapterOf({ verses, n: nums[0], version, book, chapter });
+    const ch = chapterOf({ verses, n: nums[0], version, book, chapter, pair });
     if (!ch) return null;
-    if (chapterOnAir(onAir, { book, chapter, version })) return { ...stageAirSlide(onAir, ch.index, ch.id), title: ch.title };
+    if (chapterOnAir(onAir, { book, chapter, version, version2: ch.ref.version2 })) return { ...stageAirSlide(onAir, ch.index, ch.id), title: ch.title };
     return { ...stageFromPassage(ch.passage, ch.ref), id: ch.id, title: ch.title, index: ch.index };
 }
 

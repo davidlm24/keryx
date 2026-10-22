@@ -108,8 +108,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   monitor — sits 4 px
   (`--space-1`) in from the column, with its text at 12 px; listheads and
   sub-titles ("Selecionado", a Temas heading inside Camadas) at 12 px;
-  Capítulos is as tall as its cells, up to 40 % of the column (`Measure` →
-  the Bíblia's `fitDock` `locked`, Console.jsx); every panel header is 36 px, 32 in
+  Capítulos, Livros and Versículos are as tall as their cells (Rodada P,
+  P4-3), each up to 40 % of the column (`Measure` → the Bíblia's `fitDock`
+  `locked`, Console.jsx), and scroll past that; with all three locked down a
+  column the last takes the rest; every panel header is 36 px, 32 in
   Compacta (owner 2026-10-21, Rodada O5: the tokens `panel-head` and
   `panel-head-compact`; `panelHead` in layout.js and dock.js `PANEL_HEAD`
   keep the locked heights in step), one line — a header never wraps into a
@@ -884,11 +886,42 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Livre) — never place a column by hand in `Console.jsx` or `BibleEnv.jsx`.
   The Bíblia's dock (`layout.bibleDock`, `env: "biblia"`; modules Livros, Capítulos, Versículos, Texto, No ar — the text and
   No ar never leave; the old "Versão e busca" module is gone, 2026-10-14:
-  the version, Abrev | Nomes, the install + and a view menu (Tema da
-  Bíblia…, Células pequenas/médias/grandes — `layout.bibleGrid`, per
-  computer) are Livros' header — the edition only as an amber dot on the
-  select when it is from the internet, missing or the preview's samples
-  (`bver-dot`, the words in its tooltip). The Bíblia has **no search field
+  Abrev | Nomes, the install + and a view menu (Tema da Bíblia…, Células
+  pequenas/médias/grandes — `layout.bibleGrid`, per computer) are Livros'
+  header. **The (+) lists only what is missing here** (Rodada P, P3;
+  `installableEditions`), then "Instalar uma edição própria…" (the
+  `OwnBibleDialog` of Configurações, the BKJ 1611's door) and "Bíblias
+  instaladas…". **A bar under the No ar screen, always on screen** (Rodada
+  P, P2-1 = A; `.bbar`): Tema… (the Tema da Bíblia picker), A− / A / A+
+  (`User.bible_text_size`, −2…2 steps from the Bíblia's theme size,
+  `BIBLE_SIZE_STEPS` in `src/lib/console/lookDefaults.js`), Ref.
+  (`bible_show_reference`), versículos por slide 1/2/3/Auto, the version
+  and "+ 2ª versão" with Lado a lado | Empilhadas — church preferences
+  stamped at send (`withLookDefaults`), so they change the next send and
+  the Prévia, never what is on air. **The version list** (P3 = A): each
+  option the sigla and the full name in `<optgroup>`s — Instaladas, Ler
+  pela internet, Da igreja (`versionGroups` in bibleEditions.js, tested;
+  later one group per language) — while the closed box shows only the
+  sigla (`.bver-v` over a select whose text is transparent: it stays the
+  control); the edition only as an amber dot on the select when it is
+  from the internet, missing or the preview's samples (`bver-dot`, the
+  words in its tooltip). **A second edition on screen** (P2-2 = C,
+  `User.bible_version_2`, `bible_pair` side | stack): BibleEnv reads the
+  same chapter in it (`readChapter`; one that cannot be read is left out,
+  amber dot, never the first edition twice) and each slide carries it as
+  `slide.pair = { text, version }` (`groupVerses`/`chapterOf` in
+  bibleVerses.js join it by verse number, "auto" filling half as much;
+  `ref.version2` makes `chapterOnAir` send again rather than move);
+  `style.pair` is the live state's choice, and ScreenRenderer draws two
+  blocks (`.ks-pair`), each with its sigla, the reference line without
+  the version. Only the Bíblia environment sends a pair today (the
+  palette and the controle remoto send one edition). **"O mesmo das
+  músicas"** is the theme in use (`themeForKind(…, c.themeId)`), as stamp
+  sends it (note 11). **The reading text's size** (P5 = A) is A− / A / A+
+  in the text panel's header and Ctrl + the wheel over the text, five
+  steps P M G GG GGG (`layout.bibleRead`, per computer;
+  `src/lib/console/bibleRead.js`, tested); it never changes the screens.
+  The Bíblia has **no search field
   of its own** (owner 2026-10-16): the console's search (the palette, `/`)
   opens a reference there and searches a word (`request.search` → the
   text panel's Buscar mode; Ler goes back). The text panel's header is the
@@ -1200,7 +1233,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   second element (a reload and an echo); a window without an audio player
   (a TV, the Programa monitor) takes the element and fades it as any
   ghost. Keys go through `src/lib/console/keys.js` (with
-  a test); **B, L, C, / and ? follow the church's "Teclas de uma letra"**
+  a test; `liveAction` and its focus rules live in `liveKeys.js`, which the
+  outputs load through screenKeys.js without the console's shortcut lists —
+  keys.js re-exports it); **B, L, C, / and ? follow the church's "Teclas de uma letra"**
+
   (`User.letter_keys`: ligadas / com Shift / desligadas, Configurações ›
   Console; `liveAction(e, letters)`, `shortcutsFor`, `keyHint` for every
   menu or tooltip that names one; Ctrl+F searches in every choice); tab

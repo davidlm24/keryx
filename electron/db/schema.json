@@ -1915,6 +1915,15 @@
         "bible_verse_numbers": {
           "type": "text"
         },
+        "bible_text_size": {
+          "type": "integer"
+        },
+        "bible_version_2": {
+          "type": "text"
+        },
+        "bible_pair": {
+          "type": "text"
+        },
         "service_start_time": {
           "type": "text"
         },

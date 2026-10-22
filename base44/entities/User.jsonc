@@ -66,6 +66,19 @@
       "enum": ["sup", "hide"],
       "description": "Biblia: numeros dos versiculos pequenos no texto (sup) ou ocultos (hide). Nulo = sup"
     },
+    "bible_text_size": {
+      "type": "integer",
+      "description": "Biblia: tamanho do texto nas telas relativo ao tema da Biblia, em passos de -2 a 2 (A- / A / A+ embaixo da tela do No ar). Nulo = 0, o tamanho do tema"
+    },
+    "bible_version_2": {
+      "type": "string",
+      "description": "Biblia: uma segunda versao mostrada junto da primeira nas telas (sigla, como bible_version). Nulo ou vazio = so uma versao"
+    },
+    "bible_pair": {
+      "type": "string",
+      "enum": ["side", "stack"],
+      "description": "Biblia: com a segunda versao, as duas lado a lado (side) ou uma em cima da outra (stack). Nulo = lado a lado"
+    },
     "service_start_time": {
       "type": "string",
       "description": "Culto: horario de sempre (HH:MM), para Novo culto e a setlist do dia. Nulo = sem horario (nunca um horario inventado)"
