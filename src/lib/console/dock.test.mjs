@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PANEL_HEAD, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PANEL_HEAD, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween, GUTTER, dockLocked, setDockLock, withLockOf, setSplitWeights, resizeExact, evenExact, presetsForSplit, weightsLabel, parseWeights, toWeights, allocateWeights } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -614,4 +614,145 @@ test("dockMotion: folds, the strip and measured heights ease; a new window or sh
     const moved = moveModules(d, ["camadas"], { kind: "group", path: [0, 2, 0], zone: "center" });
     assert.equal(easesBetween(open, dockMotion(fitDock(moved, 1908, 1000, { locked, gone: ["onair"] }))), false);
     assert.equal(easesBetween(null, open), false);
+});
+
+// ---------- Rodada P4 (owner 2026-10-22): Travar fora da edição, Exato ----------
+
+const bibleDock = () => fromBibleArrangement({});
+const rootSizes = (f) => f.children.map((c) => Math.round(c.size));
+
+test("Travar fora da edição: the flag rides on the dock, through every change", () => {
+    const d = bibleDock();
+    assert.equal(dockLocked(d), false);
+    const on = setDockLock(d, true);
+    assert.equal(on.lock, true);
+    assert.equal(setDockLock(on, true), on, "the same dock when nothing changes");
+    assert.equal(dockLocked(normalizeDock(on)), true, "a save read back");
+    assert.equal(dockLocked(resizeChild(on, [], 0, 280)), true);
+    assert.equal(dockLocked(setDockMode(on, "pct", 1240, 700)), true);
+    assert.equal(dockLocked(setDockMode(on, "exact", 1240, 700)), true);
+    const culto = setDockLock(defaultDock({ width: 1908, height: 900 }), true);
+    assert.equal(dockLocked(hideModule(culto, "temas")), true);
+    assert.equal(dockLocked(moveBand(culto, "window")), true);
+    assert.equal(setDockLock(on, false).lock, undefined);
+    // A dock coming in (a named arrangement, another tier's) takes the switch as it is.
+    assert.equal(dockLocked(withLockOf(d, on)), true);
+    assert.equal(dockLocked(withLockOf(on, d)), false);
+});
+
+test("Exato: 33 · 33 · 34 holds exactly at any window size (Rodada P4-2)", () => {
+    const ex = setDockMode(bibleDock(), "exact", 1240, 700);
+    assert.equal(dockMode(ex), "exact");
+    assert.deepEqual(ex.ref, { w: 1240, h: 700 });
+    const third = setSplitWeights(ex, [], [33, 33, 34]);
+    assert.deepEqual(third.tree.weights, [33, 33, 34]);
+    for (const w of [1908, 1600, 1400]) {
+        const f = fitDock(third, w, 800);
+        const room = w - 2 * GUTTER;
+        assert.equal(f.exact, true);
+        assert.equal(f.room, room);
+        f.children.forEach((c, i) => assert.ok(Math.abs(c.size - (room * [33, 33, 34][i]) / 100) < 1e-9, `${w}: ${c.size}`));
+        // The last one takes the rounding (flex), the others are fixed.
+        assert.deepEqual(f.children.map((c) => c.fixed), [true, true, false]);
+    }
+    // No 5 % snap: what was set is what is kept, through a save read back.
+    assert.deepEqual(normalizeDock(JSON.parse(JSON.stringify(third))).tree.weights, [33, 33, 34]);
+    assert.deepEqual(setSplitWeights(ex, [], [25, 50, 25]).tree.weights, [25, 50, 25]);
+    // Only an exact dock, and one number per child.
+    assert.equal(setSplitWeights(ex, [], [50, 50]).tree.weights.length, 3);
+    assert.equal(setSplitWeights(bibleDock(), [], [33, 33, 34]).tree.weights, undefined);
+});
+
+test("Exato: minimums, locked heights and folds still win", () => {
+    const third = setSplitWeights(setDockMode(bibleDock(), "exact", 1240, 700), [], [33, 33, 34]);
+    // At 1100 the text's third (359) is under its minimum: it takes 360, the
+    // other two share what is left by their weights (33 : 34).
+    const f = fitDock(third, 1100, 600);
+    const [a, b, c] = f.children.map((ch) => ch.size);
+    assert.equal(b, MODULES.reading.minW);
+    assert.ok(Math.abs(a / c - 33 / 34) < 1e-9);
+    assert.ok(Math.abs(a + b + c - (1100 - 2 * GUTTER)) < 1e-9);
+    // At 960 No ar's share is under its minimum too: both take theirs.
+    const [, b9, c9] = fitDock(third, 960, 600).children.map((ch) => ch.size);
+    assert.deepEqual([b9, c9], [MODULES.reading.minW, MODULES.air.minW]);
+    // The picker column in Exato: Capítulos locked to its cells; Livros and
+    // Versículos share the rest by their weights.
+    const col = setSplitWeights(third, [0], [50, 20, 30]);
+    const pf = fitDock(col, 1240, 700, { locked: { chapters: 150 } }).children[0].frame;
+    const [books, chapters, verses] = pf.children.map((ch) => ch.size);
+    assert.equal(chapters, 150);
+    assert.ok(Math.abs(books / verses - 50 / 30) < 1e-9);
+    assert.equal(pf.room, 700 - 2 * GUTTER - 150);
+    assert.equal(pf.wsum, 80);
+    // A fold wins over the weights.
+    const culto = setDockMode(defaultDock({ width: 1908, height: 900 }), "exact", 1908, 900);
+    const side = pathOf(culto.tree, "setlist").slice(0, -1);
+    const folded = fitDock(culto, 1908, 900, { folded: ["camadas"] });
+    const sideFrame = side.reduce((fr, i) => fr.children.find((ch) => ch.index === i).frame, folded);
+    assert.equal(sideFrame.children.find((ch) => ch.folded).size, PANEL_HEAD);
+});
+
+test("Exato: going in and out keeps what is on screen", () => {
+    const free = bibleDock();
+    const before = rootSizes(fitDock(free, 1240, 700));
+    const ex = setDockMode(free, "exact", 1240, 700);
+    assert.deepEqual(rootSizes(fitDock(ex, 1240, 700)), before);
+    // The weights follow the box; then back to Livre at another size: those pixels stay.
+    const third = setSplitWeights(ex, [], [33, 33, 34]);
+    const at = fitDock(third, 1600, 700);
+    const out = setDockMode(third, "free", 1600, 700, at);
+    assert.equal(dockMode(out), "free");
+    assert.equal(out.tree.weights, undefined);
+    assert.deepEqual(rootSizes(fitDock(out, 1600, 700)), rootSizes(at));
+    // Por % from Exato: no weights either.
+    assert.equal(setDockMode(third, "pct", 1600, 700).tree.weights, undefined);
+    // A Livre dock never keeps weights a save may carry.
+    assert.equal(normalizeDock({ ...free, tree: { ...free.tree, weights: [1, 2, 3] } }).tree.weights, undefined);
+});
+
+test("Exato: a splitter trades weight between its two sides, in whole %", () => {
+    const third = setSplitWeights(setDockMode(bibleDock(), "exact", 1240, 700), [], [33, 33, 34]);
+    const f = fitDock(third, 1240, 700);
+    // Dragging the second gap to 40 % of the room: the text gets 40, No ar 27, the first keeps 33.
+    const moved = resizeExact(third, f, 1, 2, f.room * 0.403);
+    assert.deepEqual(moved.tree.weights, [33, 40, 27]);
+    // Typed: as typed (no snap, no rounding to whole %).
+    assert.deepEqual(resizeExact(third, f, 0, 1, f.room * 0.315, 0).tree.weights, [31.5, 34.5, 34]);
+    // Never under a minimum: the text stays at 360 px at least.
+    const squeezed = resizeExact(third, f, 0, 1, f.room);
+    const g = fitDock(squeezed, 1240, 700);
+    assert.ok(g.children[1].size >= MODULES.reading.minW - 1e-9);
+    // The double click: both sides share evenly.
+    assert.deepEqual(evenExact(moved, fitDock(moved, 1240, 700), 1, 2).tree.weights, [33, 33.5, 33.5]);
+    // Not an exact dock: nothing.
+    const free = bibleDock();
+    assert.equal(resizeExact(free, fitDock(free, 1240, 700), 0, 1, 400).tree.weights, undefined);
+});
+
+test("Exato: a structural edit keeps the weights of the splits it does not touch", () => {
+    const culto = setDockMode(defaultDock({ width: 1908, height: 900 }), "exact", 1908, 900);
+    const root = nodeAt(culto.tree, []);
+    assert.equal(root.weights.length, root.children.length);
+    const w = [...root.weights];
+    // Temas to the tray: the root's weights stay; the side column's are made anew.
+    const off = hideModule(culto, "temas");
+    assert.deepEqual(nodeAt(off.tree, []).weights, w);
+    const side = nodeAt(off.tree, pathOf(off.tree, "setlist").slice(0, -1));
+    assert.equal(side.weights.length, side.children.length);
+    assert.ok(Math.abs(side.weights.reduce((a, b) => a + b, 0) - 100) < 0.05);
+});
+
+test("Exato: presets, labels and what is typed", () => {
+    assert.deepEqual(presetsForSplit(2), [[50, 50]]);
+    assert.deepEqual(presetsForSplit(3), [[33, 33, 34], [25, 50, 25]]);
+    assert.deepEqual(presetsForSplit(4), []);
+    assert.equal(weightsLabel([33, 33.5, 33.5]), "33 · 33,5 · 33,5");
+    assert.deepEqual(parseWeights("33 33 34", 3), [33, 33, 34]);
+    assert.deepEqual(parseWeights("33,5 · 66,5", 2), [33.5, 66.5]);
+    assert.deepEqual(parseWeights("1/2", 2), [1, 2]);
+    assert.equal(parseWeights("50", 2), null);
+    assert.equal(parseWeights("0 100", 2), null);
+    assert.deepEqual(toWeights([1, 2]), [33.33, 66.67]);
+    assert.deepEqual(allocateWeights([50, 50], [100, 400], 600), [200, 400]);
+    assert.deepEqual(allocateWeights([1, 1, 2], [0, 0, 0], 400), [100, 100, 200]);
 });

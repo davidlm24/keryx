@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Split, onTabsKey } from "./kx";
-import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct, dockMotion, easesBetween, PANEL_HEAD } from "@/lib/console/dock";
+import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct, dockMotion, easesBetween, PANEL_HEAD, dockLocked, resizeExact, evenExact } from "@/lib/console/dock";
 
 // Ver › Editar disposição for the culto environment (2026-10-13; the
 // prototype "Disposição do console", model Livre): the console as a tree of
@@ -166,6 +166,19 @@ export function DockTray({ dock, dnd, onChipMenu }) {
     );
 }
 
+// Travar fora da edição (owner 2026-10-22, Rodada P4-1 = A), in the edit
+// banner: the environment on screen's switch (dock.js setDockLock). On,
+// the splitters only move in Editar disposição. The small switch, as the
+// Setlist's Autoplay.
+export function DockLockSwitch({ on, onChange }) {
+    return (
+        <button type="button" className="dock-lock" role="switch" aria-checked={Boolean(on)} aria-label="Travar fora da edição"
+            title={on ? "Travada: fora de Editar disposição os divisores não se movem" : "Travar: fora de Editar disposição os divisores não se movem (nem com as setas, nem com o duplo clique)"} onClick={() => onChange(!on)}>
+            <span className={`sw2 kx-switch kx-switch-sm ${on ? "is-on" : ""}`} aria-hidden="true" /><span>Travar fora da edição</span>
+        </button>
+    );
+}
+
 // The named arrangement being edited, in the edit banner (dockPresets.js):
 // its name (and whether it changed), Salvar over it, Salvar como… a new
 // one, Excluir. Switching between them is in Ver.
@@ -202,8 +215,10 @@ export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, pr
 // module's panel, with its fold chevron (`fold`: the frame's, with the
 // module's name and `onFold`, null while editing; Panel); `onFold(id)`: a
 // chevron or strip clicked (layout.folded, Rodada F4); `playerDocked`: the
-// player rides the Programa (a chip of its own while editing).
-export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked, onFold }) {
+// player rides the Programa (a chip of its own while editing);
+// `onPickSplit(path)`: a splitter touched while editing (the split the
+// banner's 50 · 50, 33 · 33 · 34, 25 · 50 · 25 act on, Rodada P4-2).
+export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked, onFold, onPickSplit }) {
     // The tab in front of a group made of a split that does not fit (it is
     // not in the dock: a bigger screen splits it again).
     const [shown, setShown] = useState({});
@@ -272,6 +287,33 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
     // sizes as drawn in this box (rebaseDock) and snaps to PCT_STEP %.
     const pct = dock?.mode === "pct";
     const base = () => (pct ? rebaseDock(dock, frame.w, frame.h) : dock);
+    // Travar fora da edição (Rodada P4-1): outside the edit, plain gaps.
+    const still = dockLocked(dock) && !editing;
+    const gap = (k, dir) => <div key={k} className={`dock-gap is-${dir}`} aria-hidden="true" />;
+    const pick = editing && onPickSplit ? (f) => () => onPickSplit(f.path) : () => undefined;
+    // Exato (Rodada P4-2): the gap between two open children trades weight
+    // between them (resizeExact); a locked or folded neighbour is skipped,
+    // so the gap moves the open ones on either side of it.
+    const open = (ch) => ch && !ch.gone && !ch.locked && !ch.folded;
+    const exactSplit = (f, i, next) => {
+        let a = i;
+        while (a >= 0 && !open(f.children[a])) a--;
+        let b = next;
+        while (b < f.children.length && !open(f.children[b])) b++;
+        if (a < 0 || b >= f.children.length) return gap(`g${i}`, f.dir);
+        const ca = f.children[a];
+        const share = f.wsum > 0 ? Math.round((ca.weight / f.wsum) * 100) : null;
+        return (
+            <Split key={`s${i}`} horizontal={f.dir === "col"} size={ca.size} sign={1} onPick={pick(f)}
+                name={`${f.dir === "row" ? "Largura" : "Altura"} · ${allNames(ca.frame).join(", ")} e ${allNames(f.children[b].frame).join(", ")}`}
+                value={share ?? undefined} min={0} max={100} valueText={share !== null ? `${share}%` : undefined}
+                onSize={(v) => onDock(resizeExact(dock, f, a, b, v))}
+                onReset={() => onDock(evenExact(dock, f, a, b))}
+                clamp={(v) => Math.round(v)}
+                label={editing && share !== null ? `${share}%` : null}
+                onPercent={(n) => { if (Number.isFinite(n)) onDock(resizeExact(dock, f, a, b, (Math.max(1, Math.min(99, n)) / 100) * f.room, 0)); }} />
+        );
+    };
 
     const node = (f) => {
         if (f.kind === "group") return group(f);
@@ -289,6 +331,8 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             );
             const next = f.children.findIndex((c, j) => j > i && !c.gone);
             if (ch.gone || next < 0) return;
+            if (still) { out.push(gap(`g${i}`, f.dir)); return; }
+            if (f.exact) { out.push(exactSplit(f, i, next)); return; }
             // One splitter per gap, owned by the fixed child on the side away
             // from the flexible one (dragging toward the flexible one grows it).
             const owner = i < fi ? i : next;
@@ -296,7 +340,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             // the console's: the gap it owns stays, without a handle (owner
             // 2026-10-14); a neighbour's splitter still moves it, whole.
             if (f.children[owner].locked) {
-                out.push(<div key={`g${i}`} className={`dock-gap is-${f.dir}`} aria-hidden="true" />);
+                out.push(gap(`g${i}`, f.dir));
                 return;
             }
             const sign = i < fi ? 1 : -1;
@@ -309,7 +353,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             const resizeAll = (v) => { const px = pct ? snapPct(v, total) : v; return at.reduce((d, j) => resizeChild(d, f.path, j, px), base()); };
             const share = total > 0 ? Math.round((size / total) * 100) : null;
             out.push(
-                <Split key={`s${i}`} horizontal={f.dir === "col"} size={size} sign={sign}
+                <Split key={`s${i}`} horizontal={f.dir === "col"} size={size} sign={sign} onPick={pick(f)}
                     name={`${f.dir === "row" ? "Largura" : "Altura"} · ${allNames(f.children[owner].frame).join(", ")}`}
                     value={share ?? undefined} min={share !== null ? 0 : undefined} max={share !== null ? 100 : undefined} valueText={share !== null ? `${share}%` : undefined}
                     onSize={(v) => onDock(resizeAll(v))}

@@ -427,7 +427,9 @@ export function Monitor({ state, caption, cap, noCap = false, live, now, logoUrl
 // `name`: what it resizes ("Largura · Biblioteca", C-62); `value` with
 // `min`/`max` and `valueText`: what a screen reader says (the dock, the %
 // of its split; a window column, its pixels between its limits).
-export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, label = null, onPercent, name, value, min, max, valueText }) {
+// `onPick`: told when the splitter is pressed or takes the focus (the dock's
+// split being edited, Rodada P4-2).
+export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, label = null, onPercent, name, value, min, max, valueText, onPick }) {
     const drag = useRef(null);
     const [typing, setTyping] = useState(null);
     useEffect(() => {
@@ -462,7 +464,8 @@ export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, labe
             aria-description="Setas ajustam, Enter restaura"
             tabIndex={0}
             title="Arraste para redimensionar · duplo clique restaura"
-            onMouseDown={(e) => { if (e.target.closest?.(".kx-split-pct")) return; e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
+            onFocus={onPick}
+            onMouseDown={(e) => { onPick?.(); if (e.target.closest?.(".kx-split-pct")) return; e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
             onDoubleClick={(e) => { if (!e.target.closest?.(".kx-split-pct")) onReset?.(); }}
             onKeyDown={onKeyDown}
         >
