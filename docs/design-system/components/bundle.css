@@ -89,7 +89,7 @@
 
 /* ---- Segmented switch ---- */
 .kx-seg { height: var(--row); display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--radius-control); background: var(--bg-2); }
-.kx-seg > button { height: var(--control-sm); padding: 0 10px; border-radius: calc(var(--radius-control) - 2px); color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; }
+.kx-seg > button { height: var(--control-sm); padding: 0 10px; border-radius: calc(var(--radius-control) - 2px); color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .kx-seg > button:hover { color: var(--fg-1); }
 /* Pressed: the lighter fill and white text, as every pressed button of the console (Rodada O, O6: the fg-3 ring read
    as white). A Windows contrast theme keeps its Highlight ring (the forced-colors block). */

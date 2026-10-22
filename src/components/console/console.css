@@ -937,9 +937,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    its own wider 140 px grid (.cfg .frm). */
 /* One spacing (Rodada D3, the Editor da tela's): no flex gap — between two
    columns the splitter (or a kx-gap) IS the 6 px, as in the console; two
-   panels stacked in a column are 6 px apart too. The panels start right
-   under the bar's rule (Rodada O, O7: no strip of ground between them). */
-.console .win-body { --win-label: 96px; flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 0; padding: 0 var(--gutter) var(--gutter); }
+   panels stacked in a column are 6 px apart too. The panels sit the same
+   6 px under the bar's rule as from the sides (owner 2026-10-22, after
+   Rodada O: flush against the rule they looked cramped). */
+.console .win-body { --win-label: 96px; flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 0; padding: var(--gutter); }
 /* THE window is one bg-1 surface (bundle.css, Window); its pages' panels
    sit one grey step up, everything inside them with them: the panel bg-2,
    its fields and hover bg-3, pressed and selected bg-4. The steps are read
