@@ -3,6 +3,8 @@ import { Btn, IconBtn } from "./kx";
 import Icon from "./Icon";
 import { useDialogFocus } from "./useDialogFocus";
 import { readImport, createSongs, pickedFolder, SONG_FILE, SONG_ACCEPT } from "./importSongs";
+import { usePackages } from "./packages";
+import { PACKAGE_FILE } from "@/lib/keryxPackage";
 import { importedItems, importRowMeta, importRowSize, importSource, importCounts, importSummary } from "@/lib/songImport";
 
 // Importar músicas (owner's marks 2026-10-20 on the mockup, all as
@@ -45,6 +47,7 @@ export default function ImportSongsDialog({ request, onClose, onBusy, say }) {
     const folderRef = useRef(null);
     const readId = useRef(0);
     const open = Boolean(request);
+    const { openPackage } = usePackages();
     useDialogFocus(boxRef, open);
 
     // A new pick (from the console, or the dialog's own buttons) is read anew.
@@ -64,8 +67,12 @@ export default function ImportSongsDialog({ request, onClose, onBusy, say }) {
     const busy = Boolean(progress);
     const close = () => { if (!busy) onClose(); };
     const repick = (e) => {
-        const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name));
+        const picked = [...(e.target.files || [])];
         e.target.value = "";
+        // A KERYX package opens in its own dialog.
+        const box = picked.find((f) => PACKAGE_FILE.test(f.name));
+        if (box) { onClose(); openPackage(box); return; }
+        const files = picked.filter((f) => SONG_FILE.test(f.name));
         if (files.length) read(files);
     };
     const run = async () => {

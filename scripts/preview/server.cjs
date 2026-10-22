@@ -20,6 +20,14 @@
 //   GET  /__keryx/font?id=     one face's file (a collection's face cut out)
 //   POST /__keryx/media?name=  the file's bytes -> { data: { fileName } }
 //   POST /__keryx/media-info   { names } -> { data: { [name]: { exists, size } } }
+//   POST /__keryx/package-export  { manifest, items, files, name } writes a .keryx
+//                              (electron/keryxPackage.cjs) -> { data: { token, … } }
+//   GET  /__keryx/package-download?token=  that file, as a download
+//   POST /__keryx/package-open?name=  (the .keryx's bytes) reads it -> { data: { id, manifest, items, files } }
+//   POST /__keryx/package-fits   { id, entries } whether those files fit -> { data: { ok, need, free } }
+//   GET  /__keryx/package-read?id=&entry=&offset=&length=  a range of one of its files (bytes)
+//   POST /__keryx/package-take   { id, entry } one of its files into the media folder -> { data: { fileName } }
+//   POST /__keryx/package-close  { id }
 //   GET  /media/<file>         the preview's media folder; /media/bundled/ is resources/
 //   POST /api/remote           the controle remoto's command (the /Remote tab),
 //                              checked as electron/lan.cjs checks it, run by
@@ -46,6 +54,8 @@ const schema = require("../../electron/db/schema.json");
 const { seed } = require("./fixtures.cjs");
 const bible = require("../../electron/bible.cjs");
 const { createSystemFonts } = require("../../electron/systemFonts.cjs");
+const { createPackages } = require("../../electron/keryxPackage.cjs");
+const { importMedia } = require("../../electron/mediaImport.cjs");
 
 const ROOT = path.join(__dirname, "..", "..");
 const PREFIX = "/__keryx/";
@@ -106,6 +116,8 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
     const ownBible = bible.createOwnInstaller(store);
     const live =createLive({ file: path.join(dir, "live.json"), rules: await loadLiveRules(), log });
     seed(store);
+    const packages = createPackages({ root: path.join(dir, "pacotes"), mediaDir, importMedia, log });
+    const exported = new Map();
 
     const clients = new Set();
     const broadcast = (frame) => { for (const res of clients) res.write(frame); };
@@ -220,6 +232,49 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
                 const fileName = crypto.randomUUID() + safeExtension(url.searchParams.get("name"));
                 fs.writeFileSync(path.join(mediaDir, fileName), bytes);
                 return json(res, 200, { data: { fileName } });
+            }
+            if (route === "package-export" && req.method === "POST") {
+                const { manifest, items, files, name } = JSON.parse((await readBody(req, 64 * 1024 * 1024)).toString("utf8") || "{}");
+                const token = crypto.randomUUID();
+                fs.mkdirSync(path.join(dir, "exports"), { recursive: true });
+                const target = path.join(dir, "exports", `${token}.keryx`);
+                try {
+                    const out = await packages.write({ target, manifest, items, files });
+                    exported.set(token, { file: target, name: /^[\w.-]{1,90}\.keryx$/.test(String(name || "")) ? name : "keryx.keryx" });
+                    return json(res, 200, { data: { ...out, token, file: exported.get(token).name } });
+                } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "package-download" && req.method === "GET") {
+                const got = exported.get(url.searchParams.get("token"));
+                if (!got) return json(res, 404, { error: { message: "Pacote não encontrado.", status: 404 } });
+                res.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${got.name}"`, "Cache-Control": "no-store" });
+                return fs.createReadStream(got.file).pipe(res);
+            }
+            if (route === "package-open" && req.method === "POST") {
+                const bytes = await readBody(req, MAX_FILE);
+                const incoming = path.join(dir, `incoming-${crypto.randomUUID()}.keryx`);
+                fs.writeFileSync(incoming, bytes);
+                // The upload is the package's own copy: removed on close (or a failed open).
+                try { return json(res, 200, { data: { ...(await packages.open(incoming, { owned: true })), name: path.basename(String(url.searchParams.get("name") || "pacote.keryx")) } }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "package-fits" && req.method === "POST") {
+                const { id, entries } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                try { return json(res, 200, { data: packages.fits(id, Array.isArray(entries) ? entries : []) }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "package-read" && req.method === "GET") {
+                try {
+                    const bytes = await packages.read(url.searchParams.get("id"), url.searchParams.get("entry"), url.searchParams.get("offset"), url.searchParams.get("length"));
+                    res.writeHead(200, { "Content-Type": "application/octet-stream", "Cache-Control": "no-store" });
+                    return res.end(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+                } catch (err) { return json(res, err.status || 400, failure(err)); }
+            }
+            if (route === "package-take" && req.method === "POST") {
+                const { id, entry } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                try { return json(res, 200, { data: await packages.take(id, entry) }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "package-close" && req.method === "POST") {
+                const { id } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                return json(res, 200, { data: packages.close(id) });
             }
             if (route === "media-info" && req.method === "POST") {
                 const { names = [] } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");

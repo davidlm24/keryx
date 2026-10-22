@@ -11,6 +11,7 @@ import { useContextMenu } from "./ContextMenu";
 import { useConfirm } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
 import { useImportSongs, SONG_FILE, SONG_ACCEPT } from "./importSongs";
+import { usePackages } from "./packages";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { songRow, mmss, mediaIcon, copyingRows } from "@/lib/console/libraryRows";
 import CodecMark from "@/components/console/CodecMark";
@@ -148,17 +149,10 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
 
     // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
     const importSongFiles = useImportSongs();
-    // "+ › Exportar todas": the songs as the JSON the import reads back.
-    const exportSongs = () => {
-        const songs = data.songs.map(({ id: _id, created_date: _c, updated_date: _u, created_by_id: _b, ...rest }) => rest);
-        const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), app: "KERYX", count: songs.length, songs }, null, 2)], { type: "application/json" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `keryx_musicas_${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        c.say(`${songs.length} ${songs.length === 1 ? "música exportada" : "músicas exportadas"}.`);
-    };
+    // The KERYX package (packages.js): "Exportar…" asks how (with the
+    // files, a .keryx, or for songs only the lyrics, the JSON of always);
+    // "+ › Abrir pacote do KERYX…" shows what one brings before it comes in.
+    const { exportItems, openPackage } = usePackages();
     const menu = useContextMenu();
     // "Excluir…" in the menus asks first (ConfirmDialog.jsx).
     const confirm = useConfirm();
@@ -209,6 +203,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const rowMenu = (id, single) => (e) => {
         if (picked.length > 1 && ms.has(id)) {
             menu(e, { title: selectionCount(picked.length, { feminine: tab === "letras" }), items: [
+                menuItem("exportar", { label: `Exportar ${picked.length}…`, onSelect: () => exportRows(picked) }),
                 menuItem("excluir", { label: `Excluir ${picked.length}…`, kbd: keyHint("delete"), onSelect: () => removeRows(picked) }),
                 { label: "Limpar a seleção", icon: "x", onSelect: ms.clear },
             ] });
@@ -217,6 +212,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
         single(e);
     };
     const listKeys = (e) => ms.keyDown(e, { onDelete: () => removeRows(picked) });
+    const exportRows = (rows) => exportItems(tab === "letras" ? "songs" : mediaKinds ? "media" : "notices", rows);
+    const openItem = menuItem("abrirPacote", { onClick: () => openPackage() });
     // Dragging a marked row with others marked takes them all (Rodada O2).
     const stageOfRow = tab === "letras" ? (s) => stageFromSong(s, {}, data.themes) : mediaKinds ? (m) => stageFromMedia(m) : (p) => stageFromPiece(p);
     const dragOf = (id, stage, time) => dragProps(stage, time, () => (picked.length > 1 && ms.has(id) ? picked.map(stageOfRow) : null));
@@ -226,27 +223,32 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
             menuItem("doComputador", { accept: SONG_ACCEPT, onFiles: importSongFiles }),
             { label: "Uma pasta inteira…", icon: "folder", accept: SONG_ACCEPT, directory: true, onFiles: (files) => importSongFiles(files.filter((f) => SONG_FILE.test(f.name))) },
             { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
-            { label: "Exportar todas…", icon: "save", onClick: exportSongs },
+            openItem,
+            menuItem("exportar", { label: "Exportar todas…", disabled: !data.songs.length, onClick: () => exportItems("songs", data.songs) }),
         ]
         : tab === "imagens"
             ? [
                 menuItem("doComputador", { accept: shownIds.includes("apresentacoes") ? "image/*,.gif" : "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia }),
+                openItem,
             ]
         : tab === "audios"
             ? [
                 menuItem("doComputador", { accept: "audio/*", onFiles: importMedia }),
                 { label: "Uma pasta inteira…", icon: "folder", accept: "audio/*", directory: true, onFiles: (files) => importMedia(files.filter((f) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(f.name))) },
+                openItem,
             ]
         : tab === "apresentacoes"
             ? [
                 menuItem("doComputador", { accept: ".pdf,.ppt,.pptx", onFiles: importMedia }),
+                openItem,
             ]
         : tab === "videos"
             ? [
                 menuItem("doComputador", { accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia }),
                 menuItem("youtube", { onClick: () => document.querySelector(".console .yt-field input")?.focus() }),
+                openItem,
             ]
-            : [menuItem("novoAviso", { onClick: () => onEditNotice?.("new") })];
+            : [menuItem("novoAviso", { onClick: () => onEditNotice?.("new") }), openItem];
 
     return (
         <>
@@ -279,6 +281,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                     onEditSong && menuItem("editar", { onSelect: () => onEditSong(s.id) }),
                                     menuItem(s.is_favorite ? "tirarDosFavoritos" : "favoritar", { onSelect: () => toggleFav(s) }),
                                     dupIds?.has(s.id) && onDuplicates && { label: "Ver as repetidas…", icon: "copy", onSelect: onDuplicates },
+                                    menuItem("exportar", { onSelect: () => exportRows([s]) }),
                                     menuItem("excluir", { onSelect: () => removeRows([s]) }),
                                     onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) }),
                                 ] }))}
@@ -326,6 +329,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromMedia(m)) }),
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
                             onOpenMedia && { label: "Abrir a Mídia", icon: "media", onSelect: () => onOpenMedia() },
+                            menuItem("exportar", { onSelect: () => exportRows([m]) }),
                             menuItem("excluir", { onSelect: () => removeRows([m]) }),
                             onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromMedia(m)) }),
                         ] }))}
@@ -378,6 +382,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                     onContextMenu={rowMenu(p.id, (e) => menu(e, { title: p.title || p.text, items: [
                                         menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromPiece(p)) }),
                                         onEditNotice && menuItem("editar", { onSelect: () => onEditNotice(p.id) }),
+                                        menuItem("exportar", { onSelect: () => exportRows([p]) }),
                                         menuItem("excluir", { onSelect: () => removeRows([p]) }),
                                         onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromPiece(p)) }),
                                     ] }))}
@@ -388,6 +393,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 );
             })()}
             <SelBar count={picked.length} feminine={tab === "letras"} onClear={ms.clear}>
+                <Btn small onClick={() => exportRows(picked)} title="Exportar num pacote do KERYX, com os arquivos que usam">Exportar…</Btn>
                 <Btn small onClick={() => removeRows(picked)} title={`Excluir · ${keyHint("delete")}`}>Excluir…</Btn>
             </SelBar>
             {mediaKinds && <MediaPeek peek={peek} />}

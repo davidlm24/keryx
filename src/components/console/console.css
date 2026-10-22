@@ -1591,6 +1591,27 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .import-dialog .im-foot { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3); border-top: 1px solid var(--line); }
 .console .import-dialog .im-counts { flex: 1; font-size: var(--fs-ui); color: var(--fg-3); }
 @media (max-width: 720px) { .console .import-dialog .im-row { grid-template-columns: 24px minmax(0, 1fr) 140px; } .console .import-dialog .im-format { display: none; } }
+/* The KERYX package (PackageDialogs.jsx) on the same frame: Exportar's two
+   choices as cards, Abrir's header with where it came from, the chips by
+   kind and one list grouped by kind (O1-1 = A). */
+.console .dialog.confirm-dialog.import-dialog.pkg-export { width: min(480px, calc(100% - 32px)); }
+.console .import-dialog .pkg-body { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); }
+.console .import-dialog .pkg-radio { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-control); cursor: pointer; }
+.console .import-dialog .pkg-radio.is-on { border-color: var(--brand); background: var(--brand-tint); }
+.console .import-dialog .pkg-radio input { margin: 2px 0 0; width: 14px; height: 14px; accent-color: var(--brand); }
+.console .import-dialog .pkg-radio-t { font-size: var(--fs-content); color: var(--fg-1); }
+.console .import-dialog .pkg-radio-s { grid-column: 2; font-size: var(--fs-meta); color: var(--fg-3); }
+.console .import-dialog .pkg-note { font-size: var(--fs-meta); color: var(--fg-3); }
+.console .import-dialog .pkg-note.is-warn { color: var(--warn-fg); }
+.console .import-dialog .pkg-head { height: auto; min-height: 48px; padding-block: var(--space-2); }
+.console .import-dialog .pkg-head .im-title { display: flex; flex-direction: column; min-width: 0; }
+.console .import-dialog .pkg-sub { font-size: var(--fs-meta); font-weight: 400; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .import-dialog .pkg-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.console .import-dialog .pkg-chip { font-size: var(--fs-meta); padding: 2px var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); white-space: nowrap; }
+.console .import-dialog .pkg-chip b { color: var(--fg-1); font-weight: 600; }
+.console .import-dialog .pkg-group { display: flex; flex-direction: column; gap: 2px; }
+.console .import-dialog .pkg-ilh { padding: var(--space-2) var(--space-2) 2px; font-size: var(--fs-meta); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
+.console .import-dialog .im-row.pkg-row { grid-template-columns: 24px minmax(0, 1fr) auto; }
 /* Bíblias instaladas (BibliasSection): the three groups' headings, each
    row's licence chip, and Instalar uma edição própria… (OwnBibleDialog,
    which wears the report dialog's fields). Tokens only. */

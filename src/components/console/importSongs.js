@@ -4,13 +4,14 @@ import { readSongFile, importPlan } from "@/lib/songImport";
 import { getPrefs } from "@/hooks/useUser";
 
 // Song files from the computer (cifra, ChordPro, texto, JSON exportado,
-// OpenLyrics/OpenLP, the Holyrics JSON export): the Biblioteca's "+ › Do
+// OpenLyrics/OpenLP, the Holyrics JSON export; a KERYX package, .keryx,
+// opens in its own dialog, PackageDialogs.jsx): the Biblioteca's "+ › Do
 // computador / Uma pasta inteira…" and the menu bar's Música › Importar uma
 // pasta… pick the files, then ImportSongsDialog shows what will come in
 // before anything is written (owner's marks 2026-10-20, the "Importar
 // músicas" mockup). What a file is comes from its content (readSongFile).
 export const SONG_FILE = /\.(txt|chordpro|cho|crd|pro|json|xml)$/i;
-export const SONG_ACCEPT = ".txt,.chordpro,.cho,.crd,.pro,.json,.xml,text/plain";
+export const SONG_ACCEPT = ".txt,.chordpro,.cho,.crd,.pro,.json,.xml,.keryx,text/plain";
 
 // The console's door to the dialog: useImportSongs()(files).
 export const ImportSongsContext = createContext(null);

@@ -28,6 +28,10 @@ export const MENU_LABELS = {
     // Files and links (they ask for a file or a link before acting)
     doComputador: { label: "Do computador…", icon: "folder" },
     youtube: { label: "Link do YouTube…", icon: "youtube" },
+    // The KERYX package (src/lib/keryxPackage.js): Exportar… asks how (the
+    // export dialog); Abrir… asks for the file.
+    exportar: { label: "Exportar…", icon: "save" },
+    abrirPacote: { label: "Abrir pacote do KERYX…", icon: "download" },
     // Themes and backgrounds: one name for the section ("Temas e fundos"),
     // "Fundos" for the background library alone.
     temasEFundos: { label: "Temas e fundos", icon: "palette" },

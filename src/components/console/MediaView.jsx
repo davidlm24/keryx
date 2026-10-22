@@ -3,8 +3,9 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop, SelectManyBtn, SelBar, RowMark } from "./kx";
 import { useMultiSelect } from "./useMultiSelect";
-import { pickedOf } from "@/lib/console/multiSelect";
+import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
 import { deleteSeveral } from "./bulkActions";
+import { usePackages } from "./packages";
 import { importMediaFiles, importSummary, mediaFromYouTube, uploadFile } from "@/lib/mediaImport";
 import { codecFields } from "@/lib/videoCodec";
 import { playsInSequence } from "@/lib/presentation";
@@ -165,16 +166,25 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         text: rows.length === 1 ? "O arquivo continua na pasta de mídia do computador." : "Os arquivos continuam na pasta de mídia do computador.",
         after: rows.length === 1 ? "O arquivo continua na pasta de mídia." : "Os arquivos continuam na pasta de mídia.",
     }).catch(fail);
+    // Exportar…: a KERYX package with the files (packages.js).
+    const { exportItems } = usePackages();
+    const exportRows = (rows = picked) => exportItems("media", rows);
     // A file's right-click menu (C-72), as the Biblioteca's: it acts on
-    // the file under the pointer; what goes on air is last.
-    const fileMenu = (m) => (e) => menu(e, { title: m.title, items: [
+    // the file under the pointer (on all the marked ones when it is one of
+    // several, M7); what goes on air is last.
+    const fileMenu = (m) => (e) => (picked.length > 1 && ms.has(m.id) ? menu(e, { title: selectionCount(picked.length), items: [
+        menuItem("exportar", { label: `Exportar ${picked.length}…`, onSelect: () => exportRows(picked) }),
+        menuItem("excluir", { label: `Excluir ${picked.length}…`, kbd: keyHint("delete"), onSelect: () => remove(picked) }),
+        { label: "Limpar a seleção", icon: "x", onSelect: ms.clear },
+    ] }) : menu(e, { title: m.title, items: [
         !m.missing && !m.syncing && menuItem("porNaPrevia", { onSelect: () => c.setPrev(stageFromMedia(m)) }),
         !m.missing && !m.syncing && m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => c.setPrev(stageFromMedia(m, { toVideo: true })) },
         menuItem("renomear", { onSelect: () => { ms.set([m.id]); setRenaming(m.id); } }),
         m.missing && !m.syncing && { label: "Localizar…", icon: "folder", onSelect: () => locate(m) },
+        !m.missing && menuItem("exportar", { onSelect: () => exportRows([m]) }),
         menuItem("excluir", { kbd: keyHint("delete"), onSelect: () => remove([m]) }),
         !m.missing && !m.syncing && menuItem("enviarAoAr", { air: true, onSelect: () => send(m) }),
-    ] });
+    ] }));
     const locate = (m) => { locating.current = m; locateRef.current?.click(); };
     const located = async (file) => {
         const m = locating.current;
@@ -287,6 +297,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                         <option value="">Categoria…</option>
                         {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                     </select>
+                    <Btn small onClick={() => exportRows()} title="Exportar num pacote do KERYX, com os arquivos">Exportar…</Btn>
                     <Btn small onClick={() => remove()} title="Excluir da Mídia · Delete">Excluir…</Btn>
                 </SelBar>
                 <div className={`mv-body ${ms.picking ? "is-picking" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) ms.clear(); }}>

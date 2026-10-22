@@ -27,6 +27,9 @@ import { buildMenus, songInHand } from "@/lib/console/menuBar";
 import { menuItem } from "@/lib/console/menuLabels";
 import { ImportSongsContext, SONG_FILE, SONG_ACCEPT } from "@/components/console/importSongs";
 import ImportSongsDialog from "@/components/console/ImportSongsDialog";
+import { usePackageHost } from "@/components/console/PackageDialogs";
+import { PackageContext } from "@/components/console/packages";
+import { PACKAGE_FILE } from "@/lib/keryxPackage";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import { useChurch } from "@/hooks/useChurch";
 import Library from "@/components/console/Library";
@@ -265,7 +268,15 @@ export default function Console() {
     const [reporting, setReporting] = useState(false);
     // Importar músicas (ImportSongsDialog): { files, busy } while it is open.
     const [importReq, setImportReq] = useState(null);
-    const openImport = useCallback((files) => setImportReq({ files: [...files], busy: false }), []);
+    // The KERYX package (PackageDialogs.jsx): Exportar… and Abrir pacote do
+    // KERYX…; a .keryx picked for Importar músicas opens there instead.
+    const pkg = usePackageHost(c.say);
+    const openPackage = pkg.value.openPackage;
+    const openImport = useCallback((files) => {
+        const list = [...files];
+        const box = list.find((f) => PACKAGE_FILE.test(f.name));
+        if (box) { setImportReq(null); openPackage(box); } else setImportReq({ files: list, busy: false });
+    }, [openPackage]);
     const closeImport = useCallback(() => setImportReq((r) => (r?.busy ? r : null)), []);
     // With { subject, body }: Configurações' queue tried the e-mail and no program opened.
     const openReport = useCallback((mail) => setReporting(mail?.subject ? mail : true), []);
@@ -870,11 +881,11 @@ export default function Console() {
                 // "window": Esc goes to the TOP page's registered request
                 // (nav.js), which pops one level — "← Voltar" — or, at the
                 // first, closes; an unsaved guard may ask instead.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, selection: selections.any(), edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq || pkg.open, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, selection: selections.any(), edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
-                    else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else if (importReq) closeImport(); else setReporting(false); }
+                    else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else if (importReq) closeImport(); else if (pkg.open) pkg.close(); else setReporting(false); }
                     else if (top === "library") { if (!libEsc.current?.()) closeLibrary(null); }
                     else if (top === "popover") setOpen(null);
                     else if (top === "window") winEsc("esc");
@@ -889,7 +900,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if ((libReq || confirmReq || reporting || importReq) && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq || reporting || importReq || pkg.open) && !["black", "logo"].includes(action)) return;
             // Behind the window only the emergency keys (Tela preta, Logo)
             // act; a page's own keys (Mídia's Enter and Delete, the editors'
             // Ctrl+S, Space while marking timings) are its own listeners.
@@ -928,7 +939,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, reporting, importReq, closeImport, letters, autoplay]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, reporting, importReq, closeImport, pkg, letters, autoplay]);
     useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -1419,10 +1430,11 @@ export default function Console() {
         <ConfirmContext.Provider value={askConfirm}>
         <ReportContext.Provider value={openReport}>
         <ImportSongsContext.Provider value={openImport}>
+        <PackageContext.Provider value={pkg.value}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
-                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || libReq)} />
+                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1515,6 +1527,7 @@ export default function Console() {
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
             <ImportSongsDialog request={importReq} onClose={closeImport} onBusy={(busy) => setImportReq((r) => (r ? { ...r, busy } : r))} say={c.say} />
+            {pkg.element}
             <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !winOpen && env === "culto" && (() => {
@@ -1540,6 +1553,7 @@ export default function Console() {
             {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
+        </PackageContext.Provider>
         </ImportSongsContext.Provider>
         </ReportContext.Provider>
         </ConfirmContext.Provider>
