@@ -101,7 +101,9 @@ export const stackFromParams = (params) => {
 // top cannot stand alone. Sincronizar answers to the Editor de música
 // below it (its Aplicar fills that editor's draft), so the two go
 // together: ?song=<id>&sync=1. What the console keeps outside the stack
-// comes in `at`: the Configurações section, the culto in hand.
+// comes in `at`: the Configurações section. Planejar o culto keeps the culto
+// of its tab in front in its props (Rodada O, O9: its tabs are its own, not
+// the console's culto), so the detached window opens on that tab.
 export const detachSpec = (stack, at = {}) => {
     const t = top(stack);
     if (!t) return null;
@@ -109,7 +111,7 @@ export const detachSpec = (stack, at = {}) => {
     const one = (page, query) => ({ pop: 1, page, query: new URLSearchParams({ page, ...query }).toString() });
     switch (t.page) {
         case "config": return one("config", { config: at.section || "1" });
-        case "planner": return one("planner", { planner: at.serviceId || "1" });
+        case "planner": return one("planner", { planner: p.serviceId || "1" });
         case "media": return one("media", { media: "1" });
         case "notice": return one("notice", { notice: p.id || "new" });
         case "song": return one("song", { song: p.id || "new" });

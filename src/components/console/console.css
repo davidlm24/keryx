@@ -1162,6 +1162,26 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .pl-setlist > .kx-panel-h .kx-section { flex: 1 1 260px; }
 .console .pl-popwrap { position: relative; }
 .console .pl-pop { position: absolute; right: 0; top: 26px; width: 280px; max-height: 320px; overflow: auto; z-index: var(--z-dialog); }
+/* Placed by usePlaced (the Culto panel clips what hangs out of it). */
+.console .pl-pop.is-placed { position: fixed; right: auto; top: auto; z-index: var(--z-menu); }
+/* The cultos' tabs in the window's bar (Rodada O, O9: as in a browser). The
+   tab in front is the page's surface; its × is out of the Tab order (Delete
+   closes the focused tab); the culto of the console has a green dot. */
+.console .pl-tabs { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; }
+.console .tabrow-close { height: auto; flex-wrap: nowrap; align-items: center; gap: 2px; padding: 0; border-bottom: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.console .tabrow-close .kx-tc { display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 72px; max-width: 200px; height: 28px; padding: 0 2px 0 0; border-radius: var(--radius-control) var(--radius-control) 0 0; color: var(--fg-3); }
+.console .tabrow-close .kx-tc:hover { background: var(--bg-2); color: var(--fg-2); }
+.console .tabrow-close .kx-tc.is-on { background: var(--bg-3); color: var(--fg-1); }
+.console .tabrow-close .kx-tc-t { display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0; height: 100%; padding: 0 4px 0 10px; color: inherit; font-size: var(--fs-ui); background: none; border-radius: var(--radius-control); }
+.console .tabrow-close .kx-tc-l { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .tabrow-close .kx-tc-dot { flex: none; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--prev-fg); }
+.console .tabrow-close .kx-tc-x { flex: none; display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border-radius: 4px; color: var(--fg-3); background: none; opacity: 0; }
+.console .tabrow-close .kx-tc-x svg { width: 12px; height: 12px; }
+.console .tabrow-close .kx-tc:is(:hover, .is-on, :focus-within) .kx-tc-x { opacity: 1; }
+.console .tabrow-close .kx-tc-x:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .tabrow-close .kx-tc.is-on .kx-tc-x:hover { background: var(--bg-2); }
+.console .pl-newtab { max-width: 520px; margin-inline: auto; width: 100%; }
+.console .pl-newtab-list { flex: 1; min-height: 0; overflow: auto; }
 .console .pl-list { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .console .pl-sec { gap: var(--space-2); height: var(--row); padding-right: var(--space-2); }
 .console .pl-sec .kx-section { color: var(--fg-1); }
@@ -1944,6 +1964,11 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
 @media (forced-colors: active) {
   .console .confirm-warn { outline: 1px solid CanvasText; outline-offset: -1px; }
+  /* Planejar o culto's tabs: the one in front is chosen (a solid ring); the
+     console's culto dot keeps a colour of the system. */
+  .console .tabrow-close .kx-tc.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .console .tabrow-close .kx-tc-dot { background: LinkText; }
+  .console .tabrow-close .kx-tc-x { opacity: 1; }
   /* The amber mark of a video that may not play keeps an edge. */
   .console .codec-mark { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* Floating surfaces lose their shadow: an edge instead. */
