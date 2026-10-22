@@ -121,8 +121,11 @@
 .console .pop { position: absolute; z-index: var(--z-pop); }
 /* The right-click menu (ContextMenu.jsx): over everything, its own clear
    backdrop; fixed, so it is placed in window coordinates (the pointer's)
-   whatever the console's own offset. */
-.console .ctx-scrim { position: fixed; z-index: var(--z-menu); }
+   whatever the console's own offset. `.scrim.ctx-scrim`, not `.ctx-scrim`:
+   the generic `.console .scrim` below has the same weight and comes later, so
+   it took the backdrop down to the popovers' layer, under THE window and the
+   dialogs, and a click away inside a page left the menu open. */
+.console .scrim.ctx-scrim { position: fixed; z-index: var(--z-menu); }
 /* Every popover and menu (Ver, Saídas, the (+) menus, right-click menus,
    the tabs lists) stands out from the panels under it: a deeper shadow than
    the design system's --shadow-popover (owner 2026-10-14, who liked the
@@ -623,6 +626,11 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .kx-sort-slot { inset: auto var(--space-1); transition: top 180ms var(--ease-out); animation: kx-slot-in 120ms var(--ease-out); }
 @keyframes kx-slot-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .console .is-sorting > [data-sort-row], .console .kx-sort-slot { transition: none; animation: none; } }
+/* Several marked rows dragged together (Rodada O2): they stay where they
+   were, dimmed, and the slot opens where they land, as tall as all of them
+   (the .kx-sort-slot placeholder; Planejar o culto's list holds it too). */
+.console .is-sorting > [data-sort-row][data-sort-held] { opacity: var(--dim); }
+.console .pl-list { position: relative; }
 .console [data-sort-row][draggable="true"] { cursor: grab; }
 .console [data-sort-row][draggable="true"]:active { cursor: grabbing; }
 /* The card that follows the pointer (dragGhost.js): the row's size, its
@@ -635,6 +643,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .drag-card-in .kx-i { flex: none; color: var(--brand); }
 .drag-card-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .drag-card-time { flex: none; color: var(--fg-3); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+/* How many go together (Rodada O2): a gold count, and two cards stacked
+   behind the one grabbed. */
+.drag-card-n { flex: none; min-width: 18px; height: 18px; padding: 0 var(--space-1); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 var(--fs-meta)/18px var(--font-sans); text-align: center; font-variant-numeric: tabular-nums; }
+.drag-card:has(.drag-card-n)::before { content: ""; position: absolute; inset: 0; border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong), -3px -3px 0 var(--bg-3), var(--shadow-drag); transform: translate(6px, 6px); }
+.drag-card:has(.drag-card-n) .drag-card-in { position: relative; }
+.drag-card.is-land::before { opacity: 0; }
 .drag-card.is-land { transition: transform 180ms var(--ease-out), width 180ms var(--ease-out), height 180ms var(--ease-out); }
 .drag-card.is-land .drag-card-in { transform: none; box-shadow: var(--shadow-drag-land); }
 .drag-card.is-gone { opacity: 0; transition: opacity 120ms var(--ease-out); }
@@ -814,7 +828,11 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .rund-auto:not(:disabled):hover { background: var(--bg-3); color: var(--fg-1); }
 .console .rund-auto[aria-checked="true"] { color: var(--fg-1); }
 .console .rund-auto:disabled { opacity: var(--dim); cursor: default; }
-@container setlist-h (width < 300px) { .console .rund-auto-l { display: none; } }
+/* The word "Autoplay" (Rodada O3) stays beside the switch; the count "· n
+   itens · tempo" ellipsizes first (the title's kx-section shrinks). Only
+   where even "Setlist" would be cut does the word go: the switch alone, a
+   24 px button. */
+@container setlist-h (width < 310px) { .console .rund-auto { width: var(--control-sm); padding: 0; justify-content: center; } .console .rund-auto-l { display: none; } }
 .console .rund-end { flex: none; display: inline-grid; place-items: center; width: 16px; color: var(--fg-3); }
 .console .rund .kx-row.is-air .rund-end { color: inherit; }
 .console .rund-cd { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: 22px; padding: 0 2px 0 var(--space-2); border-radius: var(--radius-round); background: var(--brand-tint); color: var(--brand); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -1716,6 +1734,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    the thumbnail — a dot in the Temas panel, a label where thumbs are big. */
 .console .nobg-mark { position: absolute; top: 3px; right: 3px; z-index: var(--z-mark); width: 14px; height: 14px; border-radius: 50%; background: var(--warn); color: var(--on-warn); display: grid; place-items: center; pointer-events: none; }
 .console .nobg-label { position: absolute; left: 4px; bottom: 4px; z-index: var(--z-mark); padding: 0 5px; border-radius: 3px; background: var(--chrome-mark); color: var(--warn-fg); font-size: var(--fs-meta); line-height: 16px; pointer-events: none; }
+/* A video that may freeze on the screens (HEVC, H.264 at 10 bits or not
+   4:2:0; Rodada O, O11): an amber pill with its words wherever the video is
+   listed — the Fundos' tiles, the Mídia, the Biblioteca's Vídeos. */
+.console .codec-mark { display: inline-block; width: fit-content; max-width: 100%; padding: 0 6px; border-radius: var(--radius-round); background: var(--warn-tint); color: var(--warn-fg); font-size: var(--fs-meta); font-weight: 500; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
 .console .bgchip-l { font-size: var(--fs-ui); color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* A file the sync between the church's computers has not brought yet
    (SyncWait in library/BackgroundLibrary.jsx): said in place of the picture. */
@@ -1895,6 +1917,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
 @media (forced-colors: active) {
   .console .confirm-warn { outline: 1px solid CanvasText; outline-offset: -1px; }
+  /* The amber mark of a video that may not play keeps an edge. */
+  .console .codec-mark { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* Floating surfaces lose their shadow: an edge instead. */
   .console :is(.pop, .kx-pop, .ctx-menu, .dialog, .palette, .qj, .verif-overlay, .addmenu-pop, .lyr, .pl-pop, .lib-dialog, .media-peek) { outline: 1px solid CanvasText; }
   /* Slides, No ar cards, verses, Setlist, Biblioteca and Mídia rows, the

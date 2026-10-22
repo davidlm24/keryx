@@ -126,9 +126,11 @@ compositions), it is given.
 ### Switch
 
 - **Class.** `kx-switch` (old name `.sw2`), a real button with
-  `role="switch"` and `aria-checked`: `SwitchRow`, the Saídas rows, *Avançar
-  sozinho*, *Abrir ao iniciar*, the aviso's sound.
-- **Sizes.** 32 × 20, a 14 px knob.
+  `role="switch"` and `aria-checked`: `SwitchRow`, the Saídas rows,
+  *Autoplay*, *Abrir ao iniciar*, the aviso's sound.
+- **Sizes.** 32 × 20, a 14 px knob. `kx-switch-sm` is 24 × 14 with a 10 px
+  knob, for a panel header (the Setlist's *Autoplay*, Rodada O3) — its button
+  keeps the 24 px hit area.
 - **States.** Off: a `bg-3` track, `fg-2` knob. **On: an `fg-1` track with a
   `bg-0` knob** — never the Prévia's green, so *ligado* never reads as
   *preparado*. Hover lights the knob; on, the track dims to `fg-2`. Disabled

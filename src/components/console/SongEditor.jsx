@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
+import { uploadFile } from "@/lib/mediaImport";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
@@ -283,7 +284,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         if (!file) return;
         setBusy(field);
         try {
-            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
+            const { file_url } = await uploadFile(file);
             set({ [field]: file_url });
             if (field === "audio_url") setStarts([]);
         } catch (err) { c.say(err?.message || "Não foi possível enviar o arquivo."); }
