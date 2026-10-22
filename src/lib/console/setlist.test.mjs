@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { plan, templateItems, itemsFor, playableItems, statusOf, parseMember, clockAt, span, startOf, total, itemOnAir } from "./setlist.js";
+import { plan, templateItems, itemsFor, playableItems, statusOf, parseMember, clockAt, span, startOf, total, itemOnAir, stageItem, addedSay } from "./setlist.js";
 
 const items = [
     { id: "s1", type: "SECTION", title: "Pré-culto" },
@@ -73,4 +73,24 @@ test("itemOnAir: the session's item is on air only while the screens still show 
     assert.equal(itemOnAir({ ...song }, items), false);
     assert.equal(itemOnAir(at("gone", song), items), false);
     assert.equal(itemOnAir(null, items), false);
+});
+
+test("stageItem: what a Biblioteca stage becomes in the Setlist", () => {
+    assert.deepEqual(stageItem({ kind: "lyrics", id: "song:s1" }), { type: "SONG", contentId: "s1" });
+    assert.deepEqual(stageItem({ id: "media:m1", args: { kind: "video" } }), { type: "VIDEO", contentId: "m1" });
+    assert.deepEqual(stageItem({ id: "media:m2", args: { kind: "presentation" } }), { type: "PDF", contentId: "m2" });
+    assert.deepEqual(stageItem({ id: "media:m3", args: { kind: "image" } }), { type: "IMAGE", contentId: "m3" });
+    assert.deepEqual(stageItem({ id: "material:x" }), { type: "MATERIAL", contentId: "x" });
+    assert.equal(stageItem({ id: "yt:https://youtu.be/a" }).type, "YT");
+    assert.equal(stageItem({ id: "piece:p1", kind: "piece" }), null, "an aviso does not go in a setlist");
+    assert.equal(stageItem(null), null);
+});
+
+test("addedSay: one toast for one or several rows (Rodada O2)", () => {
+    assert.equal(addedSay(["Graça"]), "Graça na setlist.");
+    assert.equal(addedSay(["A", "B", "C"]), "3 itens na setlist.");
+    assert.equal(addedSay(["A", "B"], 1), "2 itens na setlist · 1 não entra.");
+    assert.equal(addedSay(["A"], 2), "A na setlist · 2 não entram.");
+    assert.match(addedSay([], 1), /^Esse item ainda não entra/);
+    assert.match(addedSay([], 3), /^Esses itens ainda não entram/);
 });

@@ -15,7 +15,8 @@ export { tabStop } from "@/lib/console/tablist";
 // F4) — the chevron right of the header's +; folded down a column the panel
 // is its header, across a row a strip with its name standing (FoldStrip).
 // Folded, the body stays mounted, hidden, so it comes back as it was.
-export function Panel({ title, count, lead, caption, actions, fold, bare = false, noHead = false, className = "", style, children, bodyStyle }) {
+export function Panel({ title, count, tip, lead, caption, actions, fold, bare = false, noHead = false, className = "", style, children, bodyStyle }) {
+    // `tip`: the header's tooltip (the Setlist's culto name, Rodada O3).
     // `noHead`: the card without its header line — a window page whose
     // title and tools ride the win-bar (Rodada C).
     const head = !noHead && (!bare || title || caption || actions || lead || fold);
@@ -27,7 +28,7 @@ export function Panel({ title, count, lead, caption, actions, fold, bare = false
     return (
         <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${fold?.on ? "is-collapsed" : ""} ${strip ? "kx-strip" : ""} ${className}`} style={style}
             role={named || (strip && fold.name) ? "region" : undefined} aria-labelledby={named ? headId : undefined} aria-label={strip ? fold.name || undefined : undefined}>
-            {strip ? <FoldStrip fold={fold} /> : head && <div className="kx-panel-h">
+            {strip ? <FoldStrip fold={fold} /> : head && <div className="kx-panel-h" title={tip || undefined}>
                 {lead}
                 {caption ? <span className="kx-panel-cap" id={headId} role="heading" aria-level={2}>{caption}</span> : <span className="kx-section" id={title ? headId : undefined} role={title ? "heading" : undefined} aria-level={title ? 2 : undefined}>{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
                 {actions}
