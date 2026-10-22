@@ -764,18 +764,22 @@ export default function Console() {
         }
     }, [c]);
 
-    // The planner: for the culto in hand (or a given one), "new" creates one.
+    // The planner, on the tab of the culto in hand (or a given one; "new"
+    // creates one, in a tab of its own). Its tabs are for planning (Rodada
+    // O, O9 = A): opening one never changes the console's culto — only its
+    // "Usar no console" does.
     const openPlanner = useCallback(async (id, itemId = null) => {
         setOpen(null);
+        let tab = id && id !== true ? id : null;
         if (id === "new") {
             try {
                 const row = await keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto" });
-                setServiceId(row.id);
+                tab = row.id;
                 c.say("Novo culto criado.");
             } catch (err) { c.say(err?.message || "Não foi possível criar o culto."); return; }
-        } else if (id && id !== true) setServiceId(id);
+        }
         setPlannerFocus(itemId);
-        setWin(openStack({ page: "planner" }));
+        setWin(openStack({ page: "planner", props: tab ? { serviceId: tab } : {} }));
     }, [c]);
 
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
@@ -1339,7 +1343,7 @@ export default function Console() {
         sendStage: (s) => sendStage(s),
         songSaved, addMaterial,
         cfg, setCfg, uiLayout, setUiLayout, restoreLayout, openScreen, openWhatsNew,
-        services, serviceId, setServiceId, plannerFocus,
+        serviceId, setServiceId, plannerFocus,
     };
     // A page's guard calls this once leaving is allowed. While a detach is
     // under way, the level leaves (pop) and the next one asks; after the
@@ -1369,7 +1373,7 @@ export default function Console() {
         else { const e = win.find((x) => x.key === key); if (e) winCloser(e)(false); }
     };
     const detachTop = () => {
-        const spec = detachSpec(win, { section: cfg, serviceId });
+        const spec = detachSpec(win, { section: cfg });
         if (!spec) return;
         detaching.current = { spec, keys: win.slice(-spec.pop).map((e) => e.key) };
         leaveVia(detaching.current.keys[detaching.current.keys.length - 1]);
@@ -1388,7 +1392,9 @@ export default function Console() {
             case "song.saved": songSaved(m.song); break;
             case "setlist.material": addMaterial(m.material); break;
             case "console.open": if (m.what === "novidades") openWhatsNew(); else openSettings(m.section || "console"); break;
-            case "console.hello": tellPrev(c.prev); tellPages(); break;
+            case "console.hello": tellPrev(c.prev); tellPages(); tellService(serviceId); break;
+            // Planejar o culto's "Usar no console" in a detached window (O9).
+            case "service.use": setServiceId(m.id); break;
             case "pages.retry": retryPages(m.id); break;
             default: break;
         }
@@ -1399,6 +1405,9 @@ export default function Console() {
     // A Prévia the list cannot carry (a theme's example) reads as empty there.
     const tellPrev = (stage) => { if (!relaySend("console", "console.prev", { stage: stage || null })) relaySend("console", "console.prev", { stage: null }); };
     useEffect(() => { tellPrev(c.prev); }, [c.prev]);
+    // The console's culto: a detached planner marks its tab with the green dot.
+    const tellService = (id) => relaySend("console", "console.service", { id: id || null });
+    useEffect(() => { tellService(serviceId); }, [serviceId]);
     // How far each PDF's pages are: only this window makes them, so a
     // detached Mídia reads the progress from here (Rodada H, HB).
     const tellPages = () => relaySend("console", "pages.progress", { pages: pagesProgressAll() });
@@ -1469,7 +1478,7 @@ export default function Console() {
                         const active = i === win.length - 1;
                         const page = winPage(entry, { active, escRef: winRef(entry.key), onClose: winCloser(entry) }, winHost);
                         // ⧉ Destacar em janela: on the page on top, when it can stand alone (nav.js detachSpec).
-                        const canDetach = active && Boolean(detachSpec(win, { section: cfg, serviceId }));
+                        const canDetach = active && Boolean(detachSpec(win, { section: cfg }));
                         return (
                             <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: resetWinSize, onDetach: canDetach ? detachTop : null }}>
                                 <div className="win-page kx-win-page" hidden={!active}>{page}</div>

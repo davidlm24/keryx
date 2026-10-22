@@ -745,6 +745,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   editor (`NoticeEditor.jsx`), the Escola bíblica (`SchoolView.jsx`; it
   projects through the console's Prévia/Programa and every live key works
   there), Relatórios (`ReportsView.jsx`) and the theme/screen editors.
+  **Planejar o culto is in tabs, as in a browser** (owner 2026-10-21,
+  Rodada O, O9 = A): one culto per tab in the window's bar, the (+) a new
+  tab that chooses (Novo culto, Duplicar the last culto, Abrir um culto),
+  the open tabs kept on this computer (localStorage
+  `keryx.console.planner.tabs` = `{ ids, active }`, `src/lib/console/plannerTabs.js`,
+  tested; a deleted culto's tab closes). **The tabs never change the
+  console's culto**: its tab has a green dot, and a tab's right click
+  "Usar no console" is the one door (a detached planner sends it over the
+  relay, `service.use`; the console answers `console.service`).
+  `openPlanner(id)` opens or brings forward that culto's tab; the tab in
+  front rides in the entry's props, so Destacar opens on it. Culto › Novo
+  culto opens the new culto in a tab and leaves the console's culto as it
+  was (owner 2026-10-22: "its ok"). The console's planner and a detached
+  one share the list: each saves only its own changes and takes the
+  other's (`adoptTabs`: its cultos, this window's tab in front). Closing a
+  tab never deletes the culto. Modelos and Exportar PDF are the Culto panel's
+  header.
   **One floating window over the live console**, the Configurações frame
   on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2, the
   title, the window's actions, the (x) "Fechar · Esc"; there is
