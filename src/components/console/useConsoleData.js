@@ -78,10 +78,11 @@ export const useThemes = () => useList("ProjectionTheme", ["name"]).data;
 // The service templates (their look: papel de parede and theme, serviceLook.js).
 export const useServiceTemplates = () => useList("ServiceTemplate", ["name"]).data;
 // The cultos (the same list and cache as useRundown's), and whether the list
-// has answered: Planejar o culto's tabs close only for a culto really gone.
+// has been read: Planejar o culto's tabs close only for a culto really gone
+// (a failed read is an empty list, never "every culto was deleted").
 export function useServices() {
     const q = useList("Service", ["-date"]);
-    return { services: q.data, loaded: answered(q) };
+    return { services: q.data, loaded: q.isSuccess };
 }
 
 // Mídia and the background library are separate (owner's decision

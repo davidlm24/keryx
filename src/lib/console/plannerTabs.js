@@ -39,6 +39,15 @@ export function pruneTabs(tabs, existing) {
     return { ids, active };
 }
 
+// Another window's planner changed the list (the console's and a detached
+// one share this computer's): its cultos, in its order; the tab in front
+// stays this window's while it is still open, else theirs.
+export function adoptTabs(own, theirs) {
+    const active = own.active !== null && theirs.ids.includes(own.active) ? own.active : theirs.active;
+    if (active === own.active && theirs.ids.length === own.ids.length && theirs.ids.every((id, i) => id === own.ids[i])) return own;
+    return { ids: theirs.ids, active };
+}
+
 // Open a culto's tab, or bring it to the front when it is open already. A
 // new one goes right of the tab in front (at the end when none is).
 export function openTab(tabs, id) {
@@ -92,7 +101,7 @@ export function cultosToOpen(services, openIds, today) {
 // What a duplicate takes from the culto it copies (its items are copied
 // apart): how the culto runs and looks, never its day, status or notes of
 // the operator. The new day and title come from the church's defaults.
-const DUPLICATED = ["startTime", "location", "service_type", "event_description", "background", "theme_id", "kind_themes", "worship_team", "autoplay", "autoplay_gap"];
+const DUPLICATED = ["startTime", "location", "service_type", "event_description", "background", "theme_id", "worship_team", "autoplay", "autoplay_gap"];
 export function duplicateFields(svc, defaults) {
     const copy = {};
     for (const k of DUPLICATED) if (svc?.[k] !== undefined && svc[k] !== null && svc[k] !== "") copy[k] = svc[k];

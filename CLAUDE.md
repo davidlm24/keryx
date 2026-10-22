@@ -741,8 +741,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   "Usar no console" is the one door (a detached planner sends it over the
   relay, `service.use`; the console answers `console.service`).
   `openPlanner(id)` opens or brings forward that culto's tab; the tab in
-  front rides in the entry's props, so Destacar opens on it. Closing a tab
-  never deletes the culto. Modelos and Exportar PDF are the Culto panel's
+  front rides in the entry's props, so Destacar opens on it. Culto › Novo
+  culto opens the new culto in a tab and leaves the console's culto as it
+  was (owner 2026-10-22: "its ok"). The console's planner and a detached
+  one share the list: each saves only its own changes and takes the
+  other's (`adoptTabs`: its cultos, this window's tab in front). Closing a
+  tab never deletes the culto. Modelos and Exportar PDF are the Culto panel's
   header.
   **One floating window over the live console**, the Configurações frame
   on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2, the

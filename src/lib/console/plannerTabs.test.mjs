@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { NO_TABS, readTabs, pruneTabs, openTab, closeTab, tabLabel, lastService, cultosToOpen, duplicateFields } from "./plannerTabs.js";
+import { NO_TABS, readTabs, pruneTabs, adoptTabs, openTab, closeTab, tabLabel, lastService, cultosToOpen, duplicateFields } from "./plannerTabs.js";
 
 test("readTabs takes what was saved, and nothing odd", () => {
     assert.deepEqual(readTabs('{"ids":["a","b"],"active":"b"}'), { ids: ["a", "b"], active: "b" });
@@ -19,6 +19,14 @@ test("pruneTabs closes the tabs of cultos that are gone", () => {
     assert.deepEqual(pruneTabs({ ids: ["a", "b"], active: "a" }, []), { ids: [], active: null });
     // The new tab's chooser in front (active null) stays in front.
     assert.deepEqual(pruneTabs({ ids: ["a", "b"], active: null }, ["b"]), { ids: ["b"], active: null });
+});
+
+test("adoptTabs takes another window's cultos and keeps this one's front", () => {
+    const own = { ids: ["a", "b"], active: "b" };
+    assert.deepEqual(adoptTabs(own, { ids: ["a", "b", "c"], active: "c" }), { ids: ["a", "b", "c"], active: "b" });
+    assert.deepEqual(adoptTabs(own, { ids: ["a"], active: "a" }), { ids: ["a"], active: "a" }, "its front closed there");
+    assert.equal(adoptTabs(own, { ids: ["a", "b"], active: "a" }), own, "the same object when only their front differs");
+    assert.deepEqual(adoptTabs({ ids: ["a"], active: null }, { ids: ["a", "c"], active: "c" }), { ids: ["a", "c"], active: "c" });
 });
 
 test("openTab opens right of the tab in front, or brings an open one forward", () => {
@@ -71,7 +79,7 @@ test("cultosToOpen: the ones not open, coming first, then past, then undated", (
 });
 
 test("duplicateFields: how the culto runs and looks, on the new day", () => {
-    const src = { id: "d19", title: "Domingo", date: "2026-10-19", startTime: "18:00", location: "Templo", service_type: "culto", background: { kind: "color", value: "#000" }, theme_id: "t1", worship_team: [{ member_name: "Ana" }], autoplay: true, status: "DONE", operator_notes: "x", notes: "y", event_description: "" };
+    const src = { id: "d19", title: "Domingo", date: "2026-10-19", startTime: "18:00", location: "Templo", service_type: "culto", background: { kind: "color", value: "#000" }, theme_id: "t1", kind_themes: { lyrics: "t0" }, worship_team: [{ member_name: "Ana" }], autoplay: true, status: "DONE", operator_notes: "x", notes: "y", event_description: "" };
     const got = duplicateFields(src, { title: "Culto de 26/10", date: "2026-10-26", startTime: "19:00" });
     assert.deepEqual(got, { startTime: "18:00", location: "Templo", service_type: "culto", background: { kind: "color", value: "#000" }, theme_id: "t1", worship_team: [{ member_name: "Ana" }], autoplay: true, title: "Culto de 26/10", date: "2026-10-26" });
     assert.deepEqual(duplicateFields(null, { title: "T", date: "2026-10-26" }), { title: "T", date: "2026-10-26" });

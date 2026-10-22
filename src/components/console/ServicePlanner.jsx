@@ -32,7 +32,7 @@ import { useWinCol } from "./winLayout";
 import { TabRow } from "./TabsPanel";
 import { usePlaced } from "./Menu";
 import { useServices } from "./useConsoleData";
-import { PLANNER_TABS_KEY, NO_TABS, readTabs, pruneTabs, openTab, closeTab, tabLabel, lastService, cultosToOpen, duplicateFields } from "@/lib/console/plannerTabs";
+import { PLANNER_TABS_KEY, NO_TABS, readTabs, pruneTabs, adoptTabs, openTab, closeTab, tabLabel, lastService, cultosToOpen, duplicateFields } from "@/lib/console/plannerTabs";
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
@@ -59,13 +59,25 @@ const saveTabs = (tabs) => { try { window.localStorage.setItem(PLANNER_TABS_KEY,
 export default function ServicePlanner({ c, data, openId = null, focusId = null, consoleServiceId = null, onUseOnConsole, active = true, onFront, onClose, escRef, onEditSong = null }) {
     const { services, loaded } = useServices();
     const [tabs, setTabs] = useState(() => openTab(loadTabs(), openId));
+    // Only this window's own changes are saved; a planner in another window
+    // (the console's and a detached one) changes the list too, and this one
+    // takes it (adoptTabs: its cultos, this window's tab in front). Without
+    // the flag the two would answer each other's save forever.
+    const ownChange = useRef(true);
+    const change = (fn) => { ownChange.current = true; setTabs(fn); };
     // The new tab's chooser in front (none of the cultos' tabs is).
     const [choosing, setChoosing] = useState(false);
     // The item the console asked for opens once, in the tab it asked for.
     const [focus, setFocus] = useState(() => (openId && focusId ? { id: openId, item: focusId } : null));
-    useEffect(() => { saveTabs(tabs); }, [tabs]);
-    // A culto deleted here or on another computer: its tab closes.
-    useEffect(() => { if (loaded) setTabs((t) => pruneTabs(t, services.map((s) => s.id))); }, [loaded, services]);
+    useEffect(() => { if (ownChange.current) { ownChange.current = false; saveTabs(tabs); } }, [tabs]);
+    useEffect(() => {
+        const on = (e) => { if (e.key === PLANNER_TABS_KEY) { ownChange.current = false; setTabs((t) => adoptTabs(t, readTabs(e.newValue))); } };
+        window.addEventListener("storage", on);
+        return () => window.removeEventListener("storage", on);
+    }, []);
+    // A culto deleted here or on another computer: its tab closes. Only on a
+    // list that really answered: a failed read is no reason to close them all.
+    useEffect(() => { if (loaded) change((t) => pruneTabs(t, services.map((s) => s.id))); }, [loaded, services]); // eslint-disable-line react-hooks/exhaustive-deps
     const front = choosing || !tabs.active ? null : tabs.active;
     const frontRef = useRef(onFront);
     frontRef.current = onFront;
@@ -73,17 +85,22 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
     const menu = useContextMenu();
     const byId = useMemo(() => new Map(services.map((s) => [s.id, s])), [services]);
 
-    const show = (id) => { setChoosing(false); setTabs((t) => openTab(t, id)); };
+    const show = (id) => { setChoosing(false); change((t) => openTab(t, id)); };
     // A culto chosen in the new tab takes the new tab's place, at the end.
-    const showNew = (id) => { setChoosing(false); setTabs((t) => openTab(t.ids.includes(id) ? t : { ...t, active: null }, id)); };
+    const showNew = (id) => { setChoosing(false); change((t) => openTab(t.ids.includes(id) ? t : { ...t, active: null }, id)); };
     const close = (id) => {
         if (id === "new") { setChoosing(false); return; }
-        setTabs((t) => closeTab(t, id));
+        change((t) => closeTab(t, id));
     };
-    const takeToConsole = (id) => {
-        onUseOnConsole?.(id);
-        c.say(`${tabLabel(byId.get(id))} passa a ser o culto do console.`);
-    };
+    // Said once the console's culto IS that one (a detached window hears it
+    // back from the console); a message the console did not get says so.
+    const [using, setUsing] = useState(null);
+    const takeToConsole = (id) => { if (onUseOnConsole?.(id) !== false) setUsing(id); };
+    useEffect(() => {
+        if (!using || consoleServiceId !== using) return;
+        c.say(`${tabLabel(byId.get(using))} passa a ser o culto do console.`);
+        setUsing(null);
+    }, [using, consoleServiceId]); // eslint-disable-line react-hooks/exhaustive-deps
     const create = async (fields, message) => {
         try {
             const row = await keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto", ...fields });
@@ -110,6 +127,9 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
     // ("back") and the (x) ("all") leave at once — nothing to guard, the
     // planner saves as it goes. The console never ends the projection here.
     const innerEsc = useRef(null);
+    const showsPlan = Boolean(front && byId.has(front));
+    // The new tab has nothing to close of a culto's.
+    if (!showsPlan) innerEsc.current = null;
     if (escRef) escRef.current = (mode) => {
         if (mode !== "esc") onClose(mode === "all");
         else if (innerEsc.current?.()) return;
@@ -141,7 +161,7 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
     return (
         <>
             {bar}
-            {front && byId.has(front)
+            {showsPlan
                 ? <CultoPlan key={front} c={c} services={services} serviceId={front} data={data} focusId={focus?.id === front ? focus.item : null} onFocused={() => setFocus(null)}
                     escRef={innerEsc} onEditSong={onEditSong} onDeleted={(id) => { if (id === consoleServiceId) onUseOnConsole?.(null); close(id); }} />
                 : <NewTab services={services} loaded={loaded} open={tabs.ids} last={last} onNew={newService} onDuplicate={duplicateLast} onOpen={showNew} />}
@@ -333,13 +353,21 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
     // whatever is open over the planner closes first, and a field's Esc
     // already blurred) through the tabs' host: the adder, a popover, a
     // selection close here first (true = one did).
-    if (escRef) escRef.current = () => {
-        if (adding) setAdding(null);
-        else if (pop) setPop(null);
-        else if (ms.count || ms.picking) ms.clear();
-        else return false;
-        return true;
-    };
+    // Set as it renders (it reads this render's state); an unmounted plan
+    // (another tab, the new tab) leaves it, unless a newer plan took it.
+    const escOwner = useRef(null);
+    if (escRef) {
+        const handler = () => {
+            if (adding) setAdding(null);
+            else if (pop) setPop(null);
+            else if (ms.count || ms.picking) ms.clear();
+            else return false;
+            return true;
+        };
+        escOwner.current = handler;
+        escRef.current = handler;
+    }
+    useEffect(() => () => { if (escRef && escRef.current === escOwner.current) escRef.current = null; }, [escRef]);
 
     // The Culto panel's header (Rodada O, O7: what acts on the culto moves
     // from the window's bar into the page): the Modelos menu that gathers

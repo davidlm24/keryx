@@ -1131,9 +1131,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The cultos' tabs in the window's bar (Rodada O, O9: as in a browser). The
    tab in front is the page's surface; its × is out of the Tab order (Delete
    closes the focused tab); the culto of the console has a green dot. */
-.console .pl-tabs { display: flex; align-items: center; gap: var(--space-1); min-width: 0; flex: 0 1 auto; }
+.console .pl-tabs { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; }
 .console .tabrow-close { height: auto; flex-wrap: nowrap; align-items: center; gap: 2px; padding: 0; border-bottom: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.console .tabrow-close .kx-tc { display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 72px; max-width: 200px; height: 28px; padding: 0 2px 0 0; border-radius: var(--radius-control); color: var(--fg-3); }
+.console .tabrow-close .kx-tc { display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 72px; max-width: 200px; height: 28px; padding: 0 2px 0 0; border-radius: var(--radius-control) var(--radius-control) 0 0; color: var(--fg-3); }
 .console .tabrow-close .kx-tc:hover { background: var(--bg-2); color: var(--fg-2); }
 .console .tabrow-close .kx-tc.is-on { background: var(--bg-3); color: var(--fg-1); }
 .console .tabrow-close .kx-tc-t { display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0; height: 100%; padding: 0 4px 0 10px; color: inherit; font-size: var(--fs-ui); background: none; border-radius: var(--radius-control); }
