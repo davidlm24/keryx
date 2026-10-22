@@ -1,11 +1,15 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { keryx } from "@/api/keryxClient";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
-import { Row, Btn, IconBtn, Empty } from "./kx";
+import { Row, Btn, IconBtn, Empty, SelBar, RowMark } from "./kx";
+import { useMultiSelect } from "./useMultiSelect";
+import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
+import { takeOutManyQuestion } from "@/lib/console/bulkDelete";
+import { keyHint } from "@/lib/console/keys";
 import { useContextMenu } from "./ContextMenu";
 import useKeepInView from "./useKeepInView";
 import { useConfirm } from "./ConfirmDialog";
-import { takeOut, takeOutQuestion } from "./setlistActions";
+import { takeOut, takeOutQuestion, takeOutMany } from "./setlistActions";
 import Icon from "./Icon";
 import { plan, clockAt, span, total, isSection, typeIcon, typeLabel } from "@/lib/console/setlist";
 import { moveTo } from "@/lib/console/dropOrder";
@@ -53,7 +57,7 @@ export const plannedTimes = (service, items) => plan(service, items).rows.map((r
 // autoplay (the Setlist automática, Rodada N2): { on, pending, cancel,
 // endsAlone(item) } — the mark on the row on air, the countdown on the next
 // one, and each item's "Ao terminar" in its menu.
-export default function Rundown({ service, items, loaded = true, airItemId, airNow = true, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true, autoplay = null }) {
+export default function Rundown({ service, items, loaded = true, airItemId, airNow = true, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true, autoplay = null, picking, setPicking }) {
     const menu = useContextMenu();
     const ask = useConfirm();
     // "Tirar da setlist…" (owner 2026-10-16, 0.2.18): asks, then the item
@@ -61,6 +65,26 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
     const askTakeOut = async (it) => {
         if (!(await ask(takeOutQuestion(it)))) return;
         try { await takeOut(it); onSay?.(isSection(it) ? "Seção tirada da setlist." : "Item tirado da setlist."); } catch (err) { onSay?.(err?.message || "Não foi possível tirar o item."); }
+    };
+    // Selecting several items (multiSelect.js, owner 2026-10-21): Ctrl/Shift +
+    // click and "Selecionar vários" (the panel header's button, Console.jsx)
+    // mark; a plain click still prepares (M1 = A). Sections are headers: not
+    // marked. "Tirar n da setlist…" takes them out at once, the culto
+    // numbered again once (takeOutMany).
+    const order = useMemo(() => items.filter((it) => !isSection(it)).map((it) => it.id), [items]);
+    const allIds = useMemo(() => items.map((it) => it.id), [items]);
+    const ms = useMultiSelect({ order, existing: allIds, mode: "air", picking, onPicking: setPicking });
+    const picked = pickedOf(ms.sel, items);
+    const takeOutPicked = async () => {
+        const rows = picked;
+        if (!rows.length) return;
+        if (rows.length === 1) { await askTakeOut(rows[0]); return; }
+        if (!(await ask(takeOutManyQuestion(rows.map((it) => it.title || typeLabel(it.type)))))) return;
+        try {
+            const failed = await takeOutMany(rows);
+            ms.clear();
+            onSay?.(`${rows.length - failed} ${rows.length - failed === 1 ? "item tirado" : "itens tirados"} da setlist.`);
+        } catch (err) { onSay?.(err?.message || "Não foi possível tirar os itens."); }
     };
     const p = plan(service, items);
     const airIdx = items.findIndex((i) => i.id === airItemId);
@@ -112,7 +136,8 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
 
 
     return (
-        <div className={`rund kx-acts-list ${sort.sorting ? "is-sorting" : ""}`} role="list" aria-label="Setlist" {...sort.listProps}>
+        <>
+        <div className={`rund kx-acts-list ${sort.sorting ? "is-sorting" : ""}`} role="list" aria-label="Setlist" {...sort.listProps} onKeyDown={(e) => ms.keyDown(e, { onDelete: takeOutPicked })}>
             {!items.length && loaded && (
                 <Empty icon="list" title={service ? "Setlist vazia" : "Setlist de hoje"}>
                     {service ? "Arraste da Biblioteca, busque (/) ou use +." : "Arraste da Biblioteca ou use + para começar a setlist de hoje. Ou escolha um culto no menu KERYX."}
@@ -150,10 +175,14 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                         icon={typeIcon(it.type)}
                         title={it.title || typeLabel(it.type)}
                         meta={[last && "último", typeLabel(it.type), it.notes].filter(Boolean).join(" · ")}
-                        state={state}
-                        onClick={() => onPrepare(it, i)}
-                        onDoubleClick={() => onGo(it, i)}
-                        onContextMenu={(e) => menu(e, { title: it.title || typeLabel(it.type), items: [
+                        state={`${state} ${ms.has(it.id) ? "is-marked" : ""}`}
+                        lead={ms.picking ? <RowMark /> : null}
+                        onClick={(e) => { if (!ms.click(it.id, e)) onPrepare(it, i); }}
+                        onDoubleClick={() => { if (!ms.picking) onGo(it, i); }}
+                        onContextMenu={(e) => (picked.length > 1 && ms.has(it.id) ? menu(e, { title: selectionCount(picked.length), items: [
+                            menuItem("tirar", { label: `Tirar ${picked.length} da setlist…`, kbd: keyHint("delete"), onSelect: takeOutPicked }),
+                            { label: "Limpar a seleção", icon: "x", onSelect: ms.clear },
+                        ] }) : menu(e, { title: it.title || typeLabel(it.type), items: [
                             menuItem("porNaPrevia", { onSelect: () => onPrepare(it, i) }),
                             onPlan && menuItem("editarNoPlanejador", { onSelect: () => onPlan(it) }),
                             menuItem("enviarAoAr", { air: true, onSelect: () => onGo(it, i) }),
@@ -161,7 +190,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                             "sep",
                             menuItem("tirar", { label: "Tirar da setlist…", onSelect: () => askTakeOut(it) }),
                             ...step.menuItems(i),
-                        ] })}
+                        ] }))}
                         onKey={step.onKey(i)}
                         dragProps={dragProps}
                         time={chip ? null : timeCell}
@@ -175,5 +204,9 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
             {sort.slot}
             {canReorder && <div className="rund-tail" data-sort-tail="" aria-hidden="true" />}
         </div>
+        <SelBar count={picked.length} onClear={ms.clear}>
+            <Btn small onClick={takeOutPicked} title={`Tirar da setlist · ${keyHint("delete")}`}>Tirar da setlist…</Btn>
+        </SelBar>
+        </>
     );
 }

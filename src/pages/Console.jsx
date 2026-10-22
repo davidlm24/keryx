@@ -19,7 +19,7 @@ import { useRemote } from "@/components/console/useRemote";
 import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
-import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion } from "@/components/console/kx";
+import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion, SelectManyBtn } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
 import { MenuBarPop, MenusPop } from "@/components/console/MenuBar";
@@ -311,6 +311,10 @@ export default function Console() {
     // A popover or menu opened from the keyboard gives the focus back to
     // what opened it; opened with the mouse, to nothing (Menu.jsx; C-14).
     useFocusReturn(Boolean(open));
+    // "Selecionar vários" in the Biblioteca (its button is the header's; the
+    // selection itself is Library.jsx's, useMultiSelect).
+    const [libPicking, setLibPicking] = useState(false);
+    const [setlistPicking, setSetlistPicking] = useState(false);
     const [libTab, setLibTab] = useState(() => {
         try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "letras"; } catch { return "letras"; }
     });
@@ -1090,9 +1094,9 @@ export default function Console() {
     };
     const setlistPanel = (
         <Panel title="Setlist" className={`setlist-panel ${coverCls}`} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
-            actions={<>{coverTag}<AutoplaySwitch on={Boolean(service?.autoplay)} onChange={setAutoplay} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+            actions={<>{coverTag}<AutoplaySwitch on={Boolean(service?.autoplay)} onChange={setAutoplay} /><SelectManyBtn on={setlistPicking} onToggle={setSetlistPicking} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
-                autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} />
+                autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes
@@ -1148,12 +1152,13 @@ export default function Console() {
                 media library, a page of its own, one click away on every tab,
                 then the chooser of what shows here (the eye). The search row
                 keeps Buscar, ☆ and the + that adds. */}
+            <SelectManyBtn on={libPicking} onToggle={setLibPicking} />
             <IconBtn name="media" small title="Abrir a Biblioteca de mídia" aria-label="Abrir a Biblioteca de mídia" onClick={() => openMedia()} />
             <TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />
         </>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
                 onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
-                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} />
+                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} picking={libPicking} setPicking={setLibPicking} />
         </Panel>
     );
     const slidesPanel = (
