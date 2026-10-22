@@ -155,7 +155,7 @@ export default function TemasSection({ c, onOpenScreen, escRef = null }) {
         <>
             <KindThemes c={c} themes={themes} setDefault={setDefault} />
             <CfgGroup id="temas.todos" k="Todos os temas" summary={themesSummary(themes)} actions={<>{themes.length > 1 && <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />}<Btn small kind="brand" onClick={() => edit("new")}>Novo tema…</Btn></>}>
-                <SelBar count={picked.length} onClear={ms.clear}>
+                <SelBar count={picked.length} total={themeIds.length} onAll={ms.all} onClear={ms.clear}>
                     <Btn small onClick={() => pinMany()} title="O painel Temas do console mostra até 9">{pinLabel(picked)}</Btn>
                     <Btn small onClick={() => removeMany()} title="Excluir os temas marcados · Delete">Excluir…</Btn>
                 </SelBar>

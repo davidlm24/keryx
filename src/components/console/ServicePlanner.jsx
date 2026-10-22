@@ -539,7 +539,7 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
                         {sort.slot}
                         {items.length > 0 && <div className="rund-tail" data-sort-tail="" />}
                     </div>
-                    <SelBar count={picked.length} onClear={ms.clear}>
+                    <SelBar count={picked.length} total={order.length} onAll={ms.all} onClear={ms.clear}>
                         <Btn small onClick={takeOutPicked} title={`Tirar da setlist · ${keyHint("delete")}`}>Tirar da setlist…</Btn>
                     </SelBar>
                     {adding && (

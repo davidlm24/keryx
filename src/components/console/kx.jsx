@@ -348,7 +348,11 @@ export function SelectManyBtn({ on, onToggle }) {
 export function RowMark() {
     return <span className="kx-pick" aria-hidden="true"><Icon name="check" size={12} /></span>;
 }
-export function SelBar({ count, feminine = false, onClear, children }) {
+// "Selecionar todos" (the two check marks, as the Bíblia's; owner 2026-10-22,
+// Rodada P6) sits beside "Limpar a seleção" once something is marked, while
+// "Selecionar vários" stays in the header: `onAll` (useMultiSelect's `all`),
+// off once every item is marked (`total`).
+export function SelBar({ count, total = null, feminine = false, onAll = null, onClear, children }) {
     if (!count) return null;
     return (
         <div className="kx-selbar" role="toolbar" aria-label="Itens selecionados">
@@ -360,6 +364,7 @@ export function SelBar({ count, feminine = false, onClear, children }) {
             </span>
             <span className="kx-selbar-acts">
                 {children}
+                {onAll && <IconBtn name="checks" small title="Selecionar todos · Ctrl+A" disabled={total !== null && count >= total} onClick={onAll} />}
                 <IconBtn name="x" small title="Limpar a seleção · Esc" onClick={onClear} />
             </span>
         </div>

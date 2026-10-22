@@ -33,7 +33,7 @@
 .kl-item { display: flex; align-items: baseline; gap: 1.4cqmin; padding: 1.2cqmin 1.6cqmin; border-radius: 1.2cqmin; background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); }
 .kl-item b { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kl-item span { flex: none; font-size: .7em; color: var(--fg-3); }
-.kl-item.is-next { background: var(--prev-tint); box-shadow: inset 3px 0 0 var(--prev); }
+.kl-item.is-next { background: color-mix(in srgb, var(--fg-3) 14%, transparent); box-shadow: var(--next-ring); }
 .kl-empty { margin: 0; font-size: .8em; color: var(--fg-3); }
 /* The Projeção element: the output's own renderer filling the element. */
 .kl-screen { display: block; }

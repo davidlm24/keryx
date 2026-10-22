@@ -51,7 +51,7 @@
 .rm-b.is-go { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
 .rm-b.is-go:active:not(:disabled) { background: var(--brand-pressed); }
 .rm-b.is-on { background: color-mix(in srgb, var(--warn) 24%, var(--bg-2)); border-color: var(--warn); color: var(--warn-fg); }
-.rm-b.is-sound { background: color-mix(in srgb, var(--air) 26%, var(--bg-2)); border-color: var(--air); color: var(--air-fg); }
+.rm-b.is-sound { background: color-mix(in srgb, var(--danger) 26%, var(--bg-2)); border-color: var(--danger); color: var(--danger-fg); }
 .rm-b.is-wide { width: 100%; }
 .rm-b.is-two { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; text-align: left; padding: 6px 12px; }
 .rm-b.is-two small { font-size: 11px; font-weight: 500; opacity: .8; }
@@ -72,8 +72,8 @@
 .rm-hold-fill { position: absolute; inset: 0; transform: scaleX(0); transform-origin: left; background: color-mix(in srgb, var(--brand) 30%, transparent); }
 .rm-hold.is-holding .rm-hold-fill { transform: scaleX(1); transition: transform var(--rm-hold, 1.5s) linear; }
 .rm-hold > span { position: relative; display: inline-flex; align-items: center; gap: 8px; }
-.rm-hold.is-end { color: var(--air-fg); border-color: color-mix(in srgb, var(--air) 45%, transparent); }
-.rm-hold.is-end .rm-hold-fill { background: color-mix(in srgb, var(--air) 34%, transparent); }
+.rm-hold.is-end { color: var(--danger-fg); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.rm-hold.is-end .rm-hold-fill { background: color-mix(in srgb, var(--danger) 34%, transparent); }
 .rm-mini { margin: -4px 0 0; font-size: 11px; color: var(--fg-3); text-align: center; }
 
 /* Cards: the slide now and next, the player, the timer. */
@@ -113,7 +113,7 @@
 .rm-item:disabled { opacity: .45; }
 .rm-tag { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--bg-3); color: var(--fg-2); font-size: 10.5px; font-weight: 600; white-space: nowrap; }
 .rm-tag.is-air { background: color-mix(in srgb, var(--air) 28%, var(--bg-3)); color: var(--air-fg); }
-.rm-tag.is-next { background: color-mix(in srgb, var(--prev) 26%, var(--bg-3)); color: var(--prev-fg); }
+.rm-tag.is-next { background: var(--bg-3); color: var(--fg-2); box-shadow: var(--next-ring); }
 .rm-tag.is-last { color: var(--fg-3); }
 .rm-tag.is-warn { background: var(--warn-tint); color: var(--warn-fg); }
 /* The confirm that sends what was picked, stuck to the bottom of the tab. */
@@ -142,7 +142,7 @@
 .rm-sentinel { height: 1px; }
 .rm-chip.is-sm { min-height: 40px; padding: 0 12px; }
 .rm-hint.is-left { text-align: left; padding: 0 4px; }
-.rm-hint b { color: var(--prev-fg); font-weight: 600; }
+.rm-hint b { color: var(--ok-fg); font-weight: 600; }
 .rm-empty p { margin: 0 0 10px; }
 .rm-v.is-bad { color: var(--warn-fg); }
 

@@ -525,7 +525,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
 
             <Panel className="bread bible-center" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}`}
                 actions={<>
-                    {mode === "ler" && <><IconBtn small name="checks" className="bread-sel" title="Selecionar todos" onClick={() => setSel(verses.map((v) => v.number))} /><IconBtn small name="x" className="bread-sel" title="Limpar seleção" onClick={() => setSel([])} /></>}
+                    {mode === "ler" && <><IconBtn small name="checks" className="bread-sel" title="Selecionar todos" onClick={() => setSel(verses.map((v) => v.number))} /><IconBtn small name="x" className="bread-sel" title="Limpar a seleção" onClick={() => setSel([])} /></>}
                     <div className="kx-seg is-small bread-size" role="group" aria-label={`Tamanho do texto da leitura · ${readLabel(readNow)}`}>
                         <button type="button" className="kx-t" disabled={readNow === 0} onClick={() => zoomRead.current(-1)} title="Letra menor na leitura · Ctrl + roda do mouse">A−</button>
                         <button type="button" className={`kx-t ${readNow === READ_DEFAULT ? "is-on" : ""}`} aria-pressed={readNow === READ_DEFAULT} onClick={() => setReadSize?.(READ_DEFAULT)} title={`Letra da leitura: ${readLabel(readNow)} · A volta ao M · não muda as telas`}>A</button>

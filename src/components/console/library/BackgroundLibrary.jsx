@@ -327,7 +327,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                             <FilterChips options={[[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Excluídos · ${hiddenCount}`]] : [])]} value={filter} onChange={setFilter} onEdit={() => setView("categories")}>
                                 {selectable && <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />}
                             </FilterChips>
-                            {selectable && <SelBar count={picked.length} onClear={ms.clear}>
+                            {selectable && <SelBar count={picked.length} total={shownKeys.length} onAll={ms.all} onClear={ms.clear}>
                                 {picked.some((b) => b.hidden) && <Btn small onClick={() => restoreMany()}>Restaurar</Btn>}
                                 <Btn small onClick={() => removeMany()} title="Os de fábrica vão para Excluídos · os enviados do computador são excluídos · os da Mídia só saem dos fundos · Delete"><Icon name={pickedAction.icon} />{pickedAction.label}</Btn>
                             </SelBar>}

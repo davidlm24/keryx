@@ -163,7 +163,8 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-num input:focus-visible { outline: 0; }
 .kx-num-u { font-size: var(--fs-meta); color: var(--fg-3); padding-right: 6px; }
 
-/* ---- Row (list item): title + one grey line. State = 2px bar on the left edge + 10% tint. Never a badge. ----
+/* ---- Row (list item): title + one grey line. State = a light wash + a 1px ring of its colour (Rodada P, owner
+   2026-10-22: green on air, gold selected, no left bars). Never a badge. ----
    Every row is an inset rounded card: 4 px in from its column, 2 px from the next, so the hover and the states
    fill a card, never the column edge to edge (only the Slides column and No ar run edge to edge: kx-slide).
    The inset comes off the left padding, so the text stays in line with the listheads. */
@@ -171,14 +172,17 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-row::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
 .kx-row:hover { background: var(--bg-2); }
 .kx-row.is-selected { background: var(--bg-3); }
-.kx-row.is-air { background: var(--air-tint); } .kx-row.is-air::before { background: var(--air); }
-.kx-row.is-prev { background: var(--prev-tint); } .kx-row.is-prev::before { background: var(--prev); }
-.kx-row.is-rh { background: var(--rh-tint); } .kx-row.is-rh::before { background: var(--rh); }
-.kx-row.is-warn::before { background: var(--warn); }
+.kx-row.is-air { background: var(--air-tint); box-shadow: var(--live-ring); }
+.kx-row.is-prev { background: var(--prev-tint); box-shadow: var(--prev-ring); }
+.kx-row.is-air.is-prev { background: var(--prev-tint); box-shadow: var(--live-ring); }
+.kx-row.is-rh { background: var(--rh-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rh) 75%, transparent); }
+.kx-row.is-warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 75%, transparent); }
 /* Marked (several items selected: Ctrl/Shift + click or Selecionar vários, multiSelect.js, owner 2026-10-21):
-   the blue wash and a 1px inset ring. The state bar stays the item's own, so a row on air or in the Prévia
-   that is also marked reads as both. */
+   the blue wash and a 1px inset ring; a row on air or selected that is also marked keeps its state's ring
+   outside the blue one, so it reads as both. */
 .kx-row.is-marked { background: var(--sel-bg); box-shadow: inset 0 0 0 1px var(--sel-ring); }
+.kx-row.is-marked.is-air { box-shadow: var(--live-ring), inset 0 0 0 2px var(--sel-ring); }
+.kx-row.is-marked.is-prev { box-shadow: var(--prev-ring), inset 0 0 0 2px var(--sel-ring); }
 
 /* ---- Pick (kx-pick; not kx-mark, the KERYX logo mark below): a row's or a tile's box while Selecionar vários is on. 16 px, empty until marked ---- */
 .kx-pick { width: 16px; height: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; border: 1.5px solid var(--fg-3); color: var(--bg-0); }
@@ -323,7 +327,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-pill .kx-btn:hover { background: var(--chrome-hover); }
 .kx .kx-pill .kx-btn:active { background: var(--chrome-pressed); } /* pressed: Tela preta, Logo, Limpar answer the hand at once */
 .kx .kx-pill .kx-btn.is-on { background: var(--bg-3); }
-.kx .kx-pill .kx-btn.kx-pill-end { color: var(--air-fg); }
+.kx .kx-pill .kx-btn.kx-pill-end { color: var(--danger-fg); }
 .kx .kx-pill .kx-pill-btns > .kx-pill-sep { margin: 0 4px; }
 .kx .kx-pill.is-prev .kx-pill-dot { background: var(--prev-fg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--prev) 30%, transparent); }
 /* The caption of a monitor (the Programa's pill, the Prévia's badge): the state word, the title, telemetry. */
@@ -339,13 +343,13 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 /* ---- Status (Saídas) ---- */
 .kx-status { height: var(--row); display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); font-weight: 500; }
 .kx-status:hover { background: var(--bg-2); color: var(--fg-1); }
-.kx-status .kx-dot { background: var(--prev); }
+.kx-status .kx-dot { background: var(--ok); }
 .kx-status.is-warn { color: var(--warn-fg); } .kx-status.is-warn .kx-dot { background: var(--warn); }
 .kx-status.is-rh { color: var(--rh-fg); } .kx-status.is-rh .kx-dot { background: var(--rh); }
 .kx-out { display: grid; grid-template-columns: 16px 1fr auto; gap: var(--space-2); align-items: center; min-height: 36px; padding: 0 var(--space-2); }
 .kx-out .kx-out-name { font-size: var(--fs-ui); color: var(--fg-1); line-height: 16px; }
 .kx-out .kx-out-meta { font-size: var(--fs-meta); color: var(--fg-3); line-height: 14px; }
-.kx-out .kx-out-st { font-size: var(--fs-meta); display: inline-flex; align-items: center; gap: 6px; color: var(--prev-fg); }
+.kx-out .kx-out-st { font-size: var(--fs-meta); display: inline-flex; align-items: center; gap: 6px; color: var(--ok-fg); }
 .kx-out.is-warn .kx-out-st { color: var(--warn-fg); } .kx-out.is-warn .kx-glyph { color: var(--warn); }
 .kx-out.is-off .kx-out-st { color: var(--fg-3); }
 .kx-out.is-rh .kx-out-st { color: var(--rh-fg); }
@@ -446,12 +450,12 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-split:focus-visible::before { background-image: radial-gradient(circle, var(--brand) 1px, transparent 1.5px); }
 
 /* ---- Slide (the Slides column; .onair-card is the same slide in the No ar module) ----
-   A row edge to edge with a 1 px separator, no card. The state is the row's background plus a bar on its left
-   edge: on air the gold wash (live-bg) and a 3 px gold bar (live-bar); the Prévia the green wash (prev-bg); the
-   next slide a 2 px grey bar (next-bar) and an fg-1 number. On air and in the Prévia at once: the Prévia's wash,
-   the gold bar, the number on a gold chip. Labels and numbers on a wash pass AA: fg-2 on the Prévia's, fg-1 on
-   the gold one. The bars are box-shadows: a contrast theme drops them and the forced-colours blocks draw the
-   states. A slide keeps the editor's lines, one line each, ending in "…" (kx-ln); the keys move these states
+   A row edge to edge with a 1 px separator, no card. The state is the row's background plus a 1 px ring of its
+   colour (Rodada P, owner 2026-10-22; no left bars): on air the green wash (live-bg, 16 %) and ring (live-ring);
+   selected (the Prévia) the gold wash (prev-bg, 34 %) and ring (prev-ring); the next slide a grey ring
+   (next-ring) and an fg-1 number. On air and selected at once: the gold wash, the green ring, the number on a
+   green chip. Labels and numbers on a wash pass AA: fg-2 on the green one, fg-1 on the gold one. The rings are
+   box-shadows: a contrast theme drops them and the forced-colours blocks draw the states. A slide keeps the editor's lines, one line each, ending in "…" (kx-ln); the keys move these states
    hundreds of times a service, so the highlight lands with the key and only the pointer's hover eases in. */
 .kx-slide .kx-slide-n { font-size: var(--fs-meta); color: var(--fg-3); line-height: 18px; }
 .kx-slide .kx-slide-lab { font-size: var(--fs-meta); color: var(--fg-3); line-height: 14px; margin-bottom: 2px; }
@@ -478,15 +482,17 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-slide-page { flex: none; width: 128px; aspect-ratio: 16 / 9; object-fit: contain; background: var(--screen-bg); border-radius: 4px; }
 .kx .kx-slide-body.is-page .kx-slide-lab { margin: 0; font-size: var(--fs-ui); }
 .kx .onair-card .kx-slide-n { font-size: var(--fs-meta); color: var(--fg-3); }
-.kx :is(.kx-slide, .onair-card).is-next { box-shadow: var(--next-bar); }
+.kx :is(.kx-slide, .onair-card).is-next { box-shadow: var(--next-ring); }
 .kx .is-next > .kx-slide-n { color: var(--fg-1); }
-.kx .kx-slide.is-prev, .kx .kx-verse.is-prev, .kx .onair-card.is-prev { background: var(--prev-bg); }
-.kx .is-prev > .kx-slide-n, .kx .is-prev > .kx-verse-n, .kx .is-prev .kx-slide-lab { color: var(--fg-2); }
-.kx .kx-slide.is-air, .kx .kx-verse.is-air, .kx .onair-card.is-air { background: var(--live-bg); box-shadow: var(--live-bar); }
-/* On the gold wash fg-1: fg-2 there is 4.15:1, under AA (stateColors.test.mjs). */
-.kx .is-air > :is(.kx-slide-n, .kx-verse-n), .kx .is-air .kx-slide-lab { color: var(--fg-1); }
-.kx .kx-slide.is-air.is-prev, .kx .kx-verse.is-air.is-prev, .kx .onair-card.is-air.is-prev { background: var(--prev-bg); }
-.kx .is-air.is-prev > .kx-slide-n, .kx .is-air.is-prev > .kx-verse-n { align-self: start; height: 16px; line-height: 16px; border-radius: 4px; background: var(--live); color: var(--on-brand); text-align: center; font-weight: 500; }
+/* Rodada P (owner 2026-10-22, P1 = B): green = on air, gold = selected (the Prévia), each a wash and a 1px
+   ring of its colour; the gold wash is the lighter one, so the two differ in lightness too (stateColors.test). */
+.kx .kx-slide.is-prev, .kx .kx-verse.is-prev, .kx .onair-card.is-prev { background: var(--prev-bg); box-shadow: var(--prev-ring); }
+/* On the gold wash fg-1: fg-2 there is 4.3:1, under AA (stateColors.test.mjs). */
+.kx .is-prev > .kx-slide-n, .kx .is-prev > .kx-verse-n, .kx .is-prev .kx-slide-lab { color: var(--fg-1); }
+.kx .kx-slide.is-air, .kx .kx-verse.is-air, .kx .onair-card.is-air { background: var(--live-bg); box-shadow: var(--live-ring); }
+.kx .is-air > :is(.kx-slide-n, .kx-verse-n), .kx .is-air .kx-slide-lab { color: var(--fg-2); }
+.kx .kx-slide.is-air.is-prev, .kx .kx-verse.is-air.is-prev, .kx .onair-card.is-air.is-prev { background: var(--prev-bg); box-shadow: var(--live-ring); }
+.kx .is-air.is-prev > .kx-slide-n, .kx .is-air.is-prev > .kx-verse-n { align-self: start; height: 16px; line-height: 16px; border-radius: 4px; background: var(--live); color: var(--on-state); text-align: center; font-weight: 500; }
 
 /* ---- Layer row (Camadas) ---- */
 .kx-layer { display: grid; grid-template-columns: 16px 20px 20px 1fr; gap: var(--space-1); align-items: center; padding: 0 var(--space-3) 0 var(--space-2); text-align: left; color: var(--fg-1); }
@@ -506,7 +512,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-transport .kx-time { font-size: var(--fs-meta); color: var(--fg-3); min-width: 72px; }
 .kx-meter { display: inline-flex; gap: 2px; align-items: flex-end; height: 16px; }
 .kx-meter > i { width: 3px; height: 100%; background: var(--bg-3); position: relative; overflow: hidden; border-radius: 1px; }
-.kx-meter > i > b { position: absolute; left: 0; right: 0; bottom: 0; background: var(--prev); }
+.kx-meter > i > b { position: absolute; left: 0; right: 0; bottom: 0; background: var(--ok); }
 .kx-meter > i > b.is-hot { background: var(--warn); }
 
 /* ---- Verse (Bíblia: Ler, Buscar): a card with a 4 px gap, since prose reads better in a box of its own ----
