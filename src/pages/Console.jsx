@@ -643,7 +643,17 @@ export default function Console() {
                 added.push(stage.title);
             }
             c.say(addedSay(added, left));
-        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
+        } catch (err) {
+            // Stopped part way (a YouTube link that would not save): the rows
+            // below close the gap the missing ones left, and the toast says
+            // how many went in.
+            const gap = rows.length - added.length;
+            if (added.length && gap) {
+                try { for (let i = at; i < items.length; i++) await keryx.entities.ServiceItem.update(items[i].id, { order: i + added.length }); } catch { /* the order keeps a gap; it still sorts */ }
+            }
+            const why = err?.message || "Não foi possível adicionar.";
+            c.say(added.length ? `${addedSay(added, left + gap)} ${why}` : why);
+        }
     }, [c, items, ensureService]);
 
     // Escola bíblica › Setlist: a material at the end of the setlist.
@@ -1096,8 +1106,8 @@ export default function Console() {
     };
     const setlistPanel = (
         // The count is only "n itens · tempo" (Rodada O3): the culto's name is
-        // its tooltip, and Planejar o culto's.
-        <Panel title="Setlist" className={`setlist-panel ${coverCls}`} count={!service ? "nenhum culto" : setPlan.count ? <span title={service.title}>{setPlan.count} {setPlan.count === 1 ? "item" : "itens"} · {total(setPlan.seconds)}</span> : null}
+        // the header's tooltip (with no items too), and Planejar o culto's.
+        <Panel title="Setlist" className={`setlist-panel ${coverCls}`} tip={service?.title} count={!service ? "nenhum culto" : setPlan.count ? `${setPlan.count} ${setPlan.count === 1 ? "item" : "itens"} · ${total(setPlan.seconds)}` : null}
             actions={<>{coverTag}<AutoplaySwitch on={Boolean(service?.autoplay)} onChange={setAutoplay} /><SelectManyBtn on={setlistPicking} onToggle={setSetlistPicking} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
