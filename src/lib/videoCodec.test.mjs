@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { codecInMoov, readVideoCodec, rangeReader, codecProblem, codecOfRow, codecFields, codecMark, codecHint, codecRefusal, needsCodec } from "./videoCodec.js";
+import { codecInMoov, readVideoCodec, rangeReader, codecProblem, codecOfRow, codecFields, codecMark, codecHint, codecRefusal, refusalSummary, needsCodec } from "./videoCodec.js";
 
 // Tiny hand-built MP4 boxes: just enough of the tree for the walk.
 const bytes = (...parts) => Uint8Array.from(parts.flatMap((p) => (typeof p === "string" ? [...p].map((c) => c.charCodeAt(0)) : Array.isArray(p) ? p : [p])));
@@ -40,6 +40,12 @@ test("codecInMoov: the video track's sample entry names the codec", () => {
     assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(66), 1280, 720)))), { codec: "avc1", bitDepth: 8, chroma: "420", width: 1280, height: 720 }, "Baseline is 8 bits, 4:2:0");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("avc3", avcC(100))))).codec, "avc1", "avc3 is H.264 too");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(100))))).bitDepth, 8, "High without the extension");
+    // Many encoders leave the High profiles' extension out: the profile tells.
+    assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(110))))), { codec: "avc1", bitDepth: 10, chroma: "420", width: 1920, height: 1080 }, "High 10 without the extension");
+    assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(122))))), { codec: "avc1", bitDepth: null, chroma: "422", width: 1920, height: 1080 }, "High 4:2:2 without the extension");
+    assert.equal(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(244))))).chroma, "444", "High 4:4:4 without the extension");
+    assert.equal(codecProblem(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(110)))))), "10bit");
+    assert.equal(codecProblem(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(122)))))), "chroma");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(110, [0xfd, 0xfa, 0xfa, 0]))))).bitDepth, 10, "High 10");
     assert.deepEqual(codecInMoov(moov(track("vide", sampleEntry("avc1", avcC(122, [0xfe, 0xfa, 0xfa, 0]))))), { codec: "avc1", bitDepth: 10, chroma: "422", width: 1920, height: 1080 }, "High 4:2:2");
     assert.equal(codecInMoov(moov(track("vide", sampleEntry("hvc1", hvcC(10).map((x, i) => (i === 8 + 16 ? 0xfe : x)))))).chroma, "422", "HEVC 4:2:2");
@@ -118,18 +124,25 @@ test("codecFields / codecOfRow: the row's columns and back", () => {
     assert.deepEqual(codecOfRow(null), { codec: null, bitDepth: null, chroma: null });
 });
 
-test("the words: the mark, its tooltip and the refusal (pt-BR, one place)", () => {
+test("the words: the mark, its tooltip, a refusal and several (pt-BR, one place)", () => {
     const hevc = { codec: "hvc1", bitDepth: 8, chroma: "420" };
     assert.equal(codecMark(hevc), "HEVC · pode não tocar");
-    assert.equal(codecRefusal("pão e vinho.mp4", hevc), "pão e vinho.mp4: este vídeo está em HEVC (H.265) e pode congelar nas telas. Converta para MP4 H.264 no HandBrake (gratuito), predefinição \"Fast 1080p30\", e envie de novo.");
     assert.equal(codecHint(hevc), "Este vídeo está em HEVC (H.265) e pode congelar nas telas. Converta para MP4 H.264 no HandBrake (gratuito), predefinição \"Fast 1080p30\", e envie de novo.");
+    assert.equal(codecRefusal("pão e vinho.mp4", hevc), "pão e vinho.mp4 recusado: HEVC (H.265) pode congelar nas telas. Converta para MP4 H.264 no HandBrake, predefinição \"Fast 1080p30\".");
+    assert.ok(codecRefusal("abertura do culto.mp4", hevc).length <= 140, "one line of the toast at 960 px with a usual name");
     assert.equal(codecMark({ codec: "avc1", bitDepth: 10, chroma: "420" }), "10 bits · pode não tocar");
-    assert.match(codecRefusal("a.mp4", { codec: "avc1", bitDepth: 10 }), /^a.mp4: este vídeo está em H.264 de 10 bits e pode congelar/);
+    assert.match(codecRefusal("a.mp4", { codec: "avc1", bitDepth: 10 }), /^a.mp4 recusado: H.264 de 10 bits pode congelar/);
     assert.equal(codecMark({ codec: "avc1", bitDepth: 8, chroma: "422" }), "4:2:2 · pode não tocar");
     assert.match(codecRefusal("b.mov", { codec: "avc1", bitDepth: 8, chroma: "444" }), /H.264 4:4:4/);
     assert.equal(codecMark({ codec: "avc1", bitDepth: 8, chroma: "420" }), "");
     assert.equal(codecHint(null), "");
     assert.equal(codecRefusal("c.mp4", { codec: "webm" }), "");
+    // Several at once: one sentence, every name, the kinds once.
+    assert.equal(refusalSummary([{ name: "a.mp4", codec: hevc }, { name: "b.mp4", codec: { codec: "avc1", bitDepth: 10 } }, { name: "c.mp4", codec: { codec: "hev1" } }]),
+        "3 vídeos recusados (HEVC, 10 bits): a.mp4, b.mp4, c.mp4. Converta para MP4 H.264 no HandBrake, predefinição \"Fast 1080p30\".");
+    assert.equal(refusalSummary([{ name: "a.mp4", codec: hevc }, { name: "ok.mp4", codec: { codec: "avc1", bitDepth: 8 } }]), codecRefusal("a.mp4", hevc), "one refused: its own sentence");
+    assert.equal(refusalSummary([]), "");
+    assert.equal(refusalSummary(), "");
 });
 
 test("needsCodec: a video file on this computer whose codec is not known", () => {

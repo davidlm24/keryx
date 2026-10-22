@@ -1,7 +1,7 @@
 import { keryx } from "@/api/keryxClient";
 import { PPTX_HINT } from "@/lib/presentation";
 import { FONTS_IN_EDITOR_HINT, FONT_EXTENSIONS } from "@/lib/fonts";
-import { readVideoCodec, fileReader, codecFields, codecRefusal } from "@/lib/videoCodec";
+import { readVideoCodec, fileReader, codecFields, codecRefusal, refusalSummary } from "@/lib/videoCodec";
 
 // The Media type of a picked file, by MIME type and extension.
 export function mediaTypeOf(file) {
@@ -96,6 +96,23 @@ let batches = 0;
 async function readCodec(file) {
     try { return await readVideoCodec(fileReader(file), file.size); } catch { return null; }
 }
+const VIDEO_NAME = /.(mp4|m4v|mov|webm|mkv)$/i;
+
+// THE door for a file the operator picks into the media folder (Rodada O,
+// O11 = B): the Mídia, the background library, the song and aviso editors,
+// an Escola material, a screen's design, Localizar… and the church's logo
+// all copy through here (uploadFile.test.mjs fails on a Core.UploadFile
+// call anywhere else but the stills KERYX makes itself and the fonts). A
+// video that may freeze on the screens is refused before it is copied: the
+// error's message is codecRefusal's words, and `refused` and `codec` ride
+// on it. -> { file_url, codec } (codec: what was read, null for no video)
+export async function uploadFile(file) {
+    const codec = mediaTypeOf(file) === "video" || VIDEO_NAME.test(String(file?.name || "")) ? await readCodec(file) : null;
+    const refusal = codecRefusal(file?.name || "arquivo", codec);
+    if (refusal) throw Object.assign(new Error(refusal), { refused: true, codec });
+    const { file_url } = await keryx.integrations.Core.UploadFile({ file });
+    return { file_url, codec };
+}
 
 // A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
 // `refused`, and the caller says how to save it as PDF (PPTX_HINT). Nor is a
@@ -118,12 +135,9 @@ export async function importMediaFiles(files, { title = "", description = "", ca
         const kind = mediaTypeOf(file);
         if (kind === "powerpoint") { refused.push({ name: file.name, message: PPTX_HINT }); continue; }
         if (kind === "font") { refused.push({ name: file.name, message: FONTS_IN_EDITOR_HINT }); continue; }
-        const codec = kind === "video" ? await readCodec(file) : null;
-        const refusal = codecRefusal(file.name, codec);
-        if (refusal) { dropCopying(keyOf(i)); refused.push({ name: file.name, message: refusal }); continue; }
         try {
             if (i > 0) setCopying(copying.map((c) => (c.key === keyOf(i) ? { ...c, waiting: false } : c)));
-            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
+            const { file_url, codec } = await uploadFile(file);
             const row = await keryx.entities.Media.create({
                 title: titleOf(file),
                 description,
@@ -142,7 +156,8 @@ export async function importMediaFiles(files, { title = "", description = "", ca
             setTimeout(() => dropCopying(key), COPY_LINGER_MS);
         } catch (err) {
             dropCopying(keyOf(i));
-            failed.push({ name: file.name, message: err?.message || "falhou" });
+            if (err?.refused) refused.push({ name: file.name, message: err.message, codec: err.codec });
+            else failed.push({ name: file.name, message: err?.message || "falhou" });
         }
     }
     return { created, failed, refused };
@@ -156,15 +171,25 @@ export function failureReason(failed = []) {
     return reasons.size === 1 ? [...reasons][0] : "";
 }
 
-// What the Mídia says after an import: how many came in, which failed (and
-// why, when it is one reason) and, for the files refused (PowerPoint, a
-// font file), what to do instead — each reason once.
+// The files refused, in one sentence: the videos that may freeze first, all
+// of them together (refusalSummary), then each other reason once (a
+// PowerPoint's PPTX_HINT, a font file's). "" for none.
+export function refusedSummary(refused = []) {
+    const videos = refused.filter((x) => x.codec);
+    const hints = new Set(refused.filter((x) => !x.codec).map((x) => x.message || PPTX_HINT));
+    return [refusalSummary(videos), ...hints].filter(Boolean).join(" · ");
+}
+
+// What the Mídia says after an import: the files refused first (what to do
+// with them is what matters, and a toast is one line), then how many came in
+// and which failed (and why, when it is one reason).
 export function importSummary({ created = [], failed = [], refused = [] }, where = "") {
     const parts = [];
+    const no = refusedSummary(refused);
+    if (no) parts.push(no);
     if (created.length || !refused.length) parts.push(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${where}`);
     if (failed.length) parts.push(`falhou: ${failed.map((x) => x.name).join(", ")}`);
     const why = failureReason(failed);
     if (why) parts.push(why);
-    for (const hint of new Set(refused.map((x) => x.message || PPTX_HINT))) parts.push(hint);
     return parts.join(" · ").replace(/([^.])$/, "$1.");
 }

@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop } from "./kx";
-import { importMediaFiles, importSummary, mediaFromYouTube } from "@/lib/mediaImport";
+import { importMediaFiles, importSummary, mediaFromYouTube, uploadFile } from "@/lib/mediaImport";
+import { codecFields } from "@/lib/videoCodec";
 import { playsInSequence } from "@/lib/presentation";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
 import { useCopyingFiles } from "@/hooks/useCopyingFiles";
@@ -193,9 +194,12 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         locating.current = null;
         if (!m || !file) return;
         try {
-            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
-            // The old still goes with the old file: the console takes a new one.
-            await keryx.entities.Media.update(m.id, { file_url, thumbnail_url: "" });
+            // A video that may freeze is refused here too (uploadFile).
+            const { file_url, codec } = await uploadFile(file);
+            // The old still and codec go with the old file: the console takes
+            // a new still, and the codec is the new file's (read now, else
+            // cleared for the backfill).
+            await keryx.entities.Media.update(m.id, { file_url, thumbnail_url: "", video_codec: null, video_bit_depth: null, video_chroma: null, ...codecFields(codec) });
             c.say(`${m.title}: arquivo encontrado.`);
         } catch (err) { fail(err); }
     };

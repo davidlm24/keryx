@@ -77,11 +77,13 @@ function sampleFormat(b, codec, entry) {
         const c = box("avcC");
         if (!c || c.end - c.body < 7) return none;
         const profile = b[c.body + 1];
-        // Baseline, Main, Extended: always 8 bits, 4:2:0; the High profiles
-        // say it after the parameter sets (High itself is 8 bits too).
-        const high = { 100: 1, 110: 1, 122: 1, 244: 1 }[profile];
-        const plain = profile === 100 ? { bitDepth: 8, chroma: "420" } : none;
-        if (!high) return { bitDepth: 8, chroma: "420" };
+        // Baseline, Main, Extended: always 8 bits, 4:2:0. The High profiles
+        // say it after the parameter sets; many encoders leave that out, and
+        // then the profile itself tells: High is 8 bits 4:2:0, High 10 is
+        // 10 bits, High 4:2:2 is 4:2:2 and High 4:4:4 is 4:4:4 (their depth
+        // unsaid).
+        const plain = { 100: { bitDepth: 8, chroma: "420" }, 110: { bitDepth: 10, chroma: "420" }, 122: { bitDepth: null, chroma: "422" }, 244: { bitDepth: null, chroma: "444" } }[profile];
+        if (!plain) return { bitDepth: 8, chroma: "420" };
         let at = c.body + 5;
         let n = b[at++] & 31;
         for (let i = 0; i < n && at + 2 <= c.end; i++) at += 2 + u16(b, at);
@@ -196,26 +198,39 @@ export function codecFields(found) {
 }
 
 const chromaName = (c) => `${c[0]}:${c[1]}:${c[2]}`;
+// Each problem: its short name (the mark, a list of refusals) and what the
+// file is (the sentences).
 const PROBLEM = {
-    hevc: () => ({ short: "HEVC", what: "está em HEVC (H.265)" }),
-    "10bit": (f) => ({ short: `${f.bitDepth} bits`, what: `está em H.264 de ${f.bitDepth} bits` }),
-    chroma: (f) => ({ short: chromaName(f.chroma), what: `está em H.264 ${chromaName(f.chroma)}` }),
+    hevc: () => ({ short: "HEVC", what: "HEVC (H.265)" }),
+    "10bit": (f) => ({ short: `${f.bitDepth} bits`, what: `H.264 de ${f.bitDepth} bits` }),
+    chroma: (f) => ({ short: chromaName(f.chroma), what: `H.264 ${chromaName(f.chroma)}` }),
 };
-const HANDBRAKE = "Converta para MP4 H.264 no HandBrake (gratuito), predefinição \"Fast 1080p30\", e envie de novo.";
+const words = (found) => { const p = codecProblem(found || {}); return p ? PROBLEM[p](found) : null; };
+const HANDBRAKE = "Converta para MP4 H.264 no HandBrake, predefinição \"Fast 1080p30\".";
 
-// The words for a video with a problem ("" for none): the mark in the lists
-// ("HEVC · pode não tocar"), its tooltip, and why the import refused it.
+// The words for a video with a problem ("" for none), all of them here: the
+// mark in the lists ("HEVC · pode não tocar") and its tooltip, which has the
+// room to say it all; the refusal of one file (a toast, an editor's upload),
+// short enough for one line of the toast at 960 px with a usual name; and
+// one sentence for several refused at once (refusalSummary).
 export function codecMark(found) {
-    const p = codecProblem(found || {});
-    return p ? `${PROBLEM[p](found).short} · pode não tocar` : "";
+    const w = words(found);
+    return w ? `${w.short} · pode não tocar` : "";
 }
 export function codecHint(found) {
-    const p = codecProblem(found || {});
-    return p ? `Este vídeo ${PROBLEM[p](found).what} e pode congelar nas telas. ${HANDBRAKE}` : "";
+    const w = words(found);
+    return w ? `Este vídeo está em ${w.what} e pode congelar nas telas. Converta para MP4 H.264 no HandBrake (gratuito), predefinição "Fast 1080p30", e envie de novo.` : "";
 }
 export function codecRefusal(name, found) {
-    const p = codecProblem(found || {});
-    return p ? `${name}: este vídeo ${PROBLEM[p](found).what} e pode congelar nas telas. ${HANDBRAKE}` : "";
+    const w = words(found);
+    return w ? `${name} recusado: ${w.what} pode congelar nas telas. ${HANDBRAKE}` : "";
+}
+// [{ name, codec }] -> "" | one file's refusal | "2 vídeos recusados (HEVC, 10 bits): a.mp4, b.mp4. Converta…"
+export function refusalSummary(list = []) {
+    const bad = (list || []).filter((x) => words(x?.codec));
+    if (bad.length < 2) return bad.length ? codecRefusal(bad[0].name, bad[0].codec) : "";
+    const kinds = [...new Set(bad.map((x) => words(x.codec).short))].join(", ");
+    return `${bad.length} vídeos recusados (${kinds}): ${bad.map((x) => x.name).join(", ")}. ${HANDBRAKE}`;
 }
 
 // A video row of the library whose codec is not known yet: a file on this

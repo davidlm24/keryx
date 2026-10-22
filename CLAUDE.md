@@ -1447,8 +1447,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   into `Media.video_codec`/`video_bit_depth`/`video_chroma`. **A video that
   may freeze is refused, never converted** (owner's O11 = B, 2026-10-21:
   `codecProblem` = HEVC, H.264 above 8 bits or not 4:2:0; a codec the reader
-  does not name passes): `importMediaFiles` leaves it in `refused` with
-  `codecRefusal`'s words (HandBrake, "Fast 1080p30"); a row already in the
+  does not name passes) by `uploadFile` (mediaImport.js), **the one door
+  for a file the operator picks** — the Mídia, the backgrounds, the song and
+  aviso editors, an Escola material, a screen's design, Localizar…, the logo;
+  `uploadFile.test.mjs` fails on any other `Core.UploadFile` call but the
+  stills KERYX draws and a font — with `codecRefusal`'s words (HandBrake,
+  "Fast 1080p30"; several at once are one sentence, `refusalSummary`, first
+  in the toast); Localizar… clears the old file's codec; a row already in the
   library keeps its file and wears `CodecMark` ("HEVC · pode não tocar",
   amber, `.codec-mark`) in the Fundos' tiles, the Mídia and the Biblioteca,
   and the background library will not pick it for anything new. All the

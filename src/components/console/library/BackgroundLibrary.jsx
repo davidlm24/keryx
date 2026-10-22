@@ -11,7 +11,7 @@ import { FundoDetail, useSaveBackgroundPref } from "../settings/FundosGallery";
 import { useBackgrounds, useLibrary, useThemes } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "../settings/sample";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { failureReason, importMediaFiles } from "@/lib/mediaImport";
+import { failureReason, importMediaFiles, refusedSummary } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
 import { visibleBackgrounds, categoriesOf, managedCategories, sourceOf, backgroundActions, OWN_IMAGES, OWN_VIDEOS } from "@/lib/console/backgroundPrefs";
@@ -133,9 +133,11 @@ export default function BackgroundLibrary({ c, request, onDone }) {
             const into = filter !== ALL && filter !== HIDDEN && filter !== OWN_IMAGES && filter !== OWN_VIDEOS ? filter : null;
             if (into) for (const m of created) if (m.file_url) await keryx.entities.BackgroundPref.create({ source: sourceOf(m.file_url), category: into }).catch(() => {});
             const why = failureReason(failed);
-            // A video refused (HEVC…, Rodada O) says why and what to do, alone when nothing came in.
-            const no = refused.map((x) => x.message).join(" ");
-            c.say(created.length || !no ? `${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${into ? ` para ${into}` : ""}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}${why ? ` · ${why}` : "."}${no ? ` ${no}` : ""}` : no);
+            // The files refused (a video in HEVC…, Rodada O) first, in one
+            // sentence: a toast is one line. Alone when nothing came in.
+            const no = refusedSummary(refused);
+            const sent = `${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${into ? ` para ${into}` : ""}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}${why ? ` · ${why}` : ""}`;
+            c.say(no ? (created.length || failed.length ? `${no} · ${sent}` : no) : `${sent}.`);
             const first = created.find((m) => (m.type === "image" || m.type === "video") && kinds.includes(m.type));
             if (first) { setTab(first.type); setSel({ kind: first.type, value: first.file_url }); setView("grid"); }
         } catch (err) { c.say(err?.message || "Não foi possível enviar."); }
@@ -163,7 +165,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
     const take = (spec = sel) => {
         const s = cleanSpec(spec);
         if (!s) return;
-        const bad = s.kind === "video" && codecHint(codecOf(s.value));
+        // The background the request came with may be confirmed as it is.
+        const bad = s.kind === "video" && !(start && sameBg(start, s)) && codecHint(codecOf(s.value));
         if (bad) { c.say(bad); return; }
         done({ spec: s });
     };
