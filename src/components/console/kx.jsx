@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useId, useRef
 import Icon from "./Icon";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { tabStep } from "@/lib/console/tablist";
+import { SELECT_MANY, selectionCount } from "@/lib/console/multiSelect";
 export { tabStop } from "@/lib/console/tablist";
 
 // The kx- components of docs/design-system/components/bundle.css as React
@@ -290,7 +291,29 @@ export function stateWords(cls = "") {
     const words = [];
     if (isAir(cls)) words.push("no ar");
     if (/(^|\s)is-prev(\s|$)/.test(cls)) words.push("na prévia");
+    if (/(^|\s)is-marked(\s|$)/.test(cls)) words.push("selecionado");
     return words.join(", ");
+}
+
+// Selecting several (src/lib/console/multiSelect.js, useMultiSelect): the
+// header button that turns "Selecionar vários" on (M2 = A), the box a row or
+// a tile shows while it is on, and the bar with the count and what to do
+// with the marked items (the × clears, as Esc does).
+export function SelectManyBtn({ on, onToggle }) {
+    return <IconBtn name={SELECT_MANY.icon} small on={on} title={on ? `${SELECT_MANY.label} · Esc desliga` : SELECT_MANY.label} onClick={() => onToggle(!on)} />;
+}
+export function RowMark() {
+    return <span className="kx-pick" aria-hidden="true"><Icon name="check" size={12} /></span>;
+}
+export function SelBar({ count, feminine = false, onClear, children }) {
+    if (!count) return null;
+    return (
+        <div className="kx-selbar" role="toolbar" aria-label="Itens selecionados">
+            <span className="kx-selbar-n" aria-live="polite">{selectionCount(count, { feminine })}</span>
+            {children}
+            <IconBtn name="x" small title="Limpar a seleção · Esc" onClick={onClear} />
+        </div>
+    );
 }
 // Inside a button named by its content: the state words after its own
 // text, said but not shown.

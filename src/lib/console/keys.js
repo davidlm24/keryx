@@ -192,7 +192,11 @@ export const SHORTCUTS = shortcutsFor("on");
 // "countdown" (the Setlist automática's "Próximo em 5 s", Rodada N2) is
 // cancelled before anything on the console itself, so Esc never ends the
 // air while the next item is about to go.
-export const ESC_ORDER = ["menu", "confirm", "library", "popover", "window", "countdown", "drawer", "edit"];
+// "selection" (items marked in a console list, multiSelect.js, owner
+// 2026-10-21 M7): cleared before the air ends, so with something marked the
+// first Esc never takes anything off the screens. A page of THE window clears
+// its own selection through its escRef ("window", above).
+export const ESC_ORDER = ["menu", "confirm", "library", "popover", "window", "countdown", "drawer", "selection", "edit"];
 export function escapeTarget(layers = {}) {
     return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
 }

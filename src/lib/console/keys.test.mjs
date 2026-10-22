@@ -171,6 +171,13 @@ test("Esc closes the topmost thing open, one per press; with nothing open it end
     assert.equal(escapeTarget({ countdown: true }), "countdown");
     assert.equal(escapeTarget({ countdown: true, drawer: true, edit: true }), "countdown");
     assert.equal(escapeTarget({ window: true, countdown: true }), "window");
+    // Items marked in a console list: cleared before the air ends (M7), after
+    // what is over the list (the drawer, the window, a countdown).
+    assert.equal(escapeTarget({ selection: true }), "selection");
+    assert.equal(escapeTarget({ selection: true, edit: true }), "selection");
+    assert.equal(escapeTarget({ drawer: true, selection: true }), "drawer");
+    assert.equal(escapeTarget({ window: true, selection: true }), "window");
+    assert.equal(escapeTarget({ countdown: true, selection: true }), "countdown");
     // The edit mode: left before the projection ends, after everything over it.
     assert.equal(escapeTarget({ edit: true }), "edit");
     assert.equal(escapeTarget({ drawer: true, edit: true }), "drawer");
@@ -178,7 +185,7 @@ test("Esc closes the topmost thing open, one per press; with nothing open it end
     // library over a popover over the ONE window (Rodada C: Configurações,
     // the views and the editors are its pages — Esc there pops one level,
     // the first closes) over Camadas over the edit mode.
-    assert.deepEqual(ESC_ORDER, ["menu", "confirm", "library", "popover", "window", "countdown", "drawer", "edit"], "one window since Rodada C: the editor, settings and view layers folded into it; the countdown since Rodada N2");
+    assert.deepEqual(ESC_ORDER, ["menu", "confirm", "library", "popover", "window", "countdown", "drawer", "selection", "edit"], "one window since Rodada C: the editor, settings and view layers folded into it; the countdown since Rodada N2; a list's selection since 2026-10-21");
     assert.equal(escapeTarget({ library: true, window: true }), "library", "the library picks over the window");
     assert.equal(escapeTarget({ confirm: true, library: true, window: true }), "confirm", "the Excluir? question first");
     // The console routes "window" to the TOP page's own close request, so

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop } from "./kx";
+import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop, SelectManyBtn, SelBar, RowMark } from "./kx";
+import { useMultiSelect } from "./useMultiSelect";
+import { pickedOf } from "@/lib/console/multiSelect";
 import { importMediaFiles, importSummary, mediaFromYouTube, uploadFile } from "@/lib/mediaImport";
 import { codecFields } from "@/lib/videoCodec";
 import { playsInSequence } from "@/lib/presentation";
@@ -47,9 +49,6 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const [view, setView] = useState(() => { try { return localStorage.getItem("keryx.media.view") || "grid"; } catch { return "grid"; } });
     const [q, setQ] = useState("");
     const [adding, setAdding] = useState(false); // the Adicionar menu in the bar
-    const [sel, setSel] = useState([]);
-    const [anchor, setAnchor] = useState(null);
-    const [lead, setLead] = useState(null); // where the arrows move from (C-72)
     const menu = useContextMenu();
     const gridRef = useRef(null);
     const [renaming, setRenaming] = useState(null);
@@ -63,7 +62,13 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
 
     useEffect(() => { try { localStorage.setItem("keryx.media.view", view); } catch { /* not remembered */ } }, [view]);
     const shown = useMemo(() => media.filter((m) => inCat(m, cat) && (!category || (m.category || "other") === category) && match(ql, m.title, m.description, KIND[m.type])), [media, cat, category, ql]);
-    const picked = shown.filter((m) => sel.includes(m.id));
+    // The selection (src/lib/console/multiSelect.js, the model every list
+    // shares since 2026-10-21; it began here). A page of THE window: Esc
+    // clears it through escRef, not the console's (register: false).
+    const shownIds = useMemo(() => shown.map((m) => m.id), [shown]);
+    const mediaIds = useMemo(() => media.map((m) => m.id), [media]);
+    const ms = useMultiSelect({ order: shownIds, existing: mediaIds, mode: "gallery", register: false });
+    const picked = pickedOf(ms.sel, shown);
     // The files being copied: a row (a card in the grid) each, "Copiando o
     // arquivo…", until the real row takes its place (Rodada H, HB). The
     // upload list above stays: it says the queue and what failed.
@@ -72,38 +77,24 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const copies = copyingRows(copyingFiles, media, { kinds: CAT_KINDS[cat] || null, q: ql });
     const totalSize = media.reduce((a, m) => a + (m.size || 0), 0);
     const hasDocs = media.some((m) => inCat(m, "doc"));
-    useEffect(() => { setSel((s) => s.filter((id) => media.some((m) => m.id === id))); }, [media]);
 
     const fail = (err) => c.say(err?.message || "Não foi possível.");
+    // A click picks one; Ctrl/Shift mark more; with Selecionar vários on a
+    // click marks or unmarks (multiSelect.js clickSelection).
     const pick = (m, e) => {
         setRenaming(null);
-        if (e?.shiftKey && anchor) {
-            const a = shown.findIndex((x) => x.id === anchor);
-            const b = shown.findIndex((x) => x.id === m.id);
-            const range = shown.slice(Math.min(a, b), Math.max(a, b) + 1).map((x) => x.id);
-            setSel((s) => [...new Set([...s, ...range])]);
-            setLead(m.id);
-            return;
-        }
-        if (e?.ctrlKey || e?.metaKey) { setSel((s) => (s.includes(m.id) ? s.filter((x) => x !== m.id) : [...s, m.id])); setAnchor(m.id); setLead(m.id); return; }
-        setSel([m.id]);
-        setAnchor(m.id);
-        setLead(m.id);
+        ms.click(m.id, e);
     };
     // The arrows move the selection (C-72): ↑/↓ in the list; in the grid
     // ←/→ a card and ↑/↓ a row; Home/End; Shift extends from the anchor.
     // The card or row moved to stays in view.
     const step = (e) => {
         const cols = view === "grid" ? columnsOf([...(gridRef.current?.children || [])].map((el) => el.offsetTop)) : 1;
-        const from = shown.findIndex((x) => x.id === (lead && sel.includes(lead) ? lead : sel[sel.length - 1]));
+        const from = ms.lead;
         const to = gridStep(from, e.key, shown.length, cols);
         if (to === null || to === from) return to !== null;
         const m = shown[to];
-        if (e.shiftKey && anchor && shown.some((x) => x.id === anchor)) {
-            const a = shown.findIndex((x) => x.id === anchor);
-            setSel(shown.slice(Math.min(a, to), Math.max(a, to) + 1).map((x) => x.id));
-        } else { setSel([m.id]); setAnchor(m.id); }
-        setLead(m.id);
+        ms.step(to, e);
         setRenaming(null);
         requestAnimationFrame(() => document.querySelector(`[data-media-id="${CSS.escape(m.id)}"]`)?.scrollIntoView({ block: "nearest" }));
         return true;
@@ -132,7 +123,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         const { created } = result;
         setUploads(null);
         c.say(importSummary(result));
-        if (created.length) setSel(created.map((r) => r.id));
+        if (created.length) ms.set(created.map((r) => r.id));
     };
     // Link do YouTube… (the Adicionar menu): the url comes from one question
     // (PromptDialog), not a field always on screen (Rodada C, fase b).
@@ -151,7 +142,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         if (!/youtu\.?be/.test(url)) { c.say("Isso não parece um link do YouTube."); return; }
         try {
             const row = await mediaFromYouTube(url, { category: category || "other" });
-            setSel([row.id]);
+            ms.set([row.id]);
             setRenaming(row.id);
             c.say('Link adicionado como "Vídeo do YouTube" · dê um nome.');
         } catch (err) { fail(err); }
@@ -175,7 +166,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         try {
             for (const m of rows) await keryx.entities.Media.delete(m.id);
             c.say(`${one ? "Excluído" : `${rows.length} excluídos`} da Mídia · os arquivos continuam na pasta de mídia.`);
-            setSel((s) => s.filter((id) => !rows.some((m) => m.id === id)));
+            // The deleted rows leave the selection by themselves (useMultiSelect prunes).
         } catch (err) { fail(err); }
     };
     // A file's right-click menu (C-72), as the Biblioteca's: it acts on
@@ -183,7 +174,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const fileMenu = (m) => (e) => menu(e, { title: m.title, items: [
         !m.missing && !m.syncing && menuItem("porNaPrevia", { onSelect: () => c.setPrev(stageFromMedia(m)) }),
         !m.missing && !m.syncing && m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => c.setPrev(stageFromMedia(m, { toVideo: true })) },
-        menuItem("renomear", { onSelect: () => { setSel([m.id]); setAnchor(m.id); setLead(m.id); setRenaming(m.id); } }),
+        menuItem("renomear", { onSelect: () => { ms.set([m.id]); setRenaming(m.id); } }),
         m.missing && !m.syncing && { label: "Localizar…", icon: "folder", onSelect: () => locate(m) },
         menuItem("excluir", { kbd: keyHint("delete"), onSelect: () => remove([m]) }),
         !m.missing && !m.syncing && menuItem("enviarAoAr", { air: true, onSelect: () => send(m) }),
@@ -217,7 +208,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     // to a dialog over the page (its own scrim does not count) and sleep
     // while another page covers this one; the console's B and L still
     // reach the screens.
-    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(false); else if (renaming) setRenaming(null); else if (sel.length) setSel([]); else onClose(); };
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(false); else if (renaming) setRenaming(null); else if (ms.count || ms.picking) ms.clear(); else onClose(); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
         if (e.key === "Escape" || !active) return;
@@ -226,7 +217,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         if (field) return;
         if (e.key === "Enter" && picked.length === 1) { e.preventDefault(); e.stopPropagation(); send(picked[0]); }
         else if (e.key === "Delete" && picked.length) { e.preventDefault(); e.stopPropagation(); remove(); }
-        else if (e.key === "a" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); setSel(shown.map((m) => m.id)); }
+        else if (e.key === "a" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); ms.all(); }
         else if (e.key === "F2" && picked.length === 1) { e.preventDefault(); setRenaming(picked[0].id); }
         else if (!e.ctrlKey && !e.metaKey && !e.altKey && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key) && step(e)) { e.preventDefault(); e.stopPropagation(); }
     };
@@ -241,7 +232,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         onDragStart: (e) => { const s = stageFromMedia(m); setDragStage(s); e.dataTransfer.setData(STAGE_MIME, s.id); e.dataTransfer.effectAllowed = "copyMove"; setDragGhost(e, stageGhost(s)); },
         onDragEnd: () => clearDragStage(),
     });
-    const state = (m) => `${sel.includes(m.id) ? "is-sel" : ""} ${airId === `media:${m.id}` || c.cur?.audio?.id === m.id ? "is-air" : ""} ${m.missing && !m.syncing ? "is-warn" : ""}`;
+    const state = (m) => `${ms.has(m.id) ? "is-sel is-marked" : ""} ${airId === `media:${m.id}` || c.cur?.audio?.id === m.id ? "is-air" : ""} ${m.missing && !m.syncing ? "is-warn" : ""}`;
     const renameField = (m) => (
         <input className="mv-rename" defaultValue={m.title} autoFocus aria-label="Renomear" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => { if (e.key === "Enter") rename(m, e.currentTarget.value); if (e.key === "Escape") { e.stopPropagation(); setRenaming(null); } }} onBlur={(e) => rename(m, e.currentTarget.value)} />
@@ -273,6 +264,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                     </select>
                     <span style={{ flex: 1 }} />
                     <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar todos</Btn>
+                    <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />
                     <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
                     <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
                 </div>
@@ -289,22 +281,17 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                         ))}
                     </div>
                 )}
-                {picked.length > 0 && (
-                    <div className="mv-selbar">
-                        <span className="kx-section">{picked.length} {picked.length === 1 ? "selecionado" : "selecionados"}</span>
-                        <span style={{ flex: 1 }} />
-                        {picked.length === 1 && <Btn small onClick={() => c.setPrev(stageFromMedia(picked[0]))} title="Pôr na Prévia do console">Prévia</Btn>}
-                        {picked.length === 1 && <Btn small onClick={() => send(picked[0])} title={sendTip(false)}>{SEND_LABEL}</Btn>}
-                        {picked.length === 1 && <Btn small onClick={() => setRenaming(picked[0].id)} title="Renomear · F2">Renomear</Btn>}
-                        <select className="pl-pick" value="" onChange={(e) => e.target.value && recategorise(e.target.value)} aria-label="Mudar categoria">
-                            <option value="">Categoria…</option>
-                            {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-                        </select>
-                        <Btn small onClick={() => remove()} title="Excluir da Mídia · Delete">Excluir…</Btn>
-                        <IconBtn name="x" small title="Limpar seleção · Esc" onClick={() => setSel([])} />
-                    </div>
-                )}
-                <div className="mv-body" onClick={(e) => { if (e.target === e.currentTarget) setSel([]); }}>
+                <SelBar count={picked.length} onClear={ms.clear}>
+                    {picked.length === 1 && <Btn small onClick={() => c.setPrev(stageFromMedia(picked[0]))} title="Pôr na Prévia do console">Prévia</Btn>}
+                    {picked.length === 1 && <Btn small onClick={() => send(picked[0])} title={sendTip(false)}>{SEND_LABEL}</Btn>}
+                    {picked.length === 1 && <Btn small onClick={() => setRenaming(picked[0].id)} title="Renomear · F2">Renomear</Btn>}
+                    <select className="pl-pick" value="" onChange={(e) => e.target.value && recategorise(e.target.value)} aria-label="Mudar categoria">
+                        <option value="">Categoria…</option>
+                        {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                    </select>
+                    <Btn small onClick={() => remove()} title="Excluir da Mídia · Delete">Excluir…</Btn>
+                </SelBar>
+                <div className={`mv-body ${ms.picking ? "is-picking" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) ms.clear(); }}>
                     {!shown.length && !copies.length && <Empty icon="media" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Do computador… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
                     {view === "grid" && (shown.length > 0 || copies.length > 0) && (
                         <div className="mv-grid" ref={gridRef}>
@@ -320,7 +307,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             ))}
                             {shown.map((m) => (
                                 <div key={m.id} className="mv-cell" data-media-id={m.id} onContextMenu={fileMenu(m)}>
-                                    <button type="button" className={`mv-th kx-t ${state(m)}`} title={m.title} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} {...drag(m)}>
+                                    <button type="button" className={`mv-th kx-t ${state(m)}`} title={m.title} onClick={(e) => pick(m, e)} onDoubleClick={() => { if (!ms.picking) send(m); }} {...drag(m)}>
                                         {(m.type === "image" || m.type === "gif") && !m.missing && <img src={m.file_url} alt="" loading="lazy" />}
                                         {m.type === "video" && !isYouTube(m) && !m.missing && (m.thumbnail_url && m.duration > 0 && !m.posterSyncing
                                             ? <img src={m.thumbnail_url} alt="" loading="lazy" />
@@ -331,6 +318,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                             <span className={`mv-th-t ${m.missing && !m.syncing ? "is-warn" : ""}`}>{m.syncing ? <><Icon name="download" size={22} />Baixando…</> : m.missing ? "Arquivo não encontrado" : <><Icon name={mediaIcon(m)} size={22} />{isYouTube(m) ? "YouTube" : KIND[m.type]}</>}</span>
                                         )}
                                         <span className="mv-lab">{isYouTube(m) ? "YouTube" : KIND[m.type] || m.type}</span>
+                                        {ms.picking && <RowMark />}
                                         {(m.duration > 0 || isYouTube(m)) && <span className="mv-n">{isYouTube(m) ? "link" : mmss(m.duration)}</span>}
                                         {m.type === "pdf" && <PagesBar id={m.id} />}
                                     </button>
@@ -353,7 +341,8 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                         </div>
                     ))}
                     {view === "list" && shown.map((m) => (
-                        <div key={m.id} className={`kx-row kx-t mv-row ${state(m)}`} role="button" tabIndex={0} data-media-id={m.id} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} onContextMenu={fileMenu(m)} {...drag(m)}>
+                        <div key={m.id} className={`kx-row kx-t mv-row ${state(m)}`} role="button" tabIndex={0} data-media-id={m.id} onClick={(e) => pick(m, e)} onDoubleClick={() => { if (!ms.picking) send(m); }} onContextMenu={fileMenu(m)} {...drag(m)}>
+                            {ms.picking && <RowMark />}
                             <span className="kx-glyph"><Icon name={mediaIcon(m)} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title" title={m.title}>{m.title}</div>}
@@ -362,7 +351,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>
                             <span className="kx-row-acts">
                                 {m.syncing ? null : m.missing ? <Btn onClick={(e) => { e.stopPropagation(); locate(m); }} title="Localizar o arquivo…" aria-label={`Localizar o arquivo de ${m.title}`}><span className="kx-act-i"><Icon name="folder" /></span><span className="kx-act-l">Localizar…</span></Btn> : <>
-                                    <Btn onClick={(e) => { e.stopPropagation(); setSel([m.id]); setRenaming(m.id); }} title="Renomear · F2" aria-label={`Renomear ${m.title}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Renomear</span></Btn>
+                                    <Btn onClick={(e) => { e.stopPropagation(); ms.set([m.id]); setRenaming(m.id); }} title="Renomear · F2" aria-label={`Renomear ${m.title}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Renomear</span></Btn>
                                     <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title={sendTip(false)} aria-label={`${SEND_LABEL}: ${m.title}`}><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Tocar</span></Btn>
                                 </>}
                             </span>

@@ -28,6 +28,8 @@
   --live-bg: color-mix(in srgb, var(--brand) 36%, var(--bg-2));
   --prev-bg: color-mix(in srgb, var(--prev) 16%, var(--bg-2));
   --verse-pressed: color-mix(in srgb, var(--fg-1) 7%, var(--bg-3));
+  --sel-bg: color-mix(in srgb, var(--rh) 18%, var(--bg-2));
+  --sel-ring: color-mix(in srgb, var(--rh) 55%, transparent);
   --rh: #3b82f6;
   --rh-fg: #7fb0ff;
   --rh-fill: #2f6fe0;

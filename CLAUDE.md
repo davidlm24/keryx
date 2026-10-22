@@ -1182,6 +1182,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   import/restore restart (`importOutcome`) is not a crash. The console's
   reload keeps the Prévia (sessionStorage) and opens on the culto on air
   (`chooseService`, serviceChoice.js); outputs retry their first live read.
+- **Selecting several** (owner 2026-10-21, mockup "Seleção múltipla", marks
+  M1–M7): one model for every list, `src/lib/console/multiSelect.js` (tested)
+  through `useMultiSelect` (mode "gallery": a click picks one; "air": a plain
+  click clears and the list prepares as always, M1 = A), with `SelectManyBtn`
+  ("Selecionar vários", never "Selecionar" alone), `RowMark` and `SelBar` from
+  kx.jsx and the `is-marked` state (`--sel-bg`/`--sel-ring`, the blue of
+  Travado). Ctrl/Shift + click and the mode never prepare or send; Esc clears a
+  console list's selection before the air (`selections`,
+  selectionStore.js; keys.js ESC_ORDER "selection"), a page of THE window
+  through its escRef. The Mídia page is the reference; the Biblioteca, Setlist,
+  Planejar o culto, Temas, the background library (manage only) and the Escola
+  follow; the Temas panel and the short settings lists stay single.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. Every write
   reaches every window with the whole row, deletes included.
