@@ -310,8 +310,11 @@ export function SelBar({ count, feminine = false, onClear, children }) {
     return (
         <div className="kx-selbar" role="toolbar" aria-label="Itens selecionados">
             <span className="kx-selbar-n" aria-live="polite">{selectionCount(count, { feminine })}</span>
-            {children}
-            <IconBtn name="x" small title="Limpar a seleção · Esc" onClick={onClear} />
+            {/* One group: where it does not fit beside the count, it goes under it whole. */}
+            <span className="kx-selbar-acts">
+                {children}
+                <IconBtn name="x" small title="Limpar a seleção · Esc" onClick={onClear} />
+            </span>
         </div>
     );
 }

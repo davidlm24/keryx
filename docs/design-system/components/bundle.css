@@ -180,9 +180,13 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .is-marked .kx-pick .kx-i { visibility: visible; }
 
 /* ---- Selection bar (kx-selbar): what is marked and what to do with it, inset in its list like a row ----
-   The count on the left, the actions (Exportar…, Excluir…) and the × that clears on the right. */
-.kx-selbar { flex: none; display: flex; align-items: center; gap: var(--space-1); min-height: var(--band); margin: var(--space-1); padding: 0 var(--space-1) 0 var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-overlay); }
-.kx-selbar-n { flex: 1; min-width: 0; font-size: var(--fs-ui); font-weight: 600; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+   The count on the left, the actions (Exportar…, Excluir…) and the × that clears on the right.
+   The count is never cut: where the actions do not fit beside it (the Biblioteca at its 260 px),
+   it keeps its own line and the actions (kx-selbar-acts, with the ×) go under it whole, on the
+   right (owner 2026-10-22). */
+.kx-selbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); min-height: var(--band); margin: var(--space-1); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-overlay); }
+.kx-selbar-n { flex: 1 0 auto; font-size: var(--fs-ui); font-weight: 600; color: var(--fg-1); white-space: nowrap; }
+.kx-selbar-acts { flex: none; display: flex; align-items: center; gap: var(--space-1); margin-left: auto; }
 /* Done (before the one on air): only the glyph dims; the title steps down to fg-3 (6:1 on bg-1, never dimmed
    past reading), the meta and time keep fg-3. */
 .kx-row.is-done .kx-glyph { opacity: var(--dim); }
