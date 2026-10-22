@@ -54,12 +54,12 @@
 .console .topbar .tb-clock { font-size: var(--fs-ui); font-weight: 500; color: var(--fg-2); font-variant-numeric: tabular-nums; padding: 0 var(--space-1); }
 /* The bell: a red dot while something is unread. */
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
-.console .topbar .tb-bell-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--air); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
+.console .topbar .tb-bell-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
 .console .topbar .tb-outs-l { font-variant-numeric: tabular-nums; }
 /* The sync's cloud (TopBar): a dot in the state's colour on its corner. */
 .console .topbar .tb-sync { position: relative; display: inline-flex; flex: none; }
 .console .topbar .tb-sync-dot { position: absolute; right: 4px; bottom: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--fg-3); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
-.console .topbar .tb-sync-dot.is-ok { background: var(--prev); }
+.console .topbar .tb-sync-dot.is-ok { background: var(--ok); }
 .console .topbar .tb-sync-dot.is-wait { background: var(--warn); }
 .console .topbar .kx-seg > button { white-space: nowrap; }
 /* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
@@ -756,8 +756,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .player .pl-tip-t { padding: 0 5px; border-radius: 4px; background: var(--fg-1); color: var(--bg-0); font: 600 var(--fs-meta)/14px var(--font-sans); font-style: normal; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .console .player .pl-tip-sl { font-weight: 500; opacity: .75; }
 /* Só o som (Rodada F1): while a video plays as sound only, the eye is red. */
-.console .player .pl-eye.is-sound { background: color-mix(in srgb, var(--air) 24%, transparent); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
-.console .player .pl-eye.is-sound:hover { background: color-mix(in srgb, var(--air) 36%, transparent); }
+.console .player .pl-eye.is-sound { background: color-mix(in srgb, var(--danger) 24%, transparent); color: var(--danger-fg); box-shadow: inset 0 0 0 1px var(--danger); }
+.console .player .pl-eye.is-sound:hover { background: color-mix(in srgb, var(--danger) 36%, transparent); }
 /* Letra automática (Rodada D4): one tick per marked slide on the bar, and the
    chip saying what the lyrics follow (a click pauses / resumes). */
 .console .player .pl-seek > .pl-tick { position: absolute; top: 2px; bottom: 2px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--fg-1); opacity: .55; pointer-events: auto; }
@@ -827,7 +827,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .rund-tail { flex: 1; min-height: 28px; }
 /* The session's last item once nothing of it is on air (C-08): a quiet bar and
    "último" in its meta, never the red of the air; the Prévia's green wins. */
-.console .rund .kx-row.is-last:not(.is-prev)::before { background: var(--fg-3); }
+.console .rund .kx-row.is-last:not(.is-prev, .is-air) { box-shadow: var(--next-ring); }
 .console .rund .kx-row.is-last .kx-row-meta { color: var(--fg-2); }
 /* Setlist automática (owner 2026-10-20, Rodada N2): "Avançar sozinho" in the
    header (24 px, like every header control; the word goes first when the
@@ -1035,12 +1035,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-sync-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; }
 .console .cfg .cfg-sync-codein { width: 132px; height: 28px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line-strong); padding: 0 8px; font: 500 var(--fs-content-lg)/1 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
 .console .cfg .cfg-sync-codein:focus-visible { outline: 2px solid var(--rh, var(--brand)); outline-offset: 1px; }
-.console .cfg .cfg-sync-codein.is-ok { box-shadow: inset 0 0 0 1px var(--prev); }
+.console .cfg .cfg-sync-codein.is-ok { box-shadow: inset 0 0 0 1px var(--ok); }
 .console .cfg .cfg-sync-codein.is-err { box-shadow: inset 0 0 0 1px var(--warn); }
 .console .cfg .cfg-sync-full { flex-basis: 100%; }
 .console .cfg .cfg-sync-codeshown { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .08em; }
 .console .cfg .cfg-sync-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--fg-3); }
-.console .cfg .cfg-sync-dot.is-ok { background: var(--prev); }
+.console .cfg .cfg-sync-dot.is-ok { background: var(--ok); }
 .console .cfg .cfg-sync-dot.is-wait { background: var(--warn); }
 .console .cfg .cfg-sync-pcs { display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0; }
 .console .cfg .cfg-sync-pc { display: flex; align-items: center; gap: var(--space-2); min-height: 30px; padding: 2px var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); min-width: 0; }
@@ -1048,7 +1048,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-sync-pc-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-ui); }
 .console .cfg .cfg-sync-pc-t b { font-weight: 500; color: var(--fg-1); }
 .console .cfg .cfg-sync-tag { flex: none; font-size: var(--fs-meta); padding: 0 6px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-3); white-space: nowrap; }
-.console .cfg .cfg-sync-tag.is-ok { color: var(--prev-fg, var(--prev)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prev) 55%, transparent); }
+.console .cfg .cfg-sync-tag.is-ok { color: var(--ok-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 55%, transparent); }
 .console .cfg .cfg-sync-tag.is-warn { color: var(--warn-fg, var(--warn)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 55%, transparent); }
 .console .cfg .cfg-sync-dups { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; }
 .console .cfg .cfg-sync-dup { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); }
@@ -1191,12 +1191,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    closes the focused tab); the culto of the console has a green dot. */
 .console .pl-tabs { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; }
 .console .tabrow-close { height: auto; flex-wrap: nowrap; align-items: center; gap: 2px; padding: 0; border-bottom: 0; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.console .tabrow-close .kx-tc { display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 72px; max-width: 200px; height: 28px; padding: 0 2px 0 0; border-radius: var(--radius-control) var(--radius-control) 0 0; color: var(--fg-3); }
+.console .tabrow-close .kx-tc { display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 72px; max-width: 200px; height: 28px; padding: 0 2px 0 0; border-radius: var(--radius-control); color: var(--fg-3); }
 .console .tabrow-close .kx-tc:hover { background: var(--bg-2); color: var(--fg-2); }
 .console .tabrow-close .kx-tc.is-on { background: var(--bg-3); color: var(--fg-1); }
 .console .tabrow-close .kx-tc-t { display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0; height: 100%; padding: 0 4px 0 10px; color: inherit; font-size: var(--fs-ui); background: none; border-radius: var(--radius-control); }
 .console .tabrow-close .kx-tc-l { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.console .tabrow-close .kx-tc-dot { flex: none; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--prev-fg); }
+.console .tabrow-close .kx-tc-dot { flex: none; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--air-fg); }
 .console .tabrow-close .kx-tc-x { flex: none; display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border-radius: 4px; color: var(--fg-3); background: none; opacity: 0; }
 .console .tabrow-close .kx-tc-x svg { width: 12px; height: 12px; }
 .console .tabrow-close .kx-tc:is(:hover, .is-on, :focus-within) .kx-tc-x { opacity: 1; }
@@ -1248,7 +1248,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .mv-up-n { width: 280px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-1); font-size: var(--fs-ui); }
 .console .mv-up-row .kx-meta { width: 96px; text-align: right; }
 .console .prog2 { flex: 1; height: 2px; background: var(--bg-3); border-radius: 1px; position: relative; overflow: hidden; }
-.console .prog2 > i { position: absolute; inset: 0; background: var(--prev); transform-origin: left center; transition: transform var(--duration-fast) var(--ease-out); }
+.console .prog2 > i { position: absolute; inset: 0; background: var(--ok); transform-origin: left center; transition: transform var(--duration-fast) var(--ease-out); }
 .console .prog2 > i.is-busy { animation: mv-busy 1.2s ease-in-out infinite alternate; }
 @keyframes mv-busy { from { opacity: .45; } to { opacity: 1; } }
 /* The selection bar is the design system's kx-selbar (bundle.css, 2026-10-21: every list's). */
@@ -1294,7 +1294,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .kx-pdf-wait button { display: block; margin: var(--space-1) auto 0; font-size: var(--fs-ui); }
 .console .mv-cell > .kx-btn { align-self: flex-start; }
 .console .mv-rename { width: 100%; user-select: text; }
-.console .mv-row.is-air { box-shadow: inset 2px 0 0 var(--air); }
+.console .mv-row.is-air { box-shadow: var(--live-ring); }
 
 /* Editor de aviso (canvas artboard "Editor de aviso") */
 .console .nv-scroll { flex: 1; min-height: 0; overflow: auto; }
@@ -1370,7 +1370,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .sv-ed { grid-template-columns: 96px 1fr; padding-top: var(--space-2); align-items: start; }
 .console .sv-ed .k { line-height: 26px; }
 .console .sv-student .kx-glyph { color: var(--fg-3); }
-.console .sv-student.is-here .kx-glyph { color: var(--prev); }
+.console .sv-student.is-here .kx-glyph { color: var(--ok); }
 .console .sv-student.is-here .kx-row-title { color: var(--fg-1); }
 .console .sv-hint { flex: none; border-top: 1px solid var(--line); }
 .console .sv-mons { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); }
@@ -1446,7 +1446,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Updates: the popup's progress bar and the bell's list. */
 .console .dialog.upd { width: 440px; }
 .console .upd-bar { position: relative; height: 8px; border-radius: 4px; background: var(--bg-3); overflow: hidden; }
-.console .upd-bar > b { position: absolute; inset: 0; border-radius: 4px; background: var(--prev); transform-origin: left center; transition: transform .3s var(--ease-out); }
+.console .upd-bar > b { position: absolute; inset: 0; border-radius: 4px; background: var(--ok); transform-origin: left center; transition: transform .3s var(--ease-out); }
 .console .upd-bar.is-error > b { background: var(--warn); }
 .console .upd-bar.is-busy > b { right: auto; width: 30%; animation: upd-busy 1.2s ease-in-out infinite; }
 @keyframes upd-busy { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
@@ -1466,7 +1466,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .notifs .note + .note { border-top: 1px solid var(--line-soft); }
 .console .notifs .note > .kx-i { margin-top: 1px; color: var(--fg-3); }
 .console .notifs .note.is-warn > .kx-i { color: var(--warn); }
-.console .notifs .note.is-update > .kx-i { color: var(--prev); }
+.console .notifs .note.is-update > .kx-i { color: var(--ok); }
 .console .notifs .note.is-new { background: var(--bg-3); }
 .console .notifs .note-b { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .console .notifs .note-t { color: var(--fg-1); font-size: var(--fs-content); font-weight: 500; }
@@ -1520,7 +1520,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Comportamento › "já faz sozinho": what the KERYX does by itself. */
 .console .cfg .cfg-auto { display: flex; flex-direction: column; gap: 2px; padding: var(--space-1) var(--space-2) var(--space-2); }
 .console .cfg .cfg-auto-l { display: flex; align-items: flex-start; gap: var(--space-1); }
-.console .cfg .cfg-auto-l .kx-i { flex: none; margin-top: 2px; color: var(--prev-fg, var(--prev)); }
+.console .cfg .cfg-auto-l .kx-i { flex: none; margin-top: 2px; color: var(--ok-fg); }
 /* Diagnóstico: read-only values. */
 .console .cfg .cfg-diag-v { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; color: var(--fg-2); }
 /* Ajustes › Aviso rápido (Rodada E3): a sub-title across the form's two
@@ -1593,8 +1593,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .report-dialog input.ed-text { height: 28px; }
 .console .cfg .cfg-queue { color: var(--warn-fg); font-size: var(--fs-ui); }
 .console .report-dialog .rp-res { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); }
-.console .report-dialog .rp-res.is-ok { background: var(--prev-tint); }
-.console .report-dialog .rp-res.is-ok > .kx-i { color: var(--prev-fg); }
+.console .report-dialog .rp-res.is-ok { background: var(--ok-tint); }
+.console .report-dialog .rp-res.is-ok > .kx-i { color: var(--ok-fg); }
 .console .report-dialog .rp-res.is-warn { background: var(--warn-tint); }
 .console .report-dialog .rp-res.is-warn > .kx-i { color: var(--warn-fg); }
 .console .report-dialog .rp-res > .kx-i { flex: none; margin-top: 2px; }
@@ -1615,9 +1615,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .import-dialog .im-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) 168px 92px; align-items: center; gap: var(--space-2); min-height: 44px; padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); flex: none; content-visibility: auto; contain-intrinsic-size: auto 44px; }
 .console .import-dialog .im-row.is-repeated { background: var(--warn-tint); }
 .console .import-dialog .im-glyph { display: grid; place-items: center; }
-.console .import-dialog .is-ok .im-glyph { color: var(--prev-fg); }
+.console .import-dialog .is-ok .im-glyph { color: var(--ok-fg); }
 .console .import-dialog .is-repeated .im-glyph, .console .import-dialog .is-repeated .im-meta { color: var(--warn-fg); }
-.console .import-dialog .is-bad .im-glyph, .console .import-dialog .is-bad .im-meta { color: var(--air-fg); }
+.console .import-dialog .is-bad .im-glyph, .console .import-dialog .is-bad .im-meta { color: var(--danger-fg); }
 .console .import-dialog .is-bad .im-name { color: var(--fg-2); }
 .console .import-dialog .im-main { display: flex; flex-direction: column; min-width: 0; }
 .console .import-dialog .im-name { font-size: var(--fs-content); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1657,14 +1657,14 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    which wears the report dialog's fields). Tokens only. */
 .console .cfg .bib-grp:not(:first-child) { margin-top: var(--space-2); }
 .console .bib-lic { display: inline-flex; align-items: center; margin-left: var(--space-2); padding: 0 var(--space-2); height: calc(var(--space-4) + var(--space-1)); border-radius: var(--radius-round); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap; background: var(--bg-3); color: var(--fg-2); }
-.console .bib-lic.is-open, .console .bib-lic.is-pd { background: var(--prev-tint); color: var(--prev-fg); }
+.console .bib-lic.is-open, .console .bib-lic.is-pd { background: var(--ok-tint); color: var(--ok-fg); }
 .console .bib-lic.is-own { background: var(--brand-tint); color: var(--brand); }
 .console .bib-nt { margin-left: var(--space-2); font-size: var(--fs-meta); color: var(--warn-fg); white-space: nowrap; }
 .console .cfg .bib-own { padding: var(--space-2) var(--space-1) 0; }
 .console .ob-dialog .ob-steps { display: flex; gap: var(--space-1); flex-wrap: wrap; }
 .console .ob-dialog .ob-steps > span { padding: var(--space-1) var(--space-2); border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-3); font-size: var(--fs-meta); }
 .console .ob-dialog .ob-steps > .is-on { background: var(--brand-tint); color: var(--brand); font-weight: 600; }
-.console .ob-dialog .ob-steps > .is-done { color: var(--prev-fg); }
+.console .ob-dialog .ob-steps > .is-done { color: var(--ok-fg); }
 .console .ob-dialog .ob-file { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-control); background: var(--bg-1); }
 .console .ob-dialog .ob-file > .kx-i { color: var(--fg-3); }
 .console .ob-dialog .ob-file-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -1875,7 +1875,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg-net-thumb { flex: none; width: 128px; }
 .console .cfg-net-thumb .cfg-prev { width: 100%; }
 .console .cfg-outtab-dot { flex: none; width: 7px; height: 7px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--fg-3); }
-.console .cfg-outtab-dot.is-open { background: var(--air); box-shadow: none; }
+.console .cfg-outtab-dot.is-open { background: var(--ok); box-shadow: none; }
 /* Adicionar saída: the removed outputs come back from here. The wrapper is a
    search target (CfgKey), laid out like the tab column it sits in. */
 /* In an output's tab: the preview on top (the screen and its layout, in
@@ -1996,13 +1996,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Dimmed only outside a Windows contrast theme: there the fill below
    (forced colours) keeps the row on air, and the header's tag tells. */
 @media (forced-colors: none) {
-  .console .is-covered :is(.kx-slide, .onair-card).is-air:not(.is-prev) { background: color-mix(in srgb, var(--brand) 9%, var(--bg-2)); }
-  .console .is-covered :is(.kx-slide, .onair-card).is-air { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--live) 45%, transparent); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air:not(.is-prev) { background: color-mix(in srgb, var(--live) 7%, var(--bg-2)); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--live) 40%, transparent); }
   .console .is-covered :is(.kx-slide, .onair-card).is-air :is(.kx-slide-n, .kx-slide-lab),
   .console .is-covered .kx-row.is-air .kx-row-title { color: var(--fg-2); }
   .console .is-covered :is(.kx-slide, .onair-card).is-air .kx-slide-body { opacity: .7; }
-  .console .is-covered .kx-row.is-air { background: var(--bg-2); }
-  .console .is-covered .kx-row.is-air::before { opacity: .35; }
+  .console .is-covered .kx-row.is-air { background: var(--bg-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--air) 35%, transparent); }
 }
 
 /* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):

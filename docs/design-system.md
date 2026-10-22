@@ -43,7 +43,7 @@ network pages keep their own, pinned value by value, with the reason).
 | --- | --- |
 | Grounds and lines | `--bg-0` the console's ground · `--bg-1` modules, THE window · `--bg-2` fields, popovers, hover · `--bg-3` pressed, selected · `--bg-4` pressed inside THE window's panels · `--line` hairlines · `--line-strong` the splitter on hover · `--line-overlay` the ring of what floats · `--line-soft` lines inside what floats. |
 | Text | `--fg-1` content · `--fg-2` UI labels, glyphs at rest · `--fg-3` metadata, headers, placeholders. |
-| States | `air` red (on air), `prev` green (prepared), `rh` blue (locked), `warn` amber, each as the mark, `-fg` text, `-fill` (+ `-hover`, `-pressed`) and `-tint`; `--on-state`, `--on-warn`. In the slide lists: `--live` (the brand gold), `--live-fg`, `--live-bg` (36 % gold over bg-2), `--prev-bg` (16 % green over bg-2), `--live-bar`, `--next-bar`, `--verse-pressed`. |
+| States | `air` green (ao vivo), `prev` gold (selecionado, the Prévia), `rh` blue (locked, and marked), `warn` amber, each as the mark, `-fg` text and `-tint`; `danger` red (alerts; `air-fill` the red buttons Encerrar/Excluir), `ok` green (connected, done; never on air); `prev-fill` is *Enviar ao ar*'s green; `--on-state`, `--on-warn`. In the slide lists: `--live` (= `air`), `--live-fg`, `--live-bg` (16 % green over bg-2), `--prev-bg` (34 % gold over bg-2), `--live-ring`, `--prev-ring`, `--next-ring`, `--verse-pressed`. |
 | Brand | `--brand` gold (+ `-hover`, `-pressed`, `-tint`) · `--on-brand`. |
 | Over a screen | `--screen-bg` · `--screen-fg` · `--chrome-on-screen` (a pill, a badge) · `--chrome-ring` · `--chrome-sep` · `--chrome-hover` · `--chrome-pressed` · `--screen-text` (the projected text's shadow). |
 | Type scale | `--fs-meta` 11 · `--fs-ui` 12 · `--fs-content` 13 · `--fs-content-lg` 14 · `--fs-live` 16 · `--fs-clock` 20 · `--fs-count` 28 px. Kept in px: the logo's K, a font specimen, the sync code. Screens size in cqw, off this scale. |
@@ -337,17 +337,17 @@ compositions), it is given.
 - **The row.** Edge to edge, a 1 px `line` separator, no card; 14/20 in
   Confortável, tighter in Compacta. A line too long ends in "…" (the whole
   text is the tooltip and the Prévia).
-- **States.** The background plus a bar on the left edge: **on air the gold**
-  (`--live-bg` and the 3 px `--live-bar`; the rest of the console keeps
-  `air` red for "no ar"); **the Prévia** the dark green wash (`--prev-bg`;
-  1.56:1 in lightness against the gold, `stateColors.test.mjs` holds ≥ 1.4
-  and ΔE ≥ 20 for protans and deutans); **the next slide** the 2 px `fg-3`
-  `--next-bar` and an `fg-1` number; on air and in the Prévia at once, the
-  Prévia's wash, the gold bar and the number on a `live` chip. Labels and
-  numbers pass AA: `fg-2` on the Prévia's wash, `fg-1` on the gold one. A row
+- **States.** The background plus a 1 px ring of its colour, never a bar:
+  **on air the green** (`--live-bg`, 16 %, and `--live-ring`); **selected
+  (the Prévia)** the gold (`--prev-bg`, 34 %, and `--prev-ring`; 1.49:1 in
+  lightness against the green, `stateColors.test.mjs` holds ≥ 1.4 and ΔE ≥ 20
+  for protans and deutans); **the next slide** the grey `--next-ring` and an
+  `fg-1` number; on air and selected at once, the gold wash, the green ring
+  and the number on a green chip. Labels and numbers pass AA: `fg-2` on the
+  green wash, `fg-1` on the gold one. A row
   with a background drops its separator. The keys land the highlight at once;
   only the pointer's hover eases.
-- **Contrast theme.** The bars are box-shadows and vanish: on air fills with
+- **Contrast theme.** The rings are box-shadows and vanish: on air fills with
   `Highlight`, the Prévia a dashed `LinkText` ring, next a dotted ring.
 - **Don't** card a slide, or tell on air from the Prévia by hue alone.
 
@@ -366,8 +366,8 @@ compositions), it is given.
 
 - `kx-verse` (Ler, Buscar): a **card**, `bg-2`, `radius-control`, 4 px apart
   (prose reads better in a box), the number right-aligned in 24 px, the text
-  wrapping. Its states are the slide's (the Prévia's wash; the gold wash and
-  bar on air; the number on a gold chip when both); hover `bg-3`, pressed
+  wrapping. Its states are the slide's (the gold wash and ring selected; the
+  green wash and ring on air; the number on a green chip when both); hover `bg-3`, pressed
   `--verse-pressed`; a note is a mark in its corner (`has-note`).
 - `kx-book`: a Bíblia cell, 36 px, `bg-2`, a 2 px bar in its group's colour
   (`--group`), `is-selected` with a `line-strong` outline.
@@ -687,6 +687,14 @@ Kept so old commits and the canvas make sense; none of this is a rule.
   bar, the green to 16 %, the next slide got its grey bar; the switch went
   neutral (it was the Prévia's green, so *ligado* read as *preparado*);
   Encerrar stands apart in the pill; the keyboard's ring over gold is light.
+- **2026-10-22 — Rodada P** (P1 = B, the owner's note "verde para ao vivo,
+  dourado para selecionado, cinza para próximo"): one colour per state in the
+  whole console — green on air (it was gold in the slide lists and red
+  elsewhere), gold selected (it was green), a grey ring on the next; red only
+  for alerts and Encerrar (`danger`), green OK apart from the state (`ok`); no
+  left bars, a light wash and a 1 px ring instead (the gold the lighter wash,
+  34 % against 16 %, for colour-blind operators). "Selecionar todos" (the two
+  check marks) beside "Limpar a seleção" in every selection bar.
 - **2026-10-20 — Rodada DS2** (`d6_escala` = "sete"): the type scale of seven
   sizes (the old 9, 10 and 10.5 px went to 11, 11.5 to 12, 12.5 to 13) and the
   named layers replaced 13 hand-typed sizes and 29 z-index numbers.

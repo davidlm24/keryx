@@ -65,7 +65,7 @@
 /* An Escola bíblica question's options under it, the right one marked (StageScreen). */
 .ns-cur:has(> .ns-answer) { align-content: center; gap: 4cqmin; }
 .ns-answer { display: flex; flex-wrap: wrap; justify-content: center; gap: .4em 1.2em; font-size: .5em; font-weight: 500; color: var(--fg-2); }
-.ns-answer .is-right { color: var(--prev-fg); font-weight: 700; }
+.ns-answer .is-right { color: var(--ok-fg); font-weight: 700; }
 /* Inline chords: each syllable with its chord riding above it; wrapping
    happens between segments. Chord-less lines render plain, saving height. */
 .ns-chorded { display: block; width: 100%; }
@@ -128,7 +128,7 @@
 .np-item { display: flex; align-items: baseline; gap: 1.4cqmin; padding: 1.4cqmin 1.8cqmin; border-radius: 1.2cqmin; background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); }
 .np-item b { flex: 1; min-width: 0; font-size: calc(2.8cqmin * var(--kp-text, 1)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-item span { flex: none; font-size: calc(1.9cqmin * var(--kp-text, 1)); color: var(--fg-3); }
-.np-item.is-next { background: var(--prev-tint); box-shadow: inset 3px 0 0 var(--prev); }
+.np-item.is-next { background: color-mix(in srgb, var(--fg-3) 14%, transparent); box-shadow: var(--next-ring); }
 .np-empty { font-size: 2.2cqmin; color: var(--fg-3); }
 .np-prog { display: flex; gap: .6cqmin; }
 .np-prog i { flex: 1; height: 1cqmin; min-height: 5px; border-radius: 999px; background: var(--bg-3); }

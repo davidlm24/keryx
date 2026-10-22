@@ -4,12 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// On air and Prévia in the console's lists (Rodada DS1, owner 2026-10-20,
-// d1_noar = "mix do A com D"). Two audits found the two washes differed by
-// hue alone: gold 24 % and green 24 % over bg-2 were 1.06:1 in lightness and
-// nearly one colour to a protanope. The owner's fix splits them in lightness
-// (gold 36 %, green 16 %) and adds a gold bar on air; this keeps the numbers
-// honest when a token or a percentage changes. The washes are tokens since
+// On air and selected (the Prévia) in the console's lists. Rodada P (owner
+// 2026-10-22, P1 = B): green = on air, gold = selected, a light wash plus a
+// 1px ring of each colour, no left bars. Two audits (Rodada DS1) found that
+// washes of the same strength differ by hue alone (1.06:1 in lightness, one
+// colour to a protanope), so the gold wash is the lighter one (34 % against
+// green 16 %); this keeps the numbers honest when a token or a percentage
+// changes. The washes are tokens since
 // Rodada DS2 and are read, with the colours they mix, from
 // docs/design-system/tokens.css; the rules that wear them from bundle.css
 // (the slide's component since Rodada DS3), so the test follows what ships.
@@ -79,17 +80,21 @@ test("on air and Prévia stay apart for protanopes and deuteranopes", () => {
 test("the labels and numbers on the washes pass AA", () => {
     const fg1 = token("--fg-1"), fg2 = token("--fg-2");
     const aa = (fg, bg, what) => { const r = contrast(fg, bg); assert.ok(r >= 4.5, `${what}: ${r.toFixed(2)}:1`); };
-    aa(fg2, prev, "fg-2 on the Prévia's wash");
-    aa(fg1, air, "fg-1 on the on-air wash");
-    // fg-2 on the gold wash is 4.15:1 at 36 %: the console draws the label
+    aa(fg2, air, "fg-2 on the on-air wash");
+    aa(fg1, prev, "fg-1 on the selected wash");
+    // fg-2 on the gold wash is 4.3:1 at 34 %: the console draws the label
     // and the number there in fg-1. Pin the rule so nobody puts fg-2 back.
-    assert.match(BUNDLE, /\.is-air > :is\(\.kx-slide-n, \.kx-verse-n\), \.kx \.is-air \.kx-slide-lab \{ color: var\(--fg-1\); \}/);
-    assert.match(BUNDLE, /\.is-prev > \.kx-slide-n, \.kx \.is-prev > \.kx-verse-n, \.kx \.is-prev \.kx-slide-lab \{ color: var\(--fg-2\); \}/);
+    assert.match(BUNDLE, /\.is-prev > \.kx-slide-n, \.kx \.is-prev > \.kx-verse-n, \.kx \.is-prev \.kx-slide-lab \{ color: var\(--fg-1\); \}/);
+    assert.match(BUNDLE, /\.is-air > :is\(\.kx-slide-n, \.kx-verse-n\), \.kx \.is-air \.kx-slide-lab \{ color: var\(--fg-2\); \}/);
 });
 
-test("on air carries a bar that does not depend on colour, the next slide its own", () => {
-    assert.match(TOKENS_CSS, /--live-bar:\s*inset 3px 0 0 var\(--live\)/);
-    assert.match(TOKENS_CSS, /--next-bar:\s*inset 2px 0 0 var\(--fg-3\)/);
-    assert.match(BUNDLE, /\.kx \.kx-slide\.is-air, \.kx \.kx-verse\.is-air, \.kx \.onair-card\.is-air \{ background: var\(--live-bg\); box-shadow: var\(--live-bar\); \}/);
-    assert.match(BUNDLE, /\.kx :is\(\.kx-slide, \.onair-card\)\.is-next \{ box-shadow: var\(--next-bar\); \}/);
+test("each state carries a ring of its colour, the next slide a grey one, and no left bar", () => {
+    assert.match(TOKENS_CSS, /--live-ring:\s*inset 0 0 0 1px color-mix\(in srgb, var\(--air\) 75%, transparent\)/);
+    assert.match(TOKENS_CSS, /--prev-ring:\s*inset 0 0 0 1px color-mix\(in srgb, var\(--prev\) 75%, transparent\)/);
+    assert.match(TOKENS_CSS, /--next-ring:\s*inset 0 0 0 1px var\(--line-strong\)/);
+    assert.match(BUNDLE, /\.kx \.kx-slide\.is-air, \.kx \.kx-verse\.is-air, \.kx \.onair-card\.is-air \{ background: var\(--live-bg\); box-shadow: var\(--live-ring\); \}/);
+    assert.match(BUNDLE, /\.kx \.kx-slide\.is-prev, \.kx \.kx-verse\.is-prev, \.kx \.onair-card\.is-prev \{ background: var\(--prev-bg\); box-shadow: var\(--prev-ring\); \}/);
+    assert.match(BUNDLE, /\.kx :is\(\.kx-slide, \.onair-card\)\.is-next \{ box-shadow: var\(--next-ring\); \}/);
+    assert.doesNotMatch(TOKENS_CSS, /--(live|next)-bar:/);
+    assert.doesNotMatch(BUNDLE, /\.kx-row\.is-(air|prev|rh)::before \{ background/);
 });

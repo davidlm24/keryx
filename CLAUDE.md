@@ -1042,7 +1042,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   bottom-right** (`ProgramaPill` in CenterPanel.jsx, the Pill component
   `kx-pill` of bundle.css beside the old `.prog-pill`, Monitor
   children so it rides the Multiview too): a dot in the state's colour
-  (red on air, blue locked with the "Travado" word, amber when an output
+  (green on air, blue locked with the "Travado" word, amber when an output
   failed, grey "Nada no ar"), the title (in that colour, **no "Programa"
   word**, owner 2026-10-14) **only when the player does not name the item**
   (owner's pick A, Rodada F1, `airInPlayer` in caption.js, tested: a video
@@ -1054,7 +1054,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   anterior (its popover opens above the pill), the Camadas drawer (only
   while Camadas is in the tray), Multiview and the screen actions Tela
   preta, Logo, Limpar (owner's pick B), then a separator and **Encerrar
-  apart, in `--air-fg`** (`pp-end`, icon only; Rodada DS1 — "Travado"
+  apart, in `--danger-fg`** (`pp-end`, icon only; Rodada DS1 — "Travado"
   is 12 px; the Programa's menu ends with it after a separator). As the screen narrows
   (container queries on the screen, `prog-screen`) it **folds once**: at
   560 px only "2 telas" goes; at 480 every `.pp-full` button (Voltar,
@@ -1067,7 +1067,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
   locked), and **an Enviar ao ar pill inside the screen, bottom-right, in
   the Programa pill's style** (owner 2026-10-20, Rodada N5; `PreviaPill`,
-  `.prog-pill.prev-pill`: a green dot and the button, "Usar o tema" for a
+  `.prog-pill.prev-pill`: a gold dot (selecionado) and the button, "Usar o tema" for a
   theme's example, aria-disabled with the reason in its tooltip while
   `sendBlock` refuses — locked, a PDF preparing, a file coming or missing;
   only its glyph on a narrow Prévia, `prev-screen`; the "não vai mostrar"
@@ -1141,21 +1141,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and verses are rows** (owner 2026-10-14, the small-screen review; they
   were cards): in a list (the Slides column, No ar in a column, Ler,
   Buscar) each is a row with a 1 px separator and no card, so a short
-  screen shows more; the state is the row's background **plus a 3 px gold
-  bar on air and a 2 px grey bar on the next** (Rodada DS1, owner
-  2026-10-20, "mix do A com D"; replaces "never a border or a side bar":
-  on air and Prévia differed by hue alone) — on air the brand's gold, a
-  light wash (`--live-bg` 36 %) and the `--live` bar (`--live-bar`; the
-  rest of the console keeps red for "no ar"), the Prévia a dark green wash
-  (`--prev-bg` 16 %; 1.56:1 against the gold, `stateColors.test.mjs`
-  holds ≥ 1.4 and the protan/deutan ΔE), the next slide the `fg-3` bar
-  (`--next-bar`) and an `fg-1` number; on air and in the Prévia at once,
-  green, the gold bar and the number on a gold chip; the labels and numbers
-  on a wash pass AA (`fg-2` on the Prévia's, `fg-1` on the gold one); a
-  done row dims only its glyph; a note is a mark in the corner. The bars
-  are inset box-shadows (a contrast theme drops them; its block draws the
-  states), and the keyboard's ring over a gold wash is `fg-1`, gold
-  elsewhere. **Switches** (`kx-switch` in bundle.css, beside the old
+  screen shows more. **One colour per state, everywhere** (Rodada P, owner
+  2026-10-22, P1 = B; replaces DS1's gold-on-air and red elsewhere):
+  **green = ao vivo** (`air`/`live` tokens: rows, cells, slides, the
+  Programa's dot and frames), **gold = selecionado** (the Prévia: `prev`
+  tokens, the brand's gold as a state), **grey = próximo** (`--next-ring`),
+  **red only alerts and Encerrar** (`danger`, `air-fill` for the red
+  buttons), green "OK/connected/done" is `ok` (never the on-air tokens);
+  marked (several) and Travado stay blue. **No left bars anywhere**: the
+  state is a light wash plus a 1px ring of its colour (`--live-ring`,
+  `--prev-ring`) — the green wash 16 %, the gold one 34 % so they differ
+  in lightness too (`stateColors.test.mjs` holds ≥ 1.4:1 and the
+  protan/deutan ΔE); on air and selected at once: the gold wash, the green
+  ring and the number on a green chip; labels and numbers on a wash pass AA
+  (`fg-2` on the green one, `fg-1` on the gold one); a done row dims only
+  its glyph; a note is a mark in the corner. The rings are inset
+  box-shadows (a contrast theme drops them; its block draws the states),
+  and the keyboard's ring over a gold wash is `fg-1`, gold elsewhere. **Switches** (`kx-switch` in bundle.css, beside the old
   `.sw2`; role=switch, every one: SwitchRow, the
   Saídas rows, the Setlist's Autoplay, Abrir ao iniciar) are 32 × 20 —
   `kx-switch-sm`, 24 × 14, in a panel header (the Autoplay) —, on = an
@@ -1313,7 +1315,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   through `useMultiSelect` (mode "gallery": a click picks one; "air": a plain
   click clears and the list prepares as always, M1 = A), with `SelectManyBtn`
   ("Selecionar vários", never "Selecionar" alone), `RowMark` and `SelBar` from
-  kx.jsx and the `is-marked` state (`--sel-bg`/`--sel-ring`, the blue of
+  kx.jsx and the `is-marked` state ("Selecionar vários" stays in the
+  header; once something is marked the SelBar shows "Selecionar todos" —
+  the Bíblia's two check marks, `checks`, Ctrl+A too — beside "Limpar a
+  seleção": `onAll`/`total`, Rodada P6; the Mídia's side panel has it too;
+  `--sel-bg`/`--sel-ring`, the blue of
   Travado). Ctrl/Shift + click and the mode never prepare or send; Esc clears a
   console list's selection before the air (`selections`,
   selectionStore.js; keys.js ESC_ORDER "selection"), a page of THE window

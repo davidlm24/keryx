@@ -250,7 +250,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                         {cls && <Seg small label="Materiais de" value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
                         <IconBtn name="plus" small title="Novo material" onClick={() => onEditMaterial?.(null, onlyClass ? cls?.id : "")} />
                     </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                        <SelBar count={picked.length} onClear={ms.clear}>
+                        <SelBar count={picked.length} total={listedIds.length} onAll={ms.all} onClear={ms.clear}>
                             <Btn small onClick={() => removeMany()} title="Excluir os materiais marcados · Delete">Excluir…</Btn>
                         </SelBar>
                         <div className={`sv-scroll ${ms.picking ? "is-picking" : ""}`} onKeyDown={(e) => { if (!ms.keyDown(e)) listKeys(e); }}>

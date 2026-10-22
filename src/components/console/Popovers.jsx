@@ -136,7 +136,7 @@ function useAnchor(selector, width, active) {
     return box;
 }
 
-const TONE_DOT = { ok: "var(--prev)", rh: "var(--rh)", warn: "var(--warn)", off: "var(--fg-3)" };
+const TONE_DOT = { ok: "var(--ok)", rh: "var(--rh)", warn: "var(--warn)", off: "var(--fg-3)" };
 const TONE_CLS = { ok: "", rh: "is-rh", warn: "is-warn", off: "is-off" };
 
 export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, idle, onIdle, onSettings }) {

@@ -210,7 +210,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
             {sort.slot}
             {canReorder && <div className="rund-tail" data-sort-tail="" aria-hidden="true" />}
         </div>
-        <SelBar count={picked.length} onClear={ms.clear}>
+        <SelBar count={picked.length} total={order.length} onAll={ms.all} onClear={ms.clear}>
             <Btn small onClick={takeOutPicked} title={`Tirar da setlist · ${keyHint("delete")}`}>Tirar da setlist…</Btn>
         </SelBar>
         </>

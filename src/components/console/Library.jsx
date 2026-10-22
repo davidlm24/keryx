@@ -392,7 +392,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                     </>
                 );
             })()}
-            <SelBar count={picked.length} feminine={tab === "letras"} onClear={ms.clear}>
+            <SelBar count={picked.length} total={order.length} onAll={ms.all} feminine={tab === "letras"} onClear={ms.clear}>
                 <Btn small onClick={() => exportRows(picked)} title="Exportar num pacote do KERYX, com os arquivos que usam">Exportar…</Btn>
                 <Btn small onClick={() => removeRows(picked)} title={`Excluir · ${keyHint("delete")}`}>Excluir…</Btn>
             </SelBar>

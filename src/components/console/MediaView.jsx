@@ -369,7 +369,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
             </div>
             <MediaDetail picked={picked} categories={allCats} kind={(m) => (isYouTube(m) ? "YouTube" : KIND[m.type] || m.type)} length={mmss} size={bytes}
                 onPrev={(m) => c.setPrev(stageFromMedia(m))} onSend={send} onRename={(m) => { ms.set([m.id]); setRenaming(m.id); }} onLocate={locate}
-                onCategory={recategorise} onExport={exportRows} onRemove={remove} onPlay={sequence} onClear={ms.clear} />
+                onCategory={recategorise} onExport={exportRows} onRemove={remove} onPlay={sequence} onClear={ms.clear} onAll={ms.all} total={shown.length} />
         </div>
         </>
     );
@@ -379,7 +379,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
 // B3-2 = C): the file chosen — its picture, what it is, its length and size,
 // its category, and what can be done with it —; with several marked, how
 // many and what can be done with them all; with none, where to start.
-function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onRename, onLocate, onCategory, onExport, onRemove, onPlay, onClear }) {
+function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onRename, onLocate, onCategory, onExport, onRemove, onPlay, onClear, onAll, total }) {
     const catSelect = (value, rows) => (
         <select className="pl-pick" value={value} onChange={(e) => e.target.value && onCategory(e.target.value, rows)} aria-label="Categoria">
             {!value && <option value="">Mudar para…</option>}
@@ -398,6 +398,7 @@ function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, o
                     <Btn small onClick={onPlay} title="Um após o outro">Tocar em sequência</Btn>
                     <Btn small onClick={() => onExport(picked)} title="Exportar num pacote do KERYX, com os arquivos">Exportar…</Btn>
                     <Btn small onClick={() => onRemove(picked)} title="Excluir da Mídia · Delete"><Icon name="trash" />Excluir…</Btn>
+                    {picked.length < total && <Btn small onClick={onAll} title="Ctrl+A"><Icon name="checks" />Selecionar todos</Btn>}
                     <Btn small onClick={onClear} title="Esc"><Icon name="x" />Limpar a seleção</Btn>
                 </div>
             </aside>
