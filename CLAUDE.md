@@ -16,7 +16,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   labels and toasts are pt-BR (tela, salvar, arquivo, excluir, celular,
   cronômetro, usuário) — the church is Brazilian; do not use pt-PT forms
   (ecrã, guardar, ficheiro, eliminar, telemóvel). Do not introduce English UI
-  copy. Code identifiers and comments are English.
+  copy. Code identifiers and comments are English. **The one exception is
+  "Autoplay"** (owner 2026-10-21, Rodada O3): the label of the Setlist's
+  switch is that English word, by the owner's explicit choice; its tooltip,
+  toasts and every other mention stay pt-BR ("Avançar sozinho"; the
+  aria-label is "Autoplay: avançar sozinho", the visible word first). Don't
+  add another English word on the strength of it.
 - **Copy rules (owner 2026-10-13/14).** One word per concept, everywhere:
   **Papel de parede** (o que as telas mostram sem nada no ar, depois do Esc
   e entre os itens — do culto do dia, com o da igreja como "Qualquer outro
@@ -33,8 +38,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   rede = conectada/desconectada); Pôr na prévia / Enviar ao ar; Fixar no
   console; Exemplo (nunca "amostra"); posições Alto/Meio/Baixo e
   Esq./Centro/Dir.; "Do computador…" (never "Enviar arquivos"); "Link do
-  YouTube…"; Aviso rápido; Atalhos (one place: Ajuda); "Temas e fundos" (the
-  section's one name, "Fundos" the library alone); "Instalar e
+  YouTube…"; Aviso rápido; Atalhos (one place: Ajuda); "Autoplay" (the
+  Setlist's switch, the one English word, Rodada O3: see above); "Temas e
+  fundos" (the section's one name, "Fundos" the library alone); "Instalar e
   reiniciar"; Ver › "Editar disposição" (o arranjo do console — "layout" é
   das telas). Heading hierarchy: the page title is the Panel's header; a
   listhead is a smaller sub-title (its "· hint" never in caps, console.css)
@@ -103,9 +109,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`--space-1`) in from the column, with its text at 12 px; listheads and
   sub-titles ("Selecionado", a Temas heading inside Camadas) at 12 px;
   Capítulos is as tall as its cells, up to 40 % of the column (`Measure` →
-  the Bíblia's `fitDock` `locked`, Console.jsx); every panel header is 32 px, 28 in
-  Compacta (`panelHead`), one line — a header never wraps into a taller
-  block. No text a panel does not need (owner 2026-10-16, the Bíblia
+  the Bíblia's `fitDock` `locked`, Console.jsx); every panel header is 36 px, 32 in
+  Compacta (owner 2026-10-21, Rodada O5: the tokens `panel-head` and
+  `panel-head-compact`; `panelHead` in layout.js and dock.js `PANEL_HEAD`
+  keep the locked heights in step), one line — a header never wraps into a
+  taller block. No text a panel does not need (owner 2026-10-16, the Bíblia
   review): no hints in headers, no "installed here" lines, counts inside
   the lists they count (the Bíblia's dropdowns), never on their button.
   Don't give one panel its own inset. **Configurações' groups** (Rodada H1,
@@ -120,8 +128,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   one-line string the section computes from its own values (`outputsSummary`,
   `syncSummary`, `src/lib/console/cfgSummaries.js`; tested), shown only while
   closed — never in a header hint; a title never repeats the page's (Backup,
-  Dados and Atualizações are accepted), is the console's grey caption at
-  weight 600, not gold; every new `CfgGroup k` goes in settingsSearch.js.
+  Dados and Atualizações are accepted), is 13 px `fg-1` at 600 in sentence
+  case, not gold, and a static group has no chevron slot (Rodada O10 = C,
+  owner 2026-10-21); **the first static group right under a panel's title
+  shows no title of its own** (Planejar o culto's Dados under Culto, the song
+  editor's, the Editor de temas' Nome e padrão, the first area of a
+  Configurações section): one rule in console.css by structure, the title
+  kept for screen readers and the search; every new `CfgGroup k` goes in
+  settingsSearch.js.
 - **Every panel folds** (owner 2026-10-16, Rodada F4): a chevron right of
   the header's + (`FoldBtn` in kx.jsx; "Dobrar"/"Abrir"), on every module
   but the Programa, the Prévia, the player and the Bíblia's panels
@@ -733,8 +747,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   there), Relatórios (`ReportsView.jsx`) and the theme/screen editors.
   **One floating window over the live console**, the Configurações frame
   on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2, the
-  title, the page's tools and actions, the (x) "Fechar · Esc"; there is
-  no "← Console" BackBtn any more), the Window component of bundle.css
+  title, the window's actions, the (x) "Fechar · Esc"; there is
+  no "← Console" BackBtn any more). **The window is one surface**
+  (owner 2026-10-21, Rodada O7 = A): `bg-1` under the bar and the page, the
+  bar parted only by its `line-soft` rule, a faint ring and a deep
+  `shadow-window`; the page's panels start right under the rule, one grey
+  step up (`.win-body .kx-panel`: `bg-2`, fields `bg-3`, pressed `bg-4`).
+  **Lean bars**: the bar holds the title and what acts on the whole window
+  (Desfazer/Refazer, Cancelar, Salvar, Destacar, ×); what acts on the
+  content goes in the page — Configurações' search at the top of its nav,
+  the Editor da tela's Mostrar com in the canvas header, the Editor de
+  temas' theme select and Excluir… in the form's header, the Mídia's search
+  and Adicionar in its filter row, the song editor's ☆, Dados/Letra,
+  Excluir… and Imprimir in the Música panel, Relatórios' Período and search
+  at the top of the page, Sincronizar's Velocidade in the media's header
+  (Planejar o culto's bar is the tabs' own). **Side menus are fixed** (no
+  splitter: Configurações' nav, the Editor da tela's and the Tela ociosa's
+  Telas) **and start with Voltar** (O8: `WinBack`, `WinBar menuBack`);
+  a page without one keeps Voltar at the bar's left. The Window component of bundle.css
   (`kx-win`, beside the old `.win-dialog`; the `.win-scrim` and the
   `.win-body` layout stay in console.css), two sizes (Padrão, and `.is-editor` for the editors; the
   frame animates between them). **The window stretches by its 4 edges and 4 corners** (owner
@@ -742,8 +772,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `dragRect`/`clampWin` in `src/lib/console/winLayout.js`, tested): min
   760 × 480, never past the console, one size per kind kept on this computer
   (localStorage `keryx.console.win`); a double click on the bar's empty area
-  restores the default. **Inside a page, columns (and the song editor's
-  Slides/Vídeo) are resized by splitters as in the console** (`useWinCol`,
+  restores the default. **Inside a page, content columns (and the song editor's
+  Slides/Vídeo) are resized by splitters as in the console** (never a side
+  menu; a `kx-gap` stands beside one) (`useWinCol`,
   size per page per computer; double click restores), and the spacing is the
   Editor da tela's: 6 px between panels, side by side or stacked — `.win-body`
   has no flex gap, the splitter IS the gap; don't add a gap beside one. **Opening from inside navigates in the
@@ -918,7 +949,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   2026-10-14, `layout.onairSpan` "columns", the default; "window" puts it
   under every column, edge to edge — Editar disposição › No ar, dock.js
   `withBand`/`moveBand`/`bandOf`; a structure with no Setlist column
-  falls back to the window band); the strip is at least `ONAIR_H` (104 px)
+  falls back to the window band); the strip is at least `ONAIR_H` (108 px)
   and as tall as its slides' lines (`onAirHeight`; the cards at 13 px,
   each line one line);
   medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas, Temas and the
@@ -1046,7 +1077,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   states), and the keyboard's ring over a gold wash is `fg-1`, gold
   elsewhere. **Switches** (`kx-switch` in bundle.css, beside the old
   `.sw2`; role=switch, every one: SwitchRow, the
-  Saídas rows, Avançar sozinho, Abrir ao iniciar) are 32 × 20, on = an
+  Saídas rows, the Setlist's Autoplay, Abrir ao iniciar) are 32 × 20 —
+  `kx-switch-sm`, 24 × 14, in a panel header (the Autoplay) —, on = an
   `fg-1` track with a `bg-0` knob (never the Prévia's green). The No ar strip
   (low, across the window) keeps its cards. The classes stay
   `.kx-slide`/`.kx-verse` with `is-prev`/`is-air`/`has-note` (the smoke
@@ -1077,7 +1109,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (the hook's `keys`; what the drag carried is read at the drop, `carry`).
   Reduced motion: the same states, no animation. Keep `data-sort-row`,
   `data-sort-tail` and `is-sorting`: the smoke drives them with synthetic
-  DragEvents. There is no
+  DragEvents. **Marked rows drag together** (Rodada O2, owner 2026-10-21):
+  in the Setlist and Planejar o culto a marked row grabbed with others marked
+  takes them all (`useSortable`'s `group`; `moveManyTo`, `groupRoom` in
+  dropOrder.js, tested): they stay in place dimmed (`data-sort-held`), the
+  slot is as tall as the group, the card counts them (`.drag-card-n`), one
+  renumber; a section is never marked, so never in a group. From the
+  Biblioteca the drag carries every marked stage (`setDragStage` takes a
+  list, `getDragStages`): the Setlist adds them in order at the drop
+  (`addStageToSetlist`, one renumber, one toast, `addedSay`), the Prévia
+  and the Programa take only the first, into the Prévia, saying "Só o
+  primeiro vai para a prévia". There is no
   Ensaio: rehearsing is **"Travar telas"** (Saídas), the live state's
   `locked` flag, enforced in `applyOp` (status 423) so every sender
   obeys: while locked nothing new goes on air, anything can come off (Tela
@@ -1149,9 +1191,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **"Setlist"** in the UI; its right click (and Planejar) has "Tirar da
   setlist…" / "Tirar a seção…" (`setlistActions.js`: asks with
   `useConfirm`, then renumbers from the store; 0.2.19). **Setlist automática**
-  (owner 2026-10-20, Rodada N2): "Avançar sozinho" in the Setlist's header
-  is the culto's switch (`Service.autoplay`, synced); with it on, the item on
-  air that ends does what its "Ao terminar" says (`ServiceItem.end_action`:
+  (owner 2026-10-20, Rodada N2): "Autoplay" (Rodada O3; "Avançar sozinho"
+  in its tooltip) in the Setlist's header — whose count is only "· n itens ·
+  tempo", no culto name — is the culto's switch (`Service.autoplay`,
+  synced); with it on, the item on air that ends does what its "Ao terminar" says (`ServiceItem.end_action`:
   next — the default, "" and the old `autoAdvance` too — loop or stop; the
   row's menu and Planejar o culto): the next playable item (sections and
   disabled ones skipped) goes on air after the pause (`Service.autoplay_gap`,
@@ -1195,9 +1238,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Planejar o culto, Temas, the background library (manage only) and the Escola
   follow (Temas and the Escola in "air" mode: a plain click still edits or
   prepares; the library's marks get ONE question, "Excluir…" with the trash when
-  a file sent there goes for good, else "Tirar dos fundos…" (`backgroundRemoval`
-  in backgroundPrefs.js splitting the origins, `backgroundAction`/`Question` in
-  bulkDelete.js), its Esc through the host's `escRef`); the Temas panel and the
+  a file sent there goes for good, else "Tirar dos fundos…" (`backgroundRemoval`,
+  `backgroundAction` and `backgroundQuestion` in bulkDelete.js, out of the
+  outputs' bundle), its Esc through the host's `escRef`); the Temas panel and the
   short settings lists stay single.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. Every write
@@ -1453,7 +1496,28 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `startsWith("http")` working. A video's still is `Media.thumbnail_url`
   (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
   sent through `UploadFile`); it rides in the live item as `poster` for the
-  Prévia and shows on hover in the Biblioteca.
+  Prévia and shows on hover in the Biblioteca. **A video Fundo plays only on
+  the outputs and the Programa monitor** (Rodada O, item 11; like a generator,
+  `!preview || motion`): the Prévia, the Temas thumbnails and the library draw
+  `VideoStill` (the row's still by file, `src/lib/videoFiles.js`, filled by
+  the console and /Janela; else the paused first frame) — one file decoded
+  15 times kept the loops still. A video's codec is read from its bytes
+  (`src/lib/videoCodec.js`, tested: the MP4/MOV `stsd`, bit depth and chroma
+  from hvcC/avcC/av1C/vpcC) on import and by `useCodecBackfill` (HTTP Range)
+  into `Media.video_codec`/`video_bit_depth`/`video_chroma`. **A video that
+  may freeze is refused, never converted** (owner's O11 = B, 2026-10-21:
+  `codecProblem` = HEVC, H.264 above 8 bits or not 4:2:0; a codec the reader
+  does not name passes) by `uploadFile` (mediaImport.js), **the one door
+  for a file the operator picks** — the Mídia, the backgrounds, the song and
+  aviso editors, an Escola material, a screen's design, Localizar…, the logo;
+  `uploadFile.test.mjs` fails on any other `Core.UploadFile` call but the
+  stills KERYX draws and a font — with `codecRefusal`'s words (HandBrake,
+  "Fast 1080p30"; several at once are one sentence, `refusalSummary`, first
+  in the toast); Localizar… clears the old file's codec; a row already in the
+  library keeps its file and wears `CodecMark` ("HEVC · pode não tocar",
+  amber, `.codec-mark`) in the Fundos' tiles, the Mídia and the Biblioteca,
+  and the background library will not pick it for anything new. All the
+  words are videoCodec.js's.
 - **Apresentações are PDF only** (owner 2026-10-16, Rodada F3, "Só PDF"):
   when a PDF reaches the Mídia the console renders its pages with pdf.js
   (`pdfjs-dist`, a devDependency bundled by Vite; its worker and data files

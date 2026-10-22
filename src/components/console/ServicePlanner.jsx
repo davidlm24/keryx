@@ -5,13 +5,18 @@ import { useChurch } from "@/hooks/useChurch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar, rowKeyDown } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar, rowKeyDown, SelectManyBtn, SelBar, RowMark } from "./kx";
+import { useMultiSelect } from "./useMultiSelect";
+import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
+import { takeOutManyQuestion } from "@/lib/console/bulkDelete";
+import { keyHint } from "@/lib/console/keys";
+import { menuItem } from "@/lib/console/menuLabels";
 import { useContextMenu } from "./ContextMenu";
 import useRowStep from "./useRowStep";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
-import { takeOut, takeOutQuestion } from "./setlistActions";
+import { takeOut, takeOutQuestion, takeOutMany } from "./setlistActions";
 import useSortable from "./useSortable";
-import { moveTo } from "@/lib/console/dropOrder";
+import { moveTo, moveManyTo } from "@/lib/console/dropOrder";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readChapter } from "@/lib/bibleText";
 import { bibleVersionWanted } from "./BibleEnv";
@@ -94,12 +99,6 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const renumber = async (list) => {
         for (const [i, it] of list.entries()) if (it.order !== i) await keryx.entities.ServiceItem.update(it.id, { order: i });
     };
-    // A row dropped at a slot of the setlist, lit in gold while it is dragged
-    // (useSortable; dropOrder.js).
-    const sort = useSortable({ keys: items.map((it) => it.id), onDrop: (from, over) => { if (from >= 0) run(renumber(moveTo(items, from, over))); } });
-    // Without dragging (C-16): the row's menu (Subir, Descer) and Alt+↑ /
-    // Alt+↓ on a focused row; Enter or Space opens its details (Row).
-    const step = useRowStep({ ids: items.map((it) => it.id), listRef: sort.listProps.ref, onMove: (from, over) => run(renumber(moveTo(items, from, over))) });
     const menu = useContextMenu();
     const updateItem = (id, patch) => run(keryx.entities.ServiceItem.update(id, patch));
     const duplicate = async (it) => {
@@ -112,6 +111,31 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     };
     // Tirar da setlist: the same question and action as the console's
     // Setlist (setlistActions.js, 0.2.18).
+    // Selecting several items (multiSelect.js, owner 2026-10-21): Ctrl/Shift +
+    // click and "Selecionar vários" (the Setlist panel's header) mark; a plain
+    // click still opens an item's details. Sections are headers: not marked.
+    // A page of THE window: Esc clears it through escRef (register: false).
+    const order = useMemo(() => items.filter((it) => !isSection(it)).map((it) => it.id), [items]);
+    const allIds = useMemo(() => items.map((it) => it.id), [items]);
+    const ms = useMultiSelect({ order, existing: allIds, mode: "air", register: false });
+    const picked = pickedOf(ms.sel, items);
+    // A row dropped at a slot of the setlist, lit in gold while it is dragged
+    // (useSortable; dropOrder.js). A marked row grabbed with others marked
+    // takes them all, in the list's order, one renumber (Rodada O2).
+    const markedIdxs = (k) => (picked.length > 1 && !isSection(items[k]) && ms.has(items[k]?.id) ? items.flatMap((it, i) => (ms.has(it.id) && !isSection(it) ? [i] : [])) : null);
+    const sort = useSortable({ keys: items.map((it) => it.id), group: markedIdxs, onDrop: (from, over, _carry, group) => { if (group) run(renumber(moveManyTo(items, group, over))); else if (from >= 0) run(renumber(moveTo(items, from, over))); } });
+    // Without dragging (C-16): the row's menu (Subir, Descer) and Alt+↑ /
+    // Alt+↓ on a focused row; Enter or Space opens its details (Row).
+    const step = useRowStep({ ids: items.map((it) => it.id), listRef: sort.listProps.ref, onMove: (from, over) => run(renumber(moveTo(items, from, over))) });
+    const takeOutPicked = async () => {
+        const rows = picked;
+        if (!rows.length) return;
+        if (rows.length === 1) { await removeItem(rows[0]); return; }
+        if (!(await ask(takeOutManyQuestion(rows.map((it) => it.title || typeLabel(it.type)))))) return;
+        setSel(null);
+        ms.clear();
+        await run(takeOutMany(rows), `${rows.length} itens tirados da setlist.`);
+    };
     const removeItem = async (it) => {
         if (!(await ask(takeOutQuestion(it)))) return;
         setSel(null);
@@ -182,7 +206,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     // Voltar chip ("back") and the (x) ("all") leave at once — nothing to
     // guard, the planner saves as it goes. The console never ends the
     // projection from here.
-    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(null); else if (pop) setPop(null); else onClose(); };
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(null); else if (pop) setPop(null); else if (ms.count || ms.picking) ms.clear(); else onClose(); };
 
     // The bar: the culto picker, and the Modelos menu that gathers the
     // three template actions the setlist header used to spread out
@@ -306,8 +330,8 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
             </div>
             {colCulto.split}
             <div className="col center">
-                <Panel className="pl-setlist" title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                    <div className={`pl-list ${sort.sorting ? "is-sorting" : ""}`} {...sort.listProps}>
+                <Panel className="pl-setlist" title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} actions={<SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                    <div className={`pl-list ${sort.sorting ? "is-sorting" : ""}`} {...sort.listProps} onKeyDown={(e) => ms.keyDown(e, { onDelete: takeOutPicked })}>
                         {!items.length && <Empty icon="list" title="Setlist vazia">Use os botões abaixo, um modelo, ou duplique o culto anterior.</Empty>}
                         {p.rows.map(({ item: it, at }, i) => {
                             // The rows around make room for a lit slot (useSortable,
@@ -330,18 +354,21 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                             const open = sel === it.id;
                             return (
                                 <div key={it.id} className="pl-sortrow" {...dragProps}>
-                                    <Row className={`pl-item ${it.enabled === false ? "is-done" : ""}`} state={open ? "is-selected" : ""} expanded={open}
-                                        lead={<span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span>}
+                                    <Row className={`pl-item ${it.enabled === false ? "is-done" : ""}`} state={`${open ? "is-selected" : ""} ${ms.has(it.id) ? "is-marked" : ""}`} expanded={open}
+                                        lead={<>{ms.picking && <RowMark />}<span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span></>}
                                         icon={typeIcon(it.type)} title={it.title}
                                         meta={[typeLabel(it.type), it.enabled === false ? "desativado" : "", endChoice(it) === "loop" ? "repete" : endChoice(it) === "stop" ? "para ao terminar" : "", it.notes && it.type !== "TEXT" ? it.notes : ""].filter(Boolean).join(" · ")}
-                                        onClick={() => setSel(open ? null : it.id)} onKey={step.onKey(i)} dragProps={step.rowAttrs(i)}
-                                        onContextMenu={(e) => menu(e, { title: it.title, items: [
+                                        onClick={(e) => { if (!ms.click(it.id, e)) setSel(open ? null : it.id); }} onKey={step.onKey(i)} dragProps={step.rowAttrs(i)}
+                                        onContextMenu={(e) => (picked.length > 1 && ms.has(it.id) ? menu(e, { title: selectionCount(picked.length), items: [
+                                            menuItem("tirar", { label: `Tirar ${picked.length} da setlist…`, kbd: keyHint("delete"), onSelect: takeOutPicked }),
+                                            { label: "Limpar a seleção", icon: "x", onSelect: ms.clear },
+                                        ] }) : menu(e, { title: it.title, items: [
                                             { label: open ? "Fechar os detalhes" : "Abrir os detalhes", icon: "edit", onSelect: () => setSel(open ? null : it.id) },
                                             { label: it.enabled === false ? "Ativar" : "Desativar", onSelect: () => updateItem(it.id, { enabled: it.enabled === false }) },
                                             { label: "Duplicar", icon: "copy", onSelect: () => duplicate(it) },
                                             { label: "Tirar da setlist…", icon: "x", onSelect: () => removeItem(it) },
                                             ...step.menuItems(i),
-                                        ] })}>
+                                        ] }))}>
                                         <span className="kx-row-time">{at != null ? clockAt(at) : ""}<br />{it.duration ? span(it.duration) : ""}</span>
                                     </Row>
                                     {open && (
@@ -364,8 +391,12 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                 </div>
                             );
                         })}
+                        {sort.slot}
                         {items.length > 0 && <div className="rund-tail" data-sort-tail="" />}
                     </div>
+                    <SelBar count={picked.length} onClear={ms.clear}>
+                        <Btn small onClick={takeOutPicked} title={`Tirar da setlist · ${keyHint("delete")}`}>Tirar da setlist…</Btn>
+                    </SelBar>
                     {adding && (
                         <div className="pl-adder">
                             <div className="pl-adder-h">

@@ -47,12 +47,12 @@
 
 /* ---- Panel (module) ---- */
 .kx-panel { background: var(--bg-1); border-radius: var(--radius-panel); display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
-.kx-panel-h { height: 32px; flex: none; display: flex; align-items: center; gap: var(--space-1); padding: 0 6px 0 var(--space-3); }
+.kx-panel-h { height: var(--panel-head); flex: none; display: flex; align-items: center; gap: var(--space-1); padding: 0 6px 0 var(--space-3); }
 .kx-panel-h .kx-section { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx-panel-h .kx-count { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--fg-3); }
 .kx-panel-b { flex: 1; min-height: 0; overflow: auto; }
 .kx-panel.is-collapsed .kx-panel-b { display: none; }
-.kx-panel.is-collapsed { height: 32px; }
+.kx-panel.is-collapsed { height: var(--panel-head); }
 /* Bare: no card, the module sits on the ground (the Programa; the Prévia, whose screen is the box). */
 .kx-panel.kx-panel-bare { background: none; border-radius: 0; }
 .kx-panel-bare > .kx-panel-h { padding: 0 0 0 2px; }
@@ -91,7 +91,9 @@
 .kx-seg { height: var(--row); display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--radius-control); background: var(--bg-2); }
 .kx-seg > button { height: var(--control-sm); padding: 0 10px; border-radius: calc(var(--radius-control) - 2px); color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; }
 .kx-seg > button:hover { color: var(--fg-1); }
-.kx-seg > button.is-on { background: var(--bg-3); color: var(--fg-1); font-weight: 500; box-shadow: inset 0 0 0 1px var(--fg-3); }
+/* Pressed: the lighter fill and white text, as every pressed button of the console (Rodada O, O6: the fg-3 ring read
+   as white). A Windows contrast theme keeps its Highlight ring (the forced-colors block). */
+.kx-seg > button.is-on { background: var(--bg-3); color: var(--fg-1); font-weight: 500; }
 .kx-seg.kx-seg-mode > button.is-on[data-mode="live"] { background: var(--air-fill); color: var(--on-state); }
 .kx-seg.kx-seg-mode > button.is-on[data-mode="ensaio"] { background: var(--rh-fill); color: var(--on-state); }
 /* Seg small (forms, menus, the console's own Segs): 24 px segments, the console's target, in a 28 px track.
@@ -112,6 +114,11 @@
 .kx .kx-switch.is-on:not(:disabled):hover { background: var(--fg-2); }
 .kx .kx-switch.is-on:not(:disabled):hover::after { background: var(--bg-0); }
 .kx .kx-switch:disabled { opacity: var(--dim); }
+/* kx-switch-sm (Rodada O3, owner 2026-10-21): 24 × 14, a 10 px knob, beside a header's 24 px controls
+   (the Setlist's Autoplay) — the button that holds it keeps the 24 px a pointer needs. */
+.kx .kx-switch.kx-switch-sm { width: 24px; height: 14px; }
+.kx .kx-switch.kx-switch-sm::after { top: 2px; left: 2px; width: 10px; height: 10px; }
+.kx .kx-switch.kx-switch-sm.is-on::after { left: 12px; }
 
 /* ---- Check (kx-check in a kx-checks row; the app's Ajustes › Conteúdo): a 24 px chip with role=checkbox ----
    Off: bg-2, fg-3, no mark. On: bg-3, fg-1, the check glyph and a line-strong ring. Several in a wrapping row. */
@@ -226,11 +233,14 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 
 /* ---- Group (kx-group; the app's CfgGroup, settings/parts.jsx, old name .cfg-group): an area that opens and closes ----
    An h3 header (kx-group-h) 28 px tall whose button (kx-group-t) carries the chevron (kx-group-chev, turned −90°
-   while closed) and the 11 px .kx-section title at 600; the one-line summary of what is chosen (kx-group-s) only
-   while closed; the actions (kx-group-acts) on the right. The body (kx-group-b › kx-group-in) is always mounted,
-   folded to 0fr and hidden (inert) when closed, in the fold's time — none with reduced motion, none for a search
-   jump (.is-instant). A static group (fold={false}, .is-static) keeps the chevron's slot empty so every title lines
-   up. Groups are 12 px apart with a soft hairline between them. */
+   while closed) and the title: 13 px, fg-1, at 600, in sentence case (Rodada O, O10 — under the panel's small grey
+   caps, above the fields); the one-line summary of what is chosen (kx-group-s) only while closed; the actions
+   (kx-group-acts) on the right. The body (kx-group-b › kx-group-in) is always mounted, folded to 0fr and hidden
+   (inert) when closed, in the fold's time — none with reduced motion, none for a search jump (.is-instant). A
+   static group (fold={false}, .is-static) has no chevron: its title starts where the fields do (12 px). The first
+   static group right under a panel's title says nothing the title does not: its own title is left to screen
+   readers and the settings search (console.css, the one rule). Groups are 12 px apart with a soft hairline
+   between them. */
 .kx .kx-group { display: flex; flex-direction: column; min-width: 0; }
 .kx .kx-group + .kx-group { margin-top: var(--space-3); }
 .kx .kx-group + .kx-group { border-top: 1px solid var(--line-soft); padding-top: var(--space-1); }
@@ -238,9 +248,8 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-group-t { display: inline-flex; align-items: center; gap: var(--space-1); height: var(--control-sm); max-width: 100%; min-width: 0; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
 .kx button.kx-group-t { cursor: pointer; }
 .kx button.kx-group-t:hover { background: var(--bg-3); }
-.kx button.kx-group-t:hover .kx-section { color: var(--fg-1); }
 .kx button.kx-group-t:focus-visible { outline: 2px solid var(--rh, var(--brand)); outline-offset: -2px; }
-.kx .kx-group-t .kx-section { font-size: var(--fs-meta); font-weight: 600; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx .kx-group-t .kx-section { font-size: var(--fs-content); line-height: 18px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx .kx-group-chev { flex: none; width: 12px; height: 12px; color: var(--fg-3); transition: transform var(--dur-fold) var(--ease-fold); }
 .kx .kx-group:not(.is-open) .kx-group-chev { transform: rotate(-90deg); }
 .kx .kx-group-s { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -364,11 +373,17 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
    Configurações, the views and the editors are its pages (src/lib/console/nav.js). The bar (kx-win-bar, 40 px):
    ← Voltar from level 2 (kx-btn-back), the page's title (kx-win-title, gives way first), its tools (kx-win-tools),
    a gap (kx-win-gap; a double click there restores the size), the actions, ⧉ Destacar and the (x). Then the page
-   (kx-win-page) on the console's ground, so its panels read as panels. Two sizes, Padrão and Editor (.is-editor),
+   (kx-win-page). The window is ONE surface (Rodada O, O7): bg-1 under the bar and the page alike, the bar parted
+   from the page by its line-soft rule only (no darker strip), a faint ring and a deep shadow (shadow-window) that
+   lift it off the console; the page's panels sit one grey step up (console.css .win-body). The bar holds the title
+   and what acts on the whole window — Desfazer/Refazer, Cancelar, Salvar, Destacar, the (x); what acts on the
+   content lives in the page (its panel headers, its side menu). Voltar sits at the top of a page's side menu
+   where it has one (Configurações, the Editor da tela; WinBack, kx.jsx), else at the bar's left. Two sizes,
+   Padrão and Editor (.is-editor),
    the frame easing between them; stretched by its 4 edges and 4 corners (kx-win-edge, winLayout.jsx), and then
    it follows the pointer at once (.is-sized). Detached (/Janela, .is-detached) it fills its own window: no
    shadow, no edges. Pages under the top stay mounted, hidden, so Voltar finds them as they were. */
-.kx .kx-win { position: absolute; z-index: var(--z-window); left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(var(--win-w, 1240px), calc(100% - 32px)); height: min(var(--win-h, 800px), calc(100% - var(--pop-top) - 16px)); display: flex; flex-direction: column; background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; transition: width .2s var(--ease-out), height .2s var(--ease-out); }
+.kx .kx-win { position: absolute; z-index: var(--z-window); left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(var(--win-w, 1240px), calc(100% - 32px)); height: min(var(--win-h, 800px), calc(100% - var(--pop-top) - 16px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--shadow-window); overflow: hidden; transition: width .2s var(--ease-out), height .2s var(--ease-out); }
 .kx .kx-win.is-editor { width: min(var(--win-w, 1360px), calc(100% - 24px)); height: min(var(--win-h, 860px), calc(100% - var(--pop-top) - 12px)); }
 .kx .kx-win.is-sized { transition: none; }
 .kx .kx-win-edge { position: absolute; z-index: var(--z-edge); touch-action: none; }
@@ -386,6 +401,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-win.is-detached { position: relative; left: auto; top: auto; transform: none; width: auto; height: auto; flex: 1; min-height: 0; border-radius: 0; box-shadow: none; transition: none; }
 .kx .kx-win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line-soft); }
 .kx .kx-win-bar .kx-win-title { flex: 0 1 auto; color: var(--fg-1); font-size: var(--fs-ui); min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kx .kx-win-bar .kx-win-title .kx-count { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--fg-3); }
 .kx .kx-win-bar .kx-win-title:focus { outline: none; } /* the focus parks here; it is not a control */
 .kx .kx-win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
 .kx .kx-win-bar .kx-win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
@@ -539,6 +555,8 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
   .kx .kx-switch::after { top: 2px; left: 2px; background: ButtonText; }
   .kx .kx-switch.is-on { border-color: Highlight; background: Highlight; }
   .kx .kx-switch.is-on::after { left: 14px; background: HighlightText; }
+  .kx .kx-switch.kx-switch-sm::after { top: 1px; left: 1px; }
+  .kx .kx-switch.kx-switch-sm.is-on::after { left: 11px; }
   .kx .kx-switch:disabled { border-color: GrayText; }
   .kx .kx-switch:disabled::after { background: GrayText; }
   .kx .kx-switch.is-on:disabled { background: GrayText; }

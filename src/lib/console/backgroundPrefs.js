@@ -248,36 +248,3 @@ export function withBackgroundDefaults(op, args, prefs) {
     }
     return args;
 }
-
-// Taking several backgrounds out at once (owner 2026-10-21, the "Seleção
-// múltipla" mockup, M3 = A): each goes as its origin says (backgroundActions),
-// split for ONE question — factory photos to Excluídos (hidden; the file is
-// the app's, never deleted), files sent here deleted (their Media row; their
-// BackgroundPref after, prefsAfterDelete), Mídia pictures out of the
-// backgrounds only (their BackgroundPref goes, the Mídia keeps them). An
-// excluded factory photo has nowhere further to go: `skipped`.
-//   entries  the marked backgrounds (backgroundList entries)
-// -> { exclude, delete, untrack, skipped }
-export function backgroundRemoval(entries = []) {
-    const plan = { exclude: [], delete: [], untrack: [], skipped: [] };
-    for (const b of entries) {
-        const out = backgroundActions(b).filter((k) => k !== "restore")[0];
-        (out ? plan[out] : plan.skipped).push(b);
-    }
-    return plan;
-}
-
-// After the files were deleted: the BackgroundPref ids that go with them —
-// only of rows whose Media delete went through, and never while another copy
-// of the file is still a background row (it would lose its look and category).
-//   deleted          the entries whose Media row is gone
-//   backgroundMedia  every background row of the Media table, as it was
-export function prefsAfterDelete(deleted = [], backgroundMedia = []) {
-    const gone = new Set(deleted.map((b) => b.mediaId));
-    const ids = new Set();
-    for (const b of deleted) {
-        const kept = backgroundMedia.some((m) => !gone.has(m.id) && m.file_url === b.url);
-        if (b.pref?.id && !kept) ids.add(b.pref.id);
-    }
-    return [...ids];
-}

@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
+import { uploadFile } from "@/lib/mediaImport";
 import Icon from "../console/Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "../console/kx";
 import { Switch } from "../console/settings/parts";
@@ -71,7 +72,6 @@ export default function ScreenEditor(props) {
 
 function OutputScreenEditor({ say, live: liveState, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colTelas = useWinCol("screen.telas", { name: "Telas", def: 190, min: 160, max: 360 });
     const colAjustes = useWinCol("screen.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
     const prefRows = useOutputPrefRows();
     const church = useChurch();
@@ -334,7 +334,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
 
     const upload = async (file, apply) => {
         if (!file) return;
-        try { const { file_url } = await keryx.integrations.Core.UploadFile({ file }); apply(file_url); } catch (err) { say(err?.message || "Não foi possível copiar o arquivo."); }
+        try { const { file_url } = await uploadFile(file); apply(file_url); } catch (err) { say(err?.message || "Não foi possível copiar o arquivo."); }
     };
     const pictures = media.filter((m) => (m.type === "image" || m.type === "gif") && !m.missing);
     const nameOf = (url) => media.find((m) => m.file_url === url)?.title || decodeURIComponent(String(url).split("/").pop() || "imagem");
@@ -343,7 +343,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const num = (el, k, v, lo, hi) => { const n = Number(v); if (Number.isFinite(n)) setEl(el.id, { [k]: Math.min(hi, Math.max(lo, n)) }); };
     const cLike = { say, live: liveState };
 
-    const screensMenu = <ScreensMenu path={path} screens={EDITOR_SCREENS} onPick={switchTo} style={colTelas.style} />;
+    const screensMenu = <ScreensMenu path={path} screens={EDITOR_SCREENS} onPick={switchTo} />;
 
     // A ready drawing in place of the current one: a factory model, or
     // another screen's own design (Rodada C, fase d2 — the catalog's one
@@ -363,7 +363,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const body = (
         <>
             {screensMenu}
-            {colTelas.split}
+            <div className="kx-gap" />
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel caption={isStream ? "Ajustes" : tabs} actions={!isStream && !hosted && <span className="kx-count">{name}{dirty ? " · não salvo" : ""}</span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
@@ -553,9 +553,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
             </div>
             {colAjustes.split}
             <div className="col center">
-                <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!hosted && <>
-                    <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />
-                </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel className="is-head-wrap" title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!isStream && <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {isStream || !draft ? (
                         <Empty icon={isStream ? "text" : "monitor"} title={isStream ? "Sem canvas" : "Abrindo a tela…"}>
                             {isStream ? "A legenda da Transmissão segue os ajustes ao lado." : null}
@@ -597,8 +595,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     if (!hosted) return body;
     return (
         <>
-            <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`}
-                tools={!isStream && <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />}
+            <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`} menuBack
                 actions={!isStream && <>
                     <UndoRedo history={history} />
                     <Btn small onClick={() => leave()}>Cancelar</Btn>

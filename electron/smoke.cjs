@@ -495,8 +495,40 @@ async function checkVideo(webContents, { live }) {
         if (proj) proj.close();
     }
 
+    // A video as the Fundo (Rodada O, item 11: loop videos that stayed still):
+    // a real H.264 MP4 (public/nosleep.mp4, Baseline, 2 s) imported like a
+    // church's clip loops on the projector — its currentTime keeps moving —
+    // while in the console only the Programa monitor plays it (the Prévia,
+    // the thumbnails and the library draw a still).
+    {
+        const fundoBefore = live.get().background;
+        const name = await webContents.executeJavaScript(`(async () => {
+            const blob = await (await fetch("/nosleep.mp4")).blob();
+            const res = await window.keryxDesktop.media.importFile(new File([blob], "fundo-h264.mp4", { type: "video/mp4" }));
+            return res.data && res.data.fileName;
+        })()`).catch(() => null);
+        if (name) live.call("background.set", { kind: "video", value: `keryx-media://${name}`, title: "Fundo em vídeo" });
+        await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+        const proj = windowFor("/Projection");
+        const SAMPLE = (sel) => `(() => [...document.querySelectorAll(${JSON.stringify(sel)})].filter((v) => v.src.includes(${JSON.stringify(String(name))})).map((v) => ({ time: v.currentTime, paused: v.paused, ready: v.readyState, error: v.error && v.error.code })))()`;
+        const times = [];
+        let last = null;
+        for (let end = Date.now() + 8000; name && proj && Date.now() < end && new Set(times).size < 6;) {
+            last = (await proj.webContents.executeJavaScript(SAMPLE("video.ks-bg-video")).catch(() => []))[0] || null;
+            if (last && !last.paused && last.ready >= 2) times.push(last.time);
+            await sleep(150);
+        }
+        // The clip loops every 2 s: moving = several different times, not one ever-growing number.
+        const inConsole = await webContents.executeJavaScript(SAMPLE("video")).catch(() => []);
+        result.fundoVideo = { name, times: times.length, distinct: new Set(times).size, last, consolePlaying: inConsole.filter((v) => !v.paused).length, consoleVideos: inConsole.length };
+        result.fundoVideoOk = Boolean(name) && result.fundoVideo.distinct >= 6 && result.fundoVideo.consolePlaying <= 1;
+        if (fundoBefore) live.call("background.set", fundoBefore);
+        else live.call("background.clear");
+        if (proj) proj.close();
+    }
+
     result.ok = result.recorded && result.lateJoin && result.playing && result.title && result.paused && result.resumed && result.continuity && result.cleared
-        && result.eyeOk && result.playlistAdvanced && result.projectorImage && result.songFadeOk;
+        && result.eyeOk && result.playlistAdvanced && result.projectorImage && result.songFadeOk && result.fundoVideoOk;
     return result;
 }
 
@@ -2101,7 +2133,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // find a setting, Enter opens its section with the row lit, Esc clears.
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("/");
-        result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .win-bar .cfg-search input')"), 3000);
+        result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .cfg-nav .cfg-search input')"), 3000);
         await type("fundo de espera");
         result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Qualquer outro culto')"), 3000);
         await press("Escape");
@@ -2569,9 +2601,9 @@ async function checkConsole(webContents, { live, outputs }) {
             await sleep(200);
             return true;
         };
-        // The YouTube link comes from the bar's Adicionar menu + one question
+        // The YouTube link comes from the filter row's Adicionar menu + one question
         // (PromptDialog), not a field always on screen (Rodada C, fase b).
-        await click(".win-bar button", "Adicionar");
+        await click(".mv-bar button", "Adicionar");
         await click(".pl-pop .kx-row", "Link do YouTube…");
         await waitFor(() => js("Boolean(document.querySelector('.confirm-dialog .kx-field input'))"), 4000);
         await setVal(".confirm-dialog .kx-field input", "https://youtu.be/dQw4w9WgXcQ");

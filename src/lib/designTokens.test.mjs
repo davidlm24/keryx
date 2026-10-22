@@ -20,6 +20,10 @@ const { compileTokens, formatJson } = createRequire(import.meta.url)(path.join(r
 // file › selector › token: overrides on purpose, each with its reason.
 const OVERRIDES = {
     "src/components/console/console.css › .console › --gutter": "the console's one 6 px gutter (owner 2026-10-13)",
+    "src/components/console/console.css › .console.is-compact › --panel-head": "Compacta's panel headers (Rodada O, O5): panel-head-compact through the one variable",
+    "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-1": "THE window's panels one grey step up (Rodada O, O7)",
+    "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-2": "THE window's panels one grey step up (Rodada O, O7)",
+    "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-3": "THE window's panels one grey step up (Rodada O, O7)",
 };
 
 // Every custom property a stylesheet declares, with the rule it sits in.
@@ -85,6 +89,17 @@ test("tokens.css is what npm run ds:tokens writes from tokens.json", () => {
     for (const [family, value] of Object.entries(json.type.families)) expected.push([`--font-${family}`, value]);
     for (const [name, value] of expected) assert.equal(tokens.get(name), value, `${name} in tokens.css`);
     assert.equal(tokens.size, expected.length, "tokens.css defines nothing tokens.json lacks");
+});
+
+test("the native windows paint the tokens' grounds (main.cjs cannot read tokens.json)", () => {
+    // The console's window and title bar are bg-0; a detached page (/Janela)
+    // is THE window's one surface, bg-1, its caption buttons included.
+    const json = JSON.parse(read("docs/design-system/tokens.json"));
+    const color = (name) => json.color.tokens.find((t) => t.name === name).value;
+    const main = read("electron/main.cjs");
+    const constant = (name) => main.match(new RegExp(`const ${name} = "(#[0-9a-f]{6})";`, "i"))?.[1];
+    assert.equal(constant("BG"), color("bg-0"));
+    assert.equal(constant("JANELA_BG"), color("bg-1"));
 });
 
 test("the tokens' usage says what a token is for, never when it was decided", () => {

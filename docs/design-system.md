@@ -41,7 +41,7 @@ network pages keep their own, pinned value by value, with the reason).
 
 | Group | Tokens |
 | --- | --- |
-| Grounds and lines | `--bg-0` window · `--bg-1` modules · `--bg-2` fields, popovers, hover · `--bg-3` pressed, selected · `--line` hairlines · `--line-strong` the splitter on hover · `--line-overlay` the ring of what floats · `--line-soft` lines inside what floats. |
+| Grounds and lines | `--bg-0` the console's ground · `--bg-1` modules, THE window · `--bg-2` fields, popovers, hover · `--bg-3` pressed, selected · `--bg-4` pressed inside THE window's panels · `--line` hairlines · `--line-strong` the splitter on hover · `--line-overlay` the ring of what floats · `--line-soft` lines inside what floats. |
 | Text | `--fg-1` content · `--fg-2` UI labels, glyphs at rest · `--fg-3` metadata, headers, placeholders. |
 | States | `air` red (on air), `prev` green (prepared), `rh` blue (locked), `warn` amber, each as the mark, `-fg` text, `-fill` (+ `-hover`, `-pressed`) and `-tint`; `--on-state`, `--on-warn`. In the slide lists: `--live` (the brand gold), `--live-fg`, `--live-bg` (36 % gold over bg-2), `--prev-bg` (16 % green over bg-2), `--live-bar`, `--next-bar`, `--verse-pressed`. |
 | Brand | `--brand` gold (+ `-hover`, `-pressed`, `-tint`) · `--on-brand`. |
@@ -49,7 +49,7 @@ network pages keep their own, pinned value by value, with the reason).
 | Type scale | `--fs-meta` 11 · `--fs-ui` 12 · `--fs-content` 13 · `--fs-content-lg` 14 · `--fs-live` 16 · `--fs-clock` 20 · `--fs-count` 28 px. Kept in px: the logo's K, a font specimen, the sync code. Screens size in cqw, off this scale. |
 | Heights | `--control-sm` 24 px (a header's controls, a row's hover buttons, the pills' buttons, chips) · `--row` 28 · `--row-comfortable` 32 · `--band` 36 (a band under a header) · `--topbar` 40. |
 | Space and radius | `--space-1` 4 · `--space-2` 8 · `--space-3` 12 · `--space-4` 16 · `--space-6` 24 · `--gutter` 8 (6 in the console) · `--bar` 2 px · `--radius-control` 8 · `--radius-panel` 14 · `--radius-round`. |
-| Shadows | `--shadow-popover` (small floaters) · `--dialog` (THE window, dialogs) and the others in `tokens.json` › shadow, each one floater's. |
+| Shadows | `--shadow-popover` (small floaters) · `--dialog` (dialogs) · `--shadow-window` (THE window) and the others in `tokens.json` › shadow, each one floater's. |
 | Layers, inside a box | `--z-screen` 1 · `--z-mark` 2 · `--z-handle` 3 · `--z-edge` 5 · `--z-guide` 6 · `--z-hatch` 7 · `--z-frame` 8 · `--z-badge` 10 · `--z-drop` 15 · `--z-pill` 20 · `--z-ring` 21. A monitor's screen, a thumbnail, THE window and a splitter are each their own stacking context. |
 | Layers, the console | `--z-scrim` 27 · `--z-menubar` 28 · `--z-window-scrim` 29 · `--z-pop` 30 · `--z-window` 40 · `--z-window-over` 41 · `--z-drawer` 42 · `--z-verify` 43 · `--z-library-scrim` 44 · `--z-library` 45 · `--z-dialog` 50 · `--z-confirm-scrim` 51 · `--z-confirm` 52 · `--z-menu` 53 · `--z-menu-top` 54 · `--z-toast` 60 · `--z-drag` 70. A new layer is a name by its role, never a number. |
 | Motion | `--duration-fast` 120 ms + `--ease-out` (hover, state) · `--dur-fold` 180 ms + `--ease-fold` (a fold, No ar, a group, a chevron; Dock.jsx reads them). |
@@ -90,11 +90,11 @@ compositions), it is given.
 - **Anatomy.** `kx-panel` (bg-1, `radius-panel`) › `kx-panel-h` (the header)
   › `kx-panel-b` (the body, scrolls). `kx-panel-bare` has no card (the
   Programa, the Prévia).
-- **Sizes.** The header is 32 px (28 in Compacta), one line, its text 12 px
-  from the edge, its last control 12 px from the right one, controls 24 px
-  tall and 8 px apart.
+- **Sizes.** The header is `panel-head`, 36 px (`panel-head-compact`, 32, in
+  Compacta), one line, its text 12 px from the edge, its last control 12 px
+  from the right one, controls 24 px tall and 8 px apart.
 - **States.** Folded (`FoldBtn`, see Comportamento › Folds).
-- **Tokens.** `bg-1`, `radius-panel`, `space-3`, `control-sm`.
+- **Tokens.** `bg-1`, `radius-panel`, `panel-head`, `space-3`, `control-sm`.
 - **Don't** give one panel an inset of its own, put hints in a header, or let
   a header wrap.
 
@@ -116,7 +116,8 @@ compositions), it is given.
 ### Segmented switch
 
 - **Anatomy.** `kx-seg` (a `bg-2` track, 2 px padding) of buttons; the chosen
-  one `is-on`: `bg-3`, `fg-1`, 500 and a 1 px `fg-3` inset (≥ 3:1).
+  one `is-on`: `bg-3`, `fg-1`, 500 — no ring, as every pressed button (a
+  Windows contrast theme keeps its `Highlight` ring).
 - **Variants.** `is-small` (24 px segments; in a header or a menu heading the
   track goes and the segments fill the 24 px); `kx-seg-mode` (state fills).
 - **Do** use it for 2–5 exclusive choices. **Don't** use it for on / off: that
@@ -125,9 +126,11 @@ compositions), it is given.
 ### Switch
 
 - **Class.** `kx-switch` (old name `.sw2`), a real button with
-  `role="switch"` and `aria-checked`: `SwitchRow`, the Saídas rows, *Avançar
-  sozinho*, *Abrir ao iniciar*, the aviso's sound.
-- **Sizes.** 32 × 20, a 14 px knob.
+  `role="switch"` and `aria-checked`: `SwitchRow`, the Saídas rows,
+  *Autoplay*, *Abrir ao iniciar*, the aviso's sound.
+- **Sizes.** 32 × 20, a 14 px knob. `kx-switch-sm` is 24 × 14 with a 10 px
+  knob, for a panel header (the Setlist's *Autoplay*, Rodada O3) — its button
+  keeps the 24 px hit area.
 - **States.** Off: a `bg-3` track, `fg-2` knob. **On: an `fg-1` track with a
   `bg-0` knob** — never the Prévia's green, so *ligado* never reads as
   *preparado*. Hover lights the knob; on, the track dims to `fg-2`. Disabled
@@ -196,12 +199,16 @@ compositions), it is given.
   `settings/parts.jsx`): an area of Configurações or an editor that opens and
   closes.
 - **Anatomy.** `kx-group-h` (an h3, 28 px) › `kx-group-t` (the button: the
-  12 px `kx-group-chev` and the `kx-section` title at 600) · `kx-group-s`
+  12 px `kx-group-chev` and the title, 13 px, `fg-1`, 600, in sentence case) ·
+  `kx-group-s`
   (the one-line summary of what is chosen, only while closed) ·
   `kx-group-acts` (actions, right); `kx-group-b` › `kx-group-in` (the body).
 - **Variants.** Folding (the chevron down when open, −90° closed) or static
-  (`fold={false}`, `.is-static`: a page's first area, the chevron's slot kept
-  so titles line up). The rare ones start closed.
+  (`fold={false}`, `.is-static`: a page's first area, no chevron, its title
+  where the fields start). The rare ones start closed. A static group that is
+  the first thing under a panel's title (Culto › Dados, Música › Dados, a
+  section of Configurações) shows no title of its own: the panel's says it
+  (console.css; screen readers and the settings search still have it).
 - **States.** The body folds to `0fr` in the fold's time and stays mounted
   and inert; `.is-instant` (a search jump) and reduced motion do not ease.
   Hover `bg-3` on the header; the focus ring inside it.
@@ -280,20 +287,30 @@ compositions), it is given.
 - **Class.** `kx-win` (old names `.win-dialog`, `.win-bar`, …): **THE
   window**, the one floating frame over the live console whose pages are
   Configurações, the editors and the views (`nav.js`).
-- **Anatomy.** `kx-win-bar` (40 px, a `line-soft` rule): *← Voltar* from the
-  second level (`kx-btn-back`, outlined), `kx-win-title` (gives way first),
-  `kx-win-tools`, `kx-win-gap` (a double click restores the size), the page's
-  actions, ⧉ *Destacar em janela*, the (x) *Fechar · Esc*. Then
-  `kx-win-page`, one per level, on `bg-0` (pages under the top stay mounted,
-  hidden). `kx-win-edge` × 8 resize it.
+- **Anatomy.** One surface of `bg-1`: `kx-win-bar` (40 px, the page's colour,
+  parted from it only by a `line-soft` rule): *← Voltar* from the second level
+  (`kx-btn-back`, outlined) when the page has no side menu, `kx-win-title`
+  (gives way first; its context in `fg-3`, normal case), `kx-win-gap` (a
+  double click restores the size), the window's actions — Desfazer/Refazer,
+  Cancelar, Salvar —, ⧉ *Destacar em janela*, the (x) *Fechar · Esc*. Then
+  `kx-win-page`, one per level (pages under the top stay mounted, hidden),
+  its panels starting right under the rule and one grey step up (`bg-2`,
+  fields `bg-3`, pressed `bg-4`; `.win-body` in console.css). A side menu
+  (Configurações' sections, the Editor da tela's Telas) is fixed, no
+  splitter, and starts with *← Voltar* (`WinBack`, `WinBar menuBack`); only
+  the content beside it resizes. `kx-win-edge` × 8 resize the window.
 - **Variants.** Padrão and `is-editor` (the frame eases between them);
   `is-sized` (stretched: it follows the pointer at once); `is-detached`
   (`/Janela`: it fills its own window, no shadow, no edges).
 - **Sizes.** At most 1240 × 800 (Editor 1360 × 860), at least 760 × 480,
   never past the console.
-- **Tokens.** `bg-0`, `radius-panel`, `dialog`, `line-soft`, `z-window`,
-  `z-edge`, `ease-out`.
+- **Tokens.** `bg-1` (`bg-2`…`bg-4` for its panels), `radius-panel`,
+  `shadow-window`, `line-soft`, `z-window`, `z-edge`, `ease-out`.
 - **Don't** open a second floating window: a page pushes a level in this one.
+  **Don't** put a control that acts on the content in the bar (a search, a
+  filter, Excluir…, Imprimir, a select of what to edit): it goes in the page,
+  in the header of the panel it acts on, at the top of the page or of its
+  side menu (`tools` stays for what has no place there).
 
 ### Splitter
 
@@ -467,8 +484,8 @@ tipo de conteúdo* folded under it: the kinds of `src/lib/contentKinds.js`),
 
 - **Density** (Ver › Densidade, per computer): **Automática** by default —
   Compacta when the grid is under 820 px tall, else Confortável.
-  **Confortável**: 32 px rows, 14 px titles up to two lines, 32 px headers.
-  **Compacta**: 28 px single lines, 28 px headers (`panelHead`). Controls do
+  **Confortável**: 32 px rows, 14 px titles up to two lines, 36 px headers.
+  **Compacta**: 28 px single lines, 32 px headers (`panelHead`). Controls do
   not change.
 - **Folds**: every panel but the Programa, the Prévia, the player and the
   Bíblia's panels has a chevron right of its header's + (`FoldBtn`). Down a
@@ -672,3 +689,11 @@ Kept so old commits and the canvas make sense; none of this is a rule.
   the stale ones, the literal lint, this page as a reference and
   `surfaces.md`. Until then `tokens.json`, `tokens.css` and `bundle.css` were
   kept in step by hand and `console.css` was what shipped.
+- **2026-10-21 — Rodada O** (the owner's review of the preview; marks O5 = A,
+  O6 = A, O7 = A, O10 = C): panel headers went from 32 (28) to 36 (32) px,
+  `panel-head`; the pressed segment lost its `fg-3` ring (it read as white);
+  THE window became one `bg-1` surface with a deeper `shadow-window` (its bar
+  had been a `bg-0` strip over the page), its content controls moved into the
+  pages, its side menus stopped resizing and took Voltar at their top; group
+  titles went from 11 px grey caps to 13 px `fg-1`, and the first static
+  group under a panel's title stopped repeating it.

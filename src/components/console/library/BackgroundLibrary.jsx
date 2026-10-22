@@ -3,17 +3,21 @@ import Icon from "../Icon";
 import { Btn, IconBtn, Seg, onTabsKey, tabStop, SelectManyBtn, SelBar, RowMark } from "../kx";
 import { useMultiSelect } from "../useMultiSelect";
 import { pickedOf } from "@/lib/console/multiSelect";
-import { backgroundQuestion, backgroundSay, backgroundAction } from "@/lib/console/bulkDelete";
+import { backgroundQuestion, backgroundSay, backgroundAction, backgroundRemoval, prefsAfterDelete } from "@/lib/console/bulkDelete";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import VideoStill from "@/components/screen/VideoStill";
+import CodecMark from "@/components/console/CodecMark";
+import { codecHint, codecOfRow } from "@/lib/videoCodec";
+import { codecOf } from "@/lib/videoFiles";
 import GeneratorPanel, { GeneratorTiles } from "../GeneratorPanel";
 import { FundoDetail, useSaveBackgroundPref } from "../settings/FundosGallery";
 import { useBackgrounds, useLibrary, useThemes } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "../settings/sample";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { failureReason, importMediaFiles } from "@/lib/mediaImport";
+import { failureReason, importMediaFiles, refusedSummary } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
-import { visibleBackgrounds, categoriesOf, managedCategories, sourceOf, backgroundActions, backgroundRemoval, prefsAfterDelete, OWN_IMAGES, OWN_VIDEOS } from "@/lib/console/backgroundPrefs";
+import { visibleBackgrounds, categoriesOf, managedCategories, sourceOf, backgroundActions, OWN_IMAGES, OWN_VIDEOS } from "@/lib/console/backgroundPrefs";
 import FundoCategories from "./FundoCategories";
 import { cleanSpec, bgArgs, bgSpec, bgLabel, sameBg } from "@/lib/console/backgroundSpec";
 import { themeStyle, themeBackgroundArgs, themeName, themeHasBackground } from "@/lib/console/themes";
@@ -140,11 +144,15 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     const upload = async (files) => {
         setUploading(true);
         try {
-            const { created, failed } = await importMediaFiles(files, { category: "background" });
+            const { created, failed, refused } = await importMediaFiles(files, { category: "background" });
             const into = filter !== ALL && filter !== HIDDEN && filter !== OWN_IMAGES && filter !== OWN_VIDEOS ? filter : null;
             if (into) for (const m of created) if (m.file_url) await keryx.entities.BackgroundPref.create({ source: sourceOf(m.file_url), category: into }).catch(() => {});
             const why = failureReason(failed);
-            c.say(`${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${into ? ` para ${into}` : ""}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}${why ? ` · ${why}` : "."}`);
+            // The files refused (a video in HEVC…, Rodada O) first, in one
+            // sentence: a toast is one line. Alone when nothing came in.
+            const no = refusedSummary(refused);
+            const sent = `${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${into ? ` para ${into}` : ""}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}${why ? ` · ${why}` : ""}`;
+            c.say(no ? (created.length || failed.length ? `${no} · ${sent}` : no) : `${sent}.`);
             const first = created.find((m) => (m.type === "image" || m.type === "video") && kinds.includes(m.type));
             if (first) { setTab(first.type); setSel({ kind: first.type, value: first.file_url }); setView("grid"); }
         } catch (err) { c.say(err?.message || "Não foi possível enviar."); }
@@ -156,6 +164,9 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     const ownUrls = new Set(list.map((b) => b.url));
     const mediaOfTab = media.filter((m) => m.type === tab && m.file_url && !m.missing && !/youtu/.test(m.file_url) && !ownUrls.has(m.file_url));
     const bring = async (m) => {
+        // A video that may freeze stays out of the backgrounds (Rodada O, O11 = B).
+        const bad = m.type === "video" && codecHint(codecOfRow(m));
+        if (bad) { c.say(bad); return; }
         try {
             await keryx.entities.Media.create({ title: m.title || "Fundo", type: m.type, file_url: m.file_url, category: "background", duration: m.duration || 0 });
             setView("grid");
@@ -164,7 +175,16 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
         } catch (err) { c.say(err?.message || "Não foi possível trazer da Mídia."); }
     };
     const done = (result) => onDone(result);
-    const take = (spec = sel) => { const s = cleanSpec(spec); if (s) done({ spec: s }); };
+    // A video that may freeze on the screens is not picked for anything new
+    // (a theme, the Fundo, a song): it says why and how to convert it.
+    const take = (spec = sel) => {
+        const s = cleanSpec(spec);
+        if (!s) return;
+        // The background the request came with may be confirmed as it is.
+        const bad = s.kind === "video" && !(start && sameBg(start, s)) && codecHint(codecOf(s.value));
+        if (bad) { c.say(bad); return; }
+        done({ spec: s });
+    };
     const takeTheme = (t = selTheme) => { if (t) done({ theme: t }); };
 
     // The picture or clip entries of this tab, with their settings.
@@ -295,8 +315,9 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                                 <div className="lib-grid">
                                     {mediaOfTab.map((m) => (
                                         <button type="button" key={m.id} className="kx-t fg-tile" aria-label={m.title} title={m.title} onClick={() => bring(m)}>
-                                            <span className="fg-img">{m.type === "video" ? <video src={m.file_url} preload="metadata" muted /> : <img src={m.file_url} alt="" loading="lazy" />}</span>
+                                            <span className="fg-img">{m.type === "video" ? <VideoStill src={m.file_url} className="" /> : <img src={m.file_url} alt="" loading="lazy" />}</span>
                                             <span className="fg-name">{m.title}</span>
+                                            {m.type === "video" && <CodecMark row={m} />}
                                         </button>
                                     ))}
                                     {!mediaOfTab.length && <span className="kx-meta">Nada na Mídia para trazer.</span>}
@@ -327,8 +348,9 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                                         <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""} ${selectable && ms.has(b.source) ? "is-marked" : ""}`} aria-pressed={on} aria-label={`${b.name}${selectable && ms.has(b.source) ? ", selecionado" : ""}`} title={tip}
                                             onClick={(e) => { if (selectable && ms.click(b.source, e)) return; if (waiting) c.say(PENDING_SAY); else setSel({ kind: b.kind, value: b.url }); }}
                                             onDoubleClick={() => { if (!waiting && !ms.picking) take({ kind: b.kind, value: b.url }); }} onContextMenu={(e) => tileMenu(e, b)}>
-                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <video src={b.url} preload="metadata" muted /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}{selectable && ms.picking && <RowMark />}</span>
+                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <VideoStill src={b.url} className="" /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}{selectable && ms.picking && <RowMark />}</span>
                                             <span className="fg-name">{b.favorite && <Icon name="star" size={12} />}{b.name}</span>
+                                            {b.kind === "video" && <CodecMark src={b.url} />}
                                         </button>
                                     );
                                 })}
@@ -364,7 +386,8 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                         )}
                     </div>
                     {!big && <div className="lib-side">
-                        <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} preview motion />}</div>
+                        {/* A generator moves here; a video shows its still (Rodada O, item 11). */}
+                        <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} preview motion={sel?.kind !== "video"} />}</div>
                         <div className="lib-label"><span className="kx-meta">Escolhido</span><span className="t">{label}</span></div>
                         {entry && <FundoDetail key={entry.source} b={entry} save={save} sample={false}
                             categories={managedCategories(storedCats, list)} onCategories={() => setView("categories")} onRestore={() => act.restore(entry)} />}

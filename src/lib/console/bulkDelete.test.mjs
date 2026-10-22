@@ -1,7 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { NOUNS, nameList, serviceName, itemsUsing, setlistLines, themeLines, bulkDeleteQuestion, renumberPlan, deletedSay, backgroundQuestion, backgroundSay, backgroundAction } from "./bulkDelete.js";
+import { NOUNS, nameList, serviceName, itemsUsing, setlistLines, themeLines, bulkDeleteQuestion, renumberPlan, deletedSay, backgroundQuestion, backgroundSay, backgroundAction, backgroundRemoval, prefsAfterDelete } from "./bulkDelete.js";
 import { focusesCancel } from "./confirm.js";
+import { backgroundList } from "./backgroundPrefs.js";
+
+const bundled = [{ id: "a", url: "u/a", category: "Natureza" }, { id: "b", url: "u/b", category: "Abstrato" }, { id: "c", url: "u/c", category: "Natureza" }];
 
 const services = [{ id: "dom", title: "Domingo", date: "2026-10-20" }, { id: "qua", title: "", date: "2026-10-23" }];
 const items = [
@@ -111,4 +114,45 @@ test("the toast after Tirar dos fundos", () => {
     assert.equal(backgroundSay({ exclude: 2, delete: 1, untrack: 1 }), "4 fundos saíram da biblioteca · 2 em Excluídos · 1 excluído · 1 só fora dos fundos.");
     assert.equal(backgroundSay({ exclude: 1 }), "1 fundo saiu da biblioteca · 1 em Excluídos.");
     assert.equal(backgroundSay({ delete: 2, failed: 1 }), "2 fundos saíram da biblioteca · 2 excluídos · 1 não pôde sair.");
+});
+
+test("taking several out of a setlist: Tirar, and it opens on the action", async () => {
+    const { takeOutManyQuestion } = await import("./bulkDelete.js");
+    const q = takeOutManyQuestion(["Hino", "Oração", "Aviso"]);
+    assert.equal(q.title, "Tirar 3 itens da setlist?");
+    assert.deepEqual(q.list, ["Hino", "Oração", "Aviso"]);
+    assert.equal(q.text, "Eles saem da setlist deste culto e continuam no KERYX.");
+    assert.equal(q.ok, "Tirar 3");
+    assert.equal(focusesCancel(q), false, "nothing leaves the KERYX: Enter takes them out, as with one");
+});
+
+test("several backgrounds out at once: each origin its way, one plan (owner 2026-10-21, M3)", () => {
+    const list = backgroundList({
+        bundled,
+        images: [
+            { id: "m1", url: "http://h/media/own.png" }, { id: "m3", url: "http://h/media/twice.png" },
+            { id: "m2", url: "http://h/media/midia.png", origin: "media" },
+        ],
+        prefs: [
+            { id: "p-b", source: "bundled:b", hidden: true }, { id: "p-own", source: "http://h/media/own.png", category: "Cruz" },
+            { id: "p-twice", source: "http://h/media/twice.png" }, { id: "p-midia", source: "http://h/media/midia.png" },
+        ],
+    });
+    const by = (s) => list.find((b) => b.source === s);
+    const plan = backgroundRemoval(["bundled:a", "bundled:b", "http://h/media/own.png", "http://h/media/twice.png", "http://h/media/midia.png"].map(by));
+    assert.deepEqual(plan.exclude.map((b) => b.source), ["bundled:a"], "a factory photo goes to Excluídos");
+    assert.deepEqual(plan.skipped.map((b) => b.source), ["bundled:b"], "already excluded: nowhere further");
+    assert.deepEqual(plan.delete.map((b) => b.mediaId), ["m1", "m3"], "the files sent here are deleted");
+    assert.deepEqual(plan.untrack.map((b) => b.source), ["http://h/media/midia.png"], "a Mídia picture only leaves the backgrounds");
+    assert.deepEqual(backgroundRemoval([]), { exclude: [], delete: [], untrack: [], skipped: [] });
+
+    const media = [
+        { id: "m1", file_url: "http://h/media/own.png" }, { id: "m3", file_url: "http://h/media/twice.png" },
+        { id: "m4", file_url: "http://h/media/twice.png" },
+    ];
+    assert.deepEqual(prefsAfterDelete(plan.delete, media), ["p-own"], "another copy of twice.png stays a background: its settings stay");
+    assert.deepEqual(prefsAfterDelete([by("http://h/media/twice.png")], media.slice(0, 2)), ["p-twice"], "the last copy: its settings go too");
+    assert.deepEqual(prefsAfterDelete([], media), [], "a file whose delete failed keeps its look and category");
+    const copy = { ...by("http://h/media/twice.png"), mediaId: "m4" };
+    assert.deepEqual(prefsAfterDelete([by("http://h/media/twice.png"), copy], media), ["p-twice"], "both copies gone: once");
 });
