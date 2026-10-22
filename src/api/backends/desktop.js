@@ -168,32 +168,10 @@ export function createDesktopBackend(bridge) {
         return new Blob([res.data]);
     }
 
-    // The KERYX package (src/lib/keryxPackage.js, electron/keryxPackage.cjs).
-    // Rows go and come in the store's form (keryx-media://), so the package
-    // names files, never this computer's port. null = the operator closed
-    // the save or open dialog.
-    const packageCall = async (fn) => {
-        if (!bridge.packages) throw new ClientError("Pacotes do KERYX só existem no KERYX do computador.", 501);
-        const res = await fn(bridge.packages);
-        if (res?.error) throw new ClientError(res.error.message, res.error.status);
-        return res?.data ?? null;
-    };
-    const PackageExport = ({ manifest, items, files, name }) => packageCall((p) => p.export({ manifest, items: toStore(items), files, name }));
-    const PackageOpen = ({ file } = {}) => packageCall((p) => p.open(file || null));
-    const PackageTake = async ({ id, entry }) => {
-        const data = await packageCall((p) => p.take(id, entry));
-        return { fileName: data.fileName, file_url: MEDIA_SCHEME + data.fileName };
-    };
-    const PackageClose = ({ id }) => packageCall((p) => p.close(id)).catch(() => null);
-
     const integrations = {
         Core: {
             UploadFile,
             FileInfo,
-            PackageExport,
-            PackageOpen,
-            PackageTake,
-            PackageClose,
             SystemFonts,
             SystemFontFile,
             // AI features are out of v1 (docs/desktop-architecture.md, section 11).

@@ -5,7 +5,7 @@
 //   keryx:media-info    invoke  { names } -> { [name]: { exists, size } } files in the media folder
 //   keryx:config        sync    { mediaBaseUrl, mediaImportMaxBytes }
 //   keryx:displays:*    invoke  list / set / open / close / identify for output windows
-//   keryx:package       invoke  { op: export | open | take | close } the .keryx package (keryxPackage.cjs)
+//   keryx:package       invoke  { op: export | open | fits | take | close } the .keryx package (keryxPackage.cjs)
 //   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter, the church's own editions (keryx:bible:own)
 //   keryx:fonts         invoke  { op: list | read, id } the PC's installed fonts (systemFonts.cjs): the
 //                               families with their faces, or one face's file as bytes
@@ -128,10 +128,11 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
     // The KERYX package (electron/keryxPackage.cjs; src/lib/keryxPackage.js
     // decides the rows): export writes the selection's rows and files where
     // the operator chooses; open reads one (picked here, or a file the page
-    // was given, by its path) into a staging folder; take copies one of its
-    // files into the media folder (a new name, as any import); close drops
-    // the staging folder. The rows themselves are written by the page,
-    // through the store.
+    // was given, by its path): its manifest and rows only; fits says whether
+    // the files the operator's choice needs fit on the disk; take unpacks one
+    // and copies it into the media folder (a new name, as any import); close
+    // forgets it. The rows themselves are written by the page, through the
+    // store.
     const packages = createPackages({ root: path.join(path.dirname(mediaDir), "pacotes"), mediaDir, importMedia, log });
     const MAX_PACKAGE_JSON = 64 * 1024 * 1024;
     const PACKAGE_FILES = [{ name: "Pacote do KERYX", extensions: ["keryx"] }];
@@ -157,6 +158,7 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
             }
             return { ...(await packages.open(file)), name: path.basename(file) };
         }
+        if (op === "fits") return packages.fits(args.id, Array.isArray(args.entries) ? args.entries.slice(0, 20000) : []);
         if (op === "take") return packages.take(args.id, args.entry);
         if (op === "close") return packages.close(args.id);
         throw Object.assign(new Error("Operação de pacote desconhecida."), { status: 400 });

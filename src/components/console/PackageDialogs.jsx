@@ -3,7 +3,7 @@ import { Btn, IconBtn } from "./kx";
 import Icon from "./Icon";
 import { useDialogFocus } from "./useDialogFocus";
 import { preparePackage, writePackage, writeLyrics, readPackage, closePackage, runImport } from "./packages";
-import { exportTitle, formatBytes, countOf, importSteps, importSay, packageSource, packageChips } from "@/lib/keryxPackage";
+import { exportTitle, formatBytes, countOf, importSteps, importSay, packageSource, packageChips, SKIPPABLE } from "@/lib/keryxPackage";
 
 // The KERYX package's two windows (owner 2026-10-21; the "Seleção múltipla"
 // mockup's M6 = A and the Rodada O mockup's O1, O1-1 = A, O1-2 = C), on the
@@ -42,7 +42,10 @@ function ExportPackageDialog({ request, onClose, onBusy, say }) {
             const out = await writePackage(kind, rows, est.pkg);
             onBusy(false); setBusy(false);
             if (!out) return; // the save dialog was closed: stay here
-            const left = out.missing?.length ? ` · ${out.missing.length} ${out.missing.length === 1 ? "arquivo não estava" : "arquivos não estavam"} neste computador e ${out.missing.length === 1 ? "ficou" : "ficaram"} de fora` : "";
+            const left = [
+                out.missing?.length && `${out.missing.length} ${out.missing.length === 1 ? "arquivo não estava" : "arquivos não estavam"} neste computador e ${out.missing.length === 1 ? "ficou" : "ficaram"} de fora`,
+                out.tooBig?.length && `${out.tooBig.length} ${out.tooBig.length === 1 ? "arquivo passou" : "arquivos passaram"} de 1 GB e ${out.tooBig.length === 1 ? "ficou" : "ficaram"} de fora`,
+            ].filter(Boolean).map((t) => ` · ${t}`).join("");
             say(`Pacote salvo: ${String(out.file || "").split(/[\\/]/).pop()} · ${formatBytes(out.bytes)}${left}.`);
             onClose();
         } catch (err) {
@@ -51,6 +54,7 @@ function ExportPackageDialog({ request, onClose, onBusy, say }) {
         }
     };
     const size = est?.error ? `Não deu para preparar: ${est.error}` : est ? `Tamanho estimado: ${formatBytes(lyrics ? JSON.stringify(rows).length : est.bytes)} · Salva onde você escolher.` : "Calculando o tamanho…";
+    const tooBig = !lyrics && est?.tooBig ? `${est.tooBig} ${est.tooBig === 1 ? "arquivo passa" : "arquivos passam"} de 1 GB e ${est.tooBig === 1 ? "fica" : "ficam"} de fora.` : "";
     const missing = !lyrics && est?.missing ? `${est.missing} ${est.missing === 1 ? "arquivo não está" : "arquivos não estão"} neste computador (a sincronização ainda não ${est.missing === 1 ? "o trouxe" : "os trouxe"}) e ${est.missing === 1 ? "fica" : "ficam"} de fora.` : "";
     const what = { songs: "as letras, os temas, os fundos, os áudios e as fontes que elas usam", themes: "os fundos e as fontes que eles usam", notices: "os fundos, os sons e as fontes que eles usam", media: "os arquivos", materials: "as imagens e os vídeos que eles usam" }[kind];
     return (
@@ -77,6 +81,7 @@ function ExportPackageDialog({ request, onClose, onBusy, say }) {
                     )}
                     <span className="pkg-note" aria-live="polite">{size}</span>
                     {missing && <span className="pkg-note is-warn">{missing}</span>}
+                    {tooBig && <span className="pkg-note is-warn">{tooBig}</span>}
                 </div>
                 <div className="im-foot">
                     <span className="im-counts" />
@@ -106,7 +111,7 @@ const PackageRows = React.memo(function PackageRows({ groups, skip, forced, busy
                         {(it.meta || it.reason) && <span className="im-meta">{it.reason || it.meta}</span>}
                     </span>
                     {it.status === "repeated" && it.way
-                        ? <label className="im-force"><input type="checkbox" disabled={busy || !skip} checked={!skip || forced.has(it.key)} onChange={() => onToggle(it.key)} />{WAY[it.way]}</label>
+                        ? <label className="im-force"><input type="checkbox" disabled={busy || (SKIPPABLE.has(g.id) && !skip)} checked={(SKIPPABLE.has(g.id) && !skip) || forced.has(it.key)} onChange={() => onToggle(it.key)} />{WAY[it.way]}</label>
                         : <span className="im-size">{it.status === "bad" ? "fica de fora" : it.status === "repeated" ? "usa a daqui" : FEMININE.has(g.id) ? "nova" : "novo"}</span>}
                 </div>
             ))}
@@ -144,16 +149,25 @@ function OpenPackageDialog({ request, onClose, onBusy, say }) {
         if (busy || !steps?.total) return;
         onBusy(true);
         setProgress({ done: 0, total: steps.takes.length + steps.total });
-        const out = await runImport({ pkg: data.pkg, plan: data.plan, themesHere: data.themes, skip, forced, onProgress: setProgress });
-        onBusy(false);
-        say(importSay(out));
-        onClose();
+        try {
+            const out = await runImport({ pkg: data.pkg, plan: data.plan, themesHere: data.themes, skip, forced, onProgress: setProgress });
+            onBusy(false);
+            say(importSay(out));
+            onClose();
+        } catch (err) {
+            // Nothing was written (the disk had no room): the list stays.
+            onBusy(false);
+            setProgress(null);
+            say(err?.message || "Não foi possível importar.");
+        }
     };
     // Still reading: nothing on screen but the scrim's wait (the chooser
     // may be open over it).
     if (!data) return <div className="scrim is-dim confirm-scrim" aria-busy="true" />;
     const n = steps?.total || 0;
-    const counts = data.plan?.counts;
+    // "Pular os repetidos" governs the songs, avisos and materials only; a
+    // repeated theme or file keeps its own box (O1-2 = C).
+    const skippable = data.plan?.items.some((it) => it.status === "repeated" && SKIPPABLE.has(it.group));
     return (
         <>
             <div className="scrim is-dim confirm-scrim" onClick={close} />
@@ -177,7 +191,7 @@ function OpenPackageDialog({ request, onClose, onBusy, say }) {
                     {data.plan && <PackageRows groups={data.plan.groups} skip={skip} forced={forced} busy={busy} onToggle={toggle} />}
                 </div>
                 <div className="im-foot">
-                    <label className="im-skip"><input type="checkbox" checked={skip} disabled={busy || !counts?.repeated} onChange={(e) => { setSkip(e.target.checked); setForced(new Set()); }} />Pular os repetidos</label>
+                    <label className="im-skip"><input type="checkbox" checked={skip} disabled={busy || !skippable} onChange={(e) => { setSkip(e.target.checked); setForced((prev) => new Set([...prev].filter((k) => !SKIPPABLE.has(k.slice(0, k.indexOf(":")))))); }} />Pular os repetidos</label>
                     <span className="im-counts" aria-live="polite">{busy ? `Importando ${progress.done} de ${progress.total}…` : ""}</span>
                     <Btn kind="brand" disabled={busy || !n} onClick={run}>{busy ? "Importando…" : n ? `Importar ${n}` : "Nada para importar"}</Btn>
                     <Btn disabled={busy} onClick={close}>Cancelar</Btn>

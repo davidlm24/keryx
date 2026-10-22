@@ -380,12 +380,9 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                     </>
                 );
             })()}
-            {/* Glyphs only (the words are their names and tooltips): at the
-                Biblioteca's minimum width, 260 px, the count would not fit
-                beside two labelled buttons. */}
             <SelBar count={picked.length} feminine={tab === "letras"} onClear={ms.clear}>
-                <IconBtn name="save" small title="Exportar…" onClick={() => exportRows(picked)} />
-                <IconBtn name="trash" small title={`Excluir… · ${keyHint("delete")}`} onClick={() => removeRows(picked)} />
+                <Btn small onClick={() => exportRows(picked)} title="Exportar num pacote do KERYX, com os arquivos que usam">Exportar…</Btn>
+                <Btn small onClick={() => removeRows(picked)} title={`Excluir · ${keyHint("delete")}`}>Excluir…</Btn>
             </SelBar>
             {mediaKinds && <MediaPeek peek={peek} />}
         </>

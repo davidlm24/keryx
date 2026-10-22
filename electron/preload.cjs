@@ -119,8 +119,8 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     },
     // The KERYX package (electron/keryxPackage.cjs): export where the operator
     // chooses; open one picked in main, or a File the page was given (its
-    // path, which only the preload can read); take one of its files into the
-    // media folder; close.
+    // path, which only the preload can read); whether the files chosen fit;
+    // take one of its files into the media folder; close.
     packages: {
         export: ({ manifest, items, files, name }) => ipcRenderer.invoke("keryx:package", { op: "export", manifest, items, files, name }),
         open(file) {
@@ -131,6 +131,7 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
             }
             return ipcRenderer.invoke("keryx:package", { op: "open", sourcePath });
         },
+        fits: (id, entries) => ipcRenderer.invoke("keryx:package", { op: "fits", id, entries }),
         take: (id, entry) => ipcRenderer.invoke("keryx:package", { op: "take", id, entry }),
         close: (id) => ipcRenderer.invoke("keryx:package", { op: "close", id }),
     },

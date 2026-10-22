@@ -162,8 +162,39 @@ test("importSteps: Pular os repetidos reuses the theme of the same name (O1-2 = 
     const forced = importSteps(plan, { skip: true, forced: new Set(["themes:t2", "songs:s2"]), items: pkg.items });
     assert.deepEqual(forced.create.themes.map((it) => it.row.id).sort(), ["t1", "t2"]);
     assert.deepEqual(forced.create.songs.map((it) => it.row.id), ["s1", "s2"]);
-    // Pular off brings every repeated one.
-    assert.equal(importSteps(plan, { skip: false, items: pkg.items }).create.songs.length, 2);
+    // Pular off brings the repeated songs, and STILL reuses the theme of the
+    // same name (O1-2 = C): a copy comes only from its own box.
+    const off = importSteps(plan, { skip: false, items: pkg.items });
+    assert.equal(off.create.songs.length, 2);
+    assert.deepEqual(off.create.themes.map((it) => it.row.id), ["t1"]);
+    assert.equal(off.reuse.themes.t2.id, "h2");
+    assert.equal(off.skipped, 0);
+    const offCopy = importSteps(plan, { skip: false, forced: new Set(["themes:t2"]), items: pkg.items });
+    assert.deepEqual(offCopy.create.themes.map((it) => it.row.id).sort(), ["t1", "t2"]);
+    assert.deepEqual(offCopy.reuse.themes, {});
+});
+
+test("importSteps: a repeated background is reused whatever Pular says, copied only from its own box", () => {
+    const pkg = opened();
+    const here = { media: [{ id: "h1", title: "pão e vinho", type: "image", category: "background", file_url: "keryx-media://here.jpg" }], sizes: { "keryx-media://here.jpg": 1000 } };
+    const plan = openPlan(pkg, here, { mediaBase: BASE });
+    for (const skip of [true, false]) {
+        const steps = importSteps(plan, { skip, items: pkg.items });
+        assert.equal(steps.reuse.files["bg1.jpg"], "keryx-media://here.jpg", `skip ${skip}`);
+        assert.ok(!steps.takes.includes("media/bg1.jpg"));
+        assert.ok(!steps.create.media.some((it) => it.row.id === "m1"));
+        // No setting of a file that did not come.
+        assert.ok(!steps.create.backgroundPrefs.length);
+    }
+    const copy = importSteps(plan, { skip: true, forced: new Set(["media:m1"]), items: pkg.items });
+    assert.ok(copy.takes.includes("media/bg1.jpg"));
+    assert.ok(copy.create.media.some((it) => it.row.id === "m1"));
+});
+
+test("openPlan: a file left out for being over 1 GB says so", () => {
+    const pkg = { ...opened({ drop: ["a1.mp3"] }) };
+    pkg.manifest = { ...pkg.manifest, left: { "a1.mp3": "big" } };
+    assert.equal(openPlan(pkg, {}, { mediaBase: BASE }).items.find((it) => it.key === "media:m2").reason, "o arquivo não veio no pacote (passou de 1 GB)");
 });
 
 test("importSteps: what only a skipped song used stays out", () => {

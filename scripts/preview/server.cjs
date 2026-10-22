@@ -24,6 +24,7 @@
 //                              (electron/keryxPackage.cjs) -> { data: { token, … } }
 //   GET  /__keryx/package-download?token=  that file, as a download
 //   POST /__keryx/package-open?name=  (the .keryx's bytes) reads it -> { data: { id, manifest, items, files } }
+//   POST /__keryx/package-fits   { id, entries } whether those files fit -> { data: { ok, need, free } }
 //   POST /__keryx/package-take   { id, entry } one of its files into the media folder -> { data: { fileName } }
 //   POST /__keryx/package-close  { id }
 //   GET  /media/<file>         the preview's media folder; /media/bundled/ is resources/
@@ -252,7 +253,12 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
                 const bytes = await readBody(req, MAX_FILE);
                 const incoming = path.join(dir, `incoming-${crypto.randomUUID()}.keryx`);
                 fs.writeFileSync(incoming, bytes);
-                try { return json(res, 200, { data: { ...(await packages.open(incoming)), name: path.basename(String(url.searchParams.get("name") || "pacote.keryx")) } }); } catch (err) { return json(res, 200, failure(err)); } finally { fs.rmSync(incoming, { force: true }); }
+                // The upload is the package's own copy: removed on close (or a failed open).
+                try { return json(res, 200, { data: { ...(await packages.open(incoming, { owned: true })), name: path.basename(String(url.searchParams.get("name") || "pacote.keryx")) } }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "package-fits" && req.method === "POST") {
+                const { id, entries } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                try { return json(res, 200, { data: packages.fits(id, Array.isArray(entries) ? entries : []) }); } catch (err) { return json(res, 200, failure(err)); }
             }
             if (route === "package-take" && req.method === "POST") {
                 const { id, entry } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");

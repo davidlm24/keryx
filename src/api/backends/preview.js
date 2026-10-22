@@ -265,6 +265,7 @@ export function createPreviewBridge() {
                 });
                 return file ? request(`package-open?name=${encodeURIComponent(file.name)}`, { method: "POST", raw: file }) : { data: null };
             },
+            fits: (id, entries) => request("package-fits", { method: "POST", body: { id, entries } }),
             take: (id, entry) => request("package-take", { method: "POST", body: { id, entry } }),
             close: (id) => request("package-close", { method: "POST", body: { id } }),
         },

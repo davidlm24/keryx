@@ -1200,18 +1200,25 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   BackgroundPref, the church's fonts by family). The rules are
   `src/lib/keryxPackage.js` (tested: `packageFor`, `openPlan`, `importSteps`,
   `rewriteRow`); the zip is `electron/keryxPackage.cjs` (manifest.json,
-  items.json, media/, fonts/; an entry allowlist and caps, `.partial` then
-  rename, IPC `keryx:package` export | open | take | close; the preview server
-  uses the same module). "Exportar…" (the selection bars, the multi-row and
+  items.json, media/, fonts/; `.partial` then rename; a file over 1 GB stays
+  out, named in the manifest's `left`; IPC `keryx:package` export | open |
+  fits | take | close; the preview server uses the same module). A package
+  comes from another church, so it is untrusted: open checks an entry
+  allowlist and caps (count, 1 GB a file, 16 GB in all, by the declared sizes,
+  which yauzl holds the bytes to) and reads only the manifest and the rows;
+  only the files the operator's choice needs are unpacked, one at a time,
+  after `fits` says they fit. "Exportar…" (the selection bars, the multi-row and
   row menus of the Biblioteca and the Mídia; `exportItems` of `usePackages`,
   `PackageDialogs.jsx`) asks "Com os arquivos" or, for songs, "Só as letras"
   (the JSON of always); Biblioteca › + › "Abrir pacote do KERYX…" or a .keryx
   picked in Importar músicas opens the list grouped by kind: ✓ novo, ! parece
   repetido (songs by `songKey`, themes by name, a file by type + title + size,
   a font face by family + weight + style) with "Trazer mesmo assim" / "Trazer
-  como cópia", ✕ não abre. "Pular os repetidos" is on: a repeated song, aviso
-  or material stays out, a repeated theme or file is reused by what comes in;
-  what only a skipped row used stays out too. Ids are always new and nothing
+  como cópia", ✕ não abre. "Pular os repetidos" (on) governs only songs,
+  avisos and materials (`SKIPPABLE`): a repeated one stays out. A repeated
+  theme or file is reused by what comes in, whatever Pular says, and comes as
+  a copy only from its own box (O1-2 = C). What only a skipped row used stays
+  out too. Ids are always new and nothing
   is overwritten; files go into the media folder through `importMedia` (a new
   name) and every row through the store, so the sync records them. A new
   field that holds a reference to another row goes in `rewriteRow`.

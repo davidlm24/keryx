@@ -23,6 +23,13 @@ export const PACKAGE_FORMAT = "keryx-pacote";
 export const PACKAGE_VERSION = 1;
 export const PACKAGE_EXT = ".keryx";
 export const PACKAGE_FILE = /\.keryx$/i;
+// A file over this stays out of a package (the mockup's "passou de 1 GB";
+// electron/keryxPackage.cjs MAX_FILE_BYTES is the same number).
+export const MAX_PACKAGE_FILE = 1024 ** 3;
+// The groups "Pular os repetidos" governs: a repeated one is skipped while
+// it is on. A repeated theme or file is reused instead, and comes in as a
+// copy only when its own box is ticked, whatever "Pular" says (O1-2 = C).
+export const SKIPPABLE = new Set(["songs", "notices", "materials"]);
 
 const SCHEME = "keryx-media://";
 // A media folder file (electron/mediaImport.cjs names them uuid + ext);
@@ -270,7 +277,7 @@ export function openPlan(pkg, here = {}, { mediaBase = "" } = {}) {
         const name = fileOf(m.file_url);
         const group = groupOfMedia(m);
         const item = { key: `media:${m.id}`, group, entity: "Media", title: group === "fonts" ? `${familyOf(m)}${m.font?.face ? ` · ${m.font.face}` : ""}` : mediaTitle(m), row: m };
-        if (name && !has(name)) Object.assign(item, { status: "bad", reason: "o arquivo não veio no pacote" });
+        if (name && !has(name)) Object.assign(item, { status: "bad", reason: pkg.manifest?.left?.[name] === "big" ? "o arquivo não veio no pacote (passou de 1 GB)" : "o arquivo não veio no pacote" });
         else if (group === "fonts") {
             const same = hereMedia.find((h) => isFont(h) && fold(familyOf(h)) === fold(familyOf(m)) && String(h.font?.weight || "400") === String(m.font?.weight || "400") && (h.font?.style || "normal") === (m.font?.style || "normal"));
             Object.assign(item, same ? { status: "repeated", match: same, meta: "esta fonte já está aqui" } : { status: "ok", meta: "" });
@@ -353,8 +360,9 @@ export function copyName(name, taken = []) {
     }
 }
 
-// What goes in, with the choices: skip ("Pular os repetidos") and forced
-// (the keys of the repeated rows the operator brings anyway / as a copy).
+// What goes in, with the choices: skip ("Pular os repetidos", for the
+// SKIPPABLE groups only) and forced (the keys of the repeated rows the
+// operator brings anyway / as a copy).
 // The kind the package was made of comes whole; the rows that came with
 // it (themes, backgrounds, fonts, files) only when something that goes in
 // uses them. A repeated theme, background or font not brought is reused.
@@ -362,7 +370,7 @@ export function copyName(name, taken = []) {
 //      (items), reuse: { themes: { oldId: row }, files: { oldName: url } },
 //      takes: ["media/x", …] (the files to copy), total }
 export function importSteps(plan, { skip = true, forced = new Set(), items = {} } = {}) {
-    const goes = (it) => it.status === "ok" || (it.status === "repeated" && it.way && (!skip || forced.has(it.key)));
+    const goes = (it) => it.status === "ok" || (it.status === "repeated" && Boolean(it.way) && (forced.has(it.key) || (!skip && SKIPPABLE.has(it.group))));
     const pick = (group) => plan.items.filter((it) => it.group === group && goes(it));
     const songs = pick("songs");
     const notices = pick("notices");
