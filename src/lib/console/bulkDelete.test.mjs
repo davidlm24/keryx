@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { NOUNS, nameList, serviceName, itemsUsing, setlistLines, themeLines, bulkDeleteQuestion, renumberPlan, deletedSay, backgroundQuestion, backgroundSay } from "./bulkDelete.js";
+import { NOUNS, nameList, serviceName, itemsUsing, setlistLines, themeLines, bulkDeleteQuestion, renumberPlan, deletedSay, backgroundQuestion, backgroundSay, backgroundAction } from "./bulkDelete.js";
 import { focusesCancel } from "./confirm.js";
 
 const services = [{ id: "dom", title: "Domingo", date: "2026-10-20" }, { id: "qua", title: "", date: "2026-10-23" }];
@@ -86,9 +86,9 @@ test("the toast after", () => {
 test("Tirar dos fundos for several: one question that says where each origin goes", () => {
     const b = (name) => ({ name });
     const q = backgroundQuestion({ exclude: [b("Céu"), b("Mar")], delete: [b("Cruz")], untrack: [b("Igreja")], skipped: [b("Campo")] });
-    assert.equal(q.title, "Tirar 4 fundos?");
+    assert.equal(q.title, "Excluir 4 fundos?", "a file deleted for good: Excluir");
     assert.deepEqual(q.list, ["Céu", "Mar", "Cruz", "Igreja"]);
-    assert.equal(q.ok, "Tirar 4");
+    assert.equal(q.ok, "Excluir 4");
     assert.deepEqual(q.warn, ["1 foi enviado para a biblioteca e é excluído de vez."]);
     assert.equal(q.text, "2 vêm com o KERYX e vão para Excluídos: Restaurar traz de volta. 1 é da Mídia e sai só dos fundos: a Mídia continua com ele. 1 já está em Excluídos.");
     assert.equal(focusesCancel(q), true, "a file deleted for good: it opens on Cancelar");
@@ -98,6 +98,13 @@ test("Tirar dos fundos for several: one question that says where each origin goe
     assert.deepEqual(soft.warn, []);
     assert.equal(focusesCancel(soft), false, "Excluídos gives it back: it opens on Tirar");
     assert.equal(backgroundQuestion({ skipped: [b("Campo")] }), null, "nothing can go further");
+    assert.equal(backgroundQuestion({ exclude: [b("Céu")], untrack: [b("Igreja")] }).title, "Tirar 2 fundos?", "nothing deleted for good: Tirar");
+});
+
+test("the marked backgrounds' action: Excluir with the trash when a file goes for good (owner 2026-10-22)", () => {
+    assert.deepEqual(backgroundAction({ exclude: [{}], delete: [{}] }), { label: "Excluir…", icon: "trash", verb: "Excluir" });
+    assert.deepEqual(backgroundAction({ exclude: [{}], untrack: [{}], delete: [] }), { label: "Tirar dos fundos…", icon: "x", verb: "Tirar" });
+    assert.deepEqual(backgroundAction(), { label: "Tirar dos fundos…", icon: "x", verb: "Tirar" });
 });
 
 test("the toast after Tirar dos fundos", () => {

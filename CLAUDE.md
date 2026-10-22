@@ -1194,9 +1194,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   through its escRef. The Mídia page is the reference; the Biblioteca, Setlist,
   Planejar o culto, Temas, the background library (manage only) and the Escola
   follow (Temas and the Escola in "air" mode: a plain click still edits or
-  prepares; the library's marks get ONE "Tirar dos fundos…", `backgroundRemoval`
-  in backgroundPrefs.js splitting the origins and `backgroundQuestion` in
-  bulkDelete.js, its Esc through the host's `escRef`); the Temas panel and the
+  prepares; the library's marks get ONE question, "Excluir…" with the trash when
+  a file sent there goes for good, else "Tirar dos fundos…" (`backgroundRemoval`
+  in backgroundPrefs.js splitting the origins, `backgroundAction`/`Question` in
+  bulkDelete.js), its Esc through the host's `escRef`); the Temas panel and the
   short settings lists stay single.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. Every write

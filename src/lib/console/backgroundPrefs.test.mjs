@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    sourceOf, backgroundList, visibleBackgrounds, backgroundActions, backgroundRemoval, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults,
+    sourceOf, backgroundList, visibleBackgrounds, backgroundActions, backgroundRemoval, prefsAfterDelete, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults,
     CATEGORY_SUGGESTIONS, normalizeCategories, categoryList, managedCategories, addCategory, renameCategory, removeCategory, moveCategory, inCategory,
 } from "./backgroundPrefs.js";
 import { bundledBackgrounds, bundledBackgroundId } from "../backgrounds.js";
@@ -196,17 +196,20 @@ test("several backgrounds out at once: each origin its way, one plan (owner 2026
         ],
     });
     const by = (s) => list.find((b) => b.source === s);
-    const media = [
-        { id: "m1", file_url: "http://h/media/own.png" }, { id: "m3", file_url: "http://h/media/twice.png" },
-        { id: "m4", file_url: "http://h/media/twice.png" },
-    ];
-    const plan = backgroundRemoval(["bundled:a", "bundled:b", "http://h/media/own.png", "http://h/media/twice.png", "http://h/media/midia.png"].map(by), media);
+    const plan = backgroundRemoval(["bundled:a", "bundled:b", "http://h/media/own.png", "http://h/media/twice.png", "http://h/media/midia.png"].map(by));
     assert.deepEqual(plan.exclude.map((b) => b.source), ["bundled:a"], "a factory photo goes to Excluídos");
     assert.deepEqual(plan.skipped.map((b) => b.source), ["bundled:b"], "already excluded: nowhere further");
     assert.deepEqual(plan.delete.map((b) => b.mediaId), ["m1", "m3"], "the files sent here are deleted");
     assert.deepEqual(plan.untrack.map((b) => b.source), ["http://h/media/midia.png"], "a Mídia picture only leaves the backgrounds");
-    assert.deepEqual(plan.prefsToDelete.sort(), ["p-midia", "p-own"], "another copy of twice.png stays a background: its settings stay");
-    const all = backgroundRemoval([by("http://h/media/twice.png")], [{ id: "m3", file_url: "http://h/media/twice.png" }]);
-    assert.deepEqual(all.prefsToDelete, ["p-twice"], "the last copy: its settings go too");
-    assert.deepEqual(backgroundRemoval([], media), { exclude: [], delete: [], untrack: [], skipped: [], prefsToDelete: [] });
+    assert.deepEqual(backgroundRemoval([]), { exclude: [], delete: [], untrack: [], skipped: [] });
+
+    const media = [
+        { id: "m1", file_url: "http://h/media/own.png" }, { id: "m3", file_url: "http://h/media/twice.png" },
+        { id: "m4", file_url: "http://h/media/twice.png" },
+    ];
+    assert.deepEqual(prefsAfterDelete(plan.delete, media), ["p-own"], "another copy of twice.png stays a background: its settings stay");
+    assert.deepEqual(prefsAfterDelete([by("http://h/media/twice.png")], media.slice(0, 2)), ["p-twice"], "the last copy: its settings go too");
+    assert.deepEqual(prefsAfterDelete([], media), [], "a file whose delete failed keeps its look and category");
+    const copy = { ...by("http://h/media/twice.png"), mediaId: "m4" };
+    assert.deepEqual(prefsAfterDelete([by("http://h/media/twice.png"), copy], media), ["p-twice"], "both copies gone: once");
 });

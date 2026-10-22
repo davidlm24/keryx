@@ -20,6 +20,7 @@ import { categoryList } from "@/lib/console/backgroundPrefs";
 import { fontStack, themesUsingFont } from "@/lib/fonts";
 import { useChurchFonts } from "../useConsoleData";
 import { useChurch } from "@/hooks/useChurch";
+import { TEMAS_SLOTS } from "../ThemeStrip";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
 import { emptyState } from "@shared/live-state.mjs";
@@ -126,7 +127,11 @@ export default function TemasSection({ c, onOpenScreen, escRef = null }) {
         const pin = !rows.every((t) => t.pinned);
         const change = rows.filter((t) => Boolean(t.pinned) !== pin).map((t) => ({ id: t.id, pinned: pin }));
         if (!change.length) return;
-        run(keryx.entities.ProjectionTheme.bulkUpdate(change), pin ? `${change.length === 1 ? "1 tema fixado" : `${change.length} temas fixados`} no console.` : `${change.length === 1 ? "1 tema saiu" : `${change.length} temas saíram`} do console.`);
+        // More pinned than the panel's slots: they all stay pinned, the panel
+        // shows its 9 (consoleThemes), so say it.
+        const pinned = themes.filter((t) => t.pinned).length + change.length;
+        const over = pin && pinned > TEMAS_SLOTS ? ` O painel Temas mostra ${TEMAS_SLOTS}: ${pinned - TEMAS_SLOTS} ${pinned - TEMAS_SLOTS === 1 ? "fica" : "ficam"} de fora.` : "";
+        run(keryx.entities.ProjectionTheme.bulkUpdate(change), pin ? `${change.length === 1 ? "1 tema fixado" : `${change.length} temas fixados`} no console.${over}` : `${change.length === 1 ? "1 tema saiu" : `${change.length} temas saíram`} do console.`);
     };
     // Excluir… for every one marked: ONE question (bulkActions.js) that says
     // the default theme and who uses them (they fall back to the default).

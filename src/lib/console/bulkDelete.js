@@ -126,10 +126,18 @@ export function deletedSay(n, noun = NOUNS.item, failed = 0) {
     return failed ? `${done} · ${failed} não ${failed === 1 ? "pôde" : "puderam"} ser ${fem ? (failed === 1 ? "excluída" : "excluídas") : (failed === 1 ? "excluído" : "excluídos")}.` : `${done}.`;
 }
 
-// "Tirar dos fundos…" for several (backgroundRemoval in backgroundPrefs.js):
-// one question that says where each origin goes. The files deleted for good
-// are the amber line, and only then does it open on Cancelar. null = nothing
-// can go further (every one already in Excluídos).
+// The action for the marked backgrounds (owner 2026-10-22, "use excluir"):
+// with any file sent here among them — deleted for good — it is Excluir…
+// with the trash (Excluir = apaga); otherwise Tirar dos fundos… with the x
+// (they go to Excluídos or stay in the Mídia). `plan`: backgroundRemoval.
+export function backgroundAction(plan = {}) {
+    return plan.delete?.length ? { label: "Excluir…", icon: "trash", verb: "Excluir" } : { label: "Tirar dos fundos…", icon: "x", verb: "Tirar" };
+}
+
+// The one question for several backgrounds (backgroundRemoval in
+// backgroundPrefs.js): it says where each origin goes. The files deleted for
+// good are the amber line, the verb is Excluir, and it opens on Cancelar.
+// null = nothing can go further (every one already in Excluídos).
 export function backgroundQuestion({ exclude = [], delete: del = [], untrack = [], skipped = [] } = {}) {
     const going = [...exclude, ...del, ...untrack];
     const n = going.length;
@@ -141,11 +149,12 @@ export function backgroundQuestion({ exclude = [], delete: del = [], untrack = [
         skipped.length && `${count(skipped, "já está", "já estão")} em Excluídos.`,
     ].filter(Boolean).join(" ");
     const warn = del.length ? [`${count(del, "foi enviado para a biblioteca e é excluído", "foram enviados para a biblioteca e são excluídos")} de vez.`] : [];
+    const { verb } = backgroundAction({ delete: del });
     return {
-        title: n === 1 ? "Tirar o fundo?" : `Tirar ${n} fundos?`,
+        title: n === 1 ? `${verb} o fundo?` : `${verb} ${n} fundos?`,
         list: nameList(going.map((b) => b.name)),
         warn, text,
-        ok: n === 1 ? "Tirar" : `Tirar ${n}`,
+        ok: n === 1 ? verb : `${verb} ${n}`,
         danger: del.length > 0,
     };
 }

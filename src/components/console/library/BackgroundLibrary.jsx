@@ -3,7 +3,7 @@ import Icon from "../Icon";
 import { Btn, IconBtn, Seg, onTabsKey, tabStop, SelectManyBtn, SelBar, RowMark } from "../kx";
 import { useMultiSelect } from "../useMultiSelect";
 import { pickedOf } from "@/lib/console/multiSelect";
-import { backgroundQuestion, backgroundSay } from "@/lib/console/bulkDelete";
+import { backgroundQuestion, backgroundSay, backgroundAction } from "@/lib/console/bulkDelete";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import GeneratorPanel, { GeneratorTiles } from "../GeneratorPanel";
 import { FundoDetail, useSaveBackgroundPref } from "../settings/FundosGallery";
@@ -13,7 +13,7 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { failureReason, importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
-import { visibleBackgrounds, categoriesOf, managedCategories, sourceOf, backgroundActions, backgroundRemoval, OWN_IMAGES, OWN_VIDEOS } from "@/lib/console/backgroundPrefs";
+import { visibleBackgrounds, categoriesOf, managedCategories, sourceOf, backgroundActions, backgroundRemoval, prefsAfterDelete, OWN_IMAGES, OWN_VIDEOS } from "@/lib/console/backgroundPrefs";
 import FundoCategories from "./FundoCategories";
 import { cleanSpec, bgArgs, bgSpec, bgLabel, sameBg } from "@/lib/console/backgroundSpec";
 import { themeStyle, themeBackgroundArgs, themeName, themeHasBackground } from "@/lib/console/themes";
@@ -109,7 +109,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
         if (selectable && ms.has(b.source) && picked.length > 1) {
             menu(e, { title: `${picked.length} fundos`, items: [
                 picked.some((x) => x.hidden) && { label: "Restaurar", icon: "undo", onSelect: () => restoreMany() },
-                { label: "Tirar dos fundos…", icon: "x", onSelect: () => removeMany() },
+                { label: pickedAction.label, icon: pickedAction.icon, onSelect: () => removeMany() },
             ].filter(Boolean) });
             return;
         }
@@ -189,33 +189,46 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     const clearMarks = ms.clear;
     useEffect(() => { clearMarks(); }, [tab, filter, view, clearMarks]);
     const picked = selectable ? pickedOf(ms.sel, shown, (b) => b.source) : [];
-    // Tirar dos fundos… for every one marked: ONE question that splits the
-    // origins (backgroundRemoval; factory photos to Excluídos, files sent here
-    // deleted, Mídia pictures only out of the backgrounds).
+    // What the marked ones get (owner 2026-10-22): Excluir… with the trash
+    // when a file sent here is among them (it goes for good), else Tirar dos
+    // fundos… with the x — the same ONE question either way.
+    const pickedAction = backgroundAction(backgroundRemoval(picked));
+    // Every one marked: ONE question that splits the origins (backgroundRemoval;
+    // factory photos to Excluídos, files sent here deleted, Mídia pictures only
+    // out of the backgrounds). Each row counts by its own result: a file whose
+    // delete failed keeps its settings (prefsAfterDelete), and a Mídia picture
+    // whose settings could not go is not said to have left.
     const removeMany = async (rows = picked) => {
-        const plan = backgroundRemoval(rows, backgroundMedia);
+        const plan = backgroundRemoval(rows);
         const question = backgroundQuestion(plan);
         if (!question) { c.say("Já estão em Excluídos: Restaurar traz de volta."); return; }
         if (!(await confirm(question))) return;
         const done = { exclude: 0, delete: 0, untrack: 0, failed: 0 };
-        const each = async (kind, rows, fn) => { for (const b of rows) { try { await fn(b); done[kind]++; } catch { done.failed++; } } };
-        await each("exclude", plan.exclude, (b) => (b.pref?.id
-            ? keryx.entities.BackgroundPref.update(b.pref.id, { hidden: true, favorite: false })
-            : keryx.entities.BackgroundPref.create({ source: b.source, hidden: true, favorite: false })));
-        await each("delete", plan.delete, (b) => keryx.entities.Media.delete(b.mediaId));
-        for (const id of plan.prefsToDelete) await keryx.entities.BackgroundPref.delete(id).catch(() => {});
-        done.untrack = plan.untrack.length;
-        if (sel && [...plan.exclude, ...plan.delete, ...plan.untrack].some((b) => b.url === sel.value)) setSel(null);
+        const left = [];
+        const each = async (kind, list, fn) => {
+            for (const b of list) {
+                let ok = false;
+                try { ok = (await fn(b)) !== false; } catch { ok = false; }
+                if (ok) { done[kind]++; left.push(b); } else done.failed++;
+            }
+        };
+        // Through the library's own save (useSaveBackgroundPref): a single
+        // action racing this one never makes a second BackgroundPref row.
+        await each("exclude", plan.exclude, (b) => save(b, { hidden: true, favorite: false }));
+        const deleted = [];
+        await each("delete", plan.delete, async (b) => { await keryx.entities.Media.delete(b.mediaId); deleted.push(b); });
+        for (const id of prefsAfterDelete(deleted, backgroundMedia)) await keryx.entities.BackgroundPref.delete(id).catch(() => {});
+        await each("untrack", plan.untrack, (b) => (b.pref?.id ? keryx.entities.BackgroundPref.delete(b.pref.id) : true));
+        if (sel && left.some((b) => b.url === sel.value)) setSel(null);
         ms.clear();
         c.say(backgroundSay(done));
     };
     const restoreMany = async (rows = picked) => {
-        const back = rows.filter((b) => b.hidden && b.pref?.id);
-        try {
-            for (const b of back) await keryx.entities.BackgroundPref.update(b.pref.id, { hidden: false });
-            ms.clear();
-            c.say(back.length === 1 ? `"${back[0].name}" voltou para a biblioteca.` : `${back.length} fundos voltaram para a biblioteca.`);
-        } catch (err) { c.say(err?.message || "Não foi possível restaurar."); }
+        const back = rows.filter((b) => b.hidden);
+        let ok = 0;
+        for (const b of back) if (await save(b, { hidden: false })) ok++;
+        ms.clear();
+        if (ok) c.say(ok === 1 ? `"${back[0].name}" voltou para a biblioteca.` : `${ok} fundos voltaram para a biblioteca.`);
     };
     if (escRef) escRef.current = () => { if (ms.count || ms.picking) { ms.clear(); return true; } return false; };
 
@@ -302,7 +315,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                             </div>
                             {selectable && <SelBar count={picked.length} onClear={ms.clear}>
                                 {picked.some((b) => b.hidden) && <Btn small onClick={() => restoreMany()}>Restaurar</Btn>}
-                                <Btn small onClick={() => removeMany()} title="Fábrica vai para Excluídos · enviados do computador são excluídos · da Mídia só saem dos fundos · Delete">Tirar dos fundos…</Btn>
+                                <Btn small onClick={() => removeMany()} title="Os de fábrica vão para Excluídos · os enviados do computador são excluídos · os da Mídia só saem dos fundos · Delete"><Icon name={pickedAction.icon} />{pickedAction.label}</Btn>
                             </SelBar>}
                             {filter === HIDDEN && <span className="kx-meta">Fora da biblioteca. Clique com o botão direito para restaurar.</span>}
                             <div className={`lib-grid ${selectable && ms.picking ? "is-picking" : ""}`} onKeyDown={selectable ? (e) => ms.keyDown(e, { onDelete: removeMany }) : undefined}>

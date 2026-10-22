@@ -68,6 +68,10 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const materialIds = useMemo(() => materials.map((m) => m.id), [materials]);
     const ms = useMultiSelect({ order: listedIds, existing: materialIds, mode: "air", register: false });
     const picked = pickedOf(ms.sel, listed);
+    // Another class, or Desta turma / Todos: the marks go (none stays on a
+    // material the list no longer shows), as the library does on a tab change.
+    const clearMarks = ms.clear;
+    useEffect(() => { clearMarks(); }, [onlyClass, cls?.id, clearMarks]);
 
     // -- Turmas and students -------------------------------------------------------
     const saveClass = (patch) => keryx.entities.BibleSchoolClass.update(cls.id, patch).then(refresh).catch(fail);
