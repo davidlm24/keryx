@@ -5,7 +5,8 @@
 import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" };
 import { activitySteps, revealStep, livePosition, toolTime } from "../../../shared/live-state.mjs";
 import { captionParts, airFor } from "../console/caption.js";
-import { playerLayer, videoSwap, followLabel, followAction, clock } from "../console/player.js";
+import { playerLayer, videoSwap, clock } from "../console/player.js";
+import { followLabel, followAction } from "../console/followWords.js";
 import { typeLabel, typeIcon } from "../console/setlist.js";
 import { readQuickRef } from "../console/quickRef.js";
 import { bibleBooks, BIBLE_VERSIONS, formatReference } from "../bibleBooks.js";

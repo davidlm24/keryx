@@ -34,7 +34,7 @@ export const MENU_IDS = ["culto", "musica", "midia", "ferramentas", "ajuda"];
 const DESKTOP_ONLY = "Só no aplicativo do computador";
 
 // The source a song's automatic lyrics follow, in words.
-const FOLLOW_WORD = { video: "o vídeo", audio: "o playback", clock: "o relógio ao vivo" };
+const FOLLOW_WORD = { video: "o vídeo", audio: "o playback", clock: "o relógio ao vivo", time: "o tempo de cada slide" };
 
 export function buildMenus(ctx) {
     const a = ctx.act || {};
@@ -55,7 +55,7 @@ export function buildMenus(ctx) {
     const letra = f
         ? [
             { label: `Segue ${FOLLOW_WORD[f.source]}`, disabled: true },
-            f.source === "clock" && !f.clock
+            (f.source === "clock" || f.source === "time") && !f.clock
                 ? { label: "Iniciar", icon: "play", disabled: ctx.locked, onSelect: call("follow", "start") }
                 : f.paused
                     ? { label: "Retomar", icon: "play", disabled: ctx.locked, onSelect: call("follow", "resume") }

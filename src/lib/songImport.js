@@ -366,6 +366,70 @@ export function withTimings(slides, starts, total = null) {
     });
 }
 
+// Timed lyrics (LRC, LRCLIB's syncedLyrics; Rodada P12): [{ t, text }] in
+// time order. "[mm:ss.xx]" stamps (several on one line repeat it), the
+// [offset:±ms] tag applied (+ = the lyrics earlier), the other tags and the
+// empty lines left out.
+export function parseLrc(lrc) {
+    let offset = 0;
+    const out = [];
+    for (const raw of String(lrc || "").split(/\r?\n/)) {
+        let rest = raw.trim();
+        const off = /^\[offset:\s*([+-]?\d+)\s*\]/i.exec(rest);
+        if (off) { offset = Number(off[1]) / 1000; continue; }
+        const stamps = [];
+        for (let m; (m = /^\[(\d+):(\d{1,2}(?:[.:]\d+)?)\]/.exec(rest)); rest = rest.slice(m[0].length).trimStart()) {
+            stamps.push(Number(m[1]) * 60 + Number(m[2].replace(":", ".")));
+        }
+        if (!stamps.length || !rest.trim()) continue;
+        for (const t of stamps) out.push({ t, text: rest.trim() });
+    }
+    return out
+        .map(({ t, text }) => ({ t: Math.round(Math.max(0, t - offset) * 100) / 100, text }))
+        .sort((a, b) => a.t - b.t);
+}
+
+// A line as the matching sees it: no chords, accents, case or punctuation.
+const lineKey = (s) => stripChords(String(s || "")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+// The same line, give or take its end (one of them cut short) or a word
+// spelled otherwise ("ó" / "oh"): three words in four the same.
+function sameLine(a, b) {
+    if (a === b || (Math.min(a.length, b.length) >= 8 && (a.startsWith(b) || b.startsWith(a)))) return true;
+    const wa = a.split(" ");
+    const wb = b.split(" ");
+    const most = Math.max(wa.length, wb.length);
+    if (most < 3) return false;
+    const left = [...wb];
+    const common = wa.filter((w) => { const i = left.indexOf(w); if (i < 0) return false; left.splice(i, 1); return true; }).length;
+    return common / most >= 0.75;
+}
+
+// The marks a recording's timed lines give the slides (songFromText cut
+// them): one entry per slide, seconds or null, for withTimings. The slides
+// are walked in order against the lines, each slide taking the time of its
+// first line (or of its second, when the first is not found); a slide not
+// found within `window` lines from where the last one ended stays unmarked
+// (the follow shares its gap, lyricSync.js followStarts), so a chorus the
+// recording repeats never pulls the slides ahead.
+export function lrcMarks(slides, lrc, { window = 12 } = {}) {
+    const lines = (Array.isArray(lrc) ? lrc : parseLrc(lrc)).map((l) => ({ t: l.t, k: lineKey(l.text) })).filter((l) => l.k);
+    let j = 0;
+    return (slides || []).map((s) => {
+        const own = String(s?.text || "").split("\n").map(lineKey).filter(Boolean);
+        for (let k = j; k < Math.min(lines.length, j + window); k++) {
+            for (let m = 0; m < Math.min(own.length, 2); m++) {
+                if (!sameLine(lines[k].k, own[m])) continue;
+                const first = m && k - 1 >= j ? k - 1 : k;
+                j = k + 1;
+                for (let n = m + 1; n < own.length && j < lines.length && sameLine(lines[j].k, own[n]); n++) j++;
+                return lines[first].t;
+            }
+        }
+        return null;
+    });
+}
+
 // "m:ss" or seconds -> seconds (null when empty or unreadable).
 export function parseDuration(text) {
     const t = String(text ?? "").trim();

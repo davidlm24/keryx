@@ -3,7 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn, Field, Row, Empty } from "./kx";
 import LinesPicker from "./LinesPicker";
-import { songFromText } from "@/lib/songImport";
+import { songFromText, lrcMarks, withTimings } from "@/lib/songImport";
 import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 
 // "+ › Na internet…" for songs, like the Holyrics search: one field, the
@@ -11,6 +11,9 @@ import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 // LRCLIB (no key) brings the lyrics; letras.mus.br results
 // open in the browser and the lyrics are pasted (the site refuses automated
 // reading). The search runs in the main process (electron/lyrics.cjs).
+// "título – artista" asks LRCLIB for that title by that artist (Rodada P12);
+// a result "com tempo" brings its recording's timed lines, which come in as
+// the song's marks (lrcMarks): the times of that recording, not of a band.
 export default function LyricsSearch({ c, onClose, onImported }) {
     const bridge = useRef(window.keryxDesktop?.lyrics || null);
     const [q, setQ] = useState("");
@@ -18,7 +21,7 @@ export default function LyricsSearch({ c, onClose, onImported }) {
     const [results, setResults] = useState(null);
     const [errors, setErrors] = useState([]);
     const [pick, setPick] = useState(0);
-    const [preview, setPreview] = useState({ loading: false, lyrics: "", error: "" });
+    const [preview, setPreview] = useState({ loading: false, lyrics: "", synced: "", duration: null, error: "" });
     const [pasted, setPasted] = useState("");
     const inputRef = useRef(null);
     const call = async (op, args) => {
@@ -52,13 +55,13 @@ export default function LyricsSearch({ c, onClose, onImported }) {
     const hit = results?.[pick] || null;
     useEffect(() => {
         setPasted("");
-        if (!hit) { setPreview({ loading: false, lyrics: "", error: "" }); return undefined; }
-        if (!hit.hasLyrics) { setPreview({ loading: false, lyrics: "", error: "" }); return undefined; }
+        const none = { loading: false, lyrics: "", synced: "", duration: null, error: "" };
+        if (!hit || !hit.hasLyrics) { setPreview(none); return undefined; }
         let alive = true;
-        setPreview({ loading: true, lyrics: "", error: "" });
+        setPreview({ ...none, loading: true });
         call("get", hit.id)
-            .then((s) => { if (alive) setPreview({ loading: false, lyrics: s.lyrics, error: "" }); })
-            .catch((err) => { if (alive) setPreview({ loading: false, lyrics: "", error: err.message }); });
+            .then((s) => { if (alive) setPreview({ ...none, lyrics: s.lyrics, synced: s.synced || "", duration: s.duration || null }); })
+            .catch((err) => { if (alive) setPreview({ ...none, error: err.message }); });
         return () => { alive = false; };
     }, [hit?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -69,9 +72,15 @@ export default function LyricsSearch({ c, onClose, onImported }) {
     const importSong = async () => {
         if (!hit || !lyrics.trim()) return;
         try {
-            const song = songFromText(lyrics, { title: hit.title, artist: hit.artist, lines: getPrefs().import_lines });
+            const base = songFromText(lyrics, { title: hit.title, artist: hit.artist, lines: getPrefs().import_lines });
+            // Com tempo: the recording's timed lines as the slides' marks.
+            const marks = hit.hasLyrics && preview.synced ? lrcMarks(base.slides, preview.synced) : [];
+            const marked = marks.filter((t) => Number.isFinite(t)).length;
+            const song = marked
+                ? { ...base, slides: withTimings(base.slides, marks, preview.duration), ...(preview.duration ? { duration: preview.duration } : {}) }
+                : base;
             const row = await keryx.entities.Song.create(song);
-            c.say(`${song.title} importada para as Letras.`);
+            c.say(marked ? `${song.title} importada com ${marked} de ${base.slides.length} slides marcados, nos tempos desta gravação.` : `${song.title} importada para as Letras.`);
             onImported?.(row);
             onClose();
         } catch (err) {
@@ -88,16 +97,18 @@ export default function LyricsSearch({ c, onClose, onImported }) {
                 <Btn small onClick={onClose}>Fechar</Btn>
             </div>
             <div className="lyr-q">
-                <Field inputRef={inputRef} value={q} onChange={setQ} placeholder="Título ou artista (ex.: algo novo)" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); search(); } }} kbd="Enter" />
+                <Field inputRef={inputRef} value={q} onChange={setQ} placeholder="Título – artista, ou qualquer parte (ex.: algo novo – kemuel)" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); search(); } }} kbd="Enter" />
                 <Btn kind="outline" onClick={search} disabled={busy || q.trim().length < 2}>{busy ? "Procurando…" : "Procurar"}</Btn>
             </div>
             <div className="lyr-b">
                 <div className="lyr-list">
-                    {results === null && !busy && <Empty icon="music" title="Digite e tecle Enter">Resultados do LRCLIB e do letras.mus.br numa lista só.</Empty>}
+                    {results === null && !busy && <Empty icon="music" title="Digite e tecle Enter">Resultados do LRCLIB e do letras.mus.br numa lista só. "Título – artista" acha a música certa mais fácil.</Empty>}
                     {busy && <Empty title="Procurando…" />}
                     {results && !results.length && !busy && <Empty icon="music" title={`Nada para "${q}"`}>Tente o título exato ou o nome do artista.</Empty>}
                     {(results || []).map((r, i) => (
-                        <Row key={r.id} icon="music" title={r.title} meta={[r.artist, r.extra, r.sourceLabel].filter(Boolean).join(" · ")} state={i === pick ? "is-selected" : ""} onClick={() => setPick(i)} onDoubleClick={importSong} />
+                        <Row key={r.id} icon="music" title={r.title} meta={[r.artist, r.extra, r.sourceLabel].filter(Boolean).join(" · ")} state={i === pick ? "is-selected" : ""} onClick={() => setPick(i)} onDoubleClick={importSong}>
+                            {r.timed && <span className="lyr-timed" title="Traz os tempos da gravação: a letra pode seguir o playback ou o vídeo dessa gravação"><Icon name="clock" size={12} />com tempo</span>}
+                        </Row>
                     ))}
                 </div>
                 <div className="lyr-prev">
@@ -107,6 +118,9 @@ export default function LyricsSearch({ c, onClose, onImported }) {
                             <div className="lyr-t"><b>{hit.title}</b>{hit.artist && <span> · {hit.artist}</span>}<span className="kx-meta"> · {hit.sourceLabel}</span></div>
                             {hit.hasLyrics && preview.loading && <Empty title="Buscando a letra…" />}
                             {hit.hasLyrics && preview.error && <div className="warnline"><Icon name="warn" /><span>{preview.error}</span></div>}
+                            {hit.hasLyrics && preview.lyrics && preview.synced && (
+                                <div className="lyr-note"><Icon name="clock" /><span>Com tempo: cada slide entra marcado no tempo desta gravação. Vale para tocar junto o playback ou o vídeo dela, não para a banda ao vivo (para a banda, use Por tempo no Editor de música).</span></div>
+                            )}
                             {hit.hasLyrics && preview.lyrics && <pre className="lyr-text">{preview.lyrics}</pre>}
                             {!hit.hasLyrics && (
                                 <div className="lyr-paste">

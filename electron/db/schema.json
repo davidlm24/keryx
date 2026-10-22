@@ -1732,6 +1732,13 @@
         "lines_per_slide": {
           "type": "integer"
         },
+        "follow_mode": {
+          "type": "text",
+          "default": ""
+        },
+        "slide_seconds": {
+          "type": "real"
+        },
         "slides": {
           "type": "json"
         },

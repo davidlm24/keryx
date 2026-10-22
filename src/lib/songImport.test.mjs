@@ -206,3 +206,36 @@ test("the import plan: ready, repeated (library or this import) and files that g
     assert.equal(importSource(files, "Músicas OpenLP"), "5 arquivos de Músicas OpenLP · OpenLyrics, texto");
     assert.equal(importSource(files.slice(0, 1)), "1 arquivo · OpenLyrics");
 });
+
+test("LRC (Rodada P12): timed lines read, the offset applied, tags and empty lines out", async () => {
+    const { parseLrc } = await import("./songImport.js");
+    assert.deepEqual(parseLrc("[ar:Alguém]\n[offset:+500]\n[00:12.50]Primeira linha\n[00:10.00]\n[00:20.00][01:05.25]Refrão\n[1:02:03]x"), [
+        { t: 12, text: "Primeira linha" },
+        { t: 19.5, text: "Refrão" },
+        { t: 64.75, text: "Refrão" },
+        { t: 61.53, text: "x" },
+    ].sort((a, b) => a.t - b.t));
+    assert.deepEqual(parseLrc(""), []);
+});
+
+test("lrcMarks: each slide takes its first line's time, in order, a repeated chorus included", async () => {
+    const { lrcMarks, songFromText, withTimings } = await import("./songImport.js");
+    const song = songFromText("Primeira linha da estrofe\nsegunda linha\n\nRefrão de exemplo, ó Deus\noutra linha do refrão\n\nPonte só aqui\n\nRefrão de exemplo, ó Deus\noutra linha do refrão");
+    const lrc = [
+        "[00:12.00]Primeira linha da estrofe", "[00:16.00]Segunda linha",
+        "[00:20.00]Refrão de exemplo, oh Deus", "[00:24.00]Outra linha do refrão",
+        // The recording sings the chorus twice here; the lyrics have it once.
+        "[00:28.00]Refrão de exemplo, oh Deus", "[00:32.00]Outra linha do refrão",
+        "[00:40.00]Ponte só aqui!",
+        "[00:50.00]Refrão de exemplo ó Deus", "[00:54.00]outra linha do refrão",
+    ].join("\n");
+    const marks = lrcMarks(song.slides, lrc);
+    assert.deepEqual(marks, [12, 20, 40, 50]);
+    // A first line spelled otherwise: its second line finds it, a line earlier.
+    assert.deepEqual(lrcMarks([{ text: "Uma linha bem diferente\nsegunda linha" }], "[00:03.00]Outra coisa\n[00:05.00]segunda linha"), [3]);
+    // Not in the recording: unmarked, and the next one is still found.
+    assert.deepEqual(lrcMarks([{ text: "não está lá" }, { text: "Ponte só aqui" }], lrc), [null, 40]);
+    assert.deepEqual(lrcMarks(song.slides, ""), [null, null, null, null]);
+    // As withTimings keeps them: the song's marks, the last to its length.
+    assert.deepEqual(withTimings(song.slides, marks, 60).map((s) => [s.start, s.duration]), [[12, 8], [20, 20], [40, 10], [50, 10]]);
+});
