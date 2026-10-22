@@ -363,7 +363,6 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const body = (
         <>
             {screensMenu}
-            <div className="kx-gap" />
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel caption={isStream ? "Ajustes" : tabs} actions={!isStream && !hosted && <span className="kx-count">{name}{dirty ? " · não salvo" : ""}</span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
@@ -595,7 +594,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     if (!hosted) return body;
     return (
         <>
-            <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`} menuBack
+            <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`}
                 actions={!isStream && <>
                     <UndoRedo history={history} />
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
