@@ -22,7 +22,10 @@
 // whether they fit on the disk (each lands twice for a moment: unpacked,
 // then copied into the media folder), then `take` unpacks one into the
 // package's staging folder, copies it into the media folder under a new
-// name (mediaImport.cjs) and deletes the unpacked copy. The rows are
+// name (mediaImport.cjs) and deletes the unpacked copy. `read` gives the
+// page a range of a file's bytes first (unpacking it, which `take` then
+// uses): a video's codec is read there, so one that may freeze on the
+// screens is refused as uploadFile refuses it, before it is copied. The rows are
 // written by the page through the store, so the sync records them. Nothing
 // live is ever replaced.
 //
@@ -48,6 +51,7 @@ const MAX_ENTRIES = 20000;
 const MAX_FILE_BYTES = 1024 ** 3;
 const MAX_TOTAL_BYTES = 16 * 1024 ** 3;
 const MIN_FREE_BYTES = 512 * 1024 ** 2;
+const MAX_READ_BYTES = 4 * 1024 * 1024;
 const COMPRESSIBLE = new Set([".json", ".svg", ".txt", ".ttf", ".otf"]);
 
 class PackageError extends Error {
@@ -247,6 +251,13 @@ function createPackages({ root, mediaDir, importMedia, freeSpace = freeSpaceOf, 
         if (!p) throw new PackageError("O pacote não está mais aberto.", 404);
         return p;
     };
+    // The file unpacked into the package's staging folder (once).
+    const staged = async (p, entry) => {
+        if (!(entry in p.sizes)) throw new PackageError("Este arquivo não está no pacote aberto.", 404);
+        const at = path.join(p.dir, entry.slice(entry.indexOf("/") + 1));
+        if (fs.existsSync(at)) return at;
+        return unpackEntry({ zipFile: p.zipFile, entry, dir: p.dir, ...(limits.maxFile ? { maxFile: limits.maxFile } : {}) });
+    };
     const close = (id) => {
         const p = open.get(id);
         open.delete(id);
@@ -275,10 +286,22 @@ function createPackages({ root, mediaDir, importMedia, freeSpace = freeSpaceOf, 
             fs.mkdirSync(root, { recursive: true });
             return fitsOn({ sizes: p.sizes, entries, free: freeSpace(fs.existsSync(mediaDir) ? mediaDir : root) });
         },
+        // A range of one file's bytes (a video's codec is read from them).
+        async read(id, entry, offset, length) {
+            const file = await staged(get(id), entry);
+            const from = Math.max(0, Math.floor(Number(offset) || 0));
+            const n = Math.max(0, Math.min(MAX_READ_BYTES, Math.floor(Number(length) || 0)));
+            const fd = await fs.promises.open(file, "r");
+            try {
+                const buf = Buffer.alloc(n);
+                const { bytesRead } = await fd.read(buf, 0, n, from);
+                return new Uint8Array(buf.buffer, buf.byteOffset, bytesRead);
+            } finally {
+                await fd.close();
+            }
+        },
         async take(id, entry) {
-            const p = get(id);
-            if (!(entry in p.sizes)) throw new PackageError("Este arquivo não está no pacote aberto.", 404);
-            const file = await unpackEntry({ zipFile: p.zipFile, entry, dir: p.dir, ...(limits.maxFile ? { maxFile: limits.maxFile } : {}) });
+            const file = await staged(get(id), entry);
             try {
                 const res = await importMedia({ mediaDir, sourcePath: file, name: path.basename(file) });
                 if (res.error) throw new PackageError(res.error.message, res.error.status);

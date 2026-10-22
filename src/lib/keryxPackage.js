@@ -18,6 +18,7 @@
 // overwritten: a repeated row is skipped or reused, never replaced.
 
 import { songKey } from "../../shared/syncDuplicates.mjs";
+import { codecOfRow, codecProblem, codecWhat, refusalSummary } from "./videoCodec.js";
 
 export const PACKAGE_FORMAT = "keryx-pacote";
 export const PACKAGE_VERSION = 1;
@@ -278,6 +279,10 @@ export function openPlan(pkg, here = {}, { mediaBase = "" } = {}) {
         const group = groupOfMedia(m);
         const item = { key: `media:${m.id}`, group, entity: "Media", title: group === "fonts" ? `${familyOf(m)}${m.font?.face ? ` · ${m.font.face}` : ""}` : mediaTitle(m), row: m };
         if (name && !has(name)) Object.assign(item, { status: "bad", reason: pkg.manifest?.left?.[name] === "big" ? "o arquivo não veio no pacote (passou de 1 GB)" : "o arquivo não veio no pacote" });
+        // A video whose row says it may freeze on the screens is refused, as
+        // uploadFile refuses it (Rodada O, O11 = B); one that says nothing is
+        // read before it is copied (packages.js).
+        else if (codecProblem(codecOfRow(m))) Object.assign(item, { status: "bad", reason: `recusado: ${codecWhat(codecOfRow(m))} pode congelar nas telas. Converta no HandBrake ("Fast 1080p30")` });
         else if (group === "fonts") {
             const same = hereMedia.find((h) => isFont(h) && fold(familyOf(h)) === fold(familyOf(m)) && String(h.font?.weight || "400") === String(m.font?.weight || "400") && (h.font?.style || "normal") === (m.font?.style || "normal"));
             Object.assign(item, same ? { status: "repeated", match: same, meta: "esta fonte já está aqui" } : { status: "ok", meta: "" });
@@ -320,7 +325,7 @@ export function openPlan(pkg, here = {}, { mediaBase = "" } = {}) {
         }
         const theme = songThemeIds(s).map((id) => themeById.get(id)).find(Boolean);
         const bg = filesIn([s.background, s.background_image])[0];
-        const parts = [theme && `o tema "${themeTitle(theme)}"`, bg && has(bg) && `o fundo "${fileTitle(bg)}"`].filter(Boolean);
+        const parts = [theme && `o tema "${themeTitle(theme)}"`, bg && has(bg) && (mediaByFile.has(bg) ? `o fundo "${fileTitle(bg)}"` : "um fundo")].filter(Boolean);
         out.push({ key: `songs:${s.id}`, group: "songs", entity: "Song", status: "ok", title: songTitle(s), meta: parts.length ? `com ${parts.join(" e ")}` : "só a letra", row: s });
     }
 
@@ -405,8 +410,11 @@ export function importSteps(plan, { skip = true, forced = new Set(), items = {} 
     const takes = new Set();
     const present = new Set(plan.present || []);
     const entry = (name) => (present.has(`fonts/${name}`) ? `fonts/${name}` : `media/${name}`);
+    // A file whose row does not open (a video refused for its codec) is never
+    // taken, even when a song names it: what uses it comes without it.
+    const blocked = new Set(plan.items.filter((it) => it.entity === "Media" && it.status === "bad").map((it) => fileOf(it.row.file_url)).filter(Boolean));
     for (const name of filesIn([...songs, ...themes, ...notices, ...materials, ...media].map((it) => it.row))) {
-        if (reuseFiles[name]) continue;
+        if (reuseFiles[name] || blocked.has(name)) continue;
         if (present.has(`media/${name}`) || present.has(`fonts/${name}`)) takes.add(entry(name));
     }
     const carried = new Set(media.map((it) => fileOf(it.row.file_url)).filter(Boolean));
@@ -457,14 +465,16 @@ export function packageChips(counts = {}) {
 }
 
 // The toast at the end. made: { songs, themes, … } created; reused: themes
-// and files here used instead; skipped: repeated left out; failed:
-// ["título (motivo)"].
-export function importSay({ made = {}, skipped = 0, reused = 0, failed = [] } = {}) {
+// and files here used instead; skipped: repeated left out; refused: the
+// videos refused before the copy ([{ name, codec }], refusalSummary's
+// words); failed: ["título (motivo)"].
+export function importSay({ made = {}, skipped = 0, reused = 0, refused = [], failed = [] } = {}) {
     const parts = ["songs", "themes", "notices", "materials", "backgrounds", "fonts", "media"].filter((k) => made[k] > 0).map((k) => countOf(k, made[k]));
     const total = Object.values(made).reduce((a, b) => a + (b || 0), 0);
     let text = total ? `Importado: ${parts.join(", ")}` : "Nada foi importado";
     if (reused) text += ` · ${reused === 1 ? "1 que já estava aqui foi usado" : `${reused} que já estavam aqui foram usados`}`;
     if (skipped) text += ` · ${skipped} ${skipped === 1 ? "repetido ficou" : "repetidos ficaram"} de fora`;
     if (failed.length) text += ` · não deu: ${failed.join(", ")}`;
-    return `${text}.`;
+    const no = refusalSummary(refused);
+    return no ? `${text}. ${no}` : `${text}.`;
 }

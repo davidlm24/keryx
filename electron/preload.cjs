@@ -132,6 +132,7 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
             return ipcRenderer.invoke("keryx:package", { op: "open", sourcePath });
         },
         fits: (id, entries) => ipcRenderer.invoke("keryx:package", { op: "fits", id, entries }),
+        read: (id, entry, offset, length) => ipcRenderer.invoke("keryx:package", { op: "read", id, entry, offset, length }),
         take: (id, entry) => ipcRenderer.invoke("keryx:package", { op: "take", id, entry }),
         close: (id) => ipcRenderer.invoke("keryx:package", { op: "close", id }),
     },

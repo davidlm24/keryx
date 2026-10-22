@@ -4,6 +4,7 @@ import {
     packageFor, packageManifest, packageFileName, lyricsJson, readItems, openPlan, importSteps, rewriteRow,
     sameFileCandidates, storeForm, copyName, fileOf, urlOf, formatBytes, MAX_PACKAGE_FILE,
 } from "@/lib/keryxPackage";
+import { readVideoCodec, codecProblem, codecFields } from "@/lib/videoCodec";
 
 // The KERYX package, the page's side (src/lib/keryxPackage.js has the
 // rules; electron/keryxPackage.cjs the zip): "Exportar…" in the selection
@@ -32,6 +33,8 @@ async function bridge(fn) {
 }
 const closeOpen = (id) => bridge((p) => p.close(id)).catch(() => null);
 
+// A video by its name (mediaImport.js reads the same ones).
+const VIDEO_NAME = /\.(mp4|m4v|mov|webm|mkv)$/i;
 const all = (name) => keryx.entities[name].list().then((r) => r || []).catch(() => []);
 
 // The library a package is built from: every theme, Media row (backgrounds
@@ -150,8 +153,21 @@ export async function runImport({ pkg, plan, themesHere = [], skip, forced, onPr
     let done = 0;
     const tick = () => onProgress?.({ done: ++done, total });
 
+    // A video is read before it is copied, as uploadFile reads a picked one
+    // (Rodada O, O11 = B): one that may freeze on the screens is refused and
+    // what uses it comes without it. What was read rides on its Media row.
+    const titleOf = (name) => (pkg.items.media || []).find((m) => fileOf(m.file_url) === name)?.title || name;
+    const refused = [];
+    const refusedFiles = new Set();
+    const codecs = {};
     for (const entry of steps.takes) {
         const name = entry.slice(entry.indexOf("/") + 1);
+        if (entry.startsWith("media/") && VIDEO_NAME.test(name)) {
+            const read = (offset, length) => bridge((p) => p.read(pkg.id, entry, offset, length));
+            const found = await readVideoCodec(read, pkg.sizes[entry] ?? Infinity).catch(() => null);
+            if (codecProblem(found || {})) { refused.push({ name: titleOf(name), codec: found }); refusedFiles.add(name); tick(); continue; }
+            if (found) codecs[name] = found;
+        }
         try { files[name] = urlOf((await bridge((p) => p.take(pkg.id, entry))).fileName); }
         catch (err) { failed.push(`${name} (${err?.message || "falhou"})`); }
         tick();
@@ -164,8 +180,9 @@ export async function runImport({ pkg, plan, themesHere = [], skip, forced, onPr
         const row = rewriteRow(it.row, { files });
         // A Media row whose file did not come is not made (it would be a row
         // with nothing behind it).
-        if (fileOf(it.row.file_url) && !row.file_url) { failed.push(`${it.title} (o arquivo não veio)`); tick(); continue; }
-        if (await create("Media", row, it.title)) made[it.group] += 1;
+        const name = fileOf(it.row.file_url);
+        if (name && !row.file_url) { if (!refusedFiles.has(name)) failed.push(`${it.title} (o arquivo não veio)`); tick(); continue; }
+        if (await create("Media", { ...row, ...(it.row.video_codec ? {} : codecFields(codecs[name])) }, it.title)) made[it.group] += 1;
         tick();
     }
     for (const p of steps.create.backgroundPrefs) {
@@ -186,6 +203,6 @@ export async function runImport({ pkg, plan, themesHere = [], skip, forced, onPr
             tick();
         }
     }
-    return { made, skipped: steps.skipped, reused: steps.reused, failed };
+    return { made, skipped: steps.skipped, reused: steps.reused, refused, failed };
 }
 

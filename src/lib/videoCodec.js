@@ -221,6 +221,8 @@ export function codecHint(found) {
     const w = words(found);
     return w ? `Este vídeo está em ${w.what} e pode congelar nas telas. Converta para MP4 H.264 no HandBrake (gratuito), predefinição "Fast 1080p30", e envie de novo.` : "";
 }
+// What the file is, for a line that already names it ("HEVC (H.265)"; "" for none).
+export const codecWhat = (found) => words(found)?.what || "";
 export function codecRefusal(name, found) {
     const w = words(found);
     return w ? `${name} recusado: ${w.what} pode congelar nas telas. ${HANDBRAKE}` : "";

@@ -25,6 +25,7 @@
 //   GET  /__keryx/package-download?token=  that file, as a download
 //   POST /__keryx/package-open?name=  (the .keryx's bytes) reads it -> { data: { id, manifest, items, files } }
 //   POST /__keryx/package-fits   { id, entries } whether those files fit -> { data: { ok, need, free } }
+//   GET  /__keryx/package-read?id=&entry=&offset=&length=  a range of one of its files (bytes)
 //   POST /__keryx/package-take   { id, entry } one of its files into the media folder -> { data: { fileName } }
 //   POST /__keryx/package-close  { id }
 //   GET  /media/<file>         the preview's media folder; /media/bundled/ is resources/
@@ -259,6 +260,13 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
             if (route === "package-fits" && req.method === "POST") {
                 const { id, entries } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
                 try { return json(res, 200, { data: packages.fits(id, Array.isArray(entries) ? entries : []) }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "package-read" && req.method === "GET") {
+                try {
+                    const bytes = await packages.read(url.searchParams.get("id"), url.searchParams.get("entry"), url.searchParams.get("offset"), url.searchParams.get("length"));
+                    res.writeHead(200, { "Content-Type": "application/octet-stream", "Cache-Control": "no-store" });
+                    return res.end(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+                } catch (err) { return json(res, err.status || 400, failure(err)); }
             }
             if (route === "package-take" && req.method === "POST") {
                 const { id, entry } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");

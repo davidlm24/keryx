@@ -266,6 +266,15 @@ export function createPreviewBridge() {
                 return file ? request(`package-open?name=${encodeURIComponent(file.name)}`, { method: "POST", raw: file }) : { data: null };
             },
             fits: (id, entries) => request("package-fits", { method: "POST", body: { id, entries } }),
+            async read(id, entry, offset, length) {
+                try {
+                    const res = await fetch(`${API}package-read?${new URLSearchParams({ id, entry, offset: String(offset), length: String(length) })}`);
+                    if (!res.ok) return (await res.json().catch(() => null)) || { error: { message: `HTTP ${res.status}`, status: res.status } };
+                    return { data: new Uint8Array(await res.arrayBuffer()) };
+                } catch {
+                    return { error: { message: "A prévia não respondeu: o servidor do npm run dev está ligado?", status: 0 } };
+                }
+            },
             take: (id, entry) => request("package-take", { method: "POST", body: { id, entry } }),
             close: (id) => request("package-close", { method: "POST", body: { id } }),
         },

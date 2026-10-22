@@ -134,6 +134,13 @@ test("createPackages: open reads only, take unpacks one file into the media fold
     assert.deepEqual(fs.readdirSync(path.join(root, "pacotes", opened.id)), [], "the unpacked copy is gone");
     assert.equal(fs.readdirSync(mediaDir).length, before.size + 1, "only the file taken came in");
     await assert.rejects(packages.take(opened.id, "media/nope.jpg"), /não está no pacote/);
+    // A range of a file before taking it (a video's codec), then the take uses the same copy.
+    const head = await packages.read(opened.id, "media/other.jpg", 2, 3);
+    assert.equal(Buffer.from(head).toString("utf8"), "use");
+    assert.equal(Buffer.from(await packages.read(opened.id, "media/other.jpg", 4, 100)).toString("utf8"), "ed");
+    const other = await packages.take(opened.id, "media/other.jpg");
+    assert.equal(fs.readFileSync(path.join(mediaDir, other.fileName), "utf8"), "unused");
+    await assert.rejects(packages.read(opened.id, "media/nope.jpg", 0, 4), /não está no pacote/);
     await assert.rejects(packages.take("nope", "media/bg.jpg"), /não está mais aberto/);
     packages.close(opened.id);
     assert.equal(fs.existsSync(path.join(root, "pacotes", opened.id)), false);

@@ -1225,7 +1225,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   allowlist and caps (count, 1 GB a file, 16 GB in all, by the declared sizes,
   which yauzl holds the bytes to) and reads only the manifest and the rows;
   only the files the operator's choice needs are unpacked, one at a time,
-  after `fits` says they fit. "Exportar…" (the selection bars, the multi-row and
+  after `fits` says they fit. **Videos go through the codec rule as
+  `uploadFile` does** (O11 = B): a Media row of the package whose
+  `video_codec` fields say it may freeze is ✕ in the list and never taken;
+  any other video is read before the copy (`read`, a byte range, and
+  `readVideoCodec`) and refused there, refusalSummary's words in the toast;
+  what used it comes without it. "Exportar…" (the selection bars, the multi-row and
   row menus of the Biblioteca and the Mídia; `exportItems` of `usePackages`,
   `PackageDialogs.jsx`) asks "Com os arquivos" or, for songs, "Só as letras"
   (the JSON of always); Biblioteca › + › "Abrir pacote do KERYX…" or a .keryx

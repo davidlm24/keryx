@@ -191,6 +191,24 @@ test("importSteps: a repeated background is reused whatever Pular says, copied o
     assert.ok(copy.create.media.some((it) => it.row.id === "m1"));
 });
 
+test("openPlan: a video whose row says HEVC (or H.264 at 10 bits) is refused as uploadFile refuses it", () => {
+    const pkg = opened();
+    const m2 = pkg.items.media.find((m) => m.id === "m2");
+    Object.assign(m2, { type: "video", video_codec: "hvc1" });
+    const plan = openPlan(pkg, {}, { mediaBase: BASE });
+    const it = plan.items.find((x) => x.key === "media:m2");
+    assert.equal(it.status, "bad");
+    assert.match(it.reason, /^recusado: HEVC \(H\.265\) pode congelar nas telas/);
+    // Never taken, and the song comes without it.
+    const steps = importSteps(plan, { skip: true, items: pkg.items });
+    assert.ok(!steps.takes.includes("media/a1.mp3"));
+    assert.equal(rewriteRow(steps.create.songs.find((x) => x.row.id === "s1").row, {}).audio_url, "");
+    Object.assign(m2, { video_codec: "avc1", video_bit_depth: 8 });
+    assert.equal(openPlan(pkg, {}, { mediaBase: BASE }).items.find((x) => x.key === "media:m2").status, "ok");
+    // The toast says what was refused before the copy.
+    assert.match(importSay({ made: { songs: 1 }, refused: [{ name: "abertura.mp4", codec: { codec: "hvc1" } }] }), /^Importado: 1 música\. abertura\.mp4 recusado: HEVC/);
+});
+
 test("openPlan: a file left out for being over 1 GB says so", () => {
     const pkg = { ...opened({ drop: ["a1.mp3"] }) };
     pkg.manifest = { ...pkg.manifest, left: { "a1.mp3": "big" } };
