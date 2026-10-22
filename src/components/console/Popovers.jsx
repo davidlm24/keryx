@@ -30,7 +30,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 // bar's and, where it folds away, the Menu button's (MenuBar.jsx); Ajuda keeps
 // Sobre and Atualizar too, so either habit finds them. Ver is the panels
 // glyph beside the bell.
-export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, update, onUpdateNow }) {
+export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, dockLocked = false, onDockLock, onSettings, update, onUpdateNow }) {
     if (open !== "menu" && open !== "ver") return null;
     // Every list here is the console's one menu (Menu.jsx MenuList): it takes
     // the focus, the arrows walk it, Esc and Tab close it (C-14, C-15).
@@ -52,6 +52,8 @@ export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets 
             })),
             "sep",
             { label: editing ? "Concluir a edição" : "Editar disposição", icon: "grip", checked: editing, onSelect: onEditLayout, title: "Mudar os módulos de lugar, salvar disposições com nome · Esc conclui" },
+            // Travar fora da edição (Rodada P4-1): the environment on screen's.
+            ...(onDockLock ? [{ label: "Travar fora da edição", role: "menuitemcheckbox", checked: dockLocked, onSelect: () => onDockLock(!dockLocked), title: "Os divisores só mudam em Editar disposição (vale para o ambiente na tela: o Culto ou a Bíblia)" }] : []),
             { label: "Restaurar disposição", onSelect: () => { restoreLayout(); setOpen(null); } },
         ];
         return (

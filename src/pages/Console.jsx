@@ -71,11 +71,11 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode, dockLocked, setDockLock, withLockOf, nodeAt, isSplit, setSplitWeights, presetsForSplit, weightsLabel, parseWeights } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
-import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, ZONE_LABEL } from "@/components/console/Dock";
+import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, DockLockSwitch, ZONE_LABEL } from "@/components/console/Dock";
 import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, nameProblem } from "@/lib/console/dockPresets";
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import Toast from "@/components/console/Toast";
@@ -399,7 +399,8 @@ export default function Console() {
     // One culto arrangement per width tier (switchTier): a new tier brings
     // its own back, the one on screen is kept for when the screen grows again.
     useEffect(() => {
-        const next = switchTier(layout, tier);
+        // A locked culto keeps its lock on the tier that comes in (Rodada P4-1).
+        const next = switchTier(layout, tier, (t) => fromArrangement(layout.trayFromChurch === false ? { ...layout, hidden: {} } : layout, { ...dockOpts, tier: t }));
         if (next !== layout) setLayout(next);
     }, [tier, layout.dockTier]); // eslint-disable-line react-hooks/exhaustive-deps
     // What the Biblioteca's songs show under their title (the header's (+)).
@@ -1018,9 +1019,30 @@ export default function Console() {
     const envDock = env === "biblia" ? bibleDock : dock;
     const setEnvDock = env === "biblia" ? setBibleDock : setDock;
     const dockDrag = useDockDrag({ dock: envDock, onDock: setEnvDock });
-    // Editar disposição › Tamanhos: Livre | Por % (dock.js setDockMode), the
-    // environment on screen; what is drawn stays as it is.
-    const setEnvMode = (m) => setEnvDock(setDockMode(envDock, m, mainSize.w, mainSize.h));
+    // Editar disposição › Tamanhos: Livre | Por % | Exato (dock.js
+    // setDockMode), the environment on screen; what is drawn stays as it is.
+    const envFrame = env === "biblia" ? bibleFrame : dockFrame;
+    const setEnvMode = (m) => setEnvDock(setDockMode(envDock, m, mainSize.w, mainSize.h, envFrame));
+    // Travar fora da edição (Rodada P4-1): the environment on screen's switch.
+    const envLocked = dockLocked(envDock);
+    const setEnvLock = (on) => { setEnvDock(setDockLock(envDock, on)); c.say(on ? "Disposição travada: os divisores só mudam em Editar disposição." : "Disposição destravada."); };
+    // Exato's one-click splits act on the split whose splitter was touched
+    // last while editing (each environment its own), else the outer one.
+    const [editSplit, setEditSplit] = useState({});
+    const pickSplit = (path) => setEditSplit((was) => ({ ...was, [env]: path }));
+    const splitPath = isSplit(nodeAt(envDock.tree, editSplit[env])) ? editSplit[env] : [];
+    const splitNode = dockMode(envDock) === "exact" ? nodeAt(envDock.tree, splitPath) : null;
+    const splitNames = isSplit(splitNode) ? splitNode.children.map((ch) => leaves(ch).map((id) => DOCK_MODULES[id].name).join(" + ")) : [];
+    const setWeights = (list) => setEnvDock(setSplitWeights(envDock, splitPath, list));
+    const typeWeights = async () => {
+        if (!isSplit(splitNode)) return;
+        const n = splitNode.children.length;
+        const t = await askText({ title: `Divisão exata · ${splitNames.join(" · ")}`, placeholder: n === 2 ? "50 50" : "33 33 34", initial: weightsLabel(splitNode.weights), ok: "Aplicar", hint: `Um número para cada um dos ${n}, em %` });
+        if (t === null || t === undefined) return;
+        const xs = parseWeights(t, n);
+        if (xs) setWeights(xs);
+        else c.say(`Digite ${n} números, um para cada painel (ex.: ${n === 2 ? "50 50" : "33 33 34"}).`);
+    };
     // Named arrangements (Ver › Disposição; src/lib/console/dockPresets.js),
     // each environment its own: the list, the one in use, Padrão.
     const allPresets = layout.dockPresets || [];
@@ -1034,11 +1056,15 @@ export default function Console() {
     const presetDirty = presetChanged(preset || { dock: env === "biblia" ? biblePadrao : padraoDock }, envDock);
     // The environment on screen back to its own (Padrão, Restaurar posições):
     // the culto follows the width again, with every module it has there.
-    const restoreHere = () => restoreEnv(layout, env);
+    // Travar fora da edição stays as it is (the Padrão dock takes it).
+    const restoreHere = () => {
+        const next = restoreEnv(layout, env);
+        return envLocked ? { ...next, [dockKey]: setDockLock(env === "biblia" ? biblePadrao : padraoDock, true) } : next;
+    };
     const pickPreset = (id) => {
         const p = presetOf(presets, id);
         if (!p) { setLayout(restoreHere()); c.say("Disposição padrão."); return; }
-        setLayout({ ...layout, [dockKey]: p.dock, [presetKey]: p.id });
+        setLayout({ ...layout, [dockKey]: withLockOf(p.dock, envDock), [presetKey]: p.id });
         c.say(`Disposição “${p.name}”.`);
     };
     const savePresetAs = (name) => {
@@ -1462,7 +1488,17 @@ export default function Console() {
                 <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!winOpen && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
                     {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small label="No ar" value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
-                    {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small label="Tamanhos" value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
+                    {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small label="Tamanhos" value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }], ["exact", "Exato", { title: "Divisões exatas (33 · 33 · 34), sem o pulo de 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
+                    {!winOpen && splitNames.length > 0 && (
+                        <span className="dock-presets dock-span" role="group" aria-label="Divisão exata">
+                            <span className="kx-meta" title={`A divisão do último divisor que você tocou: ${splitNames.join(" · ")}`}>Divisão: <b className="dock-preset-name">{weightsLabel(splitNode.weights)}</b></span>
+                            {presetsForSplit(splitNames.length).map((w) => (
+                                <button key={w.join()} type="button" className={`kx-btn kx-t ${weightsLabel(splitNode.weights) === weightsLabel(w) ? "is-on" : ""}`} aria-pressed={weightsLabel(splitNode.weights) === weightsLabel(w)} title={`${splitNames.join(" · ")} em ${weightsLabel(w)} %`} onClick={() => setWeights(w)}>{weightsLabel(w)}</button>
+                            ))}
+                            <button type="button" className="kx-btn kx-t" title="Digitar a porcentagem de cada painel" onClick={typeWeights}>Digitar…</button>
+                        </span>
+                    )}
+                    {!winOpen && <DockLockSwitch on={envLocked} onChange={setEnvLock} />}
                     {!winOpen && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
             )}
@@ -1473,8 +1509,8 @@ export default function Console() {
             <main className="main" ref={mainRef} inert={winOpen ? "" : undefined}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH}
-                    dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold }} />}
-                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} />}
+                    dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold, onPickSplit: pickSplit }} />}
+                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} onPickSplit={pickSplit} />}
             </main>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
@@ -1514,7 +1550,7 @@ export default function Console() {
             <MenusPop menus={menus} open={open} setOpen={setOpen} onAllServices={() => openPlanner(serviceId)} />
             <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept={SONG_ACCEPT}
                 onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) openImport(files); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
-            <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} />
+            <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} dockLocked={envLocked} onDockLock={setEnvLock} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} />
             <FirstSteps open={open} setOpen={setOpen} onGo={(id) => { if (id === "planner") openPlanner(serviceId); else if (id === "search") setOpen("palette"); else if (id === "verify") setOpen("verificar"); else if (id === "outs") setOpen("outs"); }} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
