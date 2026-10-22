@@ -768,8 +768,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   no "← Console" BackBtn any more). **The window is one surface**
   (owner 2026-10-21, Rodada O7 = A): `bg-1` under the bar and the page, the
   bar parted only by its `line-soft` rule, a faint ring and a deep
-  `shadow-window`; the page's panels start right under the rule, one grey
-  step up (`.win-body .kx-panel`: `bg-2`, fields `bg-3`, pressed `bg-4`).
+  `shadow-window`; the page's panels sit 6 px under the rule, as from the
+  sides (owner 2026-10-22: flush they looked cramped), one grey step up
+  (`.win-body .kx-panel`: `bg-2`, fields `bg-3`, pressed `bg-4`). A
+  segment never breaks a label (`.kx-seg > button` nowrap): in a narrow
+  panel header it drops whole under the title (`is-head-wrap`).
   **Lean bars**: the bar holds the title and what acts on the whole window
   (Desfazer/Refazer, Cancelar, Salvar, Destacar, ×); what acts on the
   content goes in the page — Configurações' search at the top of its nav,
