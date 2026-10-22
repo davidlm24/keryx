@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
+import { uploadFile } from "@/lib/mediaImport";
 import Icon from "../console/Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "../console/kx";
 import { Switch } from "../console/settings/parts";
@@ -334,7 +335,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
 
     const upload = async (file, apply) => {
         if (!file) return;
-        try { const { file_url } = await keryx.integrations.Core.UploadFile({ file }); apply(file_url); } catch (err) { say(err?.message || "Não foi possível copiar o arquivo."); }
+        try { const { file_url } = await uploadFile(file); apply(file_url); } catch (err) { say(err?.message || "Não foi possível copiar o arquivo."); }
     };
     const pictures = media.filter((m) => (m.type === "image" || m.type === "gif") && !m.missing);
     const nameOf = (url) => media.find((m) => m.file_url === url)?.title || decodeURIComponent(String(url).split("/").pop() || "imagem");

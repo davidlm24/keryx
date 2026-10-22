@@ -48,6 +48,7 @@ import { resolveSection } from "@/lib/console/settings";
 import { liveAction, escapeTarget } from "@/lib/console/keys";
 import { usePrefs } from "@/hooks/useUser";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
+import { setVideoFiles } from "@/lib/videoFiles";
 
 // Where a control keeps the focus after a mouse click: overlays that run
 // their own keys (a question, the palette…).
@@ -114,6 +115,8 @@ export default function Janela() {
     const [liveRegion, announce] = useLiveRegion();
     useEffect(() => { if (c.toast) announce(c.toast); }, [c.toast, announce]);
     const data = useLibrary();
+    // The videos' stills, for the previews that do not play them (videoFiles.js).
+    useEffect(() => { setVideoFiles([...data.media, ...data.backgroundMedia]); }, [data.media, data.backgroundMedia]);
     const logoUrl = useChurchLogo();
     const [stack, setStack] = useState(firstStack);
     const stackRef = useRef(stack);
