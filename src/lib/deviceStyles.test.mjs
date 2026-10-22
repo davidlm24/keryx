@@ -28,3 +28,11 @@ test("typography: the outline is behind the letters, px of a 1920 screen, indepe
     // The old Contorno effect (now "Vazado") still draws hollow letters.
     assert.equal(getTextEffect("outline", "#fff").WebkitTextFillColor, "transparent");
 });
+
+test("typography: the text bar's capitals, underline and justify (Rodada P, P8-1)", () => {
+    assert.deepEqual(typography({ text_case: "upper" }), { textTransform: "uppercase" });
+    assert.deepEqual(typography({ text_case: "capitalize" }), { textTransform: "capitalize" }, "Primeira Maiúscula");
+    assert.deepEqual(typography({ text_case: "none", text_decoration: "none", text_justify: "none" }), {}, "the live state's \"none\" draws nothing");
+    assert.deepEqual(typography({ text_decoration: "underline" }), { textDecoration: "underline" });
+    assert.deepEqual(typography({ text_justify: "justify" }), { textAlign: "justify" }, "justified where it stays: text_align places the box");
+});

@@ -1525,8 +1525,34 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   theme's tooltip in Temas, `themeNote`). `typography(style)` in
   deviceStyles.js (tested) turns them into the text's inline style. The
   Editor de temas edits them with `NumBox` (kx.jsx: `− [n] + unit`, 24 px,
-  ↑/↓ step, Shift ×10, typing commits on Enter or blur, clamped); its form
-  stays flat until HF3 groups it.
+  ↑/↓ step, Shift ×10, typing commits on Enter or blur, clamped).
+  **The text bar** (Rodada P, P8-1 = A, owner 2026-10-22; `editor/TextBar.jsx`):
+  one Word-like row fixed over the Editor de temas' form (its groups stay
+  below) and over an element's settings in the Editor de telas — the font,
+  the size (`NumBox`), N I S, "Aa ▾" (Normal / MAIÚSCULAS / Primeira
+  Maiúscula), Esq./Centro/Dir./Justificado, Cor ▾, Contorno ▾ (and
+  Espaçamento ▾ for an element); it speaks the theme's keys. Three keys
+  came with it, EXTRA_KEYS and `STYLE_CHOICES` like the others:
+  `text_decoration` underline, `text_justify` justify (the text justified,
+  the box still where `text_align` puts it, so dragging the box never
+  loses it; lines that end in a line break, a song's, stay as in Word) and
+  `text_case` capitalize; `typography()` draws them (text_case moved there
+  from the renderer). **A song's size is relative to its theme** (P8-2 = B,
+  `src/lib/console/songSize.js`, tested): the song editor's Tamanho is
+  −2 −1 Do tema +1 +2, kept in `Song.font_size` read as steps from G
+  (`songStep`: P −2, M −1, G or "" 0, GG +1, GGG +2, PP −2 — old songs read
+  lazily, nothing rewritten, and an older KERYX still draws them the same
+  over a G theme; `stepValue` writes the preset). The size never makes a
+  song "own" any more (`followsTheme` ignores it), and the song keeps the
+  whole theme: `withThemeDefaults` fills the theme's extras (box, position,
+  spacing, weight…) also under a look of its own (`inherit.extras`; false
+  only for a song following a theme of its own, a complete look) and moves
+  the theme's size by `inherit.step` (`steppedSize`, along the presets'
+  ladder; 0 keeps the theme's value as it is); `withSongThemes` moves its
+  own theme's and its parts' sizes the same way. **Outputs load every
+  module they import whole**: `defaultTheme` and `themeBackgroundArgs`
+  live in `themeCore.js` (themes.js re-exports them) so themes.js and
+  songSize.js stay out of the outputs' path (bundle-budget.cjs); keep it so.
 - **`window.keryxDesktop.*` returns a fresh object on every access**
   (contextBridge). In a component, read it once into a ref; using it as an
   effect or callback dependency directly re-runs the effect on every render.
@@ -1715,8 +1741,12 @@ tela; senão o antigo `layout_id` (migração preguiçosa, nada é gravado — a
 primeira salvada no Editor grava o design e zera o layout_id); senão null =
 a página padrão (StageScreen / PastorScreen / renderer puro). O catálogo
 "Layouts das telas", o select de Layout, "Usar em…", "Ver como", `?for=` e
-o `?layout=` da rede **morreram**; as linhas ScreenLayout ficam no banco
-(dado do usuário), nada escreve nelas. As páginas leem com `useDesign(pref)`
+o `?layout=` da rede **morreram**; as linhas ScreenLayout são agora **os
+modelos da igreja** (owner 2026-10-22, Rodada P, P8-3): "Salvar como
+modelo…" no Editor de telas grava uma (nome único, nunca sobrescreve) e
+"Começar de um modelo…" as lista em "Da igreja", abaixo das "De fábrica",
+com Excluir… — as linhas antigas do catálogo aparecem ali; nenhuma tela
+aponta para um modelo (começar de um copia o desenho). As páginas leem com `useDesign(pref)`
 (`src/hooks/useLayout.js`); o arquivo de Exportar/Importar **embute o
 design** por saída (arquivo antigo ainda casa o layout por nome). O módulo
 puro continua `src/lib/layouts.js` (tipos, elementos, factory, snapping):
@@ -1792,7 +1822,19 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     tracejado); a lista mostra a regra como chip (`whenLabel`, as palavras
     do select Aparece; nenhum para Sempre), esmaece a linha e traceja o
     olho, e o tooltip do canvas e a linha sob ele dizem o porquê e a saída
-    (`ghostReason`).
+    (`ghostReason`). **Rodada P, P8-3 = A** (owner 2026-10-22;
+    `src/lib/layoutEditor.js`, testado, fora do caminho das saídas, com as
+    dicas do Adicionar, `ELEMENT_HINTS`): a barra de texto fixa no topo da
+    coluna enquanto um elemento de texto está marcado (o tamanho num
+    `NumBox`, itálico, sublinhado, Aa, justificado, entrelinhas, espaço,
+    contorno, além de fonte/negrito/cor/alinhamento; o elemento guarda
+    esses campos com os nomes do tema e o `LayoutRenderer` os desenha com
+    `typography()`, o sublinhado só no corpo, `is-u`); **marcar vários**
+    (Ctrl/Shift + clique na lista ou no canvas, `multiSelect.js`): a barra
+    veste todos, Alinhar (pela caixa em volta deles; um só, pela tela) e
+    Distribuir (3+), arrastar um move todos, setas e Delete também; a
+    **Grade** opcional (2,5/5/10 %, localStorage `keryx.editor.grid`, deste
+    computador) toma o lugar do ímã; os modelos da igreja, acima.
   - um TEMA (`ThemeEditor.jsx`): o ÚNICO lugar em que um tema se edita —
     Configurações › Temas é só a lista; Camadas ajusta o ar e captura com
     "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`
@@ -1800,9 +1842,10 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado).
     **O formulário é em grupos** (Rodada HF3, owner 2026-10-20: `CfgGroup`, ids
     `tema.*`, fold per computer; Nome e padrão fixo, Fonte e Fundo abertos, os
-    outros fechados com resumo de `fontSummary`…`transitionSummary` em themes.js);
-    o smoke lê o 1º `.nv-frm input.pl-input` (Nome) e o 1º `.nv-frm select`
-    (Fonte): ambos em grupos abertos, nessa ordem.
+    outros fechados com resumo de `fontSummary`…`transitionSummary` em themes.js),
+    com a barra de texto fixa acima deles (Rodada P, P8-1: a fonte, o tamanho,
+    N I S, Aa, o alinhamento, a cor e o contorno saíram dos grupos); o smoke
+    lê o 1º `.nv-frm input.pl-input` (Nome) e a fonte em `.tb-bar select`.
 A ScreenRenderer `fill` is `position: fixed`: inside a canvas or preview
 its wrapper needs `contain: layout paint` (`.le-screen`, `.cfg-prev`).
 Every screen is landscape: every still of an output (Telas e saídas'

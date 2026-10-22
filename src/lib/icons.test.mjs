@@ -66,8 +66,8 @@ test("the computed names are mapped (avisos, media, setlist types)", () => {
     for (const type of ["SONG", "BIBLE", "TEXT", "NOTICE", "MEDIA", "SECTION", "nope"]) assert.ok(iconNode(typeIcon(type)), type);
 });
 
-test("the 79 names, each a node of [tag, attrs]", () => {
-    assert.equal(ICON_NAMES.length, 79);
+test("the 83 names, each a node of [tag, attrs]", () => {
+    assert.equal(ICON_NAMES.length, 83);
     for (const [name, node] of Object.entries(ICON_NODES)) {
         assert.ok(Array.isArray(node) && node.length > 0, name);
         for (const el of node) {

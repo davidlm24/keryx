@@ -19,8 +19,9 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import Icon from "../console/Icon";
 import { IconBtn } from "../console/kx";
 import { TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName, fontSummary, colorSummary, boxSummary, placeSummary, fundoSummary, transitionSummary } from "@/lib/console/themes";
-import { SIZE_RANGE, sizeCqw, sizePreset, sizeValue, lineHeightOf, LINE_HEIGHTS, LINE_HEIGHT_RANGE, LETTER_SPACING_RANGE, OUTLINE_RANGE } from "@/lib/textSize";
+import { SIZE_RANGE, sizeCqw, sizePreset, sizeValue, lineHeightOf, LINE_HEIGHTS, LINE_HEIGHT_RANGE, LETTER_SPACING_RANGE } from "@/lib/textSize";
 import FontPicker, { fontNote } from "./FontPicker";
+import TextBar from "./TextBar";
 import { useChurchFonts } from "../console/useConsoleData";
 import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
@@ -52,7 +53,7 @@ const V_POS = [["top", "Alto"], ["", "Meio"], ["bottom", "Baixo"]];
 // restored from an older KERYX.
 const BLANK = {
     name: "", font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff", text_color_2: "",
-    text_opacity: "", text_max_width: "", line_height: "", text_case: "", text_nudge: "", text_align: "", text_position: "",
+    text_opacity: "", text_max_width: "", line_height: "", text_case: "", text_nudge: "", text_align: "", text_position: "", text_decoration: "", text_justify: "",
     font_weight: "", font_style: "", letter_spacing: "", text_outline_px: "", text_outline_color: "", note: "",
     text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "", show_item_title: true,
     background_image: "", background_fit: "", background_dim: "", background_blur: "",
@@ -271,6 +272,12 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
         <>
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel title={hosted ? "Tema" : <>Tema <span className="kx-count">· {themeTitle}{dirty ? " · não salvo" : ""}</span></>} actions={<>{pickTheme}{deleteBtn}</>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                    {/* The text bar (Rodada P, P8-1 = A): fixed over the
+                        form, the groups below — the font, the size, N I S,
+                        Aa, the alignment, Cor and Contorno. */}
+                    <TextBar value={draft} onChange={set}
+                        font={<FontPicker value={draft.font_family} onChange={(v) => set({ font_family: v })} say={say} style={{ width: 168 }} />}
+                        size={{ value: sizeCqw(draft.font_size), min: SIZE_RANGE[0], max: SIZE_RANGE[1], step: 0.1, unit: "%", onChange: (n) => set({ font_size: sizeValue(n) }) }} />
                     <div className="nv-scroll">
                         <CfgGroup id="tema.nome" k="tema.nome" title="Nome e padrão" summary={""} fold={false}>
                             <div className="frm nv-frm">
@@ -302,30 +309,20 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                         </CfgGroup>
                         <CfgGroup id="tema.fonte" k="tema.fonte" title="Fonte" summary={fontSummary(draft)}>
                             <div className="frm nv-frm">
-                            {/* The font (Rodada HF1): KERYX's, the church's
-                                (copied into the library) or one brought
-                                from this PC or a file (FontPicker.jsx);
-                                the line under it says where it comes from. */}
-                            <span className="k">Fonte</span>
-                            <FontPicker value={draft.font_family} onChange={(v) => set({ font_family: v })} say={say} style={{ width: 190, justifySelf: "start" }} />
-                            <span className="k" />
+                            {/* The font (Rodada HF1) is the text bar's first
+                                control — KERYX's, the church's (copied into
+                                the library) or one brought from this PC or a
+                                file (FontPicker.jsx); this line says where it
+                                comes from. */}
+                            <span className="k">Origem</span>
                             <span className="kx-meta le-font-note">{fontNote(draft.font_family, churchFonts.families)}</span>
                             {/* The size is a number, % of the screen's width
-                                (Rodada HF2, owner's pick "numero_atalhos");
-                                PP…GGG only write their number. An old
-                                theme's name ("large") shows as its number
-                                and stays as saved until it is changed. */}
-                            <span className="k">Tamanho</span>
-                            <span className="nv-inline">
-                                <NumBox label="Tamanho da fonte" value={sizeCqw(draft.font_size)} min={SIZE_RANGE[0]} max={SIZE_RANGE[1]} step={0.1} unit="%" onChange={(n) => set({ font_size: sizeValue(n) })} />
-                                <Seg small label="Atalhos de tamanho" value={sizePreset(draft.font_size)} options={TEXT_SIZES} onChange={(k) => set({ font_size: sizeValue(k) })} />
-                            </span>
-                            <span className="k">Estilo</span>
-                            <span className="nv-inline">
-                                <Btn small on={draft.font_weight === "bold"} className="le-tb" title="Negrito" aria-label="Negrito" onClick={() => set({ font_weight: draft.font_weight === "bold" ? "" : "bold" })}><b>N</b></Btn>
-                                <Btn small on={draft.font_style === "italic"} className="le-tb" title="Itálico" aria-label="Itálico" onClick={() => set({ font_style: draft.font_style === "italic" ? "" : "italic" })}><i>I</i></Btn>
-                                <Switch on={draft.text_case === "upper"} onChange={(on) => set({ text_case: on ? "upper" : "" })} label="Maiúsculas" /><span className="kx-meta">Maiúsculas</span>
-                            </span>
+                                (Rodada HF2, owner's pick "numero_atalhos"),
+                                typed in the bar; PP…GGG only write their
+                                number. An old theme's name ("large") shows as
+                                its number and stays until it is changed. */}
+                            <span className="k">Atalhos</span>
+                            <Seg small label="Atalhos de tamanho" value={sizePreset(draft.font_size)} options={TEXT_SIZES} onChange={(k) => set({ font_size: sizeValue(k) })} />
                             {/* Line and letter spacing as numbers (an old
                                 theme's Justas/Largas show as 1,08/1,45); the
                                 normal ones are saved as "" (the screen's own). */}
@@ -343,23 +340,16 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                         </CfgGroup>
                         <CfgGroup id="tema.cor" k="tema.cor" title="Cor e efeito" summary={colorSummary(draft)} defaultOpen={false}>
                             <div className="frm nv-frm">
-                            <span className="k">Efeito e cor</span>
+                            {/* The colour and the outline are the text bar's;
+                                the effect and the gradient's second colour stay here. */}
+                            <span className="k">Efeito</span>
                             <span className="nv-inline">
                                 <select className="pl-input" style={{ width: "auto" }} value={draft.text_effect} onChange={(e) => set({ text_effect: e.target.value })} aria-label="Efeito do texto">
                                     {EFFECTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                                 </select>
-                                <input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.text_color) ? draft.text_color : "#ffffff"} onChange={(e) => set({ text_color: e.target.value })} aria-label="Cor do texto" title="Cor do texto" />
                                 {draft.text_color_2
                                     ? <><input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.text_color_2) ? draft.text_color_2 : "#ffffff"} onChange={(e) => set({ text_color_2: e.target.value })} aria-label="Segunda cor (degradê)" title="Segunda cor (degradê)" /><Btn small onClick={() => set({ text_color_2: "" })}>Cor única</Btn></>
                                     : <Btn small onClick={() => set({ text_color_2: "#c9a25b" })} title="O texto em degradê de duas cores">Degradê</Btn>}
-                            </span>
-                            {/* An outline of its own (Rodada HF2): px of a
-                                1920 screen, behind the letters, with any
-                                effect (the old hollow one is "Vazado"). */}
-                            <span className="k">Contorno</span>
-                            <span className="nv-inline">
-                                <NumBox label="Contorno" value={draft.text_outline_px} empty={0} min={OUTLINE_RANGE[0]} max={OUTLINE_RANGE[1]} step={1} unit="px" onChange={(n) => set({ text_outline_px: n || "", text_outline_color: n ? draft.text_outline_color || "#000000" : "" })} />
-                                {Number(draft.text_outline_px) > 0 && <input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.text_outline_color) ? draft.text_outline_color : "#000000"} onChange={(e) => set({ text_outline_color: e.target.value })} aria-label="Cor do contorno" title="Cor do contorno" />}
                             </span>
                             <span className="k">Opacidade</span>
                             {/* Continuous (Rodada C, fase d): the model always

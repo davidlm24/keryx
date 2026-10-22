@@ -13,7 +13,7 @@
 //     is the theme's since the Rodada B 2026-10-14 ("Papel de parede ×
 //     Tema", Aparência dissolved).
 import { TRANSITIONS, TRANSITION_MS } from "../console/look.js";
-import { defaultTheme } from "../console/themes.js";
+import { defaultTheme } from "../console/themeCore.js";
 
 export const PREFS_VERSION = 3;
 export const LEGACY = {

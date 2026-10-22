@@ -1,10 +1,10 @@
-// Layouts das telas (ScreenLayout rows, 2026-10-12): what a stage monitor or
-// the pastor's tablet draws and where, designed by the operator on a canvas
-// (ScreenEditor) and drawn by LayoutRenderer on the output, on a network
-// screen, in the console's Prévia rail and in the editor itself, all from
-// the same description. An output (OutputPref.layout_id) and a network
-// screen (?layout=) pick a layout; "" is the page's own screen (StageScreen,
-// PastorScreen), exactly as before.
+// Layouts das telas: what a stage monitor or the pastor's tablet draws and
+// where, designed by the operator on a canvas (ScreenEditor) and drawn by
+// LayoutRenderer on the output, on a network screen, in the console's Prévia
+// rail and in the editor itself, all from the same description. Each screen
+// owns its design (OutputPref.design, outputPrefs.js designOf; the old
+// layout_id still reads); ScreenLayout rows are the church's models to start
+// from (layoutEditor.js, Rodada P).
 //
 // A layout is a 16:9 canvas with elements placed in % of the screen (x, y,
 // w, h), each with a rule for when it shows, a text look (size in cqmin,
@@ -30,30 +30,32 @@ export const MAX_ELEMENTS = 40;
 // The kinds of element, with the defaults a new one gets. `text` elements
 // are one string drawn by the renderer (elementText); the others draw
 // themselves (a list, chords, the projection's monitor, dots, pictures).
-// `group` sorts the editor's Adicionar picker (ELEMENT_GROUPS).
+// `group` sorts the editor's Adicionar picker (ELEMENT_GROUPS); each type's
+// one-line hint there is the editor's (layoutEditor.js ELEMENT_HINTS), so the
+// outputs that draw a layout never load the editor's words.
 export const ELEMENT_TYPES = [
-    { id: "screen", name: "Projeção", icon: "projector", group: "tela", hint: "o que esta saída projeta (letras, Bíblia, mídia, avisos), em tela cheia ou numa parte; com um elemento Relógio ou timer no layout, o timer sai daqui e fica nele", w: 100, h: 100, size: 2, when: "always", props: {} },
-    { id: "clock", name: "Hora", icon: "clock", group: "tempo", hint: "a hora de agora", w: 20, h: 10, size: 6, when: "always", props: { seconds: false } },
-    { id: "date", name: "Data", icon: "clock", group: "tempo", hint: "sábado, 10 de outubro", w: 30, h: 6, size: 2.2, when: "always", props: {} },
-    { id: "timer", name: "Relógio ou timer no ar", icon: "clock", group: "tempo", hint: "o que a ferramenta no ar mostra: o tempo restante, o cronômetro, a hora, o texto livre", w: 30, h: 14, size: 8, when: "tool", props: {} },
-    { id: "service_time", name: "Tempo de culto", icon: "clock", group: "tempo", hint: "há quanto tempo o culto começou", w: 20, h: 6, size: 2.4, when: "always", label: "Culto há", props: {} },
-    { id: "air_for", name: "No ar há", icon: "history", group: "tempo", hint: "há quanto tempo o item está no ar", w: 16, h: 6, size: 2.4, when: "always", label: "No ar há", props: {} },
-    { id: "air_title", name: "O que está no ar", icon: "eye", group: "setlist", hint: "o nome do item no ar e a posição (2/6)", w: 40, h: 6, size: 3, when: "always", label: "No ar", props: {} },
-    { id: "church", name: "Igreja", icon: "logo", group: "tela", hint: "o nome e a cidade da igreja", w: 40, h: 8, size: 2.6, when: "always", props: {} },
-    { id: "title", name: "Título da música", icon: "music", group: "musica", hint: "o título e o artista do que está no ar", w: 50, h: 10, size: 4.2, weight: "bold", when: "content", props: { artist: true } },
-    { id: "current", name: "Letra atual", icon: "text", group: "musica", hint: "o slide no ar; com a cifra sobre as sílabas quando a letra a tem", w: 60, h: 50, size: 7.4, weight: "bold", align: "center", valign: "middle", when: "content", props: { chords: true } },
-    { id: "next", name: "Próximo slide", icon: "list", group: "musica", hint: "o slide seguinte", w: 94, h: 12, size: 3, when: "content", label: "Próximo", props: {} },
-    { id: "next_items", name: "Próximos da Setlist", icon: "list", group: "setlist", hint: "os itens que vêm depois do que está no ar", w: 30, h: 60, size: 2.8, when: "always", label: "Próximo", props: { count: 3 } },
-    { id: "song_key", name: "Tom", icon: "music", group: "musica", hint: "o tom da música", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "Tom", box: true, props: {} },
-    { id: "bpm", name: "BPM", icon: "music", group: "musica", hint: "o andamento da música", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "BPM", box: true, props: {} },
-    { id: "song_time", name: "Tempo na música", icon: "clock", group: "musica", hint: "há quanto tempo a música está no ar", w: 12, h: 10, size: 3.4, weight: "bold", when: "content", label: "Na música", box: true, props: {} },
-    { id: "chords", name: "Cifra", icon: "music", group: "musica", hint: "o bloco de cifra da música, transponível", w: 31, h: 50, size: 2.2, font: "mono", when: "content", label: "Cifra", box: true, props: {} },
-    { id: "notes", name: "Notas para músicos", icon: "edit", group: "musica", hint: "as notas da música para a banda", w: 94, h: 8, size: 2.4, when: "content", props: {} },
-    { id: "monitor", name: "Monitor da projeção", icon: "projector", group: "tela", hint: "o que o projetor mostra, em miniatura", w: 60, h: 58, size: 2, when: "always", props: {} },
-    { id: "progress", name: "Progresso dos slides", icon: "dot", group: "setlist", hint: "um ponto por slide, o do ar em vermelho", w: 94, h: 3, size: 1, when: "content", props: {} },
-    { id: "logo", name: "Logo da igreja", icon: "logo", group: "tela", hint: "o logo de Configurações › Igreja", w: 10, h: 16, size: 2, when: "always", props: {} },
-    { id: "text", name: "Texto fixo", icon: "text", group: "tela", hint: "um texto seu, sempre o mesmo", w: 40, h: 8, size: 3, when: "always", props: { text: "Texto" } },
-    { id: "image", name: "Imagem", icon: "image", group: "tela", hint: "uma imagem da Mídia", w: 30, h: 30, size: 2, when: "always", props: { url: "" } },
+    { id: "screen", name: "Projeção", icon: "projector", group: "tela", w: 100, h: 100, size: 2, when: "always", props: {} },
+    { id: "clock", name: "Hora", icon: "clock", group: "tempo", w: 20, h: 10, size: 6, when: "always", props: { seconds: false } },
+    { id: "date", name: "Data", icon: "clock", group: "tempo", w: 30, h: 6, size: 2.2, when: "always", props: {} },
+    { id: "timer", name: "Relógio ou timer no ar", icon: "clock", group: "tempo", w: 30, h: 14, size: 8, when: "tool", props: {} },
+    { id: "service_time", name: "Tempo de culto", icon: "clock", group: "tempo", w: 20, h: 6, size: 2.4, when: "always", label: "Culto há", props: {} },
+    { id: "air_for", name: "No ar há", icon: "history", group: "tempo", w: 16, h: 6, size: 2.4, when: "always", label: "No ar há", props: {} },
+    { id: "air_title", name: "O que está no ar", icon: "eye", group: "setlist", w: 40, h: 6, size: 3, when: "always", label: "No ar", props: {} },
+    { id: "church", name: "Igreja", icon: "logo", group: "tela", w: 40, h: 8, size: 2.6, when: "always", props: {} },
+    { id: "title", name: "Título da música", icon: "music", group: "musica", w: 50, h: 10, size: 4.2, weight: "bold", when: "content", props: { artist: true } },
+    { id: "current", name: "Letra atual", icon: "text", group: "musica", w: 60, h: 50, size: 7.4, weight: "bold", align: "center", valign: "middle", when: "content", props: { chords: true } },
+    { id: "next", name: "Próximo slide", icon: "list", group: "musica", w: 94, h: 12, size: 3, when: "content", label: "Próximo", props: {} },
+    { id: "next_items", name: "Próximos da Setlist", icon: "list", group: "setlist", w: 30, h: 60, size: 2.8, when: "always", label: "Próximo", props: { count: 3 } },
+    { id: "song_key", name: "Tom", icon: "music", group: "musica", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "Tom", box: true, props: {} },
+    { id: "bpm", name: "BPM", icon: "music", group: "musica", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "BPM", box: true, props: {} },
+    { id: "song_time", name: "Tempo na música", icon: "clock", group: "musica", w: 12, h: 10, size: 3.4, weight: "bold", when: "content", label: "Na música", box: true, props: {} },
+    { id: "chords", name: "Cifra", icon: "music", group: "musica", w: 31, h: 50, size: 2.2, font: "mono", when: "content", label: "Cifra", box: true, props: {} },
+    { id: "notes", name: "Notas para músicos", icon: "edit", group: "musica", w: 94, h: 8, size: 2.4, when: "content", props: {} },
+    { id: "monitor", name: "Monitor da projeção", icon: "projector", group: "tela", w: 60, h: 58, size: 2, when: "always", props: {} },
+    { id: "progress", name: "Progresso dos slides", icon: "dot", group: "setlist", w: 94, h: 3, size: 1, when: "content", props: {} },
+    { id: "logo", name: "Logo da igreja", icon: "logo", group: "tela", w: 10, h: 16, size: 2, when: "always", props: {} },
+    { id: "text", name: "Texto fixo", icon: "text", group: "tela", w: 40, h: 8, size: 3, when: "always", props: { text: "Texto" } },
+    { id: "image", name: "Imagem", icon: "image", group: "tela", w: 30, h: 30, size: 2, when: "always", props: { url: "" } },
 ];
 export const typeOf = (id) => ELEMENT_TYPES.find((t) => t.id === id) || null;
 // The Adicionar picker's groups, in its order.
@@ -74,6 +76,8 @@ const HEX6 = /^#[0-9a-f]{6}$/i;
 const oneOf = (v, choices, d) => (choices.some(([k]) => k === v) ? v : d);
 const onOff = (v, d) => (typeof v === "boolean" ? v : d);
 const newId = () => `el_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+// A number in a range, or "" (unset: the screen's own).
+const optNum = (v, lo, hi) => (v === "" || v == null || !Number.isFinite(Number(v)) ? "" : clamp(Number(v), lo, hi));
 
 // An element as the renderer draws it: every field present and in range.
 export function normalizeElement(raw) {
@@ -107,6 +111,16 @@ export function normalizeElement(raw) {
         // be hidden without losing its place, and faded.
         hidden: onOff(raw.hidden, false),
         opacity: clamp(num(raw.opacity, 1), 0.1, 1),
+        // The text bar's look (Rodada P, P8-3), in the theme's keys so the
+        // renderer reads them with typography() (deviceStyles.js); "" = unset.
+        font_style: raw.font_style === "italic" ? "italic" : "",
+        text_decoration: raw.text_decoration === "underline" ? "underline" : "",
+        text_case: raw.text_case === "upper" || raw.text_case === "capitalize" ? raw.text_case : "",
+        text_justify: raw.text_justify === "justify" ? "justify" : "",
+        line_height: optNum(raw.line_height, 0.9, 2),
+        letter_spacing: optNum(raw.letter_spacing, -0.1, 0.5),
+        text_outline_px: Math.round(optNum(raw.text_outline_px, 0, 8) || 0) || "",
+        text_outline_color: typeof raw.text_outline_color === "string" && HEX6.test(raw.text_outline_color) ? raw.text_outline_color.toLowerCase() : "",
         props,
     };
 }

@@ -7,6 +7,8 @@ test("song theme summary", () => {
     assert.equal(songThemeSummary({ following: false }), "só desta música");
     assert.equal(songThemeSummary({ missing: true }), "tema excluído");
     assert.equal(songThemeSummary({ theme: {}, themeName: "Claro" }), "Claro");
+    assert.equal(songThemeSummary({ following: true, step: 1 }), "sem tema próprio · tamanho +1", "the size relative to the theme (P8-2)");
+    assert.equal(songThemeSummary({ theme: {}, themeName: "Claro", step: -2 }), "Claro · tamanho −2");
 });
 test("part themes summary", () => {
     const parts = [{ key: "refrao" }, { key: "ponte" }];

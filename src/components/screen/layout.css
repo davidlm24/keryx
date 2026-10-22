@@ -57,3 +57,8 @@
 .kl.is-ghost .kl-el.is-hidden { opacity: .35; outline: 1px dashed var(--fg-3); outline-offset: -1px; }
 .kl.is-ghost .kl-el.is-hidden.is-off { opacity: .2; outline-style: dotted; }
 .kl-ghost { color: var(--fg-3); font-size: .7em; }
+
+/* The text bar's look on an element (Rodada P, P8-3): the underline on its
+   body, never its label; the label keeps its own small caps look. */
+.kl-el.is-u > :not(.kl-lab) { text-decoration: underline; }
+.kl-lab { font-style: normal; -webkit-text-stroke: 0; }

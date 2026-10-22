@@ -5,10 +5,10 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 // Song editor › Tema desta música: `look` is the editor's own reading
 // ({ theme, missing }), `following` true when the song follows the default.
-export function songThemeSummary({ theme, themeName = "", missing = false, following = true } = {}) {
-    if (theme) return themeName || "tema sem nome";
-    if (missing) return "tema excluído";
-    return following ? "sem tema próprio" : "só desta música";
+// `step`: the size relative to the theme (Rodada P, P8-2, songSize.js).
+export function songThemeSummary({ theme, themeName = "", missing = false, following = true, step = 0 } = {}) {
+    const what = theme ? themeName || "tema sem nome" : missing ? "tema excluído" : following ? "sem tema próprio" : "só desta música";
+    return step ? `${what} · tamanho ${step > 0 ? "+" : "−"}${Math.abs(step)}` : what;
 }
 
 // Song editor › Tema por parte: how many parts carry a theme.

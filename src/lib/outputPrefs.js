@@ -4,7 +4,7 @@
 // desktop window and a network screen showing the same page share it. No row,
 // or a row with nothing set, is the output exactly as before.
 import { RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
-import { themeBackgroundArgs } from "./console/themes.js";
+import { themeBackgroundArgs } from "./console/themeCore.js";
 import { normalizeLayout, findLayout } from "./layouts.js";
 import { RULE_KIND_IDS, TEXT_KINDS, ruleKind, ruleKindOf, stageRuleKind } from "./contentKinds.js";
 import { mainLayer } from "../../shared/live-state.mjs";
@@ -355,7 +355,7 @@ export function prefViewKey(page, pref) {
 // the operator's choice in place).
 const LOOK_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "text_opacity", "text_max_width",
     "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position",
-    "font_weight", "font_style", "letter_spacing", "text_outline_px", "text_outline_color"];
+    "font_weight", "font_style", "letter_spacing", "text_outline_px", "text_outline_color", "text_decoration", "text_justify"];
 export const themeLook = (theme) => Object.fromEntries(LOOK_KEYS.filter((k) => theme?.[k] != null && theme[k] !== "").map((k) => [k, theme[k]]));
 
 // What the output draws: the live state through the output's rule (what it

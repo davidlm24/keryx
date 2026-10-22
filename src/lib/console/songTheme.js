@@ -7,6 +7,7 @@
 // renderer lays over the song's. Pure: no I/O, no React.
 import { themeStyle, themeBackgroundArgs } from "./themes.js";
 import { bgSpec } from "./backgroundSpec.js";
+import { songStep, steppedSize } from "./songSize.js";
 
 // The part a slide belongs to: its "[Label]", or "Refrão" for a chorus with
 // no label of its own; "" when it has neither.
@@ -60,12 +61,15 @@ export function songTheme(song, themes) {
 }
 
 // A song's content (content.js songContent) with its themes applied: the
-// song's theme as the style, and each themed part's look on its slides.
+// song's theme as the style, and each themed part's look on its slides —
+// their sizes moved by the song's step (songSize.js, Rodada P, P8-2).
 // The same content back when the song has no themes.
 export function withSongThemes(content, song, themes) {
     if (!content || !themes?.length) return content;
     const { theme } = songTheme(song, themes);
     const parts = cleanPartThemes(song?.part_themes);
+    const step = songStep(song);
+    const sized = (look) => (step && look.font_size ? { ...look, font_size: steppedSize(look.font_size, step) } : look);
     let out = content;
     if (theme) {
         // The theme sets the whole look; the song's own fields are its
@@ -78,7 +82,7 @@ export function withSongThemes(content, song, themes) {
         if (typeof theme.show_item_title === "boolean") look.title = theme.show_item_title ? "show" : "hide";
         const { fundo: _f, ...rest } = out;
         const fundo = themeBackgroundArgs(theme);
-        out = { ...rest, style: look, ...(fundo ? { fundo } : {}) };
+        out = { ...rest, style: sized(look), ...(fundo ? { fundo } : {}) };
     }
     if (Object.keys(parts).length) {
         let changed = false;
@@ -86,7 +90,7 @@ export function withSongThemes(content, song, themes) {
             const t = byId(themes, parts[partKey(partOf(s))]);
             if (!t) return s;
             changed = true;
-            return { ...s, style: themeLookOf(t) };
+            return { ...s, style: sized(themeLookOf(t)) };
         });
         if (changed) out = { ...out, slides };
     }

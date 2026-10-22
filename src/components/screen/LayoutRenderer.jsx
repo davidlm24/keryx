@@ -5,7 +5,7 @@ import AlertBar from "./AlertBar";
 import ChordedLines, { chordedOf, Transpose } from "@/components/network/ChordedLines";
 import { transposeChords } from "@/utils/chordTranspose";
 import { typeLabel } from "@/lib/console/setlist";
-import { FONT_MAP } from "@/lib/deviceStyles";
+import { FONT_MAP, typography } from "@/lib/deviceStyles";
 import { fontStack } from "@/lib/fonts";
 import { layoutContext, elementState, elementText, elementItems, elementHasContent, layoutHasTimer, slidePage, TEXT_TYPES, typeOf } from "@/lib/layouts";
 import "@/components/network/net.css";
@@ -74,7 +74,12 @@ function Element({ el, ctx, state, ghost, logoUrl, embed, transpose, setTranspos
     // A presentation's page in "Letra atual" / "Próximo slide" (Rodada F3): its picture.
     const page = el.type === "current" ? slidePage(ctx.current) : el.type === "next" ? slidePage(ctx.next) : "";
     const body = !has ? null : page ? <img className="kl-page" src={page} alt="" /> : TEXT_TYPES.has(el.type) ? <div className="kl-v">{elementText(el, ctx)}</div> : <Body el={el} ctx={ctx} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
+    // The text bar's look (Rodada P, P8-3): italic, capitals, justify,
+    // spacing and outline on the element; the underline on its body only
+    // (is-u), since a decoration cannot be taken off the label under it.
+    const { textDecoration, ...typo } = typography(el);
     const style = {
+        ...typo,
         left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%`,
         "--s": el.size, fontFamily: fontStack(el.font, FONT), fontWeight: el.weight === "bold" ? 700 : 400,
         ...(el.color ? { color: el.color } : {}),
@@ -83,7 +88,7 @@ function Element({ el, ctx, state, ghost, logoUrl, embed, transpose, setTranspos
         ...(shown && has && Number(el.opacity) < 1 ? { opacity: el.opacity } : {}),
     };
     return (
-        <div className={`kl-el kl-${el.type} kl-al-${el.align} kl-va-${el.valign} ${el.box ? "is-box" : ""} ${!shown || body === null ? `is-hidden is-${shown ? "empty" : state}` : ""}`} style={style} data-el={el.id}>
+        <div className={`kl-el kl-${el.type} kl-al-${el.align} kl-va-${el.valign} ${el.box ? "is-box" : ""} ${textDecoration ? "is-u" : ""} ${!shown || body === null ? `is-hidden is-${shown ? "empty" : state}` : ""}`} style={style} data-el={el.id}>
             {el.label && <small className="kl-lab">{el.label}</small>}
             {body ?? (ghost ? <div className="kl-v kl-ghost">{typeOf(el.type)?.name}</div> : null)}
         </div>

@@ -6,6 +6,7 @@ import { songSlidesFor } from "../songImport.js";
 import { followsTheme, isFactoryLook } from "./themes.js";
 import { withSongThemes, songTheme } from "./songTheme.js";
 import { bgSpec, bgArgs } from "./backgroundSpec.js";
+import { songStep, steppedSize } from "./songSize.js";
 import { followModeOf, slideSeconds, timedLength, withFollowStarts } from "./lyricSync.js";
 
 // A song's audio_url may be its video clip (sent to the video screen) or a
@@ -50,8 +51,11 @@ export function songContent(song, ref = {}, themes = []) {
         // content.audio any more (it played on every output, untransported).
         audio: null,
         ...(follow ? { follow } : {}),
+        // The size is a step from the theme's (songSize.js, Rodada P): over
+        // the factory look here; withThemeDefaults moves the theme's, and
+        // withSongThemes the song's own theme's.
         style: {
-            font_size: song.font_size || "large",
+            font_size: steppedSize("large", songStep(song)),
             font_family: song.font_family || "sans",
             text_effect: song.text_effect || "shadow",
             text_color: song.text_color || "#ffffff",
@@ -68,7 +72,9 @@ export function songContent(song, ref = {}, themes = []) {
         ref: { songId: song.id || null, ...ref },
         // A song following a theme of its own takes that theme whole: the
         // default theme dresses nothing (the church's transition still fills).
-        inherit: songTheme(song, themes).theme ? { look: false, background: false } : { look: followsTheme(song), background: !fundo },
+        // Otherwise the theme fills what the song leaves empty, its own look
+        // or not, and its size moves by the song's step.
+        inherit: songTheme(song, themes).theme ? { look: false, background: false, extras: false } : { look: followsTheme(song), background: !fundo, step: songStep(song) },
     }, song, themes);
 }
 

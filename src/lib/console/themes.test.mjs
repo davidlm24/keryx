@@ -289,15 +289,32 @@ test("the Editor de temas' group summaries are one pt-BR line each", async () =>
     const m = await import("./themes.js");
     assert.equal(m.fontSummary({ font_family: "Bebas Neue", font_size: "4.8", font_weight: "bold" }), "Bebas Neue · 4,8 % · negrito");
     assert.equal(m.fontSummary({ font_family: "sans", font_size: "4.5", font_style: "italic", text_case: "upper" }), "Sem serifa · 4,5 % · itálico · maiúsculas");
+    assert.equal(m.fontSummary({ font_family: "sans", font_size: "4.8", text_decoration: "underline", text_case: "capitalize" }), "Sem serifa · 4,8 % · sublinhado · primeira maiúscula");
     assert.equal(m.colorSummary({ text_color: "#ffffff", text_effect: "shadow", text_outline_px: 2 }), "Branco · Sombra · contorno 2 px");
     assert.equal(m.colorSummary({ text_color: "#c9a25b", text_color_2: "#fff", text_effect: "none", text_opacity: 0.8 }), "#C9A25B em degradê · Sem efeito · opacidade 80 %");
     assert.equal(m.boxSummary({ text_box: "band", text_box_opacity: 0.55 }), "Faixa · 55 %");
     assert.equal(m.boxSummary({}), "Sem caixa");
     assert.equal(m.placeSummary({}), "Centro · Meio · 100 %");
+    assert.equal(m.placeSummary({ text_align: "left", text_justify: "justify" }), "Esquerda · Meio · 100 % · justificado");
     assert.equal(m.placeSummary({ text_align: "left", text_position: "bottom", text_max_width: 80 }), "Esquerda · Baixo · 80 %");
     assert.equal(m.placeSummary({ text_box: "band", text_max_width: 60 }), "Centro · Meio · 100 %");
     assert.equal(m.fundoSummary({}), "Falta escolher");
     assert.equal(m.transitionSummary({}), "Padrão · Esmaecer 400 ms");
     assert.equal(m.transitionSummary({ transition: "slide", transition_ms: 500 }), "Deslizar · 500 ms");
     assert.equal(m.transitionSummary({ transition: "cut" }), "Corte");
+});
+
+test("the text bar's keys (Rodada P, P8-1) are part of the look and fill like the other extras", () => {
+    const t = { id: "t", text_decoration: "underline", text_justify: "justify", text_case: "capitalize" };
+    const s = themeStyle(t);
+    assert.ok(sameLook(s, t));
+    assert.ok(!sameLook({ ...s, text_decoration: "" }, t), "underline is part of the look");
+    assert.ok(!sameLook({ ...s, text_justify: "" }, t), "justify is part of the look");
+    assert.ok(!sameLook({ ...s, text_case: "upper" }, t));
+    const out = withThemeDefaults("content.show", { style: {}, inherit: { look: true } }, t);
+    assert.equal(out.style.text_decoration, "underline");
+    assert.equal(out.style.text_justify, "justify");
+    assert.equal(out.style.text_case, "capitalize");
+    assert.equal(withThemeDefaults("content.show", { style: { text_case: "upper" }, inherit: { look: true } }, t).style.text_case, "upper", "the item's own wins");
+    assert.ok(isFactoryLook({ text_decoration: "underline" }), "a song or passage row has no such keys: the factory check reads the classics");
 });
