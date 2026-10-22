@@ -293,7 +293,8 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
     const pick = editing && onPickSplit ? (f) => () => onPickSplit(f.path) : () => undefined;
     // Exato (Rodada P4-2): the gap between two open children trades weight
     // between them (resizeExact); a locked or folded neighbour is skipped,
-    // so the gap moves the open ones on either side of it.
+    // so the gap moves the open ones on either side of it (the gap past it
+    // trades the same pair: only the first one carries the % badge).
     const open = (ch) => ch && !ch.gone && !ch.locked && !ch.folded;
     const exactSplit = (f, i, next) => {
         let a = i;
@@ -310,7 +311,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
                 onSize={(v) => onDock(resizeExact(dock, f, a, b, v))}
                 onReset={() => onDock(evenExact(dock, f, a, b))}
                 clamp={(v) => Math.round(v)}
-                label={editing && share !== null ? `${share}%` : null}
+                label={editing && share !== null && a === i ? `${share}%` : null}
                 onPercent={(n) => { if (Number.isFinite(n)) onDock(resizeExact(dock, f, a, b, (Math.max(1, Math.min(99, n)) / 100) * f.room, 0)); }} />
         );
     };
