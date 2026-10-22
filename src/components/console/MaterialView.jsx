@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
+import { uploadFile } from "@/lib/mediaImport";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, WinBar, useUnloadGuard } from "./kx";
 import { stageFromMaterial } from "@/lib/console/stage";
@@ -131,7 +132,7 @@ export default function MaterialView({ c, materialId = null, classId = "", media
     const files = media.filter((m) => !m.missing && (draft.type === "video" ? m.type === "video" : m.type === "image" || m.type === "gif"));
     const upload = async (file) => {
         if (!file) return;
-        try { const { file_url } = await keryx.integrations.Core.UploadFile({ file }); set(draft.type === "video" ? { video_url: file_url } : { image_url: file_url }); } catch (err) { c.say(err?.message || "Não foi possível copiar o arquivo."); }
+        try { const { file_url } = await uploadFile(file); set(draft.type === "video" ? { video_url: file_url } : { image_url: file_url }); } catch (err) { c.say(err?.message || "Não foi possível copiar o arquivo."); }
     };
     // Switching to Slides or Texto shows the slides as they are now.
     const setType = (type) => {

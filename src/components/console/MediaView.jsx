@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop } from "./kx";
-import { importMediaFiles, importSummary, mediaFromYouTube } from "@/lib/mediaImport";
+import { importMediaFiles, importSummary, mediaFromYouTube, uploadFile } from "@/lib/mediaImport";
+import { codecFields } from "@/lib/videoCodec";
 import { playsInSequence } from "@/lib/presentation";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
 import { useCopyingFiles } from "@/hooks/useCopyingFiles";
@@ -15,6 +16,7 @@ import { PENDING_SAY } from "@/lib/pendingMedia";
 import { useContextMenu } from "./ContextMenu";
 import { gridStep, columnsOf } from "@/lib/console/gridNav";
 import { mediaIcon, copyingRows } from "@/lib/console/libraryRows";
+import CodecMark from "@/components/console/CodecMark";
 import { keyHint } from "@/lib/console/keys";
 import { menuItem } from "@/lib/console/menuLabels";
 
@@ -192,9 +194,12 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         locating.current = null;
         if (!m || !file) return;
         try {
-            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
-            // The old still goes with the old file: the console takes a new one.
-            await keryx.entities.Media.update(m.id, { file_url, thumbnail_url: "" });
+            // A video that may freeze is refused here too (uploadFile).
+            const { file_url, codec } = await uploadFile(file);
+            // The old still and codec go with the old file: the console takes
+            // a new still, and the codec is the new file's (read now, else
+            // cleared for the backfill).
+            await keryx.entities.Media.update(m.id, { file_url, thumbnail_url: "", video_codec: null, video_bit_depth: null, video_chroma: null, ...codecFields(codec) });
             c.say(`${m.title}: arquivo encontrado.`);
         } catch (err) { fail(err); }
     };
@@ -331,6 +336,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                     </button>
                                     {renaming === m.id ? renameField(m) : <span className="mv-title" onDoubleClick={() => setRenaming(m.id)}>{m.title}</span>}
                                     {isDoc(m) && !m.missing && <span className="kx-meta mv-sub"><PagesMeta row={m} /></span>}
+                                    {m.type === "video" && <CodecMark row={m} />}
                                     {m.missing && !m.syncing && <Btn small kind="outline" onClick={() => locate(m)}>Localizar…</Btn>}
                                 </div>
                             ))}
@@ -351,7 +357,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             <span className="kx-glyph"><Icon name={mediaIcon(m)} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title" title={m.title}>{m.title}</div>}
-                                <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : [isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}</div>
+                                <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : <>{[isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}</div>
                             </div>
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>
                             <span className="kx-row-acts">

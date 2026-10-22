@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { keryx } from "@/api/keryxClient";
+import { uploadFile } from "@/lib/mediaImport";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import { Btn, Field, Seg } from "../kx";
@@ -54,7 +54,7 @@ export default function IgrejaSection({ c }) {
         if (!file) return;
         setBusy(true);
         try {
-            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
+            const { file_url } = await uploadFile(file);
             await save({ logo_url: file_url }, "Logo das telas atualizado.");
         } catch (err) { c.say(err?.message || "Não foi possível trocar o logo."); }
         setBusy(false);

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePrefs } from "@/hooks/useUser";
 import { keryx } from "@/api/keryxClient";
+import { uploadFile } from "@/lib/mediaImport";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
@@ -100,7 +101,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
 
     const upload = async (file, apply) => {
         if (!file) return;
-        try { const { file_url } = await keryx.integrations.Core.UploadFile({ file }); apply(file_url); } catch (err) { c.say(err?.message || "Não foi possível copiar o arquivo."); }
+        try { const { file_url } = await uploadFile(file); apply(file_url); } catch (err) { c.say(err?.message || "Não foi possível copiar o arquivo."); }
     };
     const fromComputer = (kind) => {
         fileKind.current = kind;
