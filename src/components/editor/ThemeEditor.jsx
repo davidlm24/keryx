@@ -10,7 +10,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
-import { Panel, Btn, Seg, Empty, WinBar, NumBox } from "../console/kx";
+import { Panel, Btn, Seg, Empty, WinBar } from "../console/kx";
 import { Switch, CfgGroup } from "../console/settings/parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import BgChip from "../console/library/BgChip";
@@ -18,8 +18,8 @@ import { useLibraryPicker, ALL_KINDS } from "../console/library/libraryContext";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import Icon from "../console/Icon";
 import { IconBtn } from "../console/kx";
-import { TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName, fontSummary, colorSummary, boxSummary, placeSummary, fundoSummary, transitionSummary } from "@/lib/console/themes";
-import { SIZE_RANGE, sizeCqw, sizePreset, sizeValue, lineHeightOf, LINE_HEIGHTS, LINE_HEIGHT_RANGE, LETTER_SPACING_RANGE } from "@/lib/textSize";
+import { TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName, boxSummary, placeSummary, fundoSummary, transitionSummary } from "@/lib/console/themes";
+import { SIZE_RANGE, sizeCqw, sizePreset, sizeValue } from "@/lib/textSize";
 import FontPicker, { fontNote } from "./FontPicker";
 import TextBar from "./TextBar";
 import { useChurchFonts } from "../console/useConsoleData";
@@ -44,7 +44,6 @@ const SAMPLES = {
 // Contorno became its own row (a width and a colour, with any effect).
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["3d", "3D"], ["neon", "Neon"], ["outline", "Vazado"], ["none", "Nenhum"]];
 const BOXES = [["", "Sem"], ["band", "Faixa"], ["block", "Bloco"]];
-const H_ALIGNS = [["left", "Esq."], ["", "Centro"], ["right", "Dir."]];
 const V_POS = [["top", "Alto"], ["", "Meio"], ["bottom", "Baixo"]];
 // show_item_title is the theme's since the Rodada B 2026-10-14 (it was the
 // church's, Aparência): a new theme starts with it on; a theme from before
@@ -255,7 +254,6 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
     if (error) return wrap(<div className="col center"><Panel noHead={hosted} title="Editor de tema"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div className="pl-pad"><Btn onClick={() => onClose()}>Fechar</Btn></div></Panel></div>);
     if (!draft) return wrap(<div className="col center"><Panel noHead={hosted} title="Editor de tema"><Empty title="Abrindo…" /></Panel></div>);
 
-    const num = (v) => (v == null || v === "" ? "" : String(v));
     const others = [...themes].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
     const band = draft.text_box === "band";
     const themeTitle = draft.name || (savedId.current ? "Tema sem nome" : "Novo tema");
@@ -272,12 +270,17 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
         <>
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel title={hosted ? "Tema" : <>Tema <span className="kx-count">· {themeTitle}{dirty ? " · não salvo" : ""}</span></>} actions={<>{pickTheme}{deleteBtn}</>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                    {/* The text bar (Rodada P, P8-1 = A): fixed over the
-                        form, the groups below — the font, the size, N I S,
-                        Aa, the alignment, Cor and Contorno. */}
+                    {/* The text bar (Rodada P, P8-1 = A): everything about
+                        the text, in one place (owner 2026-10-22: no group
+                        below repeats it) — the font (its origin in the
+                        tooltip), the size and its PP…GGG, N I S, Aa, the
+                        alignment, Cor (with the gradient and the opacity),
+                        Contorno, Efeito and Espaçamento. */}
                     <TextBar value={draft} onChange={set}
-                        font={<FontPicker value={draft.font_family} onChange={(v) => set({ font_family: v })} say={say} style={{ width: 168 }} />}
-                        size={{ value: sizeCqw(draft.font_size), min: SIZE_RANGE[0], max: SIZE_RANGE[1], step: 0.1, unit: "%", onChange: (n) => set({ font_size: sizeValue(n) }) }} />
+                        font={<span title={fontNote(draft.font_family, churchFonts.families)}><FontPicker value={draft.font_family} onChange={(v) => set({ font_family: v })} say={say} style={{ width: 168 }} /></span>}
+                        size={{ value: sizeCqw(draft.font_size), min: SIZE_RANGE[0], max: SIZE_RANGE[1], step: 0.1, unit: "%", onChange: (n) => set({ font_size: sizeValue(n) }) }}
+                        presets={{ options: TEXT_SIZES, value: sizePreset(draft.font_size), onPick: (k) => set({ font_size: sizeValue(k) }) }}
+                        effects={EFFECTS} colorMore spacing />
                     <div className="nv-scroll">
                         <CfgGroup id="tema.nome" k="tema.nome" title="Nome e padrão" summary={""} fold={false}>
                             <div className="frm nv-frm">
@@ -307,59 +310,6 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                             </span>
                             </div>
                         </CfgGroup>
-                        <CfgGroup id="tema.fonte" k="tema.fonte" title="Fonte" summary={fontSummary(draft)}>
-                            <div className="frm nv-frm">
-                            {/* The font (Rodada HF1) is the text bar's first
-                                control — KERYX's, the church's (copied into
-                                the library) or one brought from this PC or a
-                                file (FontPicker.jsx); this line says where it
-                                comes from. */}
-                            <span className="k">Origem</span>
-                            <span className="kx-meta le-font-note">{fontNote(draft.font_family, churchFonts.families)}</span>
-                            {/* The size is a number, % of the screen's width
-                                (Rodada HF2, owner's pick "numero_atalhos"),
-                                typed in the bar; PP…GGG only write their
-                                number. An old theme's name ("large") shows as
-                                its number and stays until it is changed. */}
-                            <span className="k">Atalhos</span>
-                            <Seg small label="Atalhos de tamanho" value={sizePreset(draft.font_size)} options={TEXT_SIZES} onChange={(k) => set({ font_size: sizeValue(k) })} />
-                            {/* Line and letter spacing as numbers (an old
-                                theme's Justas/Largas show as 1,08/1,45); the
-                                normal ones are saved as "" (the screen's own). */}
-                            <span className="k">Entrelinhas</span>
-                            <span className="nv-inline">
-                                <NumBox label="Entrelinhas" value={draft.line_height === "" ? "" : lineHeightOf(draft.line_height)} empty={LINE_HEIGHTS.normal} min={LINE_HEIGHT_RANGE[0]} max={LINE_HEIGHT_RANGE[1]} step={0.05} onChange={(n) => set({ line_height: n === LINE_HEIGHTS.normal ? "" : n })} />
-                                <span className="kx-meta">1,22 = normal</span>
-                            </span>
-                            <span className="k">Espaçamento</span>
-                            <span className="nv-inline">
-                                <NumBox label="Espaçamento entre as letras" value={draft.letter_spacing} empty={0} min={LETTER_SPACING_RANGE[0]} max={LETTER_SPACING_RANGE[1]} step={0.01} unit="em" onChange={(n) => set({ letter_spacing: n === 0 ? "" : n })} />
-                                <span className="kx-meta">entre as letras</span>
-                            </span>
-                            </div>
-                        </CfgGroup>
-                        <CfgGroup id="tema.cor" k="tema.cor" title="Cor e efeito" summary={colorSummary(draft)} defaultOpen={false}>
-                            <div className="frm nv-frm">
-                            {/* The colour and the outline are the text bar's;
-                                the effect and the gradient's second colour stay here. */}
-                            <span className="k">Efeito</span>
-                            <span className="nv-inline">
-                                <select className="pl-input" style={{ width: "auto" }} value={draft.text_effect} onChange={(e) => set({ text_effect: e.target.value })} aria-label="Efeito do texto">
-                                    {EFFECTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                                </select>
-                                {draft.text_color_2
-                                    ? <><input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.text_color_2) ? draft.text_color_2 : "#ffffff"} onChange={(e) => set({ text_color_2: e.target.value })} aria-label="Segunda cor (degradê)" title="Segunda cor (degradê)" /><Btn small onClick={() => set({ text_color_2: "" })}>Cor única</Btn></>
-                                    : <Btn small onClick={() => set({ text_color_2: "#c9a25b" })} title="O texto em degradê de duas cores">Degradê</Btn>}
-                            </span>
-                            <span className="k">Opacidade</span>
-                            {/* Continuous (Rodada C, fase d): the model always
-                                took 20–100%; the UI offered four presets. */}
-                            <span className="nv-inline">
-                                <input type="range" className="le-range" min={20} max={100} step={1} value={Math.round((draft.text_opacity === "" ? 1 : Number(draft.text_opacity)) * 100)} onChange={(e) => { const v = Number(e.target.value); set({ text_opacity: v >= 100 ? "" : v / 100 }); }} aria-label="Opacidade do texto" />
-                                <span className="kx-meta">{Math.round((draft.text_opacity === "" ? 1 : Number(draft.text_opacity)) * 100)}%</span>
-                            </span>
-                            </div>
-                        </CfgGroup>
                         <CfgGroup id="tema.caixa" k="tema.caixa" title="Caixa do texto" summary={boxSummary(draft)} defaultOpen={false}>
                             <div className="frm nv-frm">
                             <span className="k">Caixa do texto</span>
@@ -381,8 +331,6 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                         </CfgGroup>
                         <CfgGroup id="tema.posicao" k="tema.posicao" title="Posição" summary={placeSummary(draft)} defaultOpen={false}>
                             <div className="frm nv-frm">
-                            <span className="k">Alinhamento</span>
-                            <Seg small label="Alinhamento" value={draft.text_align || ""} options={H_ALIGNS} onChange={(v) => set({ text_align: v })} />
                             <span className="k">Posição</span>
                             <Seg small label="Posição" value={draft.text_position || ""} options={V_POS} onChange={(v) => set({ text_position: v, text_nudge: "" })} />
                             <span className="k">Largura</span>

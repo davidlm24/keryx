@@ -211,34 +211,11 @@ export function withThemeDefaults(op, args, theme) {
 // ---- The Editor de temas' group summaries (Rodada HF3, owner 2026-10-20) ----
 // One pt-BR line per CfgGroup of the form, from the draft, shown while the
 // group is closed. Pure (tested). A draft is the editor's: "" = the factory.
-const COLOR_NAMES = { "#ffffff": "Branco", "#000000": "Preto" };
-const hexOf = (c) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c.toLowerCase() : "");
-export const colorName = (c) => COLOR_NAMES[hexOf(c)] || hexOf(c).toUpperCase() || "Branco";
+// The text's own look (font, size, colour, effect…) has no group since
+// 2026-10-22: it is all in the text bar, so it has no summary either.
 const pctOf = (n) => `${Math.round(n)} %`;
-const EFFECT_NAMES = { shadow: "Sombra", "double-shadow": "Sombra dupla", glow: "Brilho", "3d": "3D", neon: "Neon", outline: "Vazado", none: "Sem efeito" };
 const BOX_NAMES = { band: "Faixa", block: "Bloco" };
-const ALIGN_NAMES = { left: "Esquerda", right: "Direita" };
 const POS_NAMES = { top: "Alto", bottom: "Baixo" };
-
-export function fontSummary(t) {
-    const family = t?.font_family || "sans";
-    const name = THEME_FONTS.find(([v]) => v === family)?.[1] || family;
-    const parts = [name, `${String(sizeCqw(t?.font_size)).replace(".", ",")} %`];
-    if (t?.font_weight === "bold") parts.push("negrito");
-    if (t?.font_style === "italic") parts.push("itálico");
-    if (t?.text_decoration === "underline") parts.push("sublinhado");
-    if (t?.text_case === "upper") parts.push("maiúsculas");
-    if (t?.text_case === "capitalize") parts.push("primeira maiúscula");
-    return parts.join(" · ");
-}
-
-export function colorSummary(t) {
-    const parts = [t?.text_color_2 ? `${colorName(t.text_color)} em degradê` : colorName(t?.text_color), EFFECT_NAMES[t?.text_effect || "shadow"] || "Sombra"];
-    if (Number(t?.text_outline_px) > 0) parts.push(`contorno ${t.text_outline_px} px`);
-    const op = t?.text_opacity === "" || t?.text_opacity == null ? 1 : Number(t.text_opacity);
-    if (op < 1) parts.push(`opacidade ${pctOf(op * 100)}`);
-    return parts.join(" · ");
-}
 
 export function boxSummary(t) {
     const kind = BOX_NAMES[t?.text_box];
@@ -246,10 +223,10 @@ export function boxSummary(t) {
     return `${kind} · ${pctOf((Number(t.text_box_opacity) || 0.55) * 100)}`;
 }
 
+// Where the box sits (the alignment is the text bar's).
 export function placeSummary(t) {
     const width = t?.text_box === "band" ? 100 : Number(t?.text_max_width) || 100;
-    const at = `${ALIGN_NAMES[t?.text_align] || "Centro"} · ${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}`;
-    return t?.text_justify === "justify" ? `${at} · justificado` : at;
+    return `${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}`;
 }
 
 export function fundoSummary(t) {
