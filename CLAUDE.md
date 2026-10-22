@@ -1847,11 +1847,16 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     (o estilo explícito do item vence; aplicar um tema no ar os reseta), e
     a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado).
     **O formulário é em grupos** (Rodada HF3, owner 2026-10-20: `CfgGroup`, ids
-    `tema.*`, fold per computer; Nome e padrão fixo, Fonte e Fundo abertos, os
-    outros fechados com resumo de `fontSummary`…`transitionSummary` em themes.js),
-    com a barra de texto fixa acima deles (Rodada P, P8-1: a fonte, o tamanho,
-    N I S, Aa, o alinhamento, a cor e o contorno saíram dos grupos); o smoke
-    lê o 1º `.nv-frm input.pl-input` (Nome) e a fonte em `.tb-bar select`.
+    `tema.*`, fold per computer; Nome e padrão fixo, Fundo aberto, Caixa do
+    texto, Posição e Transição fechados com resumo de `boxSummary`…`transitionSummary`
+    em themes.js), com a barra de texto fixa acima deles. **Tudo do texto mora
+    na barra** (Rodada P, P8-1, e o dono em 2026-10-22: "um ambiente só", sem
+    grupo repetindo): a fonte (a origem no tooltip), o tamanho e os atalhos
+    PP…GGG (`presets`), N I S, Aa, o alinhamento (o único lugar: Posição só
+    tem Alto/Meio/Baixo, largura e ajuste fino), Cor ▾ com degradê e
+    opacidade (`colorMore`), Contorno ▾, Efeito ▾ (`effects`) e Espaçamento ▾
+    (`spacing`); os grupos Fonte e Cor e efeito não existem mais. O smoke lê
+    o 1º `.nv-frm input.pl-input` (Nome) e a fonte em `.tb-bar select`.
 A ScreenRenderer `fill` is `position: fixed`: inside a canvas or preview
 its wrapper needs `contain: layout paint` (`.le-screen`, `.cfg-prev`).
 Every screen is landscape: every still of an output (Telas e saídas'
