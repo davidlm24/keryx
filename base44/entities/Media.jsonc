@@ -72,17 +72,8 @@
     },
     "category": {
       "type": "string",
-      "enum": [
-        "sermon",
-        "worship",
-        "announcement",
-        "testimony",
-        "other",
-        "background",
-        "font"
-      ],
-      "default": "other",
-      "description": "Categoria da m\u00eddia; background = a biblioteca de fundos, font = as fontes da igreja"
+      "default": "Outros",
+      "description": "A categoria da igreja na M\u00eddia, pelo nome (User.media_categories); as linhas antigas guardam sermon, worship, announcement, testimony ou other, lidas como Prega\u00e7\u00e3o, Louvor, Avisos, Testemunho e Outros (src/lib/console/mediaCategories.js); background = a biblioteca de fundos, font = as fontes da igreja"
     },
     "font": {
       "type": "object",

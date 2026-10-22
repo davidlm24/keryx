@@ -1194,10 +1194,28 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .rund-sec { gap: 0; cursor: grab; }
 .console .rund-plan { display: flex; justify-content: center; padding: var(--space-2); }
 
-/* Biblioteca de mídia (canvas artboard "Biblioteca de mídia") */
-.console .mv-acts { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
-.console .mv-cats { border-bottom: 0; padding: 0; margin-right: var(--space-2); }
-.console .mv-bar { flex: none; display: flex; gap: var(--space-1); align-items: center; flex-wrap: wrap; min-height: var(--band); padding: 0 var(--space-1); }
+/* Biblioteca de mídia, a library window like the backgrounds' (owner
+   2026-10-22, "Bibliotecas" B3): flat on the window (no card), the kinds in
+   the bar (WinTabs), the chips row (FilterChips) with the search and the
+   list's buttons, the grid or the list, and the file chosen on the right,
+   always (MediaDetail), parted by a line-soft rule as the library's. */
+.console .win-body.mv { padding: 0; }
+.console .mv-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.console .mv-main > .fg-filters { flex: none; align-items: center; flex-wrap: wrap; padding: var(--space-3) var(--space-3) var(--space-2); }
+/* The chips keep their line; what does not fit beside them (the tools) wraps under. */
+.console .mv-main > .fg-filters > .fg-chips { flex: 0 1 auto; }
+.console .mv-tools { margin-left: auto; display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.console .mv-cats-edit { flex: 1; min-height: 0; overflow: auto; padding: var(--space-3); }
+.console .mv-side { flex: 0 0 300px; min-width: 0; overflow: auto; border-left: 1px solid var(--line-soft); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.console .mv-side.is-empty { justify-content: center; }
+.console .mv-side-screen { position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: var(--radius-control); overflow: hidden; background: var(--screen-bg); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; }
+.console .mv-side-screen img, .console .mv-side-screen video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.console .mv-side-t { font-size: var(--fs-ui); font-weight: 600; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .mv-meta { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: var(--space-2); align-items: center; font-size: var(--fs-ui); color: var(--fg-2); }
+.console .mv-meta .k { font-size: var(--fs-meta); color: var(--fg-3); }
+.console .mv-meta .pl-pick { width: 100%; }
+.console .mv-side-acts { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+@media (max-width: 900px) { .console .mv-side { flex-basis: 240px; } }
 .console .mv-up { flex: none; border-top: 1px solid var(--line); padding-bottom: var(--space-1); }
 .console .mv-up-row { display: flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); }
 .console .mv-up-n { width: 280px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-1); font-size: var(--fs-ui); }
@@ -1207,8 +1225,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .prog2 > i.is-busy { animation: mv-busy 1.2s ease-in-out infinite alternate; }
 @keyframes mv-busy { from { opacity: .45; } to { opacity: 1; } }
 /* The selection bar is the design system's kx-selbar (bundle.css, 2026-10-21: every list's). */
-.console .mv-body { flex: 1; min-height: 0; overflow: auto; }
-.console .mv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3) var(--space-2); padding: var(--space-2); }
+.console .mv-body { flex: 1; min-height: 0; overflow: auto; padding: 0 var(--space-2) var(--space-2); }
+.console .mv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-3) var(--space-2); padding: 0 var(--space-1); }
 .console .mv-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .console .mv-th { position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: var(--radius-control); overflow: hidden; background: var(--screen-bg); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; color: var(--fg-2); padding: 0; }
 .console .mv-th img, .console .mv-th video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
@@ -1724,7 +1742,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    and the chosen background's settings on the right. */
 .console .lib-scrim { z-index: var(--z-library-scrim); }
 .console .lib-dialog { position: absolute; z-index: var(--z-library); left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
-.console .lib-tabs { height: 40px; border-bottom: 0; margin-left: var(--space-3); }
 .console .lib-body { flex: 1; min-height: 0; display: flex; }
 .console .lib-main { flex: 1; min-width: 0; overflow: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .console .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--space-2); align-content: start; }

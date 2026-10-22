@@ -2601,10 +2601,10 @@ async function checkConsole(webContents, { live, outputs }) {
             await sleep(200);
             return true;
         };
-        // The YouTube link comes from the filter row's Adicionar menu + one question
-        // (PromptDialog), not a field always on screen (Rodada C, fase b).
-        await click(".mv-bar button", "Adicionar");
-        await click(".pl-pop .kx-row", "Link do YouTube…");
+        // The YouTube link comes from the bar's Link do YouTube… + one question
+        // (PromptDialog), not a field always on screen (Rodada C, fase b;
+        // the Mídia a library window since "Bibliotecas" B3).
+        await click(".console .win-bar button", "Link do YouTube…");
         await waitFor(() => js("Boolean(document.querySelector('.confirm-dialog .kx-field input'))"), 4000);
         await setVal(".confirm-dialog .kx-field input", "https://youtu.be/dQw4w9WgXcQ");
         await click(".confirm-dialog button", "Adicionar");
@@ -2616,15 +2616,15 @@ async function checkConsole(webContents, { live, outputs }) {
             if (rows[0]) mvRows.push(rows[0]);
             return Boolean(rows[0]) && /youtu/.test(rows[0].file_url);
         }, 6000);
-        await click(".mv-cats button", "Imagens");
+        await click(".console .kx-win-tabs button", "Imagens");
         result.mvTabs = await waitFor(() => js("(() => { const t = [...document.querySelectorAll('.mv-cell')].map((n) => n.textContent); return t.length >= 2 && t.every((x) => !x.includes('Arquivo sumido') && !x.includes('Vídeo do smoke')); })()"));
         await thumb("Foto um");
         await thumb("Foto dois", ["control"]);
         result.mvSelected = await waitFor(() => js("document.querySelectorAll('.mv-th.is-sel').length === 2"));
-        await click(".mv-bar button", "Tocar todos");
+        await click(".mv .fg-filters button", "Tocar todos");
         result.mvSequence = await waitFor(() => (live.get().media?.playlist || []).length === 2);
         live.call("clear");
-        await click(".mv-cats button", "Todas");
+        await click(".console .kx-win-tabs button", "Todas");
         await thumb("Arquivo sumido");
         // Delete asks first (ConfirmDialog, as every Excluir does).
         await press("Delete");
