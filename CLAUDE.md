@@ -1129,7 +1129,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   module is what is on air** (owner 2026-10-14, as Holyrics' slide column
   and bottom strip): Slides shows the Prévia's slides whenever it holds an
   item, even a single slide (`handIsPrev` in SlidesPanel.jsx; a theme's
-  example is not an item), else what is on air; No ar (`OnAirPanel.jsx`,
+  example is not an item), else what is on air, else **the item Esc took
+  off** (owner 2026-10-23, Rodada Q7, S4 = A: Esc takes it off the screens,
+  not out of the operator's hands): `c.last` (useConsole, from the state
+  just before Esc — `lastFromEnd`, `lastStays`, `columnSource` in
+  `src/lib/console/lastOnAir.js`, tested; sessionStorage like the Prévia),
+  only when slides were on air (a video or a picture alone does not count),
+  Limpar texto (C) the same when it took slides off; a band "Saiu do ar ·
+  clique num slide para preparar de novo", no green row, the slide it
+  stopped on in the grey `--next-ring` with "parou aqui" (`is-stopped`); a
+  click prepares a slide (the Prévia stays empty until then), a double
+  click sends it, the footer's arrows move the "parou aqui"; it goes when
+  anything new is on air (`airKey`: Desfazer included) or the Prévia
+  holds an item; No ar (`OnAirPanel.jsx`,
   dock id `onair`, in Ver's module switches) always shows the item on air
   and never follows a click elsewhere — one row of cards while it is low
   (scrolling sideways, the card on air kept in view), a list in a column.

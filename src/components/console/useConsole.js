@@ -4,6 +4,7 @@ import { projection } from "@/lib/projection";
 import { useLiveState } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
+import { lastFromEnd, lastStays, airKey } from "@/lib/console/lastOnAir";
 import { emptyToasts, pushToast, nextToast, dropToast } from "@/lib/console/toastQueue";
 import { lookDefaults, withLookDefaults } from "@/lib/console/lookDefaults";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
@@ -36,7 +37,11 @@ export const THEME_IN_USE_KEY = "keryx.themeInUse";
 // The Prévia's stage, for a reload of this window (useConsole).
 const PREV_KEY = "keryx.console.prev";
 const readPrev = () => { try { const s = JSON.parse(sessionStorage.getItem(PREV_KEY) || "null"); return s && typeof s === "object" ? s : null; } catch { return null; } };
-const writePrev = (stage) => { try { if (stage) sessionStorage.setItem(PREV_KEY, JSON.stringify(stage)); else sessionStorage.removeItem(PREV_KEY); } catch { /* not remembered */ } };
+const writePrev = (stage, key = PREV_KEY) => { try { if (stage) sessionStorage.setItem(key, JSON.stringify(stage)); else sessionStorage.removeItem(key); } catch { /* not remembered */ } };
+// The item the Slides column keeps after Esc (src/lib/console/lastOnAir.js),
+// kept for a reload like the Prévia.
+const LAST_KEY = "keryx.console.last";
+const readLast = () => { try { const s = JSON.parse(sessionStorage.getItem(LAST_KEY) || "null"); return s && typeof s === "object" && Array.isArray(s.slides) ? s : null; } catch { return null; } };
 // The checks before a send (src/lib/console/sendBlock.js, pure).
 export { LOCKED_SAY };
 
@@ -184,7 +189,33 @@ export function useConsole() {
     }, []);
     const { stamp, bgPrefs } = useStamp(themeId);
     const { toast, toastAction, say, unsay, holdToast } = useToast();
-    const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen, clearText } = useLiveOps(live, say, bgPrefs);
+    const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen } = useLiveOps(live, say, bgPrefs);
+
+    // Esc takes the song off the screens, not out of the Slides column
+    // (owner 2026-10-23, Rodada Q7): the item whose slides were on air is
+    // kept as `last` until something new goes on air or the Prévia holds an
+    // item (lastStays). Only the key of what is on air is watched: reading
+    // `last` there would drop it in the moment before the live state shows
+    // the change that made it.
+    const [last, setLastState] = useState(readLast);
+    useEffect(() => { writePrev(last, LAST_KEY); }, [last]);
+    const key = airKey(live);
+    useEffect(() => { if (live) setLastState((l) => (l && l.key !== key ? null : l)); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+    const handHeld = Boolean(prev && !prev.theme && prev.slides?.length);
+    useEffect(() => { if (handHeld) setLastState(null); }, [handHeld]);
+    const keepLast = useCallback((before, after) => { const l = lastFromEnd(before, after); if (l) setLastState(l); }, []);
+    // Anterior / Próximo under the kept item move the slide marked "parou aqui".
+    const moveLast = useCallback((d) => setLastState((l) => {
+        if (!l) return l;
+        const i = Math.max(0, Math.min(l.slides.length - 1, l.stopped + d));
+        return { ...l, stopped: i, index: i };
+    }), []);
+    // Limpar texto (C) keeps the item the same way when it took text slides
+    // off (the same rule: slides were on air).
+    const clearText = useCallback(() => {
+        const before = live;
+        return callOp("text.clear").then((after) => keepLast(before, after)).catch(() => {});
+    }, [live, callOp, keepLast]);
 
     // The idle wallpaper follows its settings: editing its dim or blur in
     // Fundos (or the settings loading after it was applied) updates the
@@ -337,6 +368,7 @@ export function useConsole() {
         const before = live;
         let after;
         try { after = await callOp("clear"); } catch (err) { if (by) throw err; return; }
+        keepLast(before, after);
         const what = before?.audio ? "projeção encerrada e música parada." : "projeção encerrada.";
         const message = by ? `${by}: ${what}` : what[0].toUpperCase() + what.slice(1);
         const endedAt = after?.updatedAt;
@@ -345,7 +377,7 @@ export function useConsole() {
         else say(message);
         // Whether Desfazer can put it back (the controle remoto says so).
         return undo;
-    }, [live, callOp, say, undoEnd]);
+    }, [live, callOp, say, undoEnd, keepLast]);
 
     // Travar telas / Destravar (Saídas, the banner).
     const setLocked = useCallback((on) => {
@@ -354,5 +386,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say, unsay, holdToast };
+    return { live, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, last: lastStays(last, live, handHeld) ? last : null, moveLast, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say, unsay, holdToast };
 }
