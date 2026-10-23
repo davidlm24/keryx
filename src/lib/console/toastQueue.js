@@ -7,7 +7,12 @@
 
 // How long one shows: 3 s; 6 s for a long one (how to send a PowerPoint
 // as PDF); 8 s with an action, so there is time to reach it.
-export const toastMs = (text, action) => (action ? 8000 : String(text).length > 80 ? 6000 : 3000);
+export const toastMs = (text, action, important) => {
+    const ms = action ? 8000 : String(text).length > 80 ? 6000 : 3000;
+    return important ? Math.max(ms, IMPORTANT_MS) : ms;
+};
+// An important toast (a new pedido or chat message) shows at least this long.
+export const IMPORTANT_MS = 6000;
 // Plain toasts waiting behind an action: the last few, the oldest dropped.
 export const TOAST_QUEUE = 3;
 
@@ -18,8 +23,11 @@ export const emptyToasts = { cur: null, queue: [] };
 // and so does one marked `replace` (the answer to that action's question).
 export function pushToast(state, toast) {
     const s = state || emptyToasts;
-    const t = { ...toast, ms: toast.ms ?? toastMs(toast.text, toast.action) };
-    if (s.cur?.action && !t.action && !t.replace) return { cur: s.cur, queue: [...s.queue, t].slice(-TOAST_QUEUE) };
+    const t = { ...toast, ms: toast.ms ?? toastMs(toast.text, toast.action, toast.important) };
+    // An important toast is kept like an action one: a plain toast never
+    // swallows it (a plain one queues behind it).
+    const keeps = s.cur?.action || s.cur?.important;
+    if (keeps && !t.action && !t.important && !t.replace) return { cur: s.cur, queue: [...s.queue, t].slice(-TOAST_QUEUE) };
     return { cur: t, queue: s.queue };
 }
 

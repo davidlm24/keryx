@@ -41,8 +41,8 @@ export function usePedidos({ c, messages, tabOpen, reachable = true, show, focus
         showTab();
         const last = fresh[fresh.length - 1];
         const words = fresh.length > 1 ? `${messageSay(last)} · e mais ${fresh.length - 1}` : messageSay(last);
-        if (canSee) con.say(words, { label: "Ver", run: () => focusTab() });
-        else con.say(`${words} · veja em Ver › Painel`);
+        if (canSee) con.say(words, { label: "Ver", run: () => focusTab() }, { important: true });
+        else con.say(`${words} · veja em Ver › Painel`, null, { important: true });
     }, [messages]);
 
     const [seen, setSeen] = useState(readSeen);
