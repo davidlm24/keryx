@@ -1368,7 +1368,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   console list's selection before the air (`selections`,
   selectionStore.js; keys.js ESC_ORDER "selection"), a page of THE window
   through its escRef. The Mídia page is the reference; the Biblioteca, Setlist,
-  Planejar o culto, Temas, the background library (manage only) and the Escola
+  Planejar o culto, Temas, the background library (opened to manage or to choose: one library, only its footer differs — Fechar, or Usar · Cancelar; the marks are for Excluir…, Usar takes the one chosen and names it while marks are on, owner 2026-10-23, S10 = A) and the Escola
   follow (Temas and the Escola in "air" mode: a plain click still edits or
   prepares; the library's marks get ONE question, "Excluir…" with the trash when
   a file sent there goes for good, else "Tirar dos fundos…" (`backgroundRemoval`,
