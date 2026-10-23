@@ -37,7 +37,7 @@ import SlidesPanel, { handTitle, handIsPrev } from "@/components/console/SlidesP
 import OnAirPanel, { onAirCount } from "@/components/console/OnAirPanel";
 import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaPill } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
-import Rundown, { plannedTimes, AutoplaySwitch } from "@/components/console/Rundown";
+import Rundown, { plannedTimes, SetlistFooter } from "@/components/console/Rundown";
 import { useSetlistAutoplay } from "@/components/console/useSetlistAutoplay";
 import { endsByItself, AUTOPLAY_SAY } from "@/lib/console/autoplay";
 import Layers from "@/components/console/Layers";
@@ -88,7 +88,7 @@ import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, total, itemOnAir, stageItem, addedSay } from "@/lib/console/setlist";
+import { plan, playableItems, neighbours, total, itemOnAir, stageItem, addedSay } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { lookDefaults } from "@/lib/console/lookDefaults";
@@ -568,6 +568,18 @@ export default function Console() {
     const goItem = useCallback(async (item, index) => {
         try { const stage = await buildStage(item, index); c.setPrev(stage); await sendStage(stage); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c, sendStage]);
+
+    // The Setlist's footer (Rodada Q, Q1): Item anterior / Próximo item send
+    // as the autoplay does, the operator's Prévia untouched.
+    const stepNb = useMemo(() => neighbours(items, airItemId), [items, airItemId]);
+    const stepSetlist = useCallback(async (item) => {
+        try {
+            const stage = await buildStage(item, items.indexOf(item));
+            let why = null;
+            const went = await sendStage(stage, { keepPrev: true, why: (b) => { why = b; } });
+            if (!went && why) c.say(why.status === 423 ? AUTOPLAY_SAY.locked : why.message);
+        } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
+    }, [buildStage, sendStage, items, c]);
 
     // Setlist automática (Rodada N2, useSetlistAutoplay.js): with the culto's
     // switch on, the item on air that ends sends the next one (after the
@@ -1169,9 +1181,10 @@ export default function Console() {
         // The count is only "n itens · tempo" (Rodada O3): the culto's name is
         // the header's tooltip (with no items too), and Planejar o culto's.
         <Panel title="Setlist" className={`setlist-panel ${coverCls}`} tip={service?.title} count={!service ? "nenhum culto" : setPlan.count ? `${setPlan.count} ${setPlan.count === 1 ? "item" : "itens"} · ${total(setPlan.seconds)}` : null}
-            actions={<>{coverTag}<AutoplaySwitch on={Boolean(service?.autoplay)} onChange={setAutoplay} /><SelectManyBtn on={setlistPicking} onToggle={setSetlistPicking} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+            actions={<>{coverTag}<SelectManyBtn on={setlistPicking} onToggle={setSetlistPicking} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
+            <SetlistFooter autoplay={{ on: Boolean(service?.autoplay), onChange: setAutoplay }} prev={stepNb.prev} next={stepNb.next} onStep={stepSetlist} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes

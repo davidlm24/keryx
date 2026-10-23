@@ -35,6 +35,29 @@ export function AutoplaySwitch({ on, onChange, disabled }) {
     );
 }
 
+// The Setlist's footer (Rodada Q, Q1; owner S1 = A): the culto's Autoplay
+// switch and two icon-only buttons, Item anterior / Próximo item, the words
+// in the tooltip and as screen-reader text. `prev`/`next` the neighbours of
+// the item on air (neighbours() in setlist.js); a missing one disables its
+// button and the tooltip says why.
+export function SetlistFooter({ autoplay, prev, next, onStep }) {
+    const name = (it) => it.title || typeLabel(it.type);
+    const btn = (it, glyph, word, none) => (
+        <button type="button" className="kx-btn kx-btn-icon rund-step" disabled={!it} title={it ? `${word} · ${name(it)}` : none} onClick={() => onStep(it)}>
+            <Icon name={glyph} /><span className="kx-act-l">{it ? `${word} · ${name(it)}` : word}</span>
+        </button>
+    );
+    return (
+        <div className="rund-foot" role="group" aria-label="Setlist: avançar">
+            <AutoplaySwitch {...autoplay} />
+            <span className="rund-foot-steps">
+                {btn(prev, "skip-back", "Item anterior", "Não há item anterior")}
+                {btn(next, "skip-fwd", "Próximo item", "Não há próximo item")}
+            </span>
+        </div>
+    );
+}
+
 // "Próximo em 5 s · Cancelar" on the next row while the pause counts down;
 // amber when the Setlist stopped instead (the projector window closed).
 function NextChip({ pending, onCancel }) {
@@ -142,7 +165,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
 
 
     return (
-        <>
+        <div className="rund-scroll">
         <div className={`rund kx-acts-list ${sort.sorting ? "is-sorting" : ""}`} role="list" aria-label="Setlist" {...sort.listProps} onKeyDown={(e) => ms.keyDown(e, { onDelete: takeOutPicked })}>
             {!items.length && loaded && (
                 <Empty icon="list" title={service ? "Setlist vazia" : "Setlist de hoje"}>
@@ -213,6 +236,6 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
         <SelBar count={picked.length} total={order.length} onAll={ms.all} onClear={ms.clear}>
             <Btn small onClick={takeOutPicked} title={`Tirar da setlist · ${keyHint("delete")}`}>Tirar da setlist…</Btn>
         </SelBar>
-        </>
+        </div>
     );
 }

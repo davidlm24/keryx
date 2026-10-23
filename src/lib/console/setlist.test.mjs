@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { plan, templateItems, itemsFor, playableItems, statusOf, parseMember, clockAt, span, startOf, total, itemOnAir, stageItem, addedSay } from "./setlist.js";
+import { plan, templateItems, itemsFor, playableItems, statusOf, parseMember, clockAt, span, startOf, total, itemOnAir, stageItem, addedSay, neighbours } from "./setlist.js";
 
 const items = [
     { id: "s1", type: "SECTION", title: "Pré-culto" },
@@ -93,4 +93,27 @@ test("addedSay: one toast for one or several rows (Rodada O2)", () => {
     assert.equal(addedSay(["A"], 2), "A na setlist · 2 não entram.");
     assert.match(addedSay([], 1), /^Esse item ainda não entra/);
     assert.match(addedSay([], 3), /^Esses itens ainda não entram/);
+});
+
+test("neighbours: skips sections and disabled items, in setlist order", () => {
+    const n = neighbours(items, "b");
+    assert.equal(n.prev.id, "a");
+    assert.equal(n.prevIndex, 1);
+    assert.equal(n.next.id, "d");
+    assert.equal(n.nextIndex, 5);
+});
+
+test("neighbours: both ends have no neighbour", () => {
+    assert.equal(neighbours(items, "a").prev, null);
+    assert.equal(neighbours(items, "a").next.id, "b");
+    assert.equal(neighbours(items, "d").next, null);
+    assert.equal(neighbours(items, "d").prev.id, "b");
+});
+
+test("neighbours: nothing on air -> the first playable item, no previous", () => {
+    const n = neighbours(items, null);
+    assert.equal(n.next.id, "a");
+    assert.equal(n.prev, null);
+    assert.equal(neighbours(items, "gone").next.id, "a");
+    assert.deepEqual(neighbours([], "x"), { prev: null, next: null, prevIndex: null, nextIndex: null });
 });
