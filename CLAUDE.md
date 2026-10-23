@@ -1673,8 +1673,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   sent through `UploadFile`); it rides in the live item as `poster` for the
   Prévia and shows on hover in the Biblioteca. **A video Fundo plays only on
   the outputs and the Programa monitor** (Rodada O, item 11; like a generator,
-  `!preview || motion`): the Prévia, the Temas thumbnails and the library draw
-  `VideoStill` (the row's still by file, `src/lib/videoFiles.js`, filled by
+  `!preview || motion`): the Prévia and the Temas thumbnails draw
+  `VideoStill`; **the background library plays** (Rodada Q, Q3): the side sample
+  plays the chosen clip (muted, loop) and a clip's tile plays under the pointer
+  or focus after 200 ms — one tile at a time (`useHoverPlay`), never a tile
+  still syncing, never with reduced motion, never the media pool — the rest
+  draw `VideoStill`; the Imagens/Vídeos chips and marks bar stay on screen and
+  only the grid scrolls (`.lib-main.is-fixed`, `.lib-scroll`, as the Mídia's) (the row's still by file, `src/lib/videoFiles.js`, filled by
   the console and /Janela; else the paused first frame) — one file decoded
   15 times kept the loops still. A video's codec is read from its bytes
   (`src/lib/videoCodec.js`, tested: the MP4/MOV `stsd`, bit depth and chroma
