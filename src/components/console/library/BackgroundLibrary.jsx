@@ -216,12 +216,15 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     useEffect(() => { if (filter !== ALL && !cats.includes(filter)) setFilter(ALL); }, [filter, cats]);
     const shown = visibleBackgrounds(entries, filter === ALL ? {} : { only: filter });
 
-    // Selecting several (multiSelect.js, owner 2026-10-21, M3 = A): only when
-    // the library is opened to manage, never as a picker with Usar, and only
-    // on Imagens and Vídeos (Gerados and Cor have nothing to take out). A
-    // plain click still chooses the one shown in the side panel ("air" mode:
-    // it clears the marks); Ctrl/Shift + click and Selecionar vários mark.
-    const selectable = Boolean(request.manage) && (tab === "image" || tab === "video") && view === "grid";
+    // Selecting several (multiSelect.js, owner 2026-10-21, M3): on Imagens and
+    // Vídeos (Gerados and Cor have nothing to take out), whether the library
+    // was opened to manage or to choose — one library, one way (owner
+    // 2026-10-23, S10 = A): only the footer differs (Fechar, or Usar ·
+    // Cancelar). A plain click still chooses the one shown in the side panel
+    // ("air" mode: it clears the marks); Ctrl/Shift + click and Selecionar
+    // vários mark, and the marks are only for Excluir…: Usar takes the one
+    // chosen, never the marked ones.
+    const selectable = (tab === "image" || tab === "video") && view === "grid";
     const shownKeys = useMemo(() => shown.map((b) => b.source), [shown]);
     const allKeys = useMemo(() => list.map((b) => b.source), [list]);
     const ms = useMultiSelect({ order: shownKeys, existing: allKeys, mode: "air", register: false });
@@ -403,7 +406,8 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                     <span style={{ flex: 1 }} />
                     {request.manage
                         ? <Btn small onClick={() => done(null)}>Fechar</Btn>
-                        : <><Btn small kind="brand" disabled={!can} onClick={() => (themeMode ? takeTheme() : take())}>{request.useLabel || "Usar"}</Btn>
+                        // With marks on screen, Usar names the one it takes (S10 = A).
+                        : <><Btn small kind="brand" disabled={!can} onClick={() => (themeMode ? takeTheme() : take())}>{request.useLabel || "Usar"}{picked.length > 0 && can ? ` · ${label}` : ""}</Btn>
                             <Btn small onClick={() => done(null)}>Cancelar</Btn></>}
                 </div>
             </div>

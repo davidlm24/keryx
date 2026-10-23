@@ -1377,7 +1377,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   console list's selection before the air (`selections`,
   selectionStore.js; keys.js ESC_ORDER "selection"), a page of THE window
   through its escRef. The Mídia page is the reference; the Biblioteca, Setlist,
-  Planejar o culto, Temas, the background library (manage only) and the Escola
+  Planejar o culto, Temas, the background library (opened to manage or to choose: one library, only its footer differs — Fechar, or Usar · Cancelar; the marks are for Excluir…, Usar takes the one chosen and names it while marks are on, owner 2026-10-23, S10 = A) and the Escola
   follow (Temas and the Escola in "air" mode: a plain click still edits or
   prepares; the library's marks get ONE question, "Excluir…" with the trash when
   a file sent there goes for good, else "Tirar dos fundos…" (`backgroundRemoval`,
@@ -1623,7 +1623,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   BibleProjectionSync, BannerTemplate, ChatMessage) are kept: user data.
 - **Network screens** (`electron/lan.cjs`) see only the pages in
   `NETWORK_SCREENS` and only read the database. A page added there must
-  work from the database and the live state alone. The one thing on the
+  work from the database and the live state alone. They load their pages
+  from the built `dist/`, never from Vite, even under `desktop:dev`: a
+  phone showing an old /Remote means a stale `dist/` (the 23/10 Equipe
+  test), not a bug. `desktop:dev` now rebuilds it when a file under `src/`
+  or `shared/` is newer than `dist/index.html` (`scripts/dist-stale.cjs`,
+  tested; `KERYX_SKIP_BUILD=1` only warns); a hand-run `vite` or a
+  Vite-only preview does not, so `npm run build` first.
+  The one thing on the
   network that changes what is on air is the **controle remoto**
   (`/Remote`, a phone): off by default, behind its own code (never
   optional, separate from the screens' PIN), it posts commands from a

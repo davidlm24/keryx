@@ -32,7 +32,7 @@ npm run desktop:dev       # the desktop app, hot reload
 
 | Command | What it does |
 | --- | --- |
-| `npm run desktop:dev` | the app (Electron) on the Vite dev server, hot reload; F12 opens devtools |
+| `npm run desktop:dev` | the app (Electron) on the Vite dev server, hot reload; F12 opens devtools. Phones and network screens are served from `dist/`, not Vite (`electron/lan.cjs`), so it rebuilds a stale `dist/` first (about 20 s, when a file under `src/` or `shared/` is newer than `dist/index.html`); `KERYX_SKIP_BUILD=1` only prints a warning to run `npm run build` |
 | `npm run dev` | dev only: the console in a plain browser on sample data (the real store and live engine in a temp folder, `scripts/preview/`); output pages open as tabs from Saídas. Not the app: no monitors, audio meters or Bible downloads. In the Claude app's preview pane it is `keryx-ui` (`.claude/launch.json`): port 5180, or a free one when another worktree already serves 5180 (`autoPort`; the pane says which port and opens it) |
 | `npm run desktop:start` | build, then open the app on the built files |
 | `npm run build` | production build to `./dist` (what the app and the network screens load) |
