@@ -893,14 +893,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   header. **The (+) lists only what is missing here** (Rodada P, P3;
   `installableEditions`), then "Instalar uma edição própria…" (the
   `OwnBibleDialog` of Configurações, the BKJ 1611's door) and "Bíblias
-  instaladas…". **A bar under the No ar screen, always on screen** (Rodada
-  P, P2-1 = A; `.bbar`): Tema… (the Tema da Bíblia picker), Ref.
-  (`bible_show_reference`), versículos por slide 1/2/3/Auto, the version
-  and "+ 2ª versão" with Lado a lado | Empilhadas — church preferences
-  stamped at send (`withLookDefaults`). No size there (owner 2026-10-22:
+  instaladas…". **One line ABOVE the No ar screen, always on screen** (Rodada Q, Q5 = owner 2026-10-23, S2 = A; reverses P2-1's bar under it; `.bbar`): Tema as an icon button (`palette`, "Tema da Bíblia…"), Ref. (`bible_show_reference`), versículos por slide 1/2/3/Auto, the version, "+ 2ª" / "2ª: X" and, only with a 2ª versão, Lado a lado | Empilhadas as two icon segments (`cols`, `rows`) — church preferences stamped at send (`withLookDefaults`). The line NEVER wraps: container queries on the column (`bbar-c`) shrink it in steps (under 460 px Auto→A and the 2ª shows only its sigla; under 330 px the selects narrow and the gaps tighten), every control reachable at the column's 300 px minimum. No size there (owner 2026-10-22:
   the screens' size is the Bíblia theme's; `bible_text_size` is gone).
   **The bar's changes reach what is on air at once** (owner 2026-10-22, as
-  in Holyrics: the Bíblia has no Prévia, the screen above the bar is No
+  in Holyrics: the Bíblia has no Prévia, the screen under the line is No
   ar), when a passage is on air and the screens are not locked: Tema
   through `applyThemeOnAir(c, theme, { inUse: false })` (text look + Fundo,
   padlock respected, never the songs' theme in use); Ref. and Lado a lado |

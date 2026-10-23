@@ -890,13 +890,34 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    the chapter is what goes next). */
 /* The "No ar agora" monitor: at most 35 % of the column's height, so the
    selection and the actions below it stay in view on short windows. */
-.console .bible-air-col .kx-panel-b { container-type: size; }
+.console .bible-air-col .kx-panel-b { container: bbar-c / size; }
 .console .bible-air { padding: var(--space-1); flex: none; display: flex; justify-content: center; }
-/* The bar under the No ar screen (Rodada P, P2-1 = A): how a passage shows
-   on the screens — Tema…, A− / A / A+, Ref., verses per slide; the version,
-   a 2ª versão and where it goes. Always on screen, two rows that wrap. */
-.console .bbar { flex: none; display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
-.console .bbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+/* The Bíblia's line above the No ar screen (Rodada Q, Q5; reverses P2-1):
+   how a passage shows on the screens — Tema, Ref., verses per slide, the
+   version, a 2ª versão and where it goes. ONE line that never wraps: it
+   shrinks in steps by the column's width (@container bbar-c) and every
+   control stays reachable at the 300 px minimum. */
+.console .bbar { flex: none; display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-1) 0; min-width: 0; }
+.console .bbar > * { flex: none; }
+.console .bbar .bb-short { display: none; }
+.console .bbar .bb-pair .kx-t { padding: 0 6px; }
+@container bbar-c (width < 460px) {
+    .console .bbar .bb-full { display: none; }
+    .console .bbar .bb-short { display: inline; }
+    .console .bbar .bb-2l { display: none; }
+    .console .bbar .bver + .bver > select { width: 64px; }
+}
+@container bbar-c (width < 400px) {
+    .console .bbar { gap: 2px; padding-inline: 2px; }
+    .console .bbar .bver > select, .console .bbar .bver + .bver > select { width: 56px; }
+    .console .bbar :is(.kx-btn, .kx-seg .kx-t) { min-width: 0; padding-inline: 6px; }
+}
+@container bbar-c (width < 330px) {
+    .console .bbar { padding-inline: 0; }
+    .console .bbar .bver > select, .console .bbar .bver + .bver > select { width: 46px; }
+    .console .bbar .bver-v { inset-inline: 4px 14px; }
+    .console .bbar :is(.kx-btn, .kx-seg .kx-t) { padding-inline: 4px; }
+}
 .console .vslide-2 { display: block; margin-top: 2px; color: var(--fg-2); font-size: var(--fs-meta); }
 .console .vslide-2 > b { color: var(--fg-3); font-weight: 600; margin-right: 4px; }
 
