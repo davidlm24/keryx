@@ -354,7 +354,7 @@
       "timers": "[<= limits.timers] the timers prontos { id, minutes }: 5, 10, 15, 30 and 60 min, then the church's TimerPreset rows (timerPresets.js)",
       "alerts": "[<= limits.alerts] { id, message (<= limits.alertMessage) }: the AlertPreset rows",
       "autoplay": "bool: the culto's Avançar sozinho is on (Setlist automática, Rodada N2; setlist.autoplay turns it)",
-      "role": "control | team (Rodada Q): which code signed the phone in. An Equipe phone gets only v, app, caps (teamCaps), role, rev, service, serviceId, onAir, airItemId, items [{ id, title, type, section, songId? (a SONG item's song, for songText; Rodada Q PR4) }] and truncated"
+      "role": "control | team (Rodada Q): which code signed the phone in. An Equipe phone gets only v, app, caps (teamCaps), role, rev, service, serviceId, onAir, airItemId, items [{ id, title, type, section, songId? (a SONG item's song, for songText; Rodada Q PR4), singer? (who sings, when the item came from a pedido; Rodada Q S13) }] and truncated"
     },
     "library": {
       "tab": "songs | media | pieces | materials",
@@ -371,7 +371,8 @@
     "requests": {
       "total": "int: the culto's messages (of that kind)",
       "skip": "int: counted back from the newest",
-      "rows": "[<= limits.requestPage] oldest first { id, at (ISO), kind: chat | pedido, from, text, singer, song, songId?, link?, status: open | done }"
+      "rows": "[<= limits.requestPage] oldest first { id, at (ISO), kind: chat | pedido, side: team | operator, from, text, singer, song, songId?, link?, status: open | done }",
+      "side": "Rodada Q, S12/S14 (additive): operator = written on the console — a reply in its Chat tab or a pedido it noted with Novo pedido, from \"Operador\"; team = a phone of the Equipe (rows from before side say team)"
     },
     "songText": {
       "id": "id",

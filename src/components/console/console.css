@@ -273,12 +273,44 @@
 .console .tabs-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); min-height: 100%; box-sizing: border-box; }
 .console .tabs-notes .tnotes { max-height: none; }
 /* Notas do operador (the Notas tab's free field, Service.operator_notes). */
-/* Pedidos (Rodada Q, PedidosTab.jsx; the owner's mockup, S6 = A): the
-   Equipe's chat as lines and its song requests as cards, the newest at the
-   bottom; a card's actions always on screen; a done one dims. */
-.console .ped-list { display: flex; flex-direction: column; gap: 2px; height: 100%; overflow-y: auto; padding: var(--space-1) 0 var(--space-2); box-sizing: border-box; }
+/* Pedidos and Chat (Rodada Q, PedidosTab.jsx and ChatTab.jsx; the owner's
+   mockups, S6 = A, S12 = B, S14 = A): the song requests as cards and the
+   chat as bubbles both ways, the newest at the bottom; a card's actions
+   always on screen; a done one dims; what the operator noted wears a gold
+   ring and badge, what the operator wrote is a gold bubble on the right. */
+.console .ped-view { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.console .ped-band { flex: none; display: flex; align-items: center; justify-content: flex-end; height: var(--band); padding: 0 var(--space-1); }
+.console .ped-band .kx-btn svg, .console .ped-form-acts .kx-btn svg { width: 14px; height: 14px; }
+.console .ped-list { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-1) 0 var(--space-2); box-sizing: border-box; }
 .console .ped-list > :first-child { margin-top: auto; }
-.console .ped-chat { display: flex; flex-direction: column; gap: 2px; padding: 6px var(--space-3); }
+.console .ped-view > .kx-empty { flex: 1; min-height: 0; }
+.console .ped-card.is-op { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent); }
+.console .ped-badge.is-op { background: var(--brand-tint); color: var(--brand); }
+.console .ped-msg { align-self: flex-start; display: flex; flex-direction: column; gap: 2px; max-width: 80%; margin: 2px var(--space-3); padding: 6px 10px; border-radius: 12px 12px 12px 3px; background: var(--bg-3); }
+.console .ped-msg.is-op { align-self: flex-end; border-radius: 12px 12px 3px 12px; background: var(--brand); }
+.console .ped-msg.is-op :is(.ped-h, .ped-t, .ped-x .kx-btn) { color: var(--on-brand); }
+.console .ped-msg.is-op .ped-h { opacity: .75; }
+.console .ped-msg .ped-row { gap: var(--space-1); min-height: 18px; }
+.console .ped-x { display: inline-flex; margin: -3px -6px -3px 0; opacity: 0; }
+.console .ped-msg:is(:hover, :focus-within) .ped-x, .console .ped-msg:has(.ped-link) .ped-x { opacity: 1; }
+.console .ped-compose { flex: none; display: flex; gap: var(--space-1); padding: var(--space-1); }
+.console .ped-compose .kx-input { flex: 1; min-width: 0; color: var(--fg-1); background: var(--bg-3); }
+.console .ped-compose .kx-btn svg { width: 15px; height: 15px; }
+.console .ped-form { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); box-sizing: border-box; }
+.console .ped-f { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--fs-meta); color: var(--fg-3); }
+.console .ped-f .kx-input { width: 100%; color: var(--fg-1); background: var(--bg-3); font-size: var(--fs-ui); }
+.console .ped-matches { display: flex; flex-direction: column; gap: 2px; }
+.console .ped-match { display: flex; align-items: center; gap: var(--space-2); min-width: 0; height: var(--row); padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); font-size: var(--fs-ui); text-align: left; }
+.console .ped-match:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .ped-match > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .ped-match b { font-weight: 500; }
+.console .ped-match small { color: var(--fg-3); font-size: var(--fs-meta); }
+.console :is(.ped-match, .ped-picked) > svg { flex: none; width: 14px; height: 14px; color: var(--fg-3); }
+.console .ped-picked { display: flex; align-items: center; gap: var(--space-2); min-width: 0; height: var(--row); padding: 0 var(--space-1) 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font-size: var(--fs-ui); }
+.console .ped-picked b { flex: 0 1 auto; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .ped-picked small { flex: 1; color: var(--fg-3); font-size: var(--fs-meta); }
+.console .ped-err { margin: 0; color: var(--danger-fg); font-size: var(--fs-meta); }
+.console .ped-form-acts { display: flex; justify-content: flex-end; gap: var(--space-2); }
 .console .ped-row { display: flex; align-items: center; gap: var(--space-2); }
 .console .ped-row > .ped-h { flex: 1; min-width: 0; }
 .console .ped-h { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-1); font-size: var(--fs-meta); color: var(--fg-3); }
@@ -890,6 +922,11 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .rund-step { width: var(--control-sm); padding: 0; }
 .console .rund-step .kx-act-l { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @container setlist-f (width < 200px) { .console .rund-auto { width: var(--control-sm); padding: 0; justify-content: center; } .console .rund-auto-l { display: none; } }
+/* Who sings, when the item came from a pedido (Rodada Q, S13 = A): a gold
+   tag on the row's one line, its name cut with "…" (the whole in its tooltip). */
+.console .rund-who { flex: 0 1 auto; min-width: 0; max-width: 45%; display: inline-flex; align-items: center; gap: var(--space-1); height: 18px; padding: 0 7px; border-radius: var(--radius-round); background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); font-size: var(--fs-meta); font-weight: 500; }
+.console .rund-who > svg { flex: none; width: 11px; height: 11px; }
+.console .rund-who > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .rund-end { flex: none; display: inline-grid; place-items: center; width: 16px; color: var(--fg-3); }
 .console .rund .kx-row.is-air .rund-end { color: inherit; }
 .console .rund-cd { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: 22px; padding: 0 2px 0 var(--space-2); border-radius: var(--radius-round); background: var(--brand-tint); color: var(--brand); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -2144,8 +2181,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
      console's culto dot keeps a colour of the system. */
   .console .tabrow-close .kx-tc.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
   .console .tabrow .kx-tc-dot { background: LinkText; }
-  /* Pedidos: a card keeps its edge, a badge its outline. */
-  .console :is(.ped-card, .ped-badge) { outline: 1px solid CanvasText; outline-offset: -1px; }
+  /* Pedidos and Chat: a card and a bubble keep their edge, a badge its
+     outline; what the operator noted or wrote is a solid Highlight ring. */
+  .console :is(.ped-card, .ped-badge, .ped-msg, .ped-picked) { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .console :is(.ped-card, .ped-msg).is-op { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* The Setlist's who sings (S13). */
+  .console .rund-who { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .tabrow-close .kx-tc-x { opacity: 1; }
   /* The amber mark of a video that may not play keeps an edge. */
   .console .codec-mark { outline: 1px solid CanvasText; outline-offset: -1px; }

@@ -5,7 +5,8 @@ import { useChurch } from "@/hooks/useChurch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar, rowKeyDown, SelectManyBtn, SelBar, RowMark } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar, rowKeyDown, SelectManyBtn, SelBar, RowMark, SingerTag } from "./kx";
+import { singerOf } from "@/lib/console/pedidos";
 import { useMultiSelect } from "./useMultiSelect";
 import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
 import { takeOutManyQuestion } from "@/lib/console/bulkDelete";
@@ -514,6 +515,7 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
                                             { label: "Tirar da setlist…", icon: "x", onSelect: () => removeItem(it) },
                                             ...step.menuItems(i),
                                         ] }))}>
+                                        <SingerTag name={singerOf(it)} />
                                         <span className="kx-row-time">{at != null ? clockAt(at) : ""}<br />{it.duration ? span(it.duration) : ""}</span>
                                     </Row>
                                     {open && (
@@ -521,6 +523,8 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
                                             <div className="frm pl-frm">
                                                 <span className="k">Título</span><input key={`t${it.id}${it.title}`} className="pl-input" defaultValue={it.title} aria-label="Título" onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== it.title) updateItem(it.id, { title: v }); }} />
                                                 <span className="k">Duração</span><input key={`d${it.id}${it.duration}`} className="pl-input pl-dur" defaultValue={formatDuration(it.duration)} placeholder="m:ss" aria-label="Duração" onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={(e) => { const s = parseDuration(e.target.value); if (s !== null && s !== it.duration) updateItem(it.id, { duration: s }); }} />
+                                                {/* Who sings, when the item came from a pedido (Rodada Q, S13): editable, "" = none. */}
+                                                <span className="k">Pedido de</span><input key={`r${it.id}${it.requested_by || ""}`} className="pl-input" defaultValue={it.requested_by || ""} aria-label="Pedido de" placeholder="Quem canta" maxLength={60} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={(e) => { const v = singerOf({ requested_by: e.target.value }); if (v !== (it.requested_by || "")) updateItem(it.id, { requested_by: v }); }} />
                                                 <span className="k">Ao terminar</span><Seg small label="Ao terminar" value={endChoice(it)} options={END_ACTIONS.map((a) => [a, END_LABEL[a]])} onChange={(a) => updateItem(it.id, { end_action: a })} />
                                                 <span className="k">{it.type === "TEXT" ? "Texto" : "Notas"}</span>
                                                 <textarea className="ed-text" style={{ height: 64 }} defaultValue={it.notes || ""} onBlur={(e) => { if (e.target.value !== (it.notes || "")) updateItem(it.id, { notes: e.target.value }); }} placeholder={it.type === "TEXT" ? "O texto que vai para a tela" : "Para o operador e o Palco (ex.: intro longa)"} />

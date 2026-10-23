@@ -1121,8 +1121,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `Service.operator_notes`, saved a moment after typing stops and on
   leaving the field; never in the PDF, never on a screen; with no service
   the first one starts the day's draft), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
-  defaults), **Pedidos** (Rodada Q, PR2: the Equipe's chat and song
-  requests, below), **Ferramentas** and **Esteve no ar** (the "Voltar ao
+  defaults), **Pedidos** and **Chat** (Rodada Q, PR2 and S12 = B: the
+  Equipe's song requests and the chat with it, below), **Ferramentas** and **Esteve no ar** (the "Voltar ao
   anterior" history). Where the panel shows the Aviso rápido or the
   Ferramentas, Biblioteca › Avisos leaves them out (`elsewhere`); the
   Biblioteca's search-row "+" stays "add content". **One gutter
@@ -1670,20 +1670,40 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   media or material through `addStageToSetlist(…, { silent })`, a passage
   only with its verses through `addPassage`). The chat and song requests
   are `ServiceMessage` rows of the culto (synced; `sender`, not `from`;
-  never the legacy ChatMessage), made quietly (the console's toast comes
-  from the rows), a link only YouTube's rebuilt from its id
+  never the legacy ChatMessage; `side` team | operator — "" = team, rows of
+  before —, S12/S14), made quietly (the console's toast comes from the rows), a link only YouTube's rebuilt from its id
   (`youtubeLink`), the same message within 30 s returning the row made, 3
   in a row then one every 2 s per address (`gate.message`); an Equipe
   phone's event stream hears ServiceMessage changes too. In the preview a
   cookie `keryx_role=team` makes the /Remote tab the Equipe's.
-  **The console's Pedidos tab** (PR2; the owner's mockup, S6 = A, S8 = A;
-  `PedidosTab.jsx`, pure rules in `src/lib/console/pedidos.js`, tested):
-  the culto's rows (`useServiceMessages`) oldest first, the newest at the
-  bottom; a chat is a line "who · hh:mm" and its text, a pedido a card
-  "<singer> canta <song>" with its note, every text drawn as plain text
-  (it came from a phone). A card's actions are always on screen: Pôr na
-  prévia and Setlist when the song is the console's (`songOfPedido`: its
-  songId, else the title folded), else "não está na biblioteca" and
+  **The console's Pedidos and Chat tabs** (PR2; the owner's mockups, S6 = A,
+  S8 = A, S12 = B, S14 = A; `PedidosTab.jsx`, `ChatTab.jsx`, pure rules in
+  `src/lib/console/pedidos.js`, tested): the culto's rows
+  (`useServiceMessages`) oldest first, the newest at the bottom, each tab
+  its own kind (`pedidosOf`, `chatOf`). **The Chat** is a conversation
+  both ways: the operator's bubbles on the right in gold (`--brand`), the
+  Equipe's on the left, "who · hh:mm" over each (`chatHead`), the composer
+  fixed at the bottom (Enter sends). **What the operator writes goes through
+  the store, never a network action**: Console.jsx's `writeMessage`
+  (`ensureService`, then `ServiceMessage.create`) with the fields of
+  `operatorChat` / `operatorPedido` (`side: "operator"`, sender
+  "Operador"); the phones read it with their next `requests`. A pedido is a
+  card "<singer> canta <song>" with its note, every text drawn as plain
+  text (it came from a phone). **Novo pedido** (S14 = A) on top of the
+  Pedidos tab notes one with the phone's fields (Quem canta, O louvor typed
+  or picked from the library's matches under it, `songMatches`;
+  Observação), "Anotar pedido" · Cancelar; its card says "Anotado por você"
+  with an "operador" badge and a gold ring (`pedidoBy`), the same actions,
+  and the Equipe sees it as "Anotado pelo operador". A card's actions are
+  always on screen: Pôr na prévia and Setlist when the song is the console's
+  (`songOfPedido`: its songId, else the title folded) — **the Setlist item
+  keeps who sings** (S13 = A, `pedidoItem`: `ServiceItem.requested_by`
+  and the note as its `notes`; the Setlist and the planner rows wear a
+  gold tag with the `user` glyph, `SingerTag` in kx.jsx, the name cut with
+  "…", the whole in its tooltip; Planejar o culto edits it as "Pedido de";
+  the culto's PDF prints "· pedido de <nome>" after the title; the Equipe's
+  Setlist shows it, `teamState` items' `singer`) —, else "não está na
+  biblioteca" and
   Procurar a letra… (LyricsSearch opens with the song, `initial`);
   Atendido (`status` done, the card dims, the toast has Desfazer);
   Excluir… via useConfirm. A YouTube link shows its cover with Pôr na
@@ -1691,15 +1711,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Mídia by itself. The toast is `usePedidos` (Console.jsx only, never
   /Janela): a row sent within 2 min (`FRESH_MS`) whose id this window has
   not said (sessionStorage, so a reload never repeats one) says "Pedido de
-  <nome>: <louvor>" / "Mensagem de <nome>" with Ver; it also puts Pedidos
-  back in the panel's tabs when the operator's `layout.tabs` leaves it
-  out (`showTab`). **The dock never moves by itself** (owner's S9 = B):
+  <nome>: <louvor>" / "Mensagem de <nome>" with Ver (to that row's tab),
+  never for what the operator wrote nor while that tab is open on screen;
+  it also puts Pedidos or Chat back in the panel's tabs when the
+  operator's `layout.tabs` leaves it out (`showTab`). **The dock never moves by itself** (owner's S9 = B):
   with the Painel not on screen (the tray, as in the medium and narrow
   tiers) the toast has no Ver and ends "· veja em Ver › Painel", and a gold
   dot marks the top bar's Ver and the Painel's row in its menu while there
-  are rows not seen (`verDot`, Menu's `newIn`). The tab's dot (`dot` on a TabRow tab, `.kx-tc-dot`
-  after the name, the brand's gold) is a row newer than the last one seen
-  with the tab open (localStorage `keryx.console.pedidos.seen`).
+  are rows not seen (`verDot`, Menu's `newIn`). Each tab's dot (`dot` on a TabRow tab, `.kx-tc-dot`
+  after the name, the brand's gold) is a row of the Equipe newer than the
+  last one seen with that tab open (localStorage
+  `keryx.console.pedidos.seen` / `keryx.console.chat.seen`).
   `remoteCommand` (lan.cjs) checks every command against it; a phone
   signed in only with the remote's code (the screens have a PIN it does
   not have) reads only `/api/live`, `/media`, `User` `get` and its own
@@ -1759,17 +1781,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   1.5 s for one, then draws the Controle). Four tabs (`TEAM_TABS`,
   `tabsFor`): Pedidos, Músicas, Bíblia, Setlist; on top a strip with no
   buttons, "No ar · título · 3/9 · só leitura" (`teamStrip`), never the
-  NowBar. Pedidos is the culto's `requests` page (asked when the tab opens,
-  every 15 s while it is on screen and after a send; `messageRows`: this
-  phone's own on the right by its name, a pedido's "✓ Atendido"), a
-  composer (`chatArgs`: a YouTube link alone goes as "Vídeo do YouTube") and
-  the "Pedido de louvor" sheet (Quem canta, O louvor typed or "Escolher da
+  NowBar. Pedidos is a **Pedidos | Chat** switch (S12; `.rm-seg`, each side
+  with its gold dot, the Pedidos tab's dot for both, `hasUnseen` against
+  `keryx.remote.seen`), each the culto's `requests` page of its kind
+  (asked at once, every 15 s, the chat every 5 s while it is open —
+  `requestsEvery` — and after a send; `messageRows`: this phone's own on
+  the right as "Você", the operator's on the left in gold as "Operador", a
+  pedido's "Pedido de X" / "Você pediu" / "Anotado pelo operador" and its
+  "✓ Atendido"): the pedidos with "Pedir um louvor" at the foot, the chat
+  with its composer (`chatArgs`: a YouTube link alone goes as "Vídeo do
+  YouTube"); the "Pedido de louvor" sheet (Quem canta, O louvor typed or "Escolher da
   biblioteca", the link, Observação; `pedidoArgs`, the contract's limits);
   the sender's name is asked once and kept (`keryx.remote.name`, ≤ 40).
   Músicas lists the library's songs; a song opens its `songText`
   (`lyricParts`: Cifra when it has chords, A+) with "Pedir este louvor".
   The Bíblia is `BibleTab readOnly` (no Enviar, no + Setlist). The Setlist
-  is read only (`teamSetlistRows`: no ar, próximo); a song item opens its
+  is read only (`teamSetlistRows`: no ar, próximo, who sings a pedido's
+  item); a song item opens its
   lyrics through `songId`, which `teamState` items carry. Every text from a
   phone is drawn as plain text; no S or T projection action is wired for
   the team role (lan.cjs answers 403 anyway, and its message is the toast).

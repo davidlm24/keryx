@@ -1637,6 +1637,9 @@
         "enabled": {
           "type": "boolean",
           "default": true
+        },
+        "requested_by": {
+          "type": "text"
         }
       }
     },
@@ -1686,6 +1689,9 @@
         "status": {
           "type": "text",
           "default": "open"
+        },
+        "side": {
+          "type": "text"
         },
         "sentAt": {
           "type": "text"

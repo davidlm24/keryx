@@ -270,7 +270,7 @@ test("+ Setlist: songs, files and materials go; avisos never; a passage only wit
 // ---- The Equipe (Rodada Q PR4) ----
 import {
     roleOf, tabsFor, teamStrip, cleanName, youtubeId, youtubeUrl, youtubeCover, pedidoArgs, chatArgs, PEDIDO_LIMITS,
-    messageRows, teamSetlistRows, lyricParts, hasChords, songSub,
+    messageRows, teamSetlistRows, lyricParts, hasChords, songSub, hasUnseen, newestAt, requestsEvery, REQUESTS_CHAT_MS, REQUESTS_EVERY_MS,
 } from "./remoteView.js";
 import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" };
 
@@ -348,6 +348,40 @@ test("messages: mine on the right, a pedido's status", () => {
     assert.equal(rows[2].head, "Ana");
     assert.ok(rows[2].cover.startsWith("https://i.ytimg.com/"));
     assert.equal(messageRows([{ id: "x", from: "A" }], "")[0].mine, false);
+    assert.equal(rows[1].by, "Você pediu");
+    assert.equal(rows[0].by, "Pedido de Marcos");
+});
+
+test("the operator's rows say so (S12/S14), never mine even with my name", () => {
+    const rows = messageRows([
+        { id: "1", at: "2026-10-23T21:53:00.000Z", kind: "chat", side: "operator", from: "Operador", text: "Beleza", status: "open" },
+        { id: "2", at: "2026-10-23T21:54:00.000Z", kind: "chat", side: "team", from: "Operador", text: "Sou eu", status: "open" },
+        { id: "3", at: "2026-10-23T22:09:00.000Z", kind: "pedido", side: "operator", from: "Operador", singer: "Marcos", song: "Hino", status: "open" },
+    ], "Operador");
+    assert.deepEqual(rows.map((r) => [r.operator, r.mine]), [[true, false], [false, true], [true, false]]);
+    assert.match(rows[0].head, /^Operador · \d\d:\d\d$/);
+    assert.match(rows[1].head, /^Você · /);
+    assert.equal(rows[2].by, "Anotado pelo operador");
+    assert.equal(rows[2].status, "", "no \"aguardando\" on what the operator noted");
+});
+
+test("unseen: a row this phone did not send, newer than the last seen", () => {
+    const rows = [
+        { id: "1", at: "2026-10-23T21:52:00.000Z", from: "Lucas" },
+        { id: "2", at: "2026-10-23T21:55:00.000Z", side: "operator", from: "Operador" },
+    ];
+    assert.equal(newestAt(rows), "2026-10-23T21:55:00.000Z");
+    assert.equal(hasUnseen(rows, "", "Lucas"), true);
+    assert.equal(hasUnseen(rows, "2026-10-23T21:53:00.000Z", "Lucas"), true, "the operator's answer");
+    assert.equal(hasUnseen(rows, newestAt(rows), "Lucas"), false);
+    assert.equal(hasUnseen([rows[0]], "", "lucas"), false, "my own is never new to me");
+    assert.equal(hasUnseen([], "", "Lucas"), false);
+});
+
+test("the chat is asked every 5 s while it is open, the rest every 15 s", () => {
+    assert.equal(requestsEvery("chat", true), REQUESTS_CHAT_MS);
+    assert.equal(requestsEvery("chat", false), REQUESTS_EVERY_MS);
+    assert.equal(requestsEvery("pedido", true), REQUESTS_EVERY_MS);
 });
 
 test("the Equipe's setlist: on air and the next one marked, songs open", () => {
@@ -361,6 +395,7 @@ test("the Equipe's setlist: on air and the next one marked, songs open", () => {
     assert.equal(rows[1].songId, "s1");
     assert.equal(rows[3].songId, null);
     assert.ok(teamSetlistRows({ items: [{ id: "a", type: "SONG" }] }).every((r) => !r.tag));
+    assert.equal(teamSetlistRows({ items: [{ id: "a", type: "SONG", singer: " Ana " }] })[0].singer, "Ana", "who sings a pedido (S13)");
 });
 
 test("lyrics: chords cut out of the line, shown only with Cifra", () => {

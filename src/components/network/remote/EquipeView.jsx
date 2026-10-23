@@ -2,8 +2,8 @@ import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useStat
 import Icon from "@/components/console/Icon";
 import { remoteCall } from "@/lib/console/remoteClient";
 import {
-    capsOf, chatArgs, cleanName, emptyList, hasChords, joinPage, libraryArgs, lyricParts, mediaRow, messageRows, NAME_KEY,
-    PEDIDO_LIMITS, pedidoArgs, REQUESTS_EVERY_MS, SEARCH_DEBOUNCE_MS, songSub, tabsFor, TAG_TEXT, teamSetlistRows, teamStrip,
+    capsOf, chatArgs, cleanName, emptyList, hasChords, hasUnseen, joinPage, libraryArgs, lyricParts, mediaRow, messageRows, NAME_KEY, newestAt,
+    PEDIDO_LIMITS, pedidoArgs, requestsEvery, SEARCH_DEBOUNCE_MS, SEEN_KEY, songSub, tabsFor, TAG_TEXT, teamSetlistRows, teamStrip,
 } from "@/lib/network/remoteView";
 import { Sheet, Toast } from "./parts";
 
@@ -29,6 +29,19 @@ export default function EquipeView({ live, state, stale, cmd }) {
     const caps = useMemo(() => capsOf(state), [state]);
     const strip = teamStrip(live, { stale });
     const service = state?.service?.title || "";
+    // Pedidos | Chat inside the Pedidos tab (S12), each kind asked on its own
+    // (useRequests), each with its gold dot until seen, the tab's dot for both.
+    const [view, setView] = useState("pedido");
+    const talks = caps.has("requests");
+    const reqs = useRequests({ on: talks, chatOpen: shown === "pedidos" && view === "chat", sent });
+    const [seen, markSeen] = useSeen();
+    const reading = shown === "pedidos" ? view : null;
+    const newest = newestAt(reqs.pages[reading]?.rows || []);
+    useEffect(() => { if (reading && newest) markSeen(reading, newest); }, [reading, newest, markSeen]);
+    const unseen = {
+        pedido: reading !== "pedido" && hasUnseen(reqs.pages.pedido?.rows || [], seen.pedido, name),
+        chat: reading !== "chat" && hasUnseen(reqs.pages.chat?.rows || [], seen.chat, name),
+    };
 
     // The name is asked once, before the first send, and kept on the phone.
     const withName = (then) => (name ? then(name) : setAsking(() => then));
@@ -49,7 +62,7 @@ export default function EquipeView({ live, state, stale, cmd }) {
             <div className="rm-body">
                 <div className="rm-pane">
                     {shown === "pedidos" && (
-                        <PedidosTab service={service} name={name} sent={sent} busy={cmd.busy}
+                        <PedidosTab service={service} name={name} busy={cmd.busy} view={view} setView={setView} pages={reqs.pages} failed={reqs.failed} unseen={unseen}
                             onName={() => setAsking(() => () => {})}
                             onPedido={() => askSong(null)}
                             onChat={(fields) => new Promise((done) => withName((from) => {
@@ -68,6 +81,7 @@ export default function EquipeView({ live, state, stale, cmd }) {
                     {tabs.map(([k, label, icon]) => (
                         <button type="button" key={k} role="tab" aria-selected={shown === k} className="rm-tab" onClick={() => setTab(k)}>
                             <Icon name={icon} size={22} />{label}
+                            {k === "pedidos" && (unseen.pedido || unseen.chat) && <span className="rm-new is-tab"><span className="rm-sr">· novas</span></span>}
                         </button>
                     ))}
                 </nav>
@@ -117,40 +131,80 @@ function NameSheet({ name, onSave, onClose }) {
     );
 }
 
-// ---- Pedidos: the culto's chat and song requests -----------------------------
+// ---- Pedidos: the culto's song requests and chat ---------------------------
 
-// The newest page of `requests`, asked when the tab opens, every 15 s while
-// it is on screen and right after this phone sends; the list keeps to its
-// bottom (the newest) unless it was scrolled up.
-function PedidosTab({ service, name, sent, busy, onName, onPedido, onChat }) {
-    const [page, setPage] = useState(null);
+// The newest page of `requests` of each kind (S12: Pedidos and Chat apart),
+// asked at once, every 15 s — the chat every 5 s while it is open — and
+// right after this phone sends (`sent`). Only while the page is visible.
+function useRequests({ on, chatOpen, sent }) {
+    const [pages, setPages] = useState({ pedido: null, chat: null });
     const [failed, setFailed] = useState("");
+    const load = useCallback(async (kind) => {
+        const r = await remoteCall("requests", { kind });
+        if (r.ok && r.result) { setPages((cur) => ({ ...cur, [kind]: r.result })); setFailed(""); } else if (!r.ok && !r.signedOut) setFailed(r.message || "");
+    }, []);
+    useEffect(() => { if (on) { load("pedido"); load("chat"); } }, [on, load, sent]);
+    usePoll(on, () => load("pedido"), requestsEvery("pedido", chatOpen));
+    usePoll(on, () => load("chat"), requestsEvery("chat", chatOpen));
+    return { pages, failed };
+}
+function usePoll(on, run, every) {
+    const latest = useRef(run);
+    latest.current = run;
+    useEffect(() => {
+        if (!on) return undefined;
+        const tick = () => { if (document.visibilityState === "visible") latest.current(); };
+        const id = setInterval(tick, every);
+        document.addEventListener("visibilitychange", tick);
+        return () => { clearInterval(id); document.removeEventListener("visibilitychange", tick); };
+    }, [on, every]);
+}
+
+// The last row seen of each kind, kept on the phone ({ pedido, chat }, ISO).
+function useSeen() {
+    const [seen, setSeen] = useState(() => {
+        try {
+            const v = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}");
+            return { pedido: String(v?.pedido || ""), chat: String(v?.chat || "") };
+        } catch { return { pedido: "", chat: "" }; }
+    });
+    const mark = useCallback((kind, at) => setSeen((cur) => {
+        if (!at || at <= cur[kind]) return cur;
+        const next = { ...cur, [kind]: at };
+        try { localStorage.setItem(SEEN_KEY, JSON.stringify(next)); } catch { /* a private window: the dot comes back on reload */ }
+        return next;
+    }), []);
+    return [seen, mark];
+}
+
+// Pedidos | Chat (the owner's mockup "PhoneEquipeChat", S12): the pedidos
+// as cards with "Pedir um louvor" at the foot, or the chat both ways with
+// the operator's answers ("Operador") and the composer; each list keeps to
+// its bottom (the newest) unless it was scrolled up.
+function PedidosTab({ service, name, busy, view, setView, pages, failed, unseen, onName, onPedido, onChat }) {
     const [text, setText] = useState("");
     const [link, setLink] = useState("");
     const [linkOpen, setLinkOpen] = useState(false);
     const scroller = useRef(null);
     const pinned = useRef(true);
-    const load = useCallback(async () => {
-        const r = await remoteCall("requests", {});
-        if (r.ok && r.result) { setPage(r.result); setFailed(""); } else if (!r.ok && !r.signedOut) setFailed(r.message || "");
-    }, []);
-    useEffect(() => { load(); }, [load, sent]);
-    useEffect(() => {
-        const tick = () => { if (document.visibilityState === "visible") load(); };
-        const id = setInterval(tick, REQUESTS_EVERY_MS);
-        document.addEventListener("visibilitychange", tick);
-        return () => { clearInterval(id); document.removeEventListener("visibilitychange", tick); };
-    }, [load]);
+    const page = pages[view];
     const rows = messageRows(page?.rows || [], name);
     const last = rows[rows.length - 1]?.id || "";
+    useEffect(() => { pinned.current = true; }, [view]);
     useEffect(() => {
         const el = scroller.current;
         if (el && pinned.current) el.scrollTop = el.scrollHeight;
-    }, [last]);
+    }, [last, view]);
     const sendChat = async () => {
         const r = await onChat({ text, link: linkOpen ? link : "" });
         if (r?.ok) { setText(""); setLink(""); setLinkOpen(false); pinned.current = true; }
     };
+    const seg = (k, label) => (
+        <button type="button" aria-pressed={view === k} onClick={() => setView(k)}>
+            {label}{unseen[k] && <span className="rm-new"><span className="rm-sr">· novas</span></span>}
+        </button>
+    );
+    const chat = view === "chat";
     return (
         <div className="rm-main is-split">
             <div className="rm-env">
@@ -159,44 +213,50 @@ function PedidosTab({ service, name, sent, busy, onName, onPedido, onChat }) {
                     {[service, name ? `você é ${name}` : "dizer seu nome"].filter(Boolean).join(" · ")}
                 </button>
             </div>
-            <div className="rm-scroll rm-chat" ref={scroller} onScroll={(e) => { const el = e.currentTarget; pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40; }}>
+            <div className="rm-seg" role="group" aria-label="Pedidos ou chat">{seg("pedido", "Pedidos")}{seg("chat", "Chat")}</div>
+            <div className="rm-scroll rm-chat" ref={scroller} role="log" aria-label={chat ? "Chat com o operador" : "Pedidos de louvor"}
+                onScroll={(e) => { const el = e.currentTarget; pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40; }}>
                 {failed && <p className="rm-empty">{failed}</p>}
-                {!failed && page && !rows.length && <p className="rm-empty">Nenhuma mensagem neste culto ainda. O que você mandar aqui aparece no console do operador.</p>}
+                {!failed && page && !rows.length && <p className="rm-empty">{chat ? "Nenhuma mensagem neste culto ainda. O que você escrever aqui aparece no console do operador, e a resposta aparece aqui." : "Nenhum pedido neste culto ainda."}</p>}
                 {!page && !failed && <p className="rm-hint">Carregando…</p>}
-                {page && page.total > rows.length && <p className="rm-hint">As mensagens mais antigas ficam no computador.</p>}
+                {page && page.total > rows.length && <p className="rm-hint">{chat ? "As mensagens mais antigas ficam no computador." : "Os pedidos mais antigos ficam no computador."}</p>}
                 {rows.map((m) => <Message key={m.id} m={m} />)}
             </div>
-            <div className="rm-foot rm-compose">
-                <button type="button" className="rm-b is-sm is-wide" onClick={onPedido}><Icon name="music" size={18} />Pedido de louvor</button>
-                {linkOpen && (
-                    <label className="rm-field">
-                        <Icon name="youtube" size={20} />
-                        <input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link do YouTube (youtu.be/…)" aria-label="Link do YouTube" maxLength={PEDIDO_LIMITS.link} autoCapitalize="none" autoCorrect="off" inputMode="url" />
-                    </label>
+            {!chat
+                ? <div className="rm-foot"><button type="button" className="rm-b is-go is-wide" onClick={onPedido}><Icon name="music" size={18} />Pedir um louvor</button></div>
+                : (
+                    <div className="rm-foot rm-compose">
+                        {linkOpen && (
+                            <label className="rm-field">
+                                <Icon name="youtube" size={20} />
+                                <input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link do YouTube (youtu.be/…)" aria-label="Link do YouTube" maxLength={PEDIDO_LIMITS.link} autoCapitalize="none" autoCorrect="off" inputMode="url" />
+                            </label>
+                        )}
+                        <div className="rm-cbar">
+                            <button type="button" className="rm-round" aria-pressed={linkOpen} aria-label="Link do YouTube" onClick={() => setLinkOpen((v) => !v)}><Icon name="link" size={20} /></button>
+                            <input className="rm-cin" value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreva uma mensagem…" aria-label="Mensagem para o operador" maxLength={PEDIDO_LIMITS.text} enterKeyHint="send"
+                                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }} />
+                            <button type="button" className={`rm-round is-go ${busy.has("chat.send") ? "is-busy" : ""}`} aria-label="Enviar" disabled={!text.trim() && !(linkOpen && link.trim())} onClick={sendChat}><Icon name="send" size={20} /></button>
+                        </div>
+                    </div>
                 )}
-                <div className="rm-cbar">
-                    <button type="button" className="rm-round" aria-pressed={linkOpen} aria-label="Link do YouTube" onClick={() => setLinkOpen((v) => !v)}><Icon name="link" size={20} /></button>
-                    <input className="rm-cin" value={text} onChange={(e) => setText(e.target.value)} placeholder="Mensagem para o operador" aria-label="Mensagem para o operador" maxLength={PEDIDO_LIMITS.text} enterKeyHint="send"
-                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }} />
-                    <button type="button" className={`rm-round is-go ${busy.has("chat.send") ? "is-busy" : ""}`} aria-label="Enviar" disabled={!text.trim() && !(linkOpen && link.trim())} onClick={sendChat}><Icon name="send" size={20} /></button>
-                </div>
-            </div>
         </div>
     );
 }
 
-// One message: a chat line, a YouTube card or a song request.
+// One message: a chat bubble (mine on the right; the operator's on the left
+// in gold) or a song request's card ("Anotado pelo operador" with its badge).
 function Message({ m }) {
-    const side = m.mine ? "is-mine" : "";
+    const side = [m.mine && "is-mine", m.operator && "is-op"].filter(Boolean).join(" ");
     if (m.kind === "pedido") {
         return (
             <div className={`rm-msg rm-ped ${side}`}>
-                <span className="rm-msg-h">{m.mine ? "Pedido de louvor" : `Pedido de ${m.head.split(" · ")[0]}`}{m.at ? ` · ${m.at}` : ""}</span>
+                <span className="rm-msg-h">{m.by}{m.at ? ` · ${m.at}` : ""}{m.operator && <span className="rm-badge">operador</span>}</span>
                 <span className="rm-msg-t">
                     <span className="rm-ped-w">{m.singer ? <><b>{m.singer}</b> canta <b>{m.song}</b></> : <b>{m.song}</b>}</span>
                     {m.text && <span className="rm-ped-n">{m.text}</span>}
                     {m.link && <YouTubeLink m={m} />}
-                    <span className={`rm-ped-s ${m.done ? "is-done" : ""}`}>{m.status}</span>
+                    {m.status && <span className={`rm-ped-s ${m.done ? "is-done" : ""}`}>{m.status}</span>}
                 </span>
             </div>
         );
@@ -441,6 +501,7 @@ function TeamSetlist({ state, service, onAsk }) {
                             <>
                                 <Icon name={r.icon} size={18} />
                                 <span className="rm-item-t"><b>{r.title}</b>{r.sub && <small>{r.sub}</small>}</span>
+                                {r.singer && <span className="rm-who" title={`Pedido de ${r.singer}`}><Icon name="user" size={13} /><span>{r.singer}</span></span>}
                                 {r.tag && <span className={`rm-tag is-${r.tag}`}>{TAG_TEXT[r.tag]}</span>}
                                 {r.songId && <Icon name="chevron-right" size={18} />}
                             </>

@@ -13,11 +13,11 @@
         "pedido"
       ],
       "default": "chat",
-      "description": "chat = mensagem da equipe ao operador; pedido = pedido de louvor"
+      "description": "chat = mensagem entre a equipe e o operador; pedido = pedido de louvor"
     },
     "sender": {
       "type": "string",
-      "description": "Quem mandou, como escreveu no celular (Equipe; até 40 letras)"
+      "description": "Quem mandou, como escreveu no celular (Equipe; até 40 letras); \"Operador\" quando side = operator"
     },
     "text": {
       "type": "string",
@@ -47,6 +47,15 @@
       ],
       "default": "open",
       "description": "open = a atender; done = atendido"
+    },
+    "side": {
+      "type": "string",
+      "enum": [
+        "",
+        "team",
+        "operator"
+      ],
+      "description": "Quem escreveu (Rodada Q, S12/S14): team = um celular da Equipe; operator = o operador, no console (uma resposta no Chat ou um pedido anotado). Vazio = team (linhas de antes)"
     },
     "sentAt": {
       "type": "string",

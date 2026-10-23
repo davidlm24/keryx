@@ -1,7 +1,8 @@
 import React, { useMemo } from "react";
 import { keryx } from "@/api/keryxClient";
 import { getDragStage, getDragStages, clearDragStage } from "@/lib/console/dragStage";
-import { Row, Btn, IconBtn, Empty, SelBar, RowMark } from "./kx";
+import { Row, Btn, IconBtn, Empty, SelBar, RowMark, SingerTag } from "./kx";
+import { singerOf } from "@/lib/console/pedidos";
 import { useMultiSelect } from "./useMultiSelect";
 import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
 import { takeOutManyQuestion } from "@/lib/console/bulkDelete";
@@ -225,6 +226,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                         time={chip ? null : timeCell}
                         actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Enviar ao ar · 2 cliques" aria-label={`Ir para ${it.title || typeLabel(it.type)}`}><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="edit" title="Editar no planejador" aria-label={`Editar ${it.title || typeLabel(it.type)} no planejador`} onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
                     >
+                        <SingerTag name={singerOf(it)} />
                         {end && <span className="rund-end" title={END_TIP[end]} aria-label={END_TIP[end]}><Icon name={END_ICON[end]} /></span>}
                         {chip}
                     </Row>

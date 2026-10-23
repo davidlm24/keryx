@@ -12,8 +12,10 @@ export const PANEL_TABS = {
         { id: "notas", name: "Notas", on: true },
         { id: "aviso", name: "Aviso rápido", on: true },
         { id: "timers", name: "Timers", on: true },
-        // The Equipe's chat and song requests (Rodada Q; PedidosTab.jsx).
+        // The Equipe's song requests and the chat with it, each its own tab
+        // (Rodada Q; S12 = B: PedidosTab.jsx, ChatTab.jsx).
         { id: "pedidos", name: "Pedidos", on: true },
+        { id: "chat", name: "Chat", on: true },
         { id: "ferramentas", name: "Ferramentas", hint: "relógio, cronômetro, texto" },
         { id: "historico", name: "Esteve no ar" },
     ],
