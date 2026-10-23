@@ -72,6 +72,69 @@ export const GENERATORS = [
             vec2 d = vec2(cos(a), sin(a));
             float v = clamp(dot(uv - 0.5, d) * 0.8 + 0.5 + 0.12 * sin(t * 0.6 + uv.x * 4.0 + uv.y * 2.0), 0.0, 1.0);`,
     },
+    // The four below keep the current ones' cost: one cell per layer (no
+    // neighbour loop, each point stays inside its cell), at most two fbm.
+    {
+        id: "particles", name: "Partículas de luz", hint: "pontos de luz pequenos subindo devagar, balançando para os lados",
+        params: ["speed", "scale", "intensity", "contrast"],
+        body: `
+            float v = 0.0;
+            for (int l = 0; l < 2; l++) {
+                float fl = float(l);
+                vec2 q = p * (1.6 + fl * 1.1) + vec2(fl * 17.0, 0.0);
+                float col = floor(q.x);
+                q.y -= t * (0.5 + 0.6 * hash(vec2(col, 3.0 + fl)));
+                vec2 cell = floor(q), f = fract(q);
+                float h = hash(cell + fl * 11.0);
+                vec2 c = vec2(0.32 + 0.36 * hash(cell + 1.3), 0.4 + 0.4 * hash(cell + 2.7));
+                c.x += 0.08 * sin(t * (0.8 + h) + h * 6.28);
+                float r = (0.045 + 0.045 * hash(cell + 4.1)) * (1.0 + u_audio * 0.6);
+                vec2 d = f - c;
+                vec2 dt = vec2(d.x, d.y < 0.0 ? d.y * 0.45 : d.y); // the halo trails below: it rises
+                v += step(0.3, h) * (exp(-dot(d, d) / (r * r)) + 0.22 * exp(-dot(dt, dt) / (r * r) * 0.3)) * (0.6 + 0.4 * sin(t * 2.0 + h * 40.0)) * (1.0 - 0.4 * fl);
+            }
+            v = clamp(v * (0.75 + 0.25 * uv.y), 0.0, 1.0);`,
+    },
+    {
+        id: "rays", name: "Raios de luz", hint: "feixes descendo do alto, como luz por uma janela, com poeira no ar",
+        params: ["speed", "scale", "intensity", "contrast"],
+        body: `
+            vec2 sp = vec2((uv.x - 0.5) * u_res.x / u_res.y, uv.y - 1.3);
+            float a = atan(sp.x, -sp.y) + 0.05 * sin(t * 0.4);
+            float k = u_scale * 2.2;
+            float beams = noise(vec2(a * k, t * 0.12)) * 0.65 + noise(vec2(a * k * 2.3 + 4.0, -t * 0.09)) * 0.35;
+            beams = beams * beams * beams * 1.9 * (1.0 + u_audio * 0.5) * smoothstep(-0.3, 0.15, 1.0 - uv.y);
+            float fall = smoothstep(1.7, 0.25, length(sp));
+            vec2 dq = p * 3.0 + vec2(t * 0.06, -t * 0.1);
+            vec2 dc = floor(dq), df = fract(dq) - vec2(0.2 + 0.6 * hash(dc + 1.9), 0.2 + 0.6 * hash(dc + 7.3));
+            float dust = step(0.75, hash(dc)) * exp(-dot(df, df) * 900.0);
+            float v = clamp((beams + dust * 0.8) * fall, 0.0, 1.0);`,
+    },
+    {
+        id: "stars", name: "Céu estrelado", hint: "estrelas piscando, quase paradas, num céu que mal se move",
+        params: ["speed", "scale", "intensity", "contrast"],
+        body: `
+            float v = 0.06 * noise(p * 0.6 + t * 0.02);
+            for (int l = 0; l < 2; l++) {
+                float fl = float(l);
+                vec2 q = p * (4.0 - fl * 1.8) + vec2(t * 0.02, fl * 31.0);
+                vec2 cell = floor(q), f = fract(q);
+                float h = hash(cell + fl * 7.0);
+                vec2 d = f - vec2(0.2 + 0.6 * hash(cell + 2.3), 0.2 + 0.6 * hash(cell + 5.9));
+                float tw = 0.55 + 0.45 * sin(t * (2.0 + 4.0 * h) + h * 50.0);
+                float r = (0.025 + 0.02 * fl) * (1.0 + u_audio * 0.4);
+                v += step(0.55 - fl * 0.25, h) * exp(-dot(d, d) / (r * r)) * mix(tw, 1.0, 0.3 * fl) * (0.6 + 0.4 * fl);
+            }
+            v = clamp(v, 0.0, 1.0);`,
+    },
+    {
+        id: "mist", name: "Névoa em movimento", hint: "fumaça escura em camadas, bem lenta — discreta sob a letra",
+        params: ["speed", "scale", "intensity", "detail", "contrast"],
+        body: `
+            float a = fbm(p * 0.6 + vec2(t * 0.12, t * 0.03));
+            float b = fbm(p * 1.3 + vec2(-t * 0.09, t * 0.05) + a * 1.6);
+            float v = smoothstep(0.3, 0.85, a * 0.5 + b * 0.5 + u_audio * 0.08) * (0.45 + 0.25 * (1.0 - uv.y));`,
+    },
 ];
 export const generatorOf = (id) => GENERATORS.find((g) => g.id === id) || GENERATORS[0];
 
@@ -134,6 +197,14 @@ export const PRESETS = [
     { id: "luzes-frias", name: "Luzes frias", gen: { id: "bokeh", speed: 0.25, scale: 5, intensity: 0.9, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#06101c", "#3a7bd5", "#dff3ff"] } },
     { id: "roxo-azul", name: "Roxo e azul", gen: { id: "gradient", speed: 0.5, scale: 3, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.1, colors: ["#1e0b3a", "#2a3f8f", "#0b1a30"] } },
     { id: "verde-escuro", name: "Verde escuro", gen: { id: "gradient", speed: 0.4, scale: 3, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.15, colors: ["#07140d", "#145a32", "#0b2a1a"] } },
+    { id: "particulas-douradas", name: "Douradas", gen: { id: "particles", speed: 0.3, scale: 2.5, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#0d0904", "#c19959", "#fff2c7"] } },
+    { id: "particulas-azuis", name: "Azuis", gen: { id: "particles", speed: 0.25, scale: 3, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#040b16", "#3a7bd5", "#dff3ff"] } },
+    { id: "raios-dourados", name: "Raios dourados", gen: { id: "rays", speed: 0.3, scale: 2, intensity: 0.9, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.15, colors: ["#0c0805", "#8a6a3a", "#fff0cc"] } },
+    { id: "raios-frios", name: "Raios frios", gen: { id: "rays", speed: 0.25, scale: 2.5, intensity: 0.85, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.15, colors: ["#03070d", "#2f5c86", "#d6ecff"] } },
+    { id: "noite-azul", name: "Noite azul", gen: { id: "stars", speed: 0.3, scale: 3, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#020610", "#3d5a8a", "#f4f8ff"] } },
+    { id: "noite-roxa", name: "Noite roxa", gen: { id: "stars", speed: 0.25, scale: 3.5, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#08040f", "#5b3d8a", "#fbefff"] } },
+    { id: "fumaca", name: "Fumaça", gen: { id: "mist", speed: 0.2, scale: 2, intensity: 0.7, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.1, colors: ["#060607", "#26272c", "#55565e"] } },
+    { id: "nevoa-azul", name: "Névoa azul", gen: { id: "mist", speed: 0.18, scale: 2, intensity: 0.7, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.1, colors: ["#03060b", "#15263d", "#3e5878"] } },
 ].map((p) => ({ ...p, gen: normalizeGenerator(p.gen) }));
 export const presetsOf = (id) => PRESETS.filter((p) => p.gen.id === id);
 
