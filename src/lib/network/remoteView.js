@@ -112,6 +112,29 @@ export function slideInfo(content) {
     const reveal = activitySteps(cur) > revealStep(content, index);
     return { has: true, index, count: slides.length, now: slideText(cur), next: slides[index + 1] ? slideText(slides[index + 1]) : "", reveal };
 }
+// The No ar bar under every tab but Ao vivo (Rodada Q, S5 = A): ⏮ · the
+// slide on air and its place, the next under it · ⏭; null with nothing on
+// air. The arrows only while slides are on air; with none the line is what
+// the header says (a video, a picture, Tela preta).
+//   -> null | { tone, now, pos, next, arrows, reveal }
+const oneLine = (text) => String(text || "").split("\n").map((l) => l.trim()).filter(Boolean).join(" / ");
+export function nowBarInfo(live) {
+    if (!live) return null;
+    const h = airHeader(live);
+    if (!h.chips.length) return null;
+    const s = slideInfo(live.content);
+    const covered = live.screen === "black" || live.screen === "logo";
+    if (!s.has || covered) return { tone: h.tone, now: h.title, pos: h.pos, next: "", arrows: s.has, reveal: false };
+    const title = live.content.title || "Texto";
+    return {
+        tone: h.tone,
+        now: oneLine(s.now) || title,
+        pos: s.count > 1 ? `${s.index + 1}/${s.count}` : "",
+        next: s.reveal ? "Próximo: revelar a resposta" : s.next ? `Próximo: ${oneLine(s.next)}` : title,
+        arrows: true,
+        reveal: s.reveal,
+    };
+}
 // The slides sheet: one row per slide, the first line as its title.
 export function slideRows(content) {
     return (content?.slides || []).map((s, i) => {
@@ -266,6 +289,14 @@ export function sendMediaArgs(key, id, toVideo = false) {
     return { kind: c.send, id, ...(c.key === "video" && toVideo ? { toVideo: true } : {}) };
 }
 
+// + Setlist (Rodada Q, `setlist.add`): what a chip's row adds at the end of
+// the culto's Setlist; null for the avisos (the Setlist takes none).
+const SETLIST_KIND = { song: "song", media: "media", material: "material" };
+export function addToSetlistArgs(key, id) {
+    const kind = SETLIST_KIND[chipOf(key).send];
+    return kind && id ? { kind, id } : null;
+}
+
 // ---- Bíblia (PR3b) ---------------------------------------------------------
 
 // The field: "jo 3 16", "Jo 3:16-18", "jo 3" (the console's quick jump
@@ -295,6 +326,12 @@ export function bibleArgs(ref, version = "") {
     if (ref.verseStart != null) { args.verseStart = ref.verseStart; args.verseEnd = ref.verseEnd ?? ref.verseStart; }
     if (version) args.version = version;
     return args;
+}
+// + Setlist for a passage: only with its verses (a chapter alone is 400:
+// it would be the whole chapter).
+export function biblePlanArgs(ref, version = "") {
+    if (!ref?.chapter || ref.verseStart == null) return null;
+    return bibleArgs(ref, version);
 }
 // The book grid: the Old and the New Testament, by their short names.
 export const BIBLE_SECTIONS = [["Antigo Testamento", bibleBooks.slice(0, 39)], ["Novo Testamento", bibleBooks.slice(39)]];

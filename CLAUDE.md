@@ -1694,7 +1694,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (a v1 console: `isV1`), only the control pressed busy, S actions off
   while locked or stale (25 s without a frame), T always on; new items are
   picked, then sent from the sticky "Enviar ao ar · título"; Encerrar and
-  Destravar are held. `remoteCall` sends `v: 2` once and never again (504
+  Destravar are held. **The Controle's five tabs** (Rodada Q PR3, owner's
+  mockup and mark S5 = A): Ao vivo, Setlist, Mídia, Bíblia, Mais — never a
+  chat tab (that is the Equipe's). Ao vivo is the slides, Enviar o
+  próximo, the compact Tela preta/Logo/Limpar row, the player and the held
+  "Segure para encerrar tudo" (the smoke reads it there); Slides, Aviso and
+  Timer are Mais › Enviar. Every other tab has **the No ar bar** under it
+  while something is on air (`NowBar.jsx`, `nowBarInfo`, tested): ⏮ · the
+  slide on air with "3/9" and the next · ⏭; its middle opens Ao vivo's
+  controls in a sheet (the shared pieces are `remote/liveParts.jsx`). The
+  Mídia keeps its chips and search still and scrolls only the list
+  (`rm-main is-split`: `rm-fix`, `rm-scroll` — the paging sentinel's
+  `root` —, `rm-foot`). **+ Setlist** beside Enviar ao ar in the Mídia
+  (`addToSetlistArgs`: never an aviso) and the Bíblia (`biblePlanArgs`:
+  only with verses) runs `setlist.add`, shown only with the `plan` cap;
+  it is T, so a row can be picked for it while locked. Only Ao vivo is in
+  the page's first load: the other tabs are lazy chunks (the outputs'
+  budget). `remoteCall` sends `v: 2` once and never again (504
   or a lost link = "Não sei se foi"). "Manter a tela ligada" loops
   `public/nosleep.mp4` (made by `scripts/nosleep-mp4.mjs`). Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
