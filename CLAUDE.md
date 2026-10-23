@@ -1296,8 +1296,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   setlist…" / "Tirar a seção…" (`setlistActions.js`: asks with
   `useConfirm`, then renumbers from the store; 0.2.19). **Setlist automática**
   (owner 2026-10-20, Rodada N2): "Autoplay" (Rodada O3; "Avançar sozinho"
-  in its tooltip) in the Setlist's header — whose count is only "· n itens ·
-  tempo", no culto name — is the culto's switch (`Service.autoplay`,
+  in its tooltip) in the Setlist's FOOTER (Rodada Q, Q1, owner's pick S1 = A:
+  the header keeps only "Setlist · n itens · tempo" and its icons; the footer
+  `SetlistFooter` in Rundown.jsx holds the switch and two icon-only buttons,
+  Item anterior / Próximo item, the words in the tooltip with the item's name
+  and as screen-reader text; they send the neighbours of the item on air in
+  SETLIST order — `neighbours` in setlist.js, tested, nothing on air = the
+  first playable item — as the autoplay sends, `keepPrev`, the Prévia
+  untouched, a locked screen refusing with the usual message; the body is a
+  column: `.rund-scroll` scrolls, the footer stays) is the culto's switch (`Service.autoplay`,
   synced); with it on, the item on air that ends does what its "Ao terminar" says (`ServiceItem.end_action`:
   next — the default, "" and the old `autoAdvance` too — loop or stop; the
   row's menu and Planejar o culto): the next playable item (sections and
