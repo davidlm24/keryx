@@ -15,7 +15,7 @@ const STAGES = { song: stageFromSong, media: stageFromMedia, piece: stageFromPie
 // (remoteRunner.js) with the console's latest state — this render's lists
 // through a ref, what is on air from the live client itself — and each
 // answer goes back to the phone.
-export function useRemote({ c, data, service, items, rows, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses }) {
+export function useRemote({ c, data, service, items, rows, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses, messages, ensureService, addPassage, addToSetlist }) {
     // The KERYX version (state.app: a change reloads the phone's page).
     const app = useRef("");
     const deps = useRef(null);
@@ -37,6 +37,9 @@ export function useRemote({ c, data, service, items, rows, airItemId, airNow, ne
         sendStage, buildStage, referenceVerses, stages: STAGES,
         // The culto's Avançar sozinho, written without a toast of its own (the runner says it).
         setAutoplay: (on) => keryx.entities.Service.update(service.id, { autoplay: Boolean(on) }),
+        // Rodada Q: setlist.add (the plan, never the air) and the Equipe's messages.
+        addToSetlist, addPassage, ensureService, messages,
+        createMessage: (fields) => keryx.entities.ServiceMessage.create(fields),
     };
     useEffect(() => {
         const remote = window.keryxDesktop?.remote;

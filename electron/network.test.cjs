@@ -42,3 +42,26 @@ test("controle remoto: off by default; on makes a code and a key; a new code or 
     assert.match(n.saved.network.remote.code, /^\d{6}$/);
     assert.equal(n.saved.network.pin, undefined, "the screens' PIN is untouched");
 });
+
+test("equipe: off by default; its own code and key, never the remote's code; each signs out only its phones", async () => {
+    const n = net({ network: { secret: "s" } });
+    assert.deepEqual(n.info().team, { enabled: false, hasCode: false });
+    await n.ops.setRemote(null, true);
+    await n.ops.setTeam(null, true);
+    const { remote, team } = n.saved.network;
+    assert.match(team.code, /^\d{6}$/);
+    assert.notEqual(team.code, remote.code, "the code decides the role");
+    assert.notEqual(team.secret, remote.secret);
+    assert.deepEqual(n.info().team, { enabled: true, hasCode: true });
+    assert.ok(!JSON.stringify(n.info()).includes(team.code), "info() never carries the code");
+    assert.deepEqual(await n.ops.revealTeamCode(), { code: team.code });
+    await n.ops.newTeamCode();
+    assert.notEqual(n.saved.network.team.secret, team.secret);
+    assert.notEqual(n.saved.network.team.code, n.saved.network.remote.code);
+    assert.deepEqual(n.saved.network.remote, remote, "the Controle's code and key stay");
+    await n.ops.disconnectTeam();
+    assert.deepEqual(n.saved.network.remote, remote);
+    await n.ops.setTeam(null, false);
+    assert.equal(n.saved.network.team.enabled, false);
+    assert.equal(n.saved.network.remote.enabled, true);
+});

@@ -83,12 +83,38 @@ test("the kinds agree with what the live state lets through while locked", () =>
 });
 
 test("every refusal code has a status, and the messages the phone shows are there", () => {
-    assert.deepEqual(Object.keys(PROTOCOL.codes).sort(), ["blocked", "busy", "locked", "missing", "not_found", "nothing", "rate", "syncing"]);
+    assert.deepEqual(Object.keys(PROTOCOL.codes).sort(), ["blocked", "busy", "forbidden", "locked", "missing", "not_found", "nothing", "rate", "syncing"]);
     for (const status of Object.values(PROTOCOL.codes)) assert.ok(Number.isInteger(status) && status >= 400 && status < 600);
     for (const message of Object.values(PROTOCOL.messages)) assert.ok(message.length > 0 && message.length <= PROTOCOL.limits.message);
     assert.equal(PROTOCOL.messages.locked, "Telas travadas: nada vai ao ar. Destrave em Saídas.");
     assert.equal(PROTOCOL.messages.updateApp, "Atualize o KERYX no computador");
     for (const action of PROTOCOL.limits.slowActions) assert.ok(actions[action], action);
+});
+
+// The Equipe (Rodada Q): what its code may run never changes the air or the
+// plan — only reads and its own messages (cap requests), and its caps are
+// its own few. lan.cjs and the console both read team / teamArgs.
+test("the Equipe's actions only read or send its messages", () => {
+    assert.ok(PROTOCOL.teamCaps.every((cap) => PROTOCOL.caps.includes(cap)), "teamCaps are caps");
+    const team = Object.entries(actions).filter(([, a]) => a.team === true).map(([name]) => name).sort();
+    assert.deepEqual(team, ["bibleFind", "chat.send", "library", "request.send", "requests", "songText", "state"]);
+    for (const name of team) {
+        const a = actions[name];
+        assert.ok(a.kind === "R" || a.cap === "requests", `${name}: a read or a message`);
+        assert.ok(!a.ops && !a.opsBy, `${name}: no live-state op`);
+        if (a.cap) assert.ok(PROTOCOL.teamCaps.includes(a.cap), `${name}: cap ${a.cap} is the Equipe's`);
+        for (const [key, values] of Object.entries(a.teamArgs || {})) {
+            assert.ok(a.args[key]?.type === "enum" && values.every((v) => a.args[key].values.includes(v)), `${name}.teamArgs.${key}`);
+        }
+    }
+    for (const [name, a] of Object.entries(actions)) {
+        if (a.team !== undefined) assert.equal(a.team, true, `${name}: team is true or absent`);
+        if (a.cap === "requests") assert.equal(a.team, true, `${name}: the chat is the Equipe's`);
+    }
+    assert.deepEqual(actions["library"].teamArgs, { tab: ["songs"] });
+    // setlist.add writes the plan, never the air: no op, so it works locked.
+    assert.equal(actions["setlist.add"].kind, "T");
+    assert.equal(actions["setlist.add"].cap, "plan");
 });
 
 // The console's runner (src/lib/console/remoteRunner.js) has a handler for
