@@ -25,7 +25,7 @@
 .kx option:disabled { color: var(--fg-3); }
 .kx :is(button, input, [tabindex]):focus-visible { outline: var(--bar) solid var(--brand); outline-offset: -1px; }
 .kx-t { transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out); }
-@media (prefers-reduced-motion: reduce) { .kx *, .kx-t { transition: none !important; animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .kx *:not(.kx-toast), .kx-t { transition: none !important; animation: none !important; } }
 .kx-i { flex: none; display: inline-block; vertical-align: -3px; }
 .kx-meta { font-size: var(--fs-meta); line-height: 16px; color: var(--fg-3); }
 /* Said to a screen reader, never shown: a state in words, the live region. */
@@ -374,11 +374,30 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; }
 .kx-tip .kx-kbd { color: var(--fg-3); font-size: var(--fs-meta); }
 
-/* ---- Toast (kx-toast; the app's old name .toast; Toast.jsx): one line over the bottom of the console ----
+/* ---- Toast (kx-toast; the app's old name .toast; Toast.jsx): one line just below the top bar, centred ----
    28 px, bg-3, the floaters' shadow; its text (kx-toast-t) ends in "…"; an action (kx-toast-act: Desfazer after
-   Esc, its key in the tooltip) is a 24 px target at its right. Its time stands still under the pointer or the
-   focus (toastQueue.js). */
-.kx .kx-toast { position: absolute; z-index: var(--z-toast); left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
+   Esc/Encerrar) is a button at the end; its time stands still while the pointer or the focus is on it
+   (toastQueue.js). It sits where the menus' popovers start (--pop-top, console.css: under the bar), over the
+   panels and never over the menus or the search; a detached page has no bar and uses its own top (--space-2).
+   It drops in (fade + --space-2, --dur-fold, ease-out) and leaves fading and rising --space-1 (.is-leaving).
+   An important one (.is-important: a new pedido, a screen lost) sends two gold rings off its border, three
+   times, then keeps one thin gold ring; reduced motion only fades (no offset, no rings), forced colours keep
+   only the fixed ring. */
+.kx .kx-toast { position: absolute; z-index: var(--z-toast); left: 50%; top: var(--toast-top, var(--pop-top, var(--space-2))); transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; max-width: calc(100vw - 24px); animation: kx-toast-in var(--dur-fold) var(--ease-out) both; }
+.kx .kx-toast.is-leaving { animation: kx-toast-out var(--dur-fold) var(--ease-out) both; pointer-events: none; }
+.kx .kx-toast.is-important { box-shadow: var(--shadow-popover), 0 0 0 1px var(--brand); }
+.kx .kx-toast-wave { position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 0 1px var(--brand); opacity: 0; pointer-events: none; animation: kx-toast-wave calc(var(--dur-fold) * 7) var(--ease-out) 3 both; }
+.kx .kx-toast-wave.is-2 { animation-delay: calc(var(--dur-fold) * 2); }
+@keyframes kx-toast-in { from { opacity: 0; transform: translate(-50%, calc(-1 * var(--space-2))); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes kx-toast-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, calc(-1 * var(--space-1))); } }
+@keyframes kx-toast-wave { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.18, 1.9); } }
+@keyframes kx-toast-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kx-toast-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .kx .kx-toast { animation-name: kx-toast-fade-in; }
+  .kx .kx-toast.is-leaving { animation-name: kx-toast-fade-out; }
+  .kx .kx-toast-wave { display: none; }
+}
 .kx .kx-toast .kx-toast-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .kx .kx-toast .kx-toast-act { height: var(--control-sm); margin-right: calc(-1 * var(--space-2)); padding: 0 var(--space-2); color: var(--fg-1); font-weight: 500; }
 
@@ -577,6 +596,8 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
   .kx-panel:not(.kx-panel-bare) { outline: 1px solid CanvasText; outline-offset: -1px; }
   .kx-pop, .kx-tip { outline: 1px solid CanvasText; }
   .kx :is(.kx-toast, .kx-win) { outline: 1px solid CanvasText; }
+  .kx .kx-toast.is-important { outline-color: Highlight; }
+  .kx .kx-toast-wave { display: none; }
   .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand) { border: 1px solid ButtonText; }
   .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand):disabled { border-color: GrayText; }
   .kx-btn.is-on, .kx-tool.is-on { outline: 2px solid Highlight; outline-offset: -2px; }

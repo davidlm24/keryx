@@ -1304,7 +1304,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the music at the second it stopped (`undoEndOps` in
   `src/lib/console/restore.js`); Ctrl+Z runs it too (keys.js "undo", out of
   text fields), and a plain toast waits behind it while its time stands
-  still under the pointer or the focus (`toastQueue.js`, `Toast.jsx`; C-13). Camadas' eyes on Texto principal and Fundo
+  still under the pointer or the focus (`toastQueue.js`, `Toast.jsx`; C-13).
+  **The toast sits just below the top bar, centred over the panels** (owner
+  2026-10-23, Rodada Q, T1 = A; `--pop-top`, at its own top in a detached
+  page), drops in and leaves fading (T2); an **important** one — a new
+  pedido or chat message (`usePedidos`), `say(text, action, { important })`
+  — shows 6 s at least, a plain toast never swallows it, and two gold rings
+  leave its border 3 times, then one thin ring stays (T3/T4; reduced motion
+  and forced colours keep only the ring). A screen that disconnects has no
+  toast today (the banner and the Saídas popover say it): add `important`
+  there if one is ever made. Camadas' eyes on Texto principal and Fundo
   hide the layer and keep it on air (`layers.hide`/`layers.show`,
   `hiddenLayers`, `layerHidden`; hiding works locked): the next send shows
   the text again, choosing a Fundo shows the Fundo again. The Fundo hidden

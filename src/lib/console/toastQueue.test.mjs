@@ -47,3 +47,17 @@ test("replace and dropToast: the Setlist automática's countdown answered anothe
     assert.equal(dropToast(count, "outro"), count);
     assert.equal(dropToast(emptyToasts, "x"), emptyToasts);
 });
+
+test("an important toast shows 6 s at least and is never swallowed by a plain one", () => {
+    assert.equal(toastMs("Pedido de Ana", null, true), 6000);
+    assert.equal(toastMs("x".repeat(81), null, true), 6000);
+    assert.equal(toastMs("Pedido", undo, true), 8000, "an action keeps its longer time");
+    const imp = pushToast(emptyToasts, { id: 1, text: "Pedido de Ana: Grande é o Senhor", important: true });
+    assert.equal(imp.cur.ms, 6000);
+    const after = pushToast(imp, { id: 2, text: "Tema em uso." });
+    assert.equal(after.cur.id, 1, "the plain one waits");
+    assert.equal(after.queue.length, 1);
+    assert.equal(nextToast(after).cur.id, 2, "and shows after it");
+    assert.equal(pushToast(imp, { id: 3, text: "Mensagem de Rui", important: true }).cur.id, 3, "a newer important one takes the place");
+    assert.equal(pushToast(imp, { id: 4, text: "Cancelado", replace: true }).cur.id, 4);
+});

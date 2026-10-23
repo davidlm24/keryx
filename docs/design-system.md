@@ -274,12 +274,18 @@ compositions), it is given.
 
 ### Toast
 
-- **Class.** `kx-toast` (old name `.toast`; `Toast.jsx`): one 28 px line over
-  the bottom of the console, `bg-3`, `shadow-popover`.
+- **Class.** `kx-toast` (old name `.toast`; `Toast.jsx`): one 28 px line just
+  below the top bar (at `--pop-top`; at its own top in a detached page),
+  centred over the panels, `bg-3`, `shadow-popover`; it drops in and leaves
+  fading (reduced motion: fade only).
 - **Anatomy.** `kx-toast-t` (the text, ending in "…") · `kx-toast-act` (an
   action, a 24 px target: *Desfazer* after Esc, its key in the tooltip).
 - **States.** Its time stands still under the pointer or the focus; a plain
-  toast waits behind *Desfazer* (`toastQueue.js`). Said by the one polite
+  toast waits behind *Desfazer* (`toastQueue.js`). An **important** one (a
+  new pedido or chat message: `say(…, { important: true })`) shows 6 s at
+  least, is never swallowed by a plain one and sends two gold rings off its
+  border three times, then keeps one thin gold ring (forced colours and
+  reduced motion: only the fixed ring). Said by the one polite
   live region, never by a `role="status"` that mounts with its text.
 
 ### Window

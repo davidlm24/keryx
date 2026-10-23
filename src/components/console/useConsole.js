@@ -88,8 +88,10 @@ export function useToast() {
     const since = useRef(0);
     // opts: { ms } how long it shows, when not toastMs's (the Setlist
     // automática's countdown lasts its pause); { replace } a plain toast that
-    // takes an action toast's place (its Cancelar answered another way).
-    const say = useCallback((text, action = null, opts = null) => setToasts((s) => pushToast(s, { id: ++ids.current, text, action, ...(opts?.ms ? { ms: opts.ms } : {}), ...(opts?.replace ? { replace: true } : {}) })), []);
+    // takes an action toast's place (its Cancelar answered another way);
+    // { important } a new pedido or a lost screen: 6 s at least, a gold wave
+    // round it, and a plain toast never takes its place.
+    const say = useCallback((text, action = null, opts = null) => setToasts((s) => pushToast(s, { id: ++ids.current, text, action, ...(opts?.ms ? { ms: opts.ms } : {}), ...(opts?.replace ? { replace: true } : {}), ...(opts?.important ? { important: true } : {}) })), []);
     const done = useCallback(() => setToasts(nextToast), []);
     // The toast showing goes now, if it is this one (a countdown overtaken).
     const unsay = useCallback((text) => setToasts((s) => dropToast(s, text)), []);
@@ -110,7 +112,7 @@ export function useToast() {
     }, [done]);
     useEffect(() => () => clearTimeout(timer.current), []);
     const toastAction = useMemo(() => (cur?.action ? { ...cur.action, run: () => { done(); cur.action.run(); } } : null), [cur, done]);
-    return { toast: cur?.text || null, toastAction, say, unsay, holdToast };
+    return { toast: cur?.text || null, toastId: cur?.id ?? 0, toastImportant: Boolean(cur?.important), toastAction, say, unsay, holdToast };
 }
 
 // The operations on what is on air that need nothing of the console's own
@@ -188,7 +190,7 @@ export function useConsole() {
         try { if (id) localStorage.setItem(THEME_IN_USE_KEY, id); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
     }, []);
     const { stamp, bgPrefs } = useStamp(themeId);
-    const { toast, toastAction, say, unsay, holdToast } = useToast();
+    const { toast, toastId, toastImportant, toastAction, say, unsay, holdToast } = useToast();
     const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen } = useLiveOps(live, say, bgPrefs);
 
     // Esc takes the song off the screens, not out of the Slides column
@@ -386,5 +388,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, last: lastStays(last, live, handHeld) ? last : null, moveLast, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say, unsay, holdToast };
+    return { live, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, last: lastStays(last, live, handHeld) ? last : null, moveLast, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastId, toastImportant, toastAction, say, unsay, holdToast };
 }
