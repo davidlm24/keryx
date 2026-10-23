@@ -28,4 +28,8 @@ test("the Tela ociosa's look rides the seed, the church's name written in", asyn
     for (const [op, args] of ops) s = rules.applyOp(s, op, args, 1);
     assert.deepEqual([s.idle, s.idleLook.color, s.idleLook.logo, s.idleLook.text], ["black", "#112233", "l", "Igreja de exemplo"]);
     assert.deepEqual(seedOps({ idle_look: null }), []);
+    // Da biblioteca (Rodada Q6): the stored keryx-media:// file and its dim ride as they are.
+    s = rules.emptyState(1);
+    for (const [op, args] of seedOps({ idle_look: { bg: "media", media: { kind: "image", value: "keryx-media://cruz.jpg", name: "Cruz" }, dim: 0.3 } })) s = rules.applyOp(s, op, args, 1);
+    assert.deepEqual([s.idleLook.bg, s.idleLook.media.value, s.idleLook.dim], ["media", "keryx-media://cruz.jpg", 0.3]);
 });

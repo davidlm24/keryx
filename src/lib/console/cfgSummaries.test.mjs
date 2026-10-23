@@ -33,6 +33,9 @@ test("Temas e fundos", () => {
     assert.equal(fundosSummary([]), "Imagens, vídeos, gerados e cores");
     assert.equal(idleSummary("black", true), "Preto · com ajustes");
     assert.equal(idleSummary("logo", false), "Logo da igreja");
+    assert.equal(idleSummary("logo", { bg: "color" }), "Logo da igreja · com ajustes");
+    assert.equal(idleSummary("logo", { bg: "media", media: { kind: "image", value: "x", name: "Cruz" } }), "Logo da igreja · Da biblioteca · Cruz");
+    assert.equal(idleSummary("logo", { bg: "media", media: { kind: "video", value: "x", name: "" } }), "Logo da igreja · Da biblioteca");
     assert.equal(fontsSummary(0), "Nenhuma ainda");
     assert.equal(fontsSummary(2), "2 fontes");
 });

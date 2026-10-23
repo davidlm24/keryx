@@ -843,6 +843,7 @@ function churchInABox(mediaDir) {
         standby_background: file("User.standby_background", ".jpg"),
         default_background: { kind: "image", value: file("User.default_background", ".jpg") },
         weekday_backgrounds: { 0: { kind: "image", value: file("User.weekday_backgrounds", ".jpg") } },
+        idle_look: { bg: "media", media: { kind: "video", value: file("User.idle_look", ".mp4"), name: "Ondas" }, dim: 0.3 },
     };
     return { rows, profile, files, used };
 }

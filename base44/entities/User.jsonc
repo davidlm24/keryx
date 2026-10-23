@@ -150,7 +150,7 @@
     },
     "idle_look": {
       "type": "object",
-      "description": "Visual da tela ociosa (Editor de telas › Tela ociosa): { bg, c1, c2, dir, color, logo, phrase, text }, shared/idleLook.mjs. Nulo = o degrade do KERYX e o logo M, como sempre"
+      "description": "Visual da tela ociosa (Editor de telas › Tela ociosa): { bg (gradient, color ou media = Da biblioteca), c1, c2, dir, color, logo, phrase, text, media { kind image|video, value, name }, dim 0-0.7 }, shared/idleLook.mjs. Nulo = o degrade do KERYX e o logo M, como sempre"
     },
     "chime_on": {
       "type": "boolean",

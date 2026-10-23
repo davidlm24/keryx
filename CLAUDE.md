@@ -637,9 +637,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `IdleEditor.jsx`), and has a card in Temas e fundos (a group of its own since Rodada H1; Culto ›
   Fora do ar only points to it). The settings: Logo da
   igreja or Preto (`idle_mode`, also in the Saídas popover); with the logo,
-  Fundo Cor or Degradê (two colours, Do centro / De cima para baixo /
-  Diagonal; it starts as the old blue, so nothing changes until edited, and
-  no image, which is the papel de parede's job), Logo Sem/P/M/G and Frase
+  Fundo Cor, Degradê (two colours, Do centro / De cima para baixo /
+  Diagonal; it starts as the old blue, so nothing changes until edited) or
+  **Da biblioteca** (Rodada Q6, owner 2026-10-23, S3 = B; reverses the
+  19/10 "no image"): a picture or a clip picked in the background library
+  (`useLibraryPicker`, image and video only), `media = { kind, value, name }`
+  with `dim` 0–0.7 (Escurecer, so the logo stands out), the logo and the
+  phrase over it; the clip loops muted as the Fundo's video does (an output,
+  the Programa monitor and the editor's canvas; `VideoStill` in the other
+  stills; a plain element, never the media pool); the editor says when the
+  file is still syncing or its codec may freeze; the file is kept while
+  another fundo is chosen (`idleMedia` draws it only with "media"; an old
+  look reads `media: null`, `dim: 0`, and draws as before). Logo Sem/P/M/G and Frase
   Nenhuma / Nome da igreja / Outra. They save at once on
   `User.idle_look` (synced); the console puts them on the screens as the
   live state's `idleLook` (op `idle.look`, works locked; null = the old
