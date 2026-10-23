@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { tileUrl } from "@/lib/mediaPoster";
 import { libMediaKinds } from "@/lib/console/panelTabs";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
@@ -49,7 +50,8 @@ const dragProps = (stage, time = "", many = null) => ({
 // The picture a media row shows on hover: an image itself, a video's still
 // (Media.thumbnail_url, src/lib/mediaPosterCapture.js) or a PDF's first page
 // (src/lib/pdfPagesCapture.js); nothing else has one.
-const peekOf = (m) => (m.missing || m.posterSyncing ? "" : m.type === "image" || m.type === "gif" ? m.file_url : m.type === "video" || m.type === "pdf" ? m.thumbnail_url || "" : "");
+// A picture shows its small copy (tileUrl, owner 2026-10-23), the file until it is made.
+const peekOf = (m) => (m.missing ? "" : m.type === "image" || m.type === "gif" ? tileUrl(m) : m.posterSyncing ? "" : m.type === "video" || m.type === "pdf" ? m.thumbnail_url || "" : "");
 const PEEK_DELAY_MS = 350;
 const PEEK_HANDOVER_MS = 120;
 const PEEK_W = 240;

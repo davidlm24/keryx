@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { tileUrl } from "@/lib/mediaPoster";
 import Icon from "../Icon";
 import { Btn, IconBtn, Seg, WinTabs, SelectManyBtn, SelBar, RowMark } from "../kx";
 import { useMultiSelect } from "../useMultiSelect";
@@ -43,7 +44,6 @@ import { pendingUrls, PENDING_SAY } from "@/lib/pendingMedia";
 // Camadas › Fundo, left with that section: owner's review 2026-10-14.)
 const TABS = [["temas", "Temas"], ["image", "Imagens"], ["video", "Vídeos"], ["generator", "Gerados"], ["color", "Cor"]];
 const ALL = "__all";
-const HIDDEN = "__hidden";
 const COLORS = ["#000000", "#0f1a2e", "#1f1308", "#101f14", "#1b1030", "#2a0d12", "#0d2a2a", "#333333", "#5b8fc9", "#c9a25b", "#7a2e3a", "#ffffff"];
 const GEN_NAMES = Object.fromEntries(GENERATORS.map((g) => [g.id, g.name]));
 const SAMPLE = SAMPLE_SLIDES.slice(0, 1);
@@ -75,14 +75,15 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     const [view, setView] = useState(() => (request.view === "categories" ? "categories" : "grid"));
     const save = useSaveBackgroundPref(c.say);
     // Right click: every background can leave the library, each as its origin
-    // says (backgroundActions; owner 2026-10-16 — the factory ones too).
+    // says (backgroundActions; owner 2026-10-16 — the factory ones too, for
+    // good since 2026-10-23: there is no Excluídos to bring one back).
     const menu = useContextMenu();
     const confirm = useConfirm();
     const what = (b) => (b.kind === "video" ? "o vídeo de fundo" : "a imagem de fundo");
     const gone = (b) => { if (sel?.value === b.url) setSel(null); };
     const act = {
         exclude: async (b) => {
-            if (!(await confirm({ title: `Excluir ${what(b)}?`, text: `"${b.name}" sai da biblioteca. Ele vem com o KERYX: em Excluídos, Restaurar traz de volta.` }))) return;
+            if (!(await confirm({ title: `Excluir ${what(b)}?`, text: `"${b.name}" vem com o KERYX e sai da biblioteca de vez. Para usar de novo, traga a imagem do computador.`, ok: "Excluir", danger: true }))) return;
             await save(b, { hidden: true, favorite: false }, "Fundo excluído.");
             gone(b);
         },
@@ -101,21 +102,16 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
         untrack: async (b) => {
             try { if (b.pref?.id) await keryx.entities.BackgroundPref.delete(b.pref.id); gone(b); c.say(`"${b.name}" saiu dos fundos. Continua na Mídia.`); } catch (err) { c.say(err?.message || "Não foi possível tirar dos fundos."); }
         },
-        restore: (b) => save(b, { hidden: false }, `"${b.name}" voltou para a biblioteca.`),
     };
     const ACTION = {
         exclude: { label: "Excluir…", icon: "trash" },
         delete: { label: "Excluir…", icon: "trash" },
         untrack: { label: "Tirar dos fundos (fica na Mídia)", icon: "x" },
-        restore: { label: "Restaurar", icon: "undo" },
     };
     // A right click on a marked tile, with others marked, acts on them all.
     const tileMenu = (e, b) => {
         if (selectable && ms.has(b.source) && picked.length > 1) {
-            menu(e, { title: `${picked.length} fundos`, items: [
-                picked.some((x) => x.hidden) && { label: "Restaurar", icon: "undo", onSelect: () => restoreMany() },
-                { label: pickedAction.label, icon: pickedAction.icon, onSelect: () => removeMany() },
-            ].filter(Boolean) });
+            menu(e, { title: `${picked.length} fundos`, items: [{ label: pickedAction.label, icon: pickedAction.icon, onSelect: () => removeMany() }] });
             return;
         }
         menu(e, { title: b.name, items: [
@@ -146,7 +142,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
         setUploading(true);
         try {
             const { created, failed, refused } = await importMediaFiles(files, { category: "background" });
-            const into = filter !== ALL && filter !== HIDDEN && filter !== OWN_IMAGES && filter !== OWN_VIDEOS ? filter : null;
+            const into = filter !== ALL && filter !== OWN_IMAGES && filter !== OWN_VIDEOS ? filter : null;
             if (into) for (const m of created) if (m.file_url) await keryx.entities.BackgroundPref.create({ source: sourceOf(m.file_url), category: into }).catch(() => {});
             const why = failureReason(failed);
             // The files refused (a video in HEVC…, Rodada O) first, in one
@@ -192,11 +188,10 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     const entries = list.filter((b) => b.kind === tab);
     const storedCats = usePrefs().background_categories;
     const cats = useMemo(() => categoriesOf(entries, storedCats), [entries, storedCats]);
-    const hiddenCount = entries.filter((b) => b.hidden).length;
-    // A chip that went away (the last excluded one restored, a category
-    // emptied or renamed) leaves its filter: back to Todos.
-    useEffect(() => { if (filter !== ALL && (filter === HIDDEN ? !hiddenCount : !cats.includes(filter))) setFilter(ALL); }, [filter, hiddenCount, cats]);
-    const shown = filter === HIDDEN ? entries.filter((b) => b.hidden) : visibleBackgrounds(entries, filter === ALL ? {} : { only: filter });
+    // A chip that went away (a category emptied or renamed) leaves its
+    // filter: back to Todos.
+    useEffect(() => { if (filter !== ALL && !cats.includes(filter)) setFilter(ALL); }, [filter, cats]);
+    const shown = visibleBackgrounds(entries, filter === ALL ? {} : { only: filter });
 
     // Selecting several (multiSelect.js, owner 2026-10-21, M3 = A): only when
     // the library is opened to manage, never as a picker with Usar, and only
@@ -210,19 +205,19 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     const clearMarks = ms.clear;
     useEffect(() => { clearMarks(); }, [tab, filter, view, clearMarks]);
     const picked = selectable ? pickedOf(ms.sel, shown, (b) => b.source) : [];
-    // What the marked ones get (owner 2026-10-22): Excluir… with the trash
-    // when a file sent here is among them (it goes for good), else Tirar dos
-    // fundos… with the x — the same ONE question either way.
+    // What the marked ones get (owner 2026-10-22/23): Excluir… with the trash
+    // when a factory photo or a file sent here is among them (they go for
+    // good), else Tirar dos fundos… with the x — the same ONE question either way.
     const pickedAction = backgroundAction(backgroundRemoval(picked));
     // Every one marked: ONE question that splits the origins (backgroundRemoval;
-    // factory photos to Excluídos, files sent here deleted, Mídia pictures only
+    // factory photos out for good, files sent here deleted, Mídia pictures only
     // out of the backgrounds). Each row counts by its own result: a file whose
     // delete failed keeps its settings (prefsAfterDelete), and a Mídia picture
     // whose settings could not go is not said to have left.
     const removeMany = async (rows = picked) => {
         const plan = backgroundRemoval(rows);
         const question = backgroundQuestion(plan);
-        if (!question) { c.say("Já estão em Excluídos: Restaurar traz de volta."); return; }
+        if (!question) return;
         if (!(await confirm(question))) return;
         const done = { exclude: 0, delete: 0, untrack: 0, failed: 0 };
         const left = [];
@@ -243,13 +238,6 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
         if (sel && left.some((b) => b.url === sel.value)) setSel(null);
         ms.clear();
         c.say(backgroundSay(done));
-    };
-    const restoreMany = async (rows = picked) => {
-        const back = rows.filter((b) => b.hidden);
-        let ok = 0;
-        for (const b of back) if (await save(b, { hidden: false })) ok++;
-        ms.clear();
-        if (ok) c.say(ok === 1 ? `"${back[0].name}" voltou para a biblioteca.` : `${ok} fundos voltaram para a biblioteca.`);
     };
     if (escRef) escRef.current = () => { if (ms.count || ms.picking) { ms.clear(); return true; } return false; };
 
@@ -314,7 +302,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                                 <div className="lib-grid">
                                     {mediaOfTab.map((m) => (
                                         <button type="button" key={m.id} className="kx-t fg-tile" aria-label={m.title} title={m.title} onClick={() => bring(m)}>
-                                            <span className="fg-img">{m.type === "video" ? <VideoStill src={m.file_url} className="" /> : <img src={m.file_url} alt="" loading="lazy" />}</span>
+                                            <span className="fg-img">{m.type === "video" ? <VideoStill src={m.file_url} className="" /> : <img src={tileUrl(m)} alt="" loading="lazy" decoding="async" />}</span>
                                             <span className="fg-name">{m.title}</span>
                                             {m.type === "video" && <CodecMark row={m} />}
                                         </button>
@@ -324,24 +312,22 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                             </>
                         )}
                         {(tab === "image" || tab === "video") && view === "grid" && <>
-                            <FilterChips options={[[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Excluídos · ${hiddenCount}`]] : [])]} value={filter} onChange={setFilter} onEdit={() => setView("categories")}>
+                            <FilterChips options={[[ALL, "Todos"], ...cats.map((k) => [k, k])]} value={filter} onChange={setFilter} onEdit={() => setView("categories")}>
                                 {selectable && <SelectManyBtn on={ms.picking} onToggle={ms.setPicking} />}
                             </FilterChips>
                             {selectable && <SelBar count={picked.length} total={shownKeys.length} onAll={ms.all} onClear={ms.clear}>
-                                {picked.some((b) => b.hidden) && <Btn small onClick={() => restoreMany()}>Restaurar</Btn>}
-                                <Btn small onClick={() => removeMany()} title="Os de fábrica vão para Excluídos · os enviados do computador são excluídos · os da Mídia só saem dos fundos · Delete"><Icon name={pickedAction.icon} />{pickedAction.label}</Btn>
+                                <Btn small onClick={() => removeMany()} title="Os de fábrica e os enviados do computador saem de vez · os da Mídia só saem dos fundos · Delete"><Icon name={pickedAction.icon} />{pickedAction.label}</Btn>
                             </SelBar>}
-                            {filter === HIDDEN && <span className="kx-meta">Fora da biblioteca. Clique com o botão direito para restaurar.</span>}
                             <div className={`lib-grid ${selectable && ms.picking ? "is-picking" : ""}`} onKeyDown={selectable ? (e) => ms.keyDown(e, { onDelete: removeMany }) : undefined}>
                                 {shown.map((b) => {
                                     const on = sel?.kind === b.kind && sourceOf(sel.value) === b.source;
                                     const waiting = pending.has(b.url);
                                     const tip = `${b.name}${b.origin === "keryx" ? " · vem com o KERYX" : b.origin === "media" ? " · também na Mídia" : ""}${waiting ? ` · ${SYNC_WAIT_HINT}` : ""}`;
                                     return (
-                                        <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""} ${selectable && ms.has(b.source) ? "is-marked" : ""}`} aria-pressed={on} aria-label={`${b.name}${selectable && ms.has(b.source) ? ", selecionado" : ""}`} title={tip}
+                                        <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${selectable && ms.has(b.source) ? "is-marked" : ""}`} aria-pressed={on} aria-label={`${b.name}${selectable && ms.has(b.source) ? ", selecionado" : ""}`} title={tip}
                                             onClick={(e) => { if (selectable && ms.click(b.source, e)) return; if (waiting) c.say(PENDING_SAY); else setSel({ kind: b.kind, value: b.url }); }}
                                             onDoubleClick={() => { if (!waiting && !ms.picking) take({ kind: b.kind, value: b.url }); }} onContextMenu={(e) => tileMenu(e, b)}>
-                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <VideoStill src={b.url} className="" /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}{selectable && ms.picking && <RowMark />}</span>
+                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <VideoStill src={b.url} className="" /> : <img src={b.thumb} alt="" loading="lazy" decoding="async" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}{selectable && ms.picking && <RowMark />}</span>
                                             <span className="fg-name">{b.favorite && <Icon name="star" size={12} />}{b.name}</span>
                                             {b.kind === "video" && <CodecMark src={b.url} />}
                                         </button>
@@ -383,7 +369,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                         <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} preview motion={sel?.kind !== "video"} />}</div>
                         <div className="lib-label"><span className="kx-meta">Escolhido</span><span className="t">{label}</span></div>
                         {entry && <FundoDetail key={entry.source} b={entry} save={save} sample={false}
-                            categories={managedCategories(storedCats, list)} onCategories={() => setView("categories")} onRestore={() => act.restore(entry)} />}
+                            categories={managedCategories(storedCats, list)} onCategories={() => setView("categories")} />}
                     </div>}
                 </div>
                 <div className="lib-foot">

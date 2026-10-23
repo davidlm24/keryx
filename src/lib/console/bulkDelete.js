@@ -130,17 +130,18 @@ export function deletedSay(n, noun = NOUNS.item, failed = 0) {
 
 // Taking several backgrounds out at once (owner 2026-10-21, the "Seleção
 // múltipla" mockup, M3 = A): each goes as its origin says (backgroundActions),
-// split for ONE question — factory photos to Excluídos (hidden; the file is
-// the app's, never deleted), files sent here deleted (their Media row; their
-// BackgroundPref after, prefsAfterDelete), Mídia pictures out of the
-// backgrounds only (their BackgroundPref goes, the Mídia keeps them). An
-// excluded factory photo has nowhere further to go: `skipped`.
+// split for ONE question — factory photos out of the library for good
+// (hidden; the file is the app's, never deleted; owner 2026-10-23: no
+// Excluídos), files sent here deleted (their Media row; their BackgroundPref
+// after, prefsAfterDelete), Mídia pictures out of the backgrounds only (their
+// BackgroundPref goes, the Mídia keeps them). One already excluded has
+// nowhere further to go: `skipped`.
 //   entries  the marked backgrounds (backgroundList entries)
 // -> { exclude, delete, untrack, skipped }
 export function backgroundRemoval(entries = []) {
     const plan = { exclude: [], delete: [], untrack: [], skipped: [] };
     for (const b of entries) {
-        const out = backgroundActions(b).filter((k) => k !== "restore")[0];
+        const out = backgroundActions(b)[0];
         (out ? plan[out] : plan.skipped).push(b);
     }
     return plan;
@@ -162,43 +163,46 @@ export function prefsAfterDelete(deleted = [], backgroundMedia = []) {
 }
 
 // The action for the marked backgrounds (owner 2026-10-22, "use excluir"):
-// with any file sent here among them — deleted for good — it is Excluir…
-// with the trash (Excluir = apaga); otherwise Tirar dos fundos… with the x
-// (they go to Excluídos or stay in the Mídia). `plan`: backgroundRemoval.
+// with any factory photo or file sent here among them — both leave for good
+// (owner 2026-10-23) — it is Excluir… with the trash (Excluir = apaga);
+// otherwise, Mídia pictures only, Tirar dos fundos… with the x (they stay in
+// the Mídia). `plan`: backgroundRemoval.
 export function backgroundAction(plan = {}) {
-    return plan.delete?.length ? { label: "Excluir…", icon: "trash", verb: "Excluir" } : { label: "Tirar dos fundos…", icon: "x", verb: "Tirar" };
+    return plan.delete?.length || plan.exclude?.length ? { label: "Excluir…", icon: "trash", verb: "Excluir" } : { label: "Tirar dos fundos…", icon: "x", verb: "Tirar" };
 }
 
 // The one question for several backgrounds (backgroundRemoval in
-// backgroundPrefs.js): it says where each origin goes. The files deleted for
-// good are the amber line, the verb is Excluir, and it opens on Cancelar.
-// null = nothing can go further (every one already in Excluídos).
+// backgroundPrefs.js): it says where each origin goes. What leaves for good
+// is the amber line, the verb is Excluir, and it opens on Cancelar.
+// null = nothing can go further (every one already out).
 export function backgroundQuestion({ exclude = [], delete: del = [], untrack = [], skipped = [] } = {}) {
     const going = [...exclude, ...del, ...untrack];
     const n = going.length;
     if (!n) return null;
     const count = (list, one, many) => `${list.length === 1 ? `1 ${one}` : `${list.length} ${many}`}`;
     const text = [
-        exclude.length && `${count(exclude, "vem com o KERYX e vai", "vêm com o KERYX e vão")} para Excluídos: Restaurar traz de volta.`,
         untrack.length && `${count(untrack, "é da Mídia e sai", "são da Mídia e saem")} só dos fundos: a Mídia continua com ${untrack.length === 1 ? "ele" : "eles"}.`,
-        skipped.length && `${count(skipped, "já está", "já estão")} em Excluídos.`,
+        skipped.length && `${count(skipped, "já saiu", "já saíram")} da biblioteca.`,
     ].filter(Boolean).join(" ");
-    const warn = del.length ? [`${count(del, "foi enviado para a biblioteca e é excluído", "foram enviados para a biblioteca e são excluídos")} de vez.`] : [];
-    const { verb } = backgroundAction({ delete: del });
+    const warn = [
+        exclude.length && `${count(exclude, "vem com o KERYX e sai", "vêm com o KERYX e saem")} da biblioteca de vez: para usar de novo, traga a imagem do computador.`,
+        del.length && `${count(del, "foi enviado para a biblioteca e é excluído", "foram enviados para a biblioteca e são excluídos")} de vez.`,
+    ].filter(Boolean);
+    const { verb } = backgroundAction({ delete: del, exclude });
     return {
         title: n === 1 ? `${verb} o fundo?` : `${verb} ${n} fundos?`,
         list: nameList(going.map((b) => b.name)),
         warn, text,
         ok: n === 1 ? verb : `${verb} ${n}`,
-        danger: del.length > 0,
+        danger: del.length + exclude.length > 0,
     };
 }
 
 // The toast after: what went where.
 export function backgroundSay({ exclude = 0, delete: del = 0, untrack = 0, failed = 0 } = {}) {
+    const gone = exclude + del;
     const parts = [
-        exclude && `${exclude} em Excluídos`,
-        del && `${del} ${del === 1 ? "excluído" : "excluídos"}`,
+        gone && `${gone} ${gone === 1 ? "excluído" : "excluídos"}`,
         untrack && `${untrack} só fora dos fundos`,
     ].filter(Boolean);
     const n = exclude + del + untrack;

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { needsPoster, posterTime, posterSize } from "./mediaPoster.js";
+import { needsPoster, posterTime, posterSize, tileUrl } from "./mediaPoster.js";
 
 const file = { type: "video", file_url: "http://127.0.0.1:7700/media/v.mp4" };
 
@@ -11,9 +11,27 @@ test("needsPoster: a video file on this computer with no still yet", () => {
     assert.equal(needsPoster({ ...file, file_url: "https://youtu.be/abc" }), false, "YouTube");
     assert.equal(needsPoster({ ...file, file_url: "https://www.youtube.com/watch?v=abc" }), false, "YouTube");
     assert.equal(needsPoster({ ...file, file_url: "" }), false, "no file");
-    assert.equal(needsPoster({ ...file, type: "image" }), false, "an image is its own picture");
     assert.equal(needsPoster({ ...file, type: "audio" }), false);
     assert.equal(needsPoster(null), false);
+});
+
+test("needsPoster: a photo gets a small copy too (owner 2026-10-23); a GIF and an SVG keep the file", () => {
+    const photo = { type: "image", file_url: "http://127.0.0.1:7700/media/foto.jpg" };
+    assert.equal(needsPoster(photo), true);
+    assert.equal(needsPoster({ ...photo, thumbnail_url: "http://127.0.0.1:7700/media/p.webp" }), false);
+    assert.equal(needsPoster({ ...photo, file_url: "http://127.0.0.1:7700/media/anima.gif" }), false, "a GIF moves");
+    assert.equal(needsPoster({ ...photo, file_url: "http://127.0.0.1:7700/media/logo.SVG" }), false, "an SVG has any size");
+    assert.equal(needsPoster({ ...photo, type: "gif" }), false);
+    assert.equal(needsPoster({ ...photo, file_url: "https://images.unsplash.com/photo-1?w=1920" }), false, "another site's picture: left alone");
+    assert.equal(needsPoster({ ...photo, file_url: "keryx-media://foto.jpg" }), false, "not resolved to this computer");
+});
+
+test("tileUrl: the small copy once it is here, else the file", () => {
+    const photo = { file_url: "http://h/media/foto.jpg" };
+    assert.equal(tileUrl(photo), "http://h/media/foto.jpg");
+    assert.equal(tileUrl({ ...photo, thumbnail_url: "http://h/media/t.webp" }), "http://h/media/t.webp");
+    assert.equal(tileUrl({ ...photo, thumbnail_url: "http://h/media/t.webp", posterSyncing: true }), "http://h/media/foto.jpg", "the copy still coming from another computer");
+    assert.equal(tileUrl(null), "");
 });
 
 test("posterTime: a tenth in, between 1 s and 5 s; short clips from their middle", () => {

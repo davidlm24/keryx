@@ -379,12 +379,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   background can leave the library** (owner 2026-10-16, the factory photos
   too): its right click goes by its origin (`backgroundActions`, `origin`
   keryx/own/media in `backgroundList`, tested) — a factory photo is
-  excluded (`BackgroundPref.hidden`; its file is the app's, never deleted)
-  and comes back from the **Excluídos** chip (Restaurar, menu or the side
-  panel); a file sent or brought in is deleted (its Media row, and its
-  BackgroundPref unless another copy is a background); a Mídia picture is
-  "Tirar dos fundos" (its BackgroundPref goes, the Mídia keeps it). There
-  is no "Oculto" any more: an old hidden row is in Excluídos. **The
+  excluded **for good** (`BackgroundPref.hidden`; its file is the app's,
+  never deleted; owner 2026-10-23: there is no Excluídos chip and no
+  Restaurar — the picture comes back only as a file brought from the
+  computer, so "Excluir…" asks with `danger`); a file sent or brought in is
+  deleted (its Media row, and its BackgroundPref unless another copy is a
+  background); a Mídia picture is "Tirar dos fundos" (its BackgroundPref
+  goes, the Mídia keeps it). A hidden row (an old Oculto too) is never
+  listed and offers nothing (`backgroundActions` → []). **The
   categories are the church's** (owner 2026-10-16), **edited inside the
   library** (its "Categorias…" chip, `library/FundoCategories.jsx`;
   Configurações › Temas e fundos › Categorias de fundos only opens the
@@ -1658,7 +1660,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **Media URLs:** the store keeps `keryx-media://<file>`; pages get
   `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
   form into the database by other means, and keep checks like
-  `startsWith("http")` working. A video's still is `Media.thumbnail_url`
+  `startsWith("http")` working. **A picture's small copy is
+  `Media.thumbnail_url` too** (owner 2026-10-23: the galleries decoded
+  each photo whole for a 160 px tile): a WebP of at most 480 px made by the
+  same backfill (`needsPoster` in mediaPoster.js: this computer's pictures,
+  not a GIF or an SVG), drawn by every gallery tile through `tileUrl` (the
+  Mídia, the background library, the Biblioteca's peek); the factory
+  photos ship theirs in `resources/backgrounds/thumbs/` (`backgroundThumbUrl`,
+  `backgrounds.test.mjs` checks each); on air and in the Prévia a picture is
+  always its file. A video's still is `Media.thumbnail_url`
   (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
   sent through `UploadFile`); it rides in the live item as `poster` for the
   Prévia and shows on hover in the Biblioteca. **A video Fundo plays only on

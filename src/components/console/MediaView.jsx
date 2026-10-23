@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { tileUrl } from "@/lib/mediaPoster";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn, IconBtn, Field, Empty, WinBar, SelectManyBtn, RowMark } from "./kx";
@@ -314,7 +315,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             {shown.map((m) => (
                                 <div key={m.id} className="mv-cell" data-media-id={m.id} onContextMenu={fileMenu(m)}>
                                     <button type="button" className={`mv-th kx-t ${state(m)}`} title={m.title} onClick={(e) => pick(m, e)} onDoubleClick={() => { if (!ms.picking) send(m); }} {...drag(m)}>
-                                        {(m.type === "image" || m.type === "gif") && !m.missing && <img src={m.file_url} alt="" loading="lazy" />}
+                                        {(m.type === "image" || m.type === "gif") && !m.missing && <img src={tileUrl(m)} alt="" loading="lazy" decoding="async" />}
                                         {m.type === "video" && !isYouTube(m) && !m.missing && (m.thumbnail_url && m.duration > 0 && !m.posterSyncing
                                             ? <img src={m.thumbnail_url} alt="" loading="lazy" />
                                             : <video src={`${m.file_url}#t=1`} preload="metadata" muted onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />)}
@@ -407,7 +408,7 @@ function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, o
     const m = picked[0];
     const ok = !m.missing && !m.syncing;
     const yt = m.type === "video" && /youtu/.test(m.file_url || "");
-    const still = m.missing ? null : (m.type === "image" || m.type === "gif") ? m.file_url : (m.type === "video" || m.type === "pdf") && m.thumbnail_url && !m.posterSyncing ? m.thumbnail_url : null;
+    const still = m.missing ? null : (m.type === "image" || m.type === "gif") ? tileUrl(m) : (m.type === "video" || m.type === "pdf") && m.thumbnail_url && !m.posterSyncing ? m.thumbnail_url : null;
     return (
         <aside className="mv-side" aria-label="Arquivo escolhido">
             <div className="mv-side-screen">
