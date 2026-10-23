@@ -1030,7 +1030,8 @@ export default function Console() {
     // in the panel's list when a message comes, its dot (usePedidos.js).
     const showPedidos = () => { if (!tabLists.panel.includes("pedidos")) setTabList("panel", showTab("panel", tabLists.panel, "pedidos")); };
     const pedidosOpen = env === "culto" && panelTabNow === "pedidos" && onScreen("abas") && !layout.folded?.abas;
-    const { unread: pedidosUnread } = usePedidos({ c, messages, tabOpen: pedidosOpen, show: showPedidos,
+    const pedidosReachable = onScreen("abas");
+    const { unread: pedidosUnread } = usePedidos({ c, messages, tabOpen: pedidosOpen, reachable: pedidosReachable, show: showPedidos,
         focus: () => { setOpen(null); setEnvState("culto"); showPedidos(); setPanelTab("pedidos"); } });
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });
@@ -1508,7 +1509,7 @@ export default function Console() {
         <PackageContext.Provider value={pkg.value}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
+            <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} verDot={pedidosUnread && !pedidosReachable} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
                 onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
@@ -1600,7 +1601,7 @@ export default function Console() {
             <MenusPop menus={menus} open={open} setOpen={setOpen} onAllServices={() => openPlanner(serviceId)} />
             <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept={SONG_ACCEPT}
                 onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) openImport(files); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
-            <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} dockLocked={envLocked} onDockLock={setEnvLock} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} />
+            <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} dockLocked={envLocked} onDockLock={setEnvLock} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} newIn={pedidosUnread && !pedidosReachable ? "abas" : null} />
             <FirstSteps open={open} setOpen={setOpen} onGo={(id) => { if (id === "planner") openPlanner(serviceId); else if (id === "search") setOpen("palette"); else if (id === "verify") setOpen("verificar"); else if (id === "outs") setOpen("outs"); }} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />

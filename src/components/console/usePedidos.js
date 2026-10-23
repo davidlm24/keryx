@@ -9,8 +9,10 @@ import { freshMessages, messageSay, hasUnread, newestAt } from "@/lib/console/pe
 // repeat them, and only a row sent in the last 2 minutes is said at all.
 // A fresh row also puts Pedidos back among the panel's tabs when the
 // operator's saved list leaves it out (`show`), and its toast's Ver opens it
-// (`focus`). The tab's dot: a row newer than the last one seen with the tab
-// open (localStorage, this computer).
+// (`focus`) — only while the Painel is on screen (`reachable`): the dock
+// never moves by itself, so otherwise the toast says where it is (owner's
+// S9 = B, Rodada Q) and the top bar's Ver wears the dot. The tab's dot: a row
+// newer than the last one seen with the tab open (localStorage, this computer).
 const TOLD_KEY = "keryx.console.pedidos.told";
 const SEEN_KEY = "keryx.console.pedidos.seen";
 
@@ -24,22 +26,23 @@ const readSeen = () => {
     try { return window.localStorage.getItem(SEEN_KEY) || ""; } catch { return ""; }
 };
 
-export function usePedidos({ c, messages, tabOpen, show, focus }) {
+export function usePedidos({ c, messages, tabOpen, reachable = true, show, focus }) {
     const told = useRef(null);
     if (!told.current) told.current = readTold();
-    const latest = useRef({ c, show, focus });
-    latest.current = { c, show, focus };
+    const latest = useRef({ c, show, focus, reachable });
+    latest.current = { c, show, focus, reachable };
     useEffect(() => {
         const fresh = freshMessages(messages, told.current);
         if (!fresh.length) return;
         for (const r of fresh) told.current.add(r.id);
         // Keep the list short: the ids of the last few hundred rows are enough.
         try { window.sessionStorage.setItem(TOLD_KEY, JSON.stringify([...told.current].slice(-300))); } catch { /* this window only */ }
-        const { c: con, show: showTab, focus: focusTab } = latest.current;
+        const { c: con, show: showTab, focus: focusTab, reachable: canSee } = latest.current;
         showTab();
         const last = fresh[fresh.length - 1];
         const words = fresh.length > 1 ? `${messageSay(last)} · e mais ${fresh.length - 1}` : messageSay(last);
-        con.say(words, { label: "Ver", run: () => focusTab() });
+        if (canSee) con.say(words, { label: "Ver", run: () => focusTab() });
+        else con.say(`${words} · veja em Ver › Painel`);
     }, [messages]);
 
     const [seen, setSeen] = useState(readSeen);

@@ -1677,7 +1677,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   not said (sessionStorage, so a reload never repeats one) says "Pedido de
   <nome>: <louvor>" / "Mensagem de <nome>" with Ver; it also puts Pedidos
   back in the panel's tabs when the operator's `layout.tabs` leaves it
-  out (`showTab`). The tab's dot (`dot` on a TabRow tab, `.kx-tc-dot`
+  out (`showTab`). **The dock never moves by itself** (owner's S9 = B):
+  with the Painel not on screen (the tray, as in the medium and narrow
+  tiers) the toast has no Ver and ends "· veja em Ver › Painel", and a gold
+  dot marks the top bar's Ver and the Painel's row in its menu while there
+  are rows not seen (`verDot`, Menu's `newIn`). The tab's dot (`dot` on a TabRow tab, `.kx-tc-dot`
   after the name, the brand's gold) is a row newer than the last one seen
   with the tab open (localStorage `keryx.console.pedidos.seen`).
   `remoteCommand` (lan.cjs) checks every command against it; a phone

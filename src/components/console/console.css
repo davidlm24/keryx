@@ -54,6 +54,8 @@
 .console .topbar .tb-clock { font-size: var(--fs-ui); font-weight: 500; color: var(--fg-2); font-variant-numeric: tabular-nums; padding: 0 var(--space-1); }
 /* The bell: a red dot while something is unread. */
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
+.console .topbar .tb-new-dot { background: var(--brand); }
+.console .ver-new-dot { display: inline-block; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--brand); }
 .console .topbar .tb-bell-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
 .console .topbar .tb-outs-l { font-variant-numeric: tabular-nums; }
 /* The sync's cloud (TopBar): a dot in the state's colour on its corner. */
@@ -2195,6 +2197,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
   .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
   .console .topbar .tb-bell-dot { background: Highlight; }
+  .console .ver-new-dot { background: LinkText; }
   /* The Setlist automática's countdown and its stop (Rodada N2). */
   .console .rund-cd { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .rund-cd > button { outline: 1px solid ButtonText; outline-offset: -1px; }
