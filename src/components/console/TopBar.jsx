@@ -60,7 +60,7 @@ function Clocks({ svcAt, onPlanner }) {
 // Encerrar) live in the Programa's pill since Rodada E1 (owner's pick B).
 // Nothing wraps: as the window narrows the bar drops the service's end,
 // then the clock, then shortens the search (container queries in console.css).
-export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svcAt, onPlanner, onSync, menuKeysOff = false, inert = false }) {
+export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, verDot = false, svcAt, onPlanner, onSync, menuKeysOff = false, inert = false }) {
     const searchKey = keyHint("search", usePrefs().letter_keys);
     const toggle = (name) => setOpen(open === name ? null : name);
     const envTab = (value, label, title) => (
@@ -96,8 +96,12 @@ export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLab
                     <i className="kx-dot" /><span className="tb-outs-l">{outsCompact}</span>
                 </button>
                 <SyncCloud onSync={onSync} />
-                {/* Ver: the modules, the density and the arrangements; beside the bell. */}
-                <IconBtn name="panels" className="tb-ver" title="Ver · módulos, densidade e disposição" on={open === "ver"} onClick={() => toggle("ver")} aria-haspopup="menu" aria-expanded={open === "ver"} />
+                {/* Ver: the modules, the density and the arrangements; beside the bell.
+                    Its gold dot: pedidos not seen while the Painel is in the tray (Rodada Q, S9 = B). */}
+                <span className="tb-bell">
+                    <IconBtn name="panels" className="tb-ver" title={verDot ? "Ver · módulos, densidade e disposição · pedidos novos no Painel" : "Ver · módulos, densidade e disposição"} on={open === "ver"} onClick={() => toggle("ver")} aria-haspopup="menu" aria-expanded={open === "ver"} />
+                    {verDot && open !== "ver" && <i className="tb-bell-dot tb-new-dot" aria-hidden="true" />}
+                </span>
                 <span className="tb-bell">
                     <IconBtn name="bell" title={unread ? `Notificações · ${unread} ${unread === 1 ? "nova" : "novas"}` : "Notificações"} on={open === "notifs"} onClick={() => toggle("notifs")} aria-expanded={open === "notifs"} />
                     {unread > 0 && open !== "notifs" && <i className="tb-bell-dot" aria-hidden="true" />}

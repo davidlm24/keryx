@@ -30,7 +30,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 // bar's and, where it folds away, the Menu button's (MenuBar.jsx); Ajuda keeps
 // Sobre and Atualizar too, so either habit finds them. Ver is the panels
 // glyph beside the bell.
-export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, dockLocked = false, onDockLock, onSettings, update, onUpdateNow }) {
+export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, dockLocked = false, onDockLock, onSettings, update, onUpdateNow, newIn = null }) {
     if (open !== "menu" && open !== "ver") return null;
     // Every list here is the console's one menu (Menu.jsx MenuList): it takes
     // the focus, the arrows walk it, Esc and Tab close it (C-14, C-15).
@@ -39,7 +39,9 @@ export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets 
     if (open === "ver") {
         const items = [
             { head: "Ver" },
-            ...MODULES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: !layout.hidden[key], onSelect: () => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } }) })),
+            // `newIn`: the module with something new in it (the Painel's
+            // pedidos, Rodada Q S9 = B) wears the gold dot.
+            ...MODULES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: !layout.hidden[key], kbd: newIn === key ? <><i className="ver-new-dot" aria-hidden="true" /><span className="kx-sr">pedidos novos</span></> : undefined, onSelect: () => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } }) })),
             "sep",
             { head: "Densidade" },
             ...DENSITIES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: densityOf(layout) === key, onSelect: () => setLayout({ ...layout, density: key }), title: key === "auto" ? "Compacta numa tela baixa (notebook), Confortável nas outras" : key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item" })),

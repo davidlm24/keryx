@@ -54,6 +54,8 @@
 .console .topbar .tb-clock { font-size: var(--fs-ui); font-weight: 500; color: var(--fg-2); font-variant-numeric: tabular-nums; padding: 0 var(--space-1); }
 /* The bell: a red dot while something is unread. */
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
+.console .topbar .tb-new-dot { background: var(--brand); }
+.console .ver-new-dot { display: inline-block; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--brand); }
 .console .topbar .tb-bell-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
 .console .topbar .tb-outs-l { font-variant-numeric: tabular-nums; }
 /* The sync's cloud (TopBar): a dot in the state's colour on its corner. */
@@ -271,6 +273,33 @@
 .console .tabs-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); min-height: 100%; box-sizing: border-box; }
 .console .tabs-notes .tnotes { max-height: none; }
 /* Notas do operador (the Notas tab's free field, Service.operator_notes). */
+/* Pedidos (Rodada Q, PedidosTab.jsx; the owner's mockup, S6 = A): the
+   Equipe's chat as lines and its song requests as cards, the newest at the
+   bottom; a card's actions always on screen; a done one dims. */
+.console .ped-list { display: flex; flex-direction: column; gap: 2px; height: 100%; overflow-y: auto; padding: var(--space-1) 0 var(--space-2); box-sizing: border-box; }
+.console .ped-list > :first-child { margin-top: auto; }
+.console .ped-chat { display: flex; flex-direction: column; gap: 2px; padding: 6px var(--space-3); }
+.console .ped-row { display: flex; align-items: center; gap: var(--space-2); }
+.console .ped-row > .ped-h { flex: 1; min-width: 0; }
+.console .ped-h { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-1); font-size: var(--fs-meta); color: var(--fg-3); }
+.console .ped-h b { color: var(--fg-2); font-weight: 600; }
+.console .ped-t { font-size: var(--fs-content); line-height: 1.4; color: var(--fg-1); overflow-wrap: anywhere; white-space: pre-wrap; }
+.console .ped-card { display: flex; flex-direction: column; gap: 6px; margin: 2px var(--space-1); padding: 10px var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); }
+.console .ped-card.is-done { opacity: .55; }
+.console .ped-song { font-size: var(--fs-content-lg); line-height: 1.35; color: var(--fg-1); overflow-wrap: anywhere; }
+.console .ped-song b { font-weight: 600; }
+.console .ped-note { font-size: var(--fs-ui); line-height: 1.4; color: var(--fg-2); overflow-wrap: anywhere; white-space: pre-wrap; }
+.console .ped-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.console .ped-acts .kx-btn svg { width: 13px; height: 13px; margin-right: var(--space-1); }
+.console .ped-acts .kx-btn-icon svg { margin-right: 0; }
+.console .ped-badge { display: inline-flex; align-items: center; gap: var(--space-1); height: 18px; padding: 0 7px; margin-left: var(--space-1); border-radius: var(--radius-round); font-size: var(--fs-meta); }
+.console .ped-badge.is-done { background: var(--ok-tint); color: var(--ok-fg); }
+.console .ped-badge.is-warn { background: var(--warn-tint); color: var(--warn-fg); }
+.console .ped-link { display: flex; align-items: center; gap: var(--space-2); margin-top: 2px; }
+.console .ped-cover { flex: none; width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; background: var(--bg-4); }
+/* A trimmable tab row's dot (Pedidos' "novos"): after the name, the brand's gold. */
+.console .tabrow:not(.tabrow-close) .kx-t { display: inline-flex; align-items: center; gap: 6px; }
+.console .tabrow:not(.tabrow-close) .kx-tc-dot { flex: none; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--brand); }
 .console .op-notes { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-height: 0; }
 .console .op-notes-f { flex: 1; }
 .console .op-notes-f { min-height: 96px; resize: vertical; padding: 6px var(--space-2); line-height: 18px; }
@@ -2114,7 +2143,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   /* Planejar o culto's tabs: the one in front is chosen (a solid ring); the
      console's culto dot keeps a colour of the system. */
   .console .tabrow-close .kx-tc.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
-  .console .tabrow-close .kx-tc-dot { background: LinkText; }
+  .console .tabrow .kx-tc-dot { background: LinkText; }
+  /* Pedidos: a card keeps its edge, a badge its outline. */
+  .console :is(.ped-card, .ped-badge) { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .tabrow-close .kx-tc-x { opacity: 1; }
   /* The amber mark of a video that may not play keeps an edge. */
   .console .codec-mark { outline: 1px solid CanvasText; outline-offset: -1px; }
@@ -2166,6 +2197,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
   .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
   .console .topbar .tb-bell-dot { background: Highlight; }
+  .console .ver-new-dot { background: LinkText; }
   /* The Setlist automática's countdown and its stop (Rodada N2). */
   .console .rund-cd { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .rund-cd > button { outline: 1px solid ButtonText; outline-offset: -1px; }

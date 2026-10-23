@@ -14,9 +14,10 @@ import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 // "título – artista" asks LRCLIB for that title by that artist (Rodada P12);
 // a result "com tempo" brings its recording's timed lines, which come in as
 // the song's marks (lrcMarks): the times of that recording, not of a band.
-export default function LyricsSearch({ c, onClose, onImported }) {
+// `initial`: the words it opens with (a pedido's song, the Pedidos tab).
+export default function LyricsSearch({ c, initial = "", onClose, onImported }) {
     const bridge = useRef(window.keryxDesktop?.lyrics || null);
-    const [q, setQ] = useState("");
+    const [q, setQ] = useState(initial);
     const [busy, setBusy] = useState(false);
     const [results, setResults] = useState(null);
     const [errors, setErrors] = useState([]);

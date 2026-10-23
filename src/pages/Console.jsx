@@ -67,6 +67,7 @@ import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import { Menu, FirstSteps, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew, TabsMenu } from "@/components/console/Popovers";
 import TabsPanel, { TabsPlus } from "@/components/console/TabsPanel";
+import { usePedidos } from "@/components/console/usePedidos";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
@@ -334,6 +335,9 @@ export default function Console() {
     });
     // The tab in front of the panel beside the Prévia (its tabs: layout.tabs).
     const [panelTab, setPanelTab] = useState("notas");
+    // Procurar a letra… from a pedido (the Pedidos tab): the search opens with its song.
+    const [lyricsQ, setLyricsQ] = useState("");
+    useEffect(() => { if (open !== "lyrics") setLyricsQ(""); }, [open]);
     const [drawer, setDrawer] = useState(false);
     // Ver › Editar layout: moving the columns and stacked cards (arrange.js).
     // A window page (the planner, an editor, ...) covers the grid: editing ends.
@@ -1022,6 +1026,13 @@ export default function Console() {
         folded: folded ? folded.split(",") : [], head: PANEL_HEAD,
     }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH, folded, PANEL_HEAD]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
+    // The Pedidos tab (Rodada Q): the toast of each new row, the tab put back
+    // in the panel's list when a message comes, its dot (usePedidos.js).
+    const showPedidos = () => { if (!tabLists.panel.includes("pedidos")) setTabList("panel", showTab("panel", tabLists.panel, "pedidos")); };
+    const pedidosOpen = env === "culto" && panelTabNow === "pedidos" && onScreen("abas") && !layout.folded?.abas;
+    const pedidosReachable = onScreen("abas");
+    const { unread: pedidosUnread } = usePedidos({ c, messages, tabOpen: pedidosOpen, reachable: pedidosReachable, show: showPedidos,
+        focus: () => { setOpen(null); setEnvState("culto"); showPedidos(); setPanelTab("pedidos"); } });
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });
     // Ver's and Configurações' module switches: the culto's tray on this
@@ -1237,15 +1248,16 @@ export default function Console() {
         </Panel>
     );
     // The tabs panel: the tabs the operator checked in its (+) (Notas, Aviso
-    // rápido, Timers, Ferramentas, Esteve no ar).
-    const panelTabsShown = shownTabs("panel", tabLists.panel);
+    // rápido, Timers, Pedidos, Ferramentas, Esteve no ar); Pedidos with its dot.
+    const panelTabsShown = shownTabs("panel", tabLists.panel).map((t) => (t.id === "pedidos" && pedidosUnread ? { ...t, dot: "novos" } : t));
     const panelOnScreen = onScreen("abas");
     const panelHas = panelOnScreen ? Object.fromEntries(tabLists.panel.map((id) => [id, true])) : {};
     const prepare = (s) => c.setPrev(s);
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
-            items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
+            items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend}
+            messages={messages} onAddSong={addSong} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" actions={<>
@@ -1497,7 +1509,7 @@ export default function Console() {
         <PackageContext.Provider value={pkg.value}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
+            <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} verDot={pedidosUnread && !pedidosReachable} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
                 onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
@@ -1577,7 +1589,7 @@ export default function Console() {
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} escRef={libEsc} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             {open && <div className={`scrim ${winOpen ? "over-win" : ""} ${open === "palette" || open === "atalhos" || open === "passos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
-            {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
+            {open === "lyrics" && <LyricsSearch c={c} initial={lyricsQ} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
                     <VerifyView c={c} items={playable} data={data} outputs={outputs.filter((o) => !o.removed)} network={network}
@@ -1589,7 +1601,7 @@ export default function Console() {
             <MenusPop menus={menus} open={open} setOpen={setOpen} onAllServices={() => openPlanner(serviceId)} />
             <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept={SONG_ACCEPT}
                 onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) openImport(files); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
-            <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} dockLocked={envLocked} onDockLock={setEnvLock} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} />
+            <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} dockLocked={envLocked} onDockLock={setEnvLock} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} newIn={pedidosUnread && !pedidosReachable ? "abas" : null} />
             <FirstSteps open={open} setOpen={setOpen} onGo={(id) => { if (id === "planner") openPlanner(serviceId); else if (id === "search") setOpen("palette"); else if (id === "verify") setOpen("verificar"); else if (id === "outs") setOpen("outs"); }} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
