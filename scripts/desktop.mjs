@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Runs the desktop shell.
-//   node scripts/desktop.mjs dev     Vite dev server + Electron on it (hot reload)
+//   node scripts/desktop.mjs dev     Vite dev server + Electron on it (hot reload);
+//                                    rebuilds a stale dist/ first, for phones and network screens
 //   node scripts/desktop.mjs start   Electron on the built app in dist/
 //   node scripts/desktop.mjs smoke   like start, but exits after the checks in electron/smoke.cjs
 //   KERYX_SMOKE=1 node scripts/desktop.mjs dev   the same checks against the dev server,
@@ -38,6 +39,21 @@ function run(env) {
 }
 
 if (mode === "dev") {
+    // The console runs from Vite, but phones and network screens are served
+    // from dist/ (electron/lan.cjs). A stale dist/ shows them an old page, so
+    // rebuild it first (about 20 s); KERYX_SKIP_BUILD=1 only warns.
+    const { distStatus } = require("./dist-stale.cjs");
+    const status = distStatus(root);
+    if (status.stale) {
+        const why = status.missing ? "dist/ is missing" : "dist/ is older than src/ or shared/";
+        if (process.env.KERYX_SKIP_BUILD === "1") {
+            console.warn(`Warning: ${why}, so phones and network screens will show an old page. Run \`npm run build\`.`);
+        } else {
+            console.log(`${why}: phones and network screens are served from it. Building (KERYX_SKIP_BUILD=1 skips)...`);
+            const { build } = await import("vite");
+            await build({ root, logLevel: "warn" });
+        }
+    }
     // The app talks to its own store over IPC: no browser preview store here.
     process.env.KERYX_NO_PREVIEW = "1";
     const { createServer } = await import("vite");
