@@ -834,7 +834,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    header is narrow, the switch stays), the mark of what the item on air does
    at its end, and the countdown on the next row ("Próximo em 5 s · Cancelar";
    amber when it stopped instead). */
-.console .setlist-panel > .kx-panel-h { container: setlist-h / inline-size; }
 .console .rund-auto, .console .dock-lock { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-sm); padding: 0 var(--space-1); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: 500 var(--fs-ui)/1 var(--font-sans); white-space: nowrap; cursor: pointer; }
 .console .rund-auto:not(:disabled):hover, .console .dock-lock:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .rund-auto[aria-checked="true"], .console .dock-lock[aria-checked="true"] { color: var(--fg-1); }
@@ -843,7 +842,16 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    itens · tempo" ellipsizes first (the title's kx-section shrinks). Only
    where even "Setlist" would be cut does the word go: the switch alone, a
    24 px button. */
-@container setlist-h (width < 310px) { .console .rund-auto { width: var(--control-sm); padding: 0; justify-content: center; } .console .rund-auto-l { display: none; } }
+/* Rodada Q, Q1: the Autoplay switch and the two step buttons are the Setlist's
+   footer, not its header; the body is a column, the list scrolls, the footer
+   stays (the pattern of .slidesnav). */
+.console .setlist-panel > .kx-panel-b { display: flex; flex-direction: column; overflow: hidden; }
+.console .rund-scroll { flex: 1; min-height: 0; overflow: auto; }
+.console .rund-foot { flex: none; container: setlist-f / inline-size; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); height: var(--band); padding: 0 var(--space-3) 0 var(--space-1); border-top: 1px solid var(--line); min-width: 0; }
+.console .rund-foot-steps { display: inline-flex; align-items: center; gap: var(--space-1); }
+.console .rund-step { width: var(--control-sm); padding: 0; }
+.console .rund-step .kx-act-l { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@container setlist-f (width < 200px) { .console .rund-auto { width: var(--control-sm); padding: 0; justify-content: center; } .console .rund-auto-l { display: none; } }
 .console .rund-end { flex: none; display: inline-grid; place-items: center; width: 16px; color: var(--fg-3); }
 .console .rund .kx-row.is-air .rund-end { color: inherit; }
 .console .rund-cd { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: 22px; padding: 0 2px 0 var(--space-2); border-radius: var(--radius-round); background: var(--brand-tint); color: var(--brand); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }

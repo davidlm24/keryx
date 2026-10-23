@@ -25,6 +25,21 @@ export const isSection = (item) => String(item?.type || "").toUpperCase() === "S
 // What the console can put on air (sections and disabled items cannot).
 export const playableItems = (items) => (items || []).filter((i) => !isSection(i) && i.enabled !== false);
 
+// The playable neighbours of the item on air, in SETLIST order (never the
+// history): { prev, next, prevIndex, nextIndex } (indexes in `items`, null
+// when there is none). With nothing on air (airId unknown) next is the first
+// playable item and prev is none. Sections and disabled items are skipped.
+export function neighbours(items, airId) {
+    const list = items || [];
+    const at = airId ? list.findIndex((i) => i.id === airId) : -1;
+    const ok = (i) => !isSection(list[i]) && list[i].enabled !== false;
+    let nextIndex = null;
+    for (let i = at + 1; i < list.length; i++) if (ok(i)) { nextIndex = i; break; }
+    let prevIndex = null;
+    if (at >= 0) for (let i = at - 1; i >= 0; i--) if (ok(i)) { prevIndex = i; break; }
+    return { prev: prevIndex === null ? null : list[prevIndex], next: nextIndex === null ? null : list[nextIndex], prevIndex, nextIndex };
+}
+
 const MEDIA_TYPES = ["VIDEO", "IMAGE", "PDF", "POWERPOINT"];
 
 // Whether the session's Setlist item (live.session.itemId) is still on air
