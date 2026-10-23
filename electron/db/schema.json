@@ -1640,6 +1640,58 @@
         }
       }
     },
+    "ServiceMessage": {
+      "table": "service_message",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "serviceId": {
+          "type": "text"
+        },
+        "kind": {
+          "type": "text",
+          "default": "chat"
+        },
+        "sender": {
+          "type": "text"
+        },
+        "text": {
+          "type": "text"
+        },
+        "singer": {
+          "type": "text"
+        },
+        "song": {
+          "type": "text"
+        },
+        "songId": {
+          "type": "text"
+        },
+        "link": {
+          "type": "text"
+        },
+        "status": {
+          "type": "text",
+          "default": "open"
+        },
+        "sentAt": {
+          "type": "text"
+        }
+      }
+    },
     "ServiceTemplate": {
       "table": "service_template",
       "columns": {

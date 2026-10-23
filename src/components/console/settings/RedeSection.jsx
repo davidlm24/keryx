@@ -159,6 +159,7 @@ export default function RedeSection({ c }) {
             ))}
             </CfgGroup>
             <RemoteBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} />
+            <RemoteBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} role="team" />
             <CfgGroup id="rede.conectadas" k="Telas conectadas pela rede" summary={connectedSummary(clients, info.running)}>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
             {clients.map((cl) => {

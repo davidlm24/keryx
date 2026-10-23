@@ -412,3 +412,114 @@ test("setlist.autoplay: the culto's switch, locked too; no culto, 409", async ()
     assert.deepEqual(d.calls, [["setAutoplay", true], ["setAutoplay", false]]);
     assert.equal((await run(fakeConsole({ service: null }), "setlist.autoplay", { on: true })).code, "nothing");
 });
+
+// -- Rodada Q: setlist.add, and the Equipe (role team) ----------------------
+
+// The console's Setlist and messages as fakes: what they were asked is in calls.
+function planConsole(over = {}) {
+    const d = fakeConsole(over);
+    d.messages = over.messages || [];
+    d.made = [];
+    d.addToSetlist = async (stage) => { d.calls.push(["addToSetlist", stage.id]); return { added: [stage.title], left: 0 }; };
+    d.addPassage = async (r) => { d.calls.push(["addPassage", r.ref, r.version]); return { title: `${r.ref.book} ${r.ref.chapter}:${r.nums.join("-")}` }; };
+    d.ensureService = async () => { d.calls.push(["ensureService"]); return "draft"; };
+    d.createMessage = async (fields) => { const row = { id: `msg${d.made.length + 1}`, ...fields }; d.made.push(row); return row; };
+    d.now = () => Date.parse("2026-10-23T22:00:00.000Z") + (d.tick || 0);
+    return d;
+}
+const asTeam = (d, action, args) => createRemoteRunner(d).run({ action, args, v: 2, role: "team" });
+
+test("setlist.add: a song, a media or a material at the end of the Setlist, locked too", async () => {
+    const d = lock(planConsole());
+    const r = await createRemoteRunner(d).answer({ action: "setlist.add", args: { kind: "song", id: "s1" }, v: 2 });
+    assert.deepEqual(r, { ok: true, message: 'Celular: adicionou "Hino" à setlist.', data: { title: "Hino" } });
+    assert.deepEqual(d.calls, [["addToSetlist", "song:s1"]]);
+    assert.deepEqual(d.said, [['Celular: adicionou "Hino" à setlist.', undefined]], "said once, by the runner");
+    assert.equal((await run(d, "setlist.add", { kind: "media", id: "m1" })).ok, true);
+    assert.equal((await run(d, "setlist.add", { kind: "material", id: "x1" })).ok, true);
+    assert.equal((await run(d, "setlist.add", { kind: "song", id: "gone" })).code, "not_found");
+    d.addToSetlist = async () => ({ added: [], left: 1 });
+    assert.deepEqual(await run(d, "setlist.add", { kind: "song", id: "s1" }), { ok: false, message: "Esse item não entra na setlist.", status: 409, code: "blocked" });
+});
+
+test("setlist.add: a passage needs its verses; one that does not exist is 404", async () => {
+    const d = planConsole();
+    const r = await run(d, "setlist.add", { book: "João", chapter: 3, verseStart: 16, verseEnd: 17, version: "NVI" });
+    assert.equal(r.ok, true);
+    assert.equal(r.data.title, "João 3:16-17");
+    assert.deepEqual(d.calls.find((c) => c[0] === "addPassage").slice(2), ["NVI"]);
+    assert.deepEqual(await run(d, "setlist.add", { book: "João", chapter: 3 }), { ok: false, message: M.noVerses, status: 400 });
+    assert.equal((await run(d, "setlist.add", { book: "João", chapter: 3, verseStart: 99 })).status, 400, "past the chapter's verses");
+    assert.equal((await run(d, "setlist.add", { book: "Livro", chapter: 3, verseStart: 1 })).status, 400);
+    d.addPassage = async () => null;
+    assert.equal((await run(d, "setlist.add", { book: "João", chapter: 3, verseStart: 16 })).code, "not_found");
+});
+
+test("the Equipe: only what the contract gives it, whatever reaches the console", async () => {
+    const d = planConsole();
+    for (const [action, args] of [["next", {}], ["black", { on: true }], ["setlist.add", { kind: "song", id: "s1" }], ["sendMedia", { kind: "song", id: "s1" }], ["library", { tab: "media" }]]) {
+        assert.deepEqual(await asTeam(d, action, args), { ok: false, message: M.forbidden, status: 403, code: "forbidden" }, action);
+    }
+    assert.deepEqual(d.calls, [], "nothing ran");
+    // And the Controle never chats.
+    assert.equal((await run(d, "chat.send", { from: "Ana", text: "Oi" })).status, 403);
+    assert.equal((await run(d, "request.send", { from: "Ana", song: "Hino" })).status, 403);
+    assert.equal((await asTeam(d, "library", { tab: "songs" })).ok, true);
+});
+
+test("state for the Equipe: what is on air and the Setlist to read, its own caps", async () => {
+    const r = await asTeam(planConsole(), "state", {});
+    assert.equal(r.data.role, "team");
+    assert.deepEqual(r.data.caps, PROTOCOL.teamCaps);
+    assert.deepEqual(r.data.onAir, { title: "Hino", pos: "1/2" });
+    assert.equal(r.data.airItemId, "a");
+    assert.deepEqual(r.data.items.map((i) => [i.id, i.section]), [["sec", true], ["a", false], ["t", false]]);
+    for (const key of ["timers", "alerts", "locked", "screen", "bible", "nextItemId", "backItemId", "autoplay"]) assert.ok(!(key in r.data), key);
+});
+
+test("chat.send / request.send: a row of the culto, quietly; the same again within 30 s is that row", async () => {
+    const d = planConsole();
+    const runner = createRemoteRunner(d);
+    const send = (action, args) => runner.answer({ action, args, v: 2, role: "team" });
+    const first = await send("chat.send", { from: "Ana", text: "Dá pra deixar\u0007 o tom em Sol?" });
+    assert.deepEqual(first, { ok: true, message: "", data: { id: "msg1", at: "2026-10-23T22:00:00.000Z" } });
+    assert.deepEqual(d.made[0], { id: "msg1", sender: "Ana", status: "open", sentAt: "2026-10-23T22:00:00.000Z", kind: "chat", text: "Dá pra deixar o tom em Sol?", serviceId: "svc" });
+    d.tick = 5000;
+    assert.equal((await send("chat.send", { from: "Ana", text: "Dá pra deixar o tom em Sol?" })).data.id, "msg1", "a retry: the row made");
+    assert.equal(d.made.length, 1);
+    d.tick = 31000;
+    assert.equal((await send("chat.send", { from: "Ana", text: "Dá pra deixar o tom em Sol?" })).data.id, "msg2", "past 30 s it is new");
+    // A request: a song of the library keeps its id, one gone keeps the name.
+    const asked = await send("request.send", { from: "Lucas", singer: "Ana Souza", song: "Hino", songId: "s1", note: "Depois da oferta", link: "https://youtu.be/dQw4w9WgXcQ?t=40" });
+    assert.equal(asked.ok, true);
+    assert.deepEqual(d.made.at(-1), { id: "msg3", sender: "Lucas", status: "open", sentAt: d.made.at(-1).sentAt, link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", kind: "pedido", text: "Depois da oferta", singer: "Ana Souza", song: "Hino", songId: "s1", serviceId: "svc" });
+    await send("request.send", { from: "Lucas", song: "Outra", songId: "nope" });
+    assert.equal(d.made.at(-1).songId, undefined);
+    // Only YouTube links.
+    assert.deepEqual(await send("chat.send", { from: "Ana", text: "Olha", link: "https://evil.example/youtube.com/watch?v=dQw4w9WgXcQ" }), { ok: false, message: M.notYouTube, status: 400 });
+    assert.equal((await send("chat.send", { from: "Ana", text: "Olha", link: "javascript:alert(1)" })).status, 400);
+    assert.equal(d.said.length, 0, "the console's toast comes from the rows (PR2), never twice");
+    // No culto chosen: today's setlist starts.
+    const none = planConsole({ service: null });
+    await asTeam(none, "chat.send", { from: "Ana", text: "Oi" });
+    assert.deepEqual(none.calls, [["ensureService"]]);
+    assert.equal(none.made[0].serviceId, "draft");
+});
+
+test("requests: a page back from the newest; songText: a song's parts with chords", async () => {
+    const messages = Array.from({ length: 40 }, (_, i) => ({ id: `m${i}`, kind: i % 2 ? "pedido" : "chat", sender: "Ana", text: `t${i}`, song: i % 2 ? "Hino" : "", status: i === 1 ? "done" : "open", sentAt: new Date(Date.UTC(2026, 9, 23, 22, i)).toISOString() }));
+    const d = planConsole({ messages: [...messages].reverse() });
+    const page = await asTeam(d, "requests", {});
+    assert.equal(page.data.total, 40);
+    assert.equal(page.data.rows.length, PROTOCOL.limits.requestPage);
+    assert.deepEqual([page.data.rows[0].id, page.data.rows.at(-1).id], ["m10", "m39"], "the newest page, oldest first");
+    const older = await asTeam(d, "requests", { skip: 30 });
+    assert.deepEqual(older.data.rows.map((r) => r.id), ["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"]);
+    assert.deepEqual(older.data.rows[1], { id: "m1", at: messages[1].sentAt, kind: "pedido", from: "Ana", text: "t1", singer: "", song: "Hino", status: "done" });
+    assert.equal((await asTeam(d, "requests", { kind: "pedido", limit: 5 })).data.total, 20);
+    // songText reads the console's songs.
+    d.songs = [{ id: "s1", title: "Hino", artist: "X", song_key: "G", lyrics: "[Verso 1]\n[G]Grande é o [D]Senhor\n\n[Refrão]\nSanto" }];
+    const song = await asTeam(d, "songText", { id: "s1" });
+    assert.deepEqual(song.data, { id: "s1", title: "Hino", artist: "X", key: "G", parts: [{ name: "Verso 1", lines: ["[G]Grande é o [D]Senhor"] }, { name: "Refrão", lines: ["Santo"] }], truncated: false });
+    assert.equal((await asTeam(d, "songText", { id: "gone" })).code, "not_found");
+});

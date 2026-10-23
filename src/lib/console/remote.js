@@ -10,6 +10,9 @@ import { stripChords } from "../chords.js";
 import { presentationBlock, pagesLabel } from "../presentation.js";
 import { findBook } from "../bibleBooks.js";
 import { referenceFrom } from "./quickRef.js";
+import { songSlidesFor } from "../songImport.js";
+import { partOf } from "./songTheme.js";
+import { getYouTubeId } from "../../utils/youtube.js";
 
 export { PROTOCOL };
 const { limits } = PROTOCOL;
@@ -45,8 +48,19 @@ export function remoteOps(action, args = {}) {
 }
 // What takes the emergency lane: never waits behind a send (useRemote's queue).
 export const EMERGENCY = new Set(["black", "logo", "clear", "off", "end", "alertClear", "lock"]);
-// Every section this console runs (state.caps).
-export const REMOTE_CAPS = [...PROTOCOL.caps];
+// The sections this console runs for each code (state.caps): the Controle
+// every one but the Equipe's chat; the Equipe its own few (Rodada Q).
+export const REMOTE_CAPS = PROTOCOL.caps.filter((cap) => cap !== "requests");
+export const TEAM_CAPS = [...PROTOCOL.teamCaps];
+// What a role may run, as electron/lan.cjs checks it (roleAllows there):
+// the console checks again, so a sender that skipped the server is refused.
+export function remoteRoleAllows(action, args = {}, role = "control") {
+    const spec = Object.hasOwn(PROTOCOL.actions, action) ? PROTOCOL.actions[action] : null;
+    if (!spec) return false;
+    if (role !== "team") return spec.cap !== "requests";
+    if (spec.team !== true) return false;
+    return Object.entries(spec.teamArgs || {}).every(([key, values]) => args?.[key] === undefined || values.includes(args[key]));
+}
 
 // A Media row's state on the phone: ok | missing | syncing | blocked.
 export function mediaStatus(m) {
@@ -143,6 +157,8 @@ export function remoteState({
         rev: hash(JSON.stringify([svc, body])),
         service: v >= 2 ? svc : service?.title || "",
         serviceId: service?.id || null,
+        // The Controle's code signed this phone in (Rodada Q; additive).
+        role: "control",
         ...body,
     });
     // Never past limits.stateBytes: a long Setlist loses its last items.
@@ -213,4 +229,136 @@ export function libraryPage({ tab, q = "", kind = null, fav = false, skip = 0, l
     }
     const from = Math.max(0, skip || 0);
     return { tab, total: all.length, skip: from, ready, rows: all.slice(from, from + n) };
+}
+
+// -- The Equipe (Rodada Q): its reduced state, its messages, the lyrics -----
+
+// What an Equipe phone sees (the role "team"): what is on air and the
+// Setlist to read — no timers, avisos, lock, screen or the items' states,
+// and caps only its own (TEAM_CAPS). Capped like remoteState.
+export function teamState({ app = "", service = null, items = [], airItemId = null, live = null }) {
+    const { title, pos } = captionParts(live);
+    const body = {
+        onAir: title && title !== "nada" ? { title, pos } : null,
+        airItemId,
+        items: items.slice(0, limits.items).map((it) => {
+            const type = String(it.type || "").toUpperCase();
+            return { id: it.id, title: String(it.title || "").slice(0, limits.itemTitle), type, section: type === "SECTION" };
+        }),
+        truncated: items.length > limits.items,
+    };
+    const svc = service ? { id: service.id || null, title: service.title || "", date: service.date || null } : null;
+    const make = () => ({
+        v: PROTOCOL.version,
+        app: String(app || ""),
+        caps: [...TEAM_CAPS],
+        role: "team",
+        rev: hash(JSON.stringify(["team", svc, body])),
+        service: svc,
+        serviceId: service?.id || null,
+        ...body,
+    });
+    let out = make();
+    while (body.items.length && JSON.stringify(out).length > limits.stateBytes) {
+        body.items = body.items.slice(0, Math.max(0, body.items.length - 10));
+        body.truncated = true;
+        out = make();
+    }
+    return out;
+}
+
+// A phone's text as the console keeps it: control characters out (a line
+// break stays), trimmed, at most max characters.
+export function cleanText(value, max) {
+    // eslint-disable-next-line no-control-regex
+    const t = String(value ?? "").replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, "").trim();
+    return t.slice(0, max);
+}
+
+// A link from the phone: only YouTube (youtube.com, youtu.be), kept as the
+// one URL rebuilt from its id, never what was typed. -> the URL | null.
+const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"]);
+export function youtubeLink(value) {
+    let url;
+    try { url = new URL(String(value || "").trim()); } catch { return null; }
+    if (!/^https?:$/.test(url.protocol) || url.username || url.password || !YOUTUBE_HOSTS.has(url.hostname.toLowerCase())) return null;
+    const id = getYouTubeId(url.href);
+    return id ? `https://www.youtube.com/watch?v=${id}` : null;
+}
+
+// The ServiceMessage row a phone's chat.send / request.send makes (no id,
+// no serviceId: the console adds them). at: ISO time. -> the fields, or
+// { error: "link" } for a link that is not YouTube's.
+export function messageRow(action, args = {}, at = new Date().toISOString()) {
+    let link = "";
+    if (args.link !== undefined) {
+        link = youtubeLink(args.link);
+        if (!link) return { error: "link" };
+    }
+    const base = { sender: cleanText(args.from, limits.requestFrom), status: "open", sentAt: at, ...(link ? { link } : {}) };
+    if (action === "chat.send") return { ...base, kind: "chat", text: cleanText(args.text, limits.requestText) };
+    return {
+        ...base,
+        kind: "pedido",
+        text: cleanText(args.note, 200),
+        singer: cleanText(args.singer, 60),
+        song: cleanText(args.song, 80),
+        ...(args.songId ? { songId: args.songId } : {}),
+    };
+}
+
+// The same message again (a phone that sent twice, a retry): same kind,
+// sender, text and song within limits.dedupeMs. -> the row | null.
+export function sameMessage(rows = [], row, now = Date.now()) {
+    const key = (r) => [r.kind, r.sender || "", r.text || "", r.song || ""].join("\u0001");
+    const want = key(row);
+    return rows.find((r) => key(r) === want && Math.abs(now - Date.parse(r.sentAt || "")) <= limits.dedupeMs) || null;
+}
+
+// The culto's messages a page at a time, for the phone: skip counts back
+// from the newest (skip 0 = the newest page), the rows oldest first.
+export function requestsPage({ messages = [], kind = null, skip = 0, limit = limits.requestPage }) {
+    const n = Math.max(1, Math.min(limits.requestPage, limit || limits.requestPage));
+    const all = messages
+        .filter((m) => !kind || m.kind === kind)
+        .slice()
+        .sort((a, b) => String(a.sentAt || "").localeCompare(String(b.sentAt || "")));
+    const back = Math.max(0, skip || 0);
+    const end = Math.max(0, all.length - back);
+    const rows = all.slice(Math.max(0, end - n), end).map((m) => ({
+        id: m.id,
+        at: m.sentAt || "",
+        kind: m.kind === "pedido" ? "pedido" : "chat",
+        from: String(m.sender || ""),
+        text: String(m.text || ""),
+        singer: String(m.singer || ""),
+        song: String(m.song || ""),
+        ...(m.songId ? { songId: m.songId } : {}),
+        ...(m.link ? { link: m.link } : {}),
+        status: m.status === "done" ? "done" : "open",
+    }));
+    return { total: all.length, skip: back, rows };
+}
+
+// A song to read on the phone: its parts in the order sung, each slide's
+// lines with the chords inline as the Palco shows them (the slides'
+// chorded twins). Cut at limits.stateBytes.
+export function songTextOf(song) {
+    const { slides, chordedSlides } = songSlidesFor(song);
+    const parts = [];
+    slides.forEach((slide, i) => {
+        const name = partOf(slide);
+        const lines = String(chordedSlides?.[i] ?? slide.text ?? "").split("\n").map((l) => l.trimEnd());
+        const last = parts[parts.length - 1];
+        if (last && last.name === name) last.lines.push(...lines);
+        else parts.push({ name, lines });
+    });
+    const out = { id: song.id, title: String(song.title || ""), artist: String(song.artist || ""), key: String(song.song_key || ""), parts, truncated: false };
+    while (out.parts.length && JSON.stringify(out).length > limits.stateBytes) {
+        const last = out.parts[out.parts.length - 1];
+        last.lines = last.lines.slice(0, Math.max(0, last.lines.length - 10));
+        if (!last.lines.length) out.parts.pop();
+        out.truncated = true;
+    }
+    return out;
 }

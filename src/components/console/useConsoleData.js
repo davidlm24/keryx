@@ -177,6 +177,20 @@ export function useRundown(serviceId) {
     return { services, items: items.filter((i) => i.enabled !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), loaded };
 }
 
+// The Equipe's chat and song requests of the chosen culto (ServiceMessage,
+// Rodada Q), in the order they came: the controle remoto's runner reads
+// them (requests, the 30 s dedupe), the Pedidos tab will list them.
+export function useServiceMessages(serviceId) {
+    const client = useQueryClient();
+    useEffect(() => keryx.entities.ServiceMessage.subscribe(() => client.invalidateQueries({ queryKey: ["console", "serviceMessages"] })), [client]);
+    const q = useQuery({
+        queryKey: ["console", "serviceMessages", serviceId],
+        queryFn: () => keryx.entities.ServiceMessage.filter({ serviceId }, "sentAt"),
+        enabled: Boolean(serviceId),
+    });
+    return serviceId ? q.data ?? EMPTY : EMPTY;
+}
+
 // The culto on the screens, else today's, else the most recent
 // (src/lib/console/serviceChoice.js).
 export function pickDefaultService(services, live = null) {

@@ -32,7 +32,9 @@
 //   GET  /media/<file>         the preview's media folder; /media/bundled/ is resources/
 //   POST /api/remote           the controle remoto's command (the /Remote tab),
 //                              checked as electron/lan.cjs checks it, run by
-//                              the console tab listening on:
+//                              the console tab listening on (a cookie
+//                              keryx_role=team makes the tab the Equipe's
+//                              phone, Rodada Q: the preview has no codes):
 //   GET  /__keryx/remote-events  Server-Sent Events: "remote" commands, to the
 //                              console tab that connected last
 //   POST /__keryx/remote-result  { id, ok, message, status, code, data }: its answer
@@ -135,11 +137,12 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
     const pending = new Map();
     let seq = 0;
     async function handleRemote(req, res) {
+        const role = /(?:^|;\s*)keryx_role=team(?:;|$)/.test(String(req.headers.cookie || "")) ? "team" : "control";
         let command;
         try {
-            command = remoteCommand(JSON.parse((await readBody(req, PROTOCOL.limits.bodyBytes)).toString("utf8") || "{}"));
+            command = remoteCommand(JSON.parse((await readBody(req, PROTOCOL.limits.bodyBytes)).toString("utf8") || "{}"), role);
         } catch (err) {
-            return json(res, err.status || 400, { error: { message: err.status && err.status !== 413 ? err.message : "Pedido inválido.", status: err.status || 400 } });
+            return json(res, err.status || 400, { error: { message: err.status && err.status !== 413 ? err.message : "Pedido inválido.", status: err.status || 400, ...(err.code ? { code: err.code } : {}) } });
         }
         const target = consoles[consoles.length - 1];
         if (!target) return json(res, 503, { error: { message: PROTOCOL.messages.consoleClosed, status: 503, code: "busy" } });
@@ -148,7 +151,7 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
         const answer = await new Promise((resolve) => {
             pending.set(id, resolve);
             timer = setTimeout(() => resolve({ ok: false, message: "O console não respondeu.", status: 504 }), remoteTimeout(command.action));
-            target.write(`event: remote\ndata: ${JSON.stringify({ id, ...command })}\n\n`);
+            target.write(`event: remote\ndata: ${JSON.stringify({ id, ...command, role })}\n\n`);
         });
         clearTimeout(timer);
         pending.delete(id);
