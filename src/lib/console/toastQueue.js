@@ -11,7 +11,7 @@ export const toastMs = (text, action, important) => {
     const ms = action ? 8000 : String(text).length > 80 ? 6000 : 3000;
     return important ? Math.max(ms, IMPORTANT_MS) : ms;
 };
-// An important toast (a new pedido, a screen lost) shows at least this long.
+// An important toast (a new pedido or chat message) shows at least this long.
 export const IMPORTANT_MS = 6000;
 // Plain toasts waiting behind an action: the last few, the oldest dropped.
 export const TOAST_QUEUE = 3;

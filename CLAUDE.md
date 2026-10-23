@@ -1311,9 +1311,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   pedido or chat message (`usePedidos`), `say(text, action, { important })`
   — shows 6 s at least, a plain toast never swallows it, and two gold rings
   leave its border 3 times, then one thin ring stays (T3/T4; reduced motion
-  and forced colours keep only the ring). A screen that disconnects has no
-  toast today (the banner and the Saídas popover say it): add `important`
-  there if one is ever made. Camadas' eyes on Texto principal and Fundo
+  and forced colours keep only the ring). Only the pedido and the chat message are
+  important for now (owner's S11); a disconnected screen has no toast (the
+  banner and the Saídas popover say it). Camadas' eyes on Texto principal and Fundo
   hide the layer and keep it on air (`layers.hide`/`layers.show`,
   `hiddenLayers`, `layerHidden`; hiding works locked): the next send shows
   the text again, choosing a Fundo shows the Fundo again. The Fundo hidden

@@ -4,8 +4,8 @@ import React, { useEffect, useState } from "react";
 // detached page (/Janela). It sits just below the top bar and drops in; when
 // it goes it stays mounted for the exit (`is-leaving`: fades and rises), so
 // the entrance and the exit are both seen. Each new toast is a new element
-// (key = its id) and replays the entrance. An important one (a new pedido, a
-// screen lost) wears two gold waves that leave its border (CSS draws them).
+// (key = its id) and replays the entrance. An important one (a new pedido or chat message)
+// wears two gold waves that leave its border (CSS draws them).
 // Its time stands still while the pointer or the focus is on it (design audit
 // C-13), so Desfazer can be reached; Ctrl+Z runs an undo action too (keys.js
 // "undo"). Its words are said by the page's live region (useLiveRegion,

@@ -89,7 +89,7 @@ export function useToast() {
     // opts: { ms } how long it shows, when not toastMs's (the Setlist
     // automática's countdown lasts its pause); { replace } a plain toast that
     // takes an action toast's place (its Cancelar answered another way);
-    // { important } a new pedido or a lost screen: 6 s at least, a gold wave
+    // { important } a new pedido or chat message: 6 s at least, a gold wave
     // round it, and a plain toast never takes its place.
     const say = useCallback((text, action = null, opts = null) => setToasts((s) => pushToast(s, { id: ++ids.current, text, action, ...(opts?.ms ? { ms: opts.ms } : {}), ...(opts?.replace ? { replace: true } : {}), ...(opts?.important ? { important: true } : {}) })), []);
     const done = useCallback(() => setToasts(nextToast), []);

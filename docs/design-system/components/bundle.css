@@ -380,7 +380,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
    (toastQueue.js). It sits where the menus' popovers start (--pop-top, console.css: under the bar), over the
    panels and never over the menus or the search; a detached page has no bar and uses its own top (--space-2).
    It drops in (fade + --space-2, --dur-fold, ease-out) and leaves fading and rising --space-1 (.is-leaving).
-   An important one (.is-important: a new pedido, a screen lost) sends two gold rings off its border, three
+   An important one (.is-important: a new pedido or chat message) sends two gold rings off its border, three
    times, then keeps one thin gold ring; reduced motion only fades (no offset, no rings), forced colours keep
    only the fixed ring. */
 .kx .kx-toast { position: absolute; z-index: var(--z-toast); left: 50%; top: var(--toast-top, var(--pop-top, var(--space-2))); transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; max-width: calc(100vw - 24px); animation: kx-toast-in var(--dur-fold) var(--ease-out) both; }
