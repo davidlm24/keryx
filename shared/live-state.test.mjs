@@ -437,6 +437,12 @@ test("idle screen: its look (fundo, logo, words) is part of the document (owner 
     assert.equal(restoreState(JSON.parse(JSON.stringify(s)), T0 + 9).idleLook.color, "#112233");
     assert.equal(restoreState({ version: s.version, rev: 1, idleLook: "junk" }, T0).idleLook, null);
     assert.equal(restoreState({ version: s.version, rev: 1 }, T0).idleLook, null);
+    // Da biblioteca (Rodada Q6): a clip of the library with its dim, kept over a restart.
+    const clip = applyOp(s, "idle.look", { look: { bg: "media", media: { kind: "video", value: "keryx-media://v.mp4", name: "Ondas" }, dim: 0.4 } }, T0);
+    assert.deepEqual([clip.idleLook.bg, clip.idleLook.media.kind, clip.idleLook.dim], ["media", "video", 0.4]);
+    assert.equal(restoreState(JSON.parse(JSON.stringify(clip)), T0 + 9).idleLook.media.value, "keryx-media://v.mp4");
+    assert.throws(() => applyOp(s, "idle.look", { look: { bg: "media" } }, T0), /arquivo/);
+    assert.throws(() => applyOp(s, "idle.look", { look: { bg: "media", media: { kind: "image", value: "x" }, dim: 0.9 } }, T0), /escurecer/);
 });
 
 test("idle screen: a wallpaper the operator chose, kept across Logo and Preto", () => {

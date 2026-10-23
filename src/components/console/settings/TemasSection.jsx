@@ -198,7 +198,7 @@ export default function TemasSection({ c, onOpenScreen, escRef = null }) {
 // the screens show then. Culto › Fora do ar points to it.
 function IdleScreen({ c, onOpenScreen }) {
     const church = useChurch();
-    const summary = idleSummary(c.live?.idle, Boolean(c.live?.idleLook));
+    const summary = idleSummary(c.live?.idle, c.live?.idleLook ?? null);
     return (
         <CfgGroup id="temas.ociosa" k="Tela ociosa" summary={summary}>
             <div className="cfg-grid" role="list" aria-label="Tela ociosa">

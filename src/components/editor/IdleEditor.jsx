@@ -10,8 +10,15 @@ import { usePrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
 import { useWinCol } from "@/components/console/winLayout";
 import { setIdleLook, setIdleMode } from "@/lib/console/idle";
+import { useLibraryPicker } from "@/components/console/library/libraryContext";
+import { BgThumb } from "@/components/console/library/BgChip";
+import { useBackgrounds } from "@/components/console/useConsoleData";
+import { usePendingMedia } from "@/hooks/usePendingMedia";
+import { PENDING_SAY } from "@/lib/pendingMedia";
+import { codecHint } from "@/lib/videoCodec";
+import { codecOf } from "@/lib/videoFiles";
 
-const BGS = [["color", "Cor"], ["gradient", "Degradê"]];
+const BGS = [["color", "Cor"], ["gradient", "Degradê"], ["media", "Da biblioteca"]];
 const DIRS = [["radial", "Do centro"], ["down", "De cima para baixo"], ["diag", "Diagonal"]];
 const LOGOS = [["none", "Sem logo"], ["s", "P"], ["m", "M"], ["l", "G"]];
 const PHRASES = [["none", "Nenhuma"], ["church", "Nome da igreja"], ["own", "Outra"]];
@@ -49,6 +56,22 @@ export default function IdleEditor({ say, live: liveState, screens, onClose, onS
     useEffect(() => { setOwn(look.text); }, [look.text]);
     const saveOwn = () => { const t = own.trim(); if (t !== look.text) save({ text: t }); };
 
+    // Da biblioteca (Rodada Q6): a picture or a clip of the background
+    // library, chosen there; its name rides along for the summaries.
+    const pick = useLibraryPicker();
+    const backgrounds = useBackgrounds();
+    const pending = usePendingMedia();
+    const pickFile = async () => {
+        const r = await pick({ accept: ["image", "video"], value: look.media ? { kind: look.media.kind, value: look.media.value } : null, title: "Fundo da tela ociosa" });
+        const s = r?.spec;
+        if (!s || (s.kind !== "image" && s.kind !== "video")) return;
+        const name = backgrounds.find((b) => b.url === s.value)?.name || "";
+        save({ bg: "media", media: { kind: s.kind, value: s.value, name } });
+    };
+    const chooseBg = (v) => (v === "media" && !look.media ? pickFile() : save({ bg: v }));
+    const file = look.bg === "media" ? look.media : null;
+    const fileNote = !file ? "" : pending.has(file.value) ? PENDING_SAY : file.kind === "video" ? codecHint(codecOf(file.value)) : "";
+
     if (escRef) escRef.current = (mode) => onClose(mode === "all");
 
     // The canvas: an empty screen in this look (the church's name written in).
@@ -73,9 +96,26 @@ export default function IdleEditor({ say, live: liveState, screens, onClose, onS
                                 </FormRow>
                             ) : <>
                                 <FormRow k="Fundo">
-                                    <Seg small label="Fundo da tela ociosa" value={look.bg} options={BGS} onChange={(v) => save({ bg: v })} />
+                                    <Seg small label="Fundo da tela ociosa" value={look.bg} options={BGS} onChange={chooseBg} />
                                 </FormRow>
-                                {look.bg === "color" ? (
+                                {file ? <>
+                                    <FormRow k="Arquivo">
+                                        <span className="bgchip">
+                                            <BgThumb spec={{ kind: file.kind, value: file.value }} />
+                                            <span className="bgchip-l">{file.name || (file.kind === "video" ? "Vídeo" : "Imagem")}</span>
+                                            <Btn small onClick={pickFile}>Trocar…</Btn>
+                                        </span>
+                                    </FormRow>
+                                    {fileNote && (
+                                        <FormRow k="">
+                                            <span className="kx-meta">{fileNote}</span>
+                                        </FormRow>
+                                    )}
+                                    <FormRow k="Escurecer">
+                                        <input type="range" className="ap-range" min={0} max={70} step={5} value={Math.round(look.dim * 100)} onChange={(e) => save({ dim: Number(e.target.value) / 100 })} aria-label="Escurecer o fundo da tela ociosa" style={{ flex: 1, minWidth: 0 }} />
+                                        <span className="kx-meta">{Math.round(look.dim * 100)} %</span>
+                                    </FormRow>
+                                </> : look.bg === "color" ? (
                                     <FormRow k="Cor">
                                         <input type="color" className="ed-color" value={look.color} onChange={(e) => save({ color: e.target.value })} aria-label="Cor do fundo da tela ociosa" />
                                     </FormRow>
@@ -115,7 +155,7 @@ export default function IdleEditor({ say, live: liveState, screens, onClose, onS
             <div className="col center">
                 <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="le-stage">
-                        <div className="le-screen"><ScreenRenderer fill state={doc} logoUrl={church.logo} preview audio={false} /></div>
+                        <div className="le-screen"><ScreenRenderer fill state={doc} logoUrl={church.logo} preview motion audio={false} /></div>
                     </div>
                     <div className="listhead nv-note">
                         <span className="kx-meta">Vale para todas as saídas e para as telas na rede. Muda na hora, sem salvar.{covered ? ` ${covered}` : ""}</span>

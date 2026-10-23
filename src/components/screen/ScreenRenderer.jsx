@@ -20,7 +20,7 @@ import ActivityView from "./ActivityView";
 import { useExitGhost } from "@/hooks/useExitGhost";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { screenExitMs } from "@/lib/exitFade";
-import { idleBackground, idleLookOf, idleText } from "@shared/idleLook.mjs";
+import { idleBackground, idleLookOf, idleMedia, idleText } from "@shared/idleLook.mjs";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
@@ -103,7 +103,7 @@ function Screen({ state, now, logoUrl = "", preview = false, motion = false, aud
         <>
             {!sameFundo && <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>}
             <div className="ks-z" style={{ zIndex: z("content") }}>
-                {layer === "none" && !fundo && !sameFundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} look={state.idleLook} />)}
+                {layer === "none" && !fundo && !sameFundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} look={state.idleLook} preview={preview} motion={motion} />)}
                 {layer === "content" && !layerHidden(state, "content") && (state.content.kind === "presentation"
                     ? <Presentation content={state.content} still={still} />
                     : currentSlide(state.content)?.activity
@@ -170,8 +170,11 @@ function logoLook(logo) {
 
 // The Tela ociosa (Editor de telas › Tela ociosa, shared/idleLook.mjs): its
 // fundo (the KERYX gradient unless a colour or a gradient of its own), the
-// logo at its size and the words under it. No look = as it always was.
-function Idle({ logoUrl, wallpaper, dim, blur, look }) {
+// logo at its size and the words under it. No look = as it always was. A
+// file of the library (Rodada Q6) is drawn under the logo, darkened by its
+// dim; its video plays as the Fundo's does (an output and the Programa
+// monitor; a still elsewhere), a plain element, never the media pool.
+function Idle({ logoUrl, wallpaper, dim, blur, look, preview, motion }) {
     if (wallpaper) {
         // The wallpaper as it is, unless Aparência › Fundos gave it a dim or a blur.
         const look = bgLook({ kind: "image", dim: dim ?? 0, blur });
@@ -179,11 +182,18 @@ function Idle({ logoUrl, wallpaper, dim, blur, look }) {
     }
     const l = idleLookOf(look);
     const bg = idleBackground(l);
+    const file = idleMedia(l);
     const size = l?.logo || "m";
     const words = idleText(l);
+    const fileLook = file ? bgLook({ kind: file.kind, dim: file.dim }) : null;
     return (
         <>
-            {bg ? <div className="ks-bg-idle" style={{ background: bg }} /> : <div className="ks-bg-default" />}
+            {file ? <>
+                {file.kind === "video"
+                    ? (!preview || motion ? <video key={file.value} className="ks-bg-video" style={fileLook.media} src={file.value} autoPlay loop muted playsInline /> : <VideoStill src={file.value} style={fileLook.media} />)
+                    : <div className="ks-bg-img" style={{ backgroundImage: `url("${String(file.value).replace(/"/g, "%22")}")`, ...fileLook.image }} />}
+                {fileLook.dim}
+            </> : bg ? <div className="ks-bg-idle" style={{ background: bg }} /> : <div className="ks-bg-default" />}
             <div className={`ks-idle is-${size}`}>
                 {logoUrl && size !== "none" && <img src={logoUrl} alt="" />}
                 {words && <p className="ks-idle-text" style={{ fontFamily: FONT_MAP.sans }}>{words}</p>}

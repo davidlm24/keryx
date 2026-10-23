@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { IDLE_LOOK_DEFAULT, idleLookOf, isDefaultIdleLook, checkIdleLook, idleBackground, liveIdleLook, idleText } from "./idleLook.mjs";
+import { IDLE_LOOK_DEFAULT, idleLookOf, isDefaultIdleLook, checkIdleLook, idleBackground, idleMedia, liveIdleLook, idleText } from "./idleLook.mjs";
 
 test("idleLookOf: a full look from anything, defaults for what is missing or broken", () => {
     assert.equal(idleLookOf(null), null);
@@ -50,4 +50,32 @@ test("liveIdleLook and idleText: the church's name is written in by the console"
     assert.equal(idleText(liveIdleLook({ phrase: "church", logo: "s" }, "")), "", "no name: no words");
     assert.equal(liveIdleLook({ ...IDLE_LOOK_DEFAULT }, "Igreja"), null);
     assert.equal(liveIdleLook(null), null);
+});
+
+test("Da biblioteca (Rodada Q6): a picture or a clip under the logo, with its dim", () => {
+    const pic = { kind: "image", value: "http://127.0.0.1:7700/media/a.jpg", name: "Cruz" };
+    const l = idleLookOf({ bg: "media", media: pic, dim: 0.35 });
+    assert.equal(l.bg, "media");
+    assert.deepEqual(l.media, pic);
+    assert.equal(l.dim, 0.35);
+    assert.equal(idleBackground(l), null, "the renderer draws the file");
+    assert.deepEqual(idleMedia(l), { ...pic, dim: 0.35 });
+    assert.equal(idleMedia({ bg: "color", media: pic }), null, "another fundo: the file waits");
+    assert.ok(!isDefaultIdleLook(l));
+    // An old saved look draws as before; a kept file alone is still the default.
+    assert.ok(isDefaultIdleLook({ bg: "gradient", media: pic, dim: 0.5 }));
+    assert.equal(idleLookOf({ logo: "s" }).media, null);
+    assert.equal(idleLookOf({ logo: "s" }).dim, 0);
+    // Lenient: no file = the default fundo; a dim past the range is clamped.
+    assert.equal(idleLookOf({ bg: "media" }).bg, "gradient");
+    assert.equal(idleLookOf({ bg: "media", media: { kind: "gif", value: "x" } }).bg, "gradient");
+    assert.equal(idleLookOf({ bg: "media", media: pic, dim: 0.95 }).dim, 0.7);
+    assert.equal(idleLookOf({ bg: "media", media: pic, dim: "x" }).dim, 0);
+    // Strict for the live op.
+    assert.equal(checkIdleLook({ bg: "media", media: { kind: "video", value: "http://x/v.mp4" }, dim: 0.7 }).look.media.kind, "video");
+    for (const bad of [{ bg: "media" }, { media: { kind: "gif", value: "x" } }, { media: { kind: "image", value: "" } }, { media: { kind: "image", value: "x".repeat(5000) } }, { dim: 0.8 }, { dim: -0.1 }, { dim: "0.2" }]) {
+        assert.ok(checkIdleLook(bad).error, JSON.stringify(bad));
+    }
+    // The console's live look keeps the file.
+    assert.equal(liveIdleLook({ bg: "media", media: pic, phrase: "church" }, "Igreja").media.value, pic.value);
 });

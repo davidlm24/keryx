@@ -47,7 +47,14 @@ export function fundosSummary(categories) {
     const n = (categories || []).length;
     return n ? `${count(n, "categoria", "categorias")}: ${categories.join(" · ")}` : "Imagens, vídeos, gerados e cores";
 }
-export const idleSummary = (idle, hasLook) => `${idle === "black" ? "Preto" : "Logo da igreja"}${hasLook ? " · com ajustes" : ""}`;
+// The look is the live one (or true for "with settings"); a file of the
+// library says its name (Rodada Q6).
+export const idleSummary = (idle, look) => {
+    if (idle === "black") return `Preto${look ? " · com ajustes" : ""}`;
+    const file = look && typeof look === "object" && look.bg === "media" ? look.media : null;
+    if (file) return `Logo da igreja · Da biblioteca${file.name ? ` · ${file.name}` : ""}`;
+    return `Logo da igreja${look ? " · com ajustes" : ""}`;
+};
 export const fontsSummary = (n) => (n ? count(n, "fonte", "fontes") : "Nenhuma ainda");
 
 // Bíblia e músicas.
