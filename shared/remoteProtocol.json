@@ -7,7 +7,9 @@
     "kinds": "R reads (no log, no toast, no lock check); S puts something on air and is refused with 423 while the screens are locked; T takes something off and works while locked. putsOnAir = kind S = !WHILE_LOCKED.has(op) for every live-state op the action runs (`ops`, or `opsBy` per value of one arg; `kindBy` gives the kind per value of that arg). An action may run ops through others (a send also sets the Fundo, background.set), always of its own kind. player do=swap is T: it takes the video off the projector (media.toAudio); bringing it back (audio.toMedia) puts it on air, so the live state refuses it while locked (423) whatever the kind says.",
     "split": "The live state goes to the phone over SSE (/api/events?screen=/Remote): live, hb (every 10 s; stale = nothing for 25 s) and User rows -> header, slides, player position, timer, alert, lock. What only the console knows comes from actions: state on mount, on visible/pageshow/online, when session.itemId, screen or locked change, and every 20 s while visible; library on demand. state is built per request, never pushed (3-6 kB typical, 32 kB at most).",
     "versioning": "Additive only: new actions, args, fields and codes; never a rename or a type change. `caps` in state gate the phone's sections (an action whose `cap` is missing is hidden). A changed `app` (the KERYX version) in state reloads the page. An unknown action is 400 and the page shows messages.updateApp. A v1 request (no v) gets the v1 answers: state's `service` is the title string; with v: 2 it is the object { id, title, date }.",
-    "privacy": "No URL ever comes from the phone; answers carry only relative /media/<file> paths (a video's poster as a library row's thumb), never a keryx-media:// or an absolute URL."
+    "privacy": "No URL ever comes from the phone but a YouTube link in chat.send / request.send, which the console keeps only as https://www.youtube.com/watch?v=<id> rebuilt from the id (any other link is 400); answers carry only relative /media/<file> paths (a video's poster as a library row's thumb) and those YouTube links, never a keryx-media:// or another absolute URL.",
+    "roles": "Two codes sign a phone in (Configurações › Telas na rede), each with its own cookie, and the code decides the role (Rodada Q): the controle remoto's code is the Controle (role control: the projection) and the Equipe's code the Equipe (role team: chat, song requests, lyrics, the Bíblia and the Setlist to read; it never touches the air or the setlist). An action with team: true is one an Equipe phone may run (teamArgs: the only values it may give those args); electron/lan.cjs refuses any other with 403 forbidden, and refuses the Controle the actions of cap requests (the Controle has no chat). The console checks the same again. state answers the role: an Equipe phone gets the reduced state (role team, caps teamCaps, what is on air and the Setlist to read, no timers, avisos or lock), the Controle the whole one (caps without requests). An Equipe phone's event stream also hears ServiceMessage changes.",
+    "requests": "The Equipe's chat and song requests are ServiceMessage rows of the culto chosen on the console (none: today's setlist starts, as the operator's notes do). chat.send and request.send say nothing on the console themselves (its Pedidos tab and toast come from the rows, so a request synced from another computer shows too); the same message again within limits.dedupeMs returns the row already made. Each phone sends at most 3 in a row, then one every 2 s (429 rate). requests reads them a page at a time, never inside state (32 kB)."
   },
   "limits": {
     "bodyBytes": 4096,
@@ -22,7 +24,12 @@
     "alerts": 12,
     "alertMessage": 80,
     "passageText": 280,
-    "libraryPage": 50
+    "libraryPage": 50,
+    "requestText": 280,
+    "requestFrom": 40,
+    "requestPage": 30,
+    "link": 200,
+    "dedupeMs": 30000
   },
   "idPattern": "^[\\w-]{1,64}$",
   "codes": {
@@ -33,7 +40,8 @@
     "syncing": 409,
     "blocked": 409,
     "busy": 503,
-    "rate": 429
+    "rate": 429,
+    "forbidden": 403
   },
   "messages": {
     "locked": "Telas travadas: nada vai ao ar. Destrave em Saídas.",
@@ -50,14 +58,20 @@
     "rate": "Muitos toques seguidos: espere um instante.",
     "busy": "O computador está ocupado: tente de novo.",
     "unknownOutcome": "Não sei se foi — confira a tela",
-    "updateApp": "Atualize o KERYX no computador"
+    "updateApp": "Atualize o KERYX no computador",
+    "forbidden": "Este código não faz isso no KERYX.",
+    "notYouTube": "Só links do YouTube.",
+    "noVerses": "Escolha os versículos da passagem."
   },
-  "caps": ["live", "setlist", "library", "bible", "player", "follow", "layers", "alert", "timer", "lock", "undo"],
+  "caps": ["live", "setlist", "library", "bible", "player", "follow", "layers", "alert", "timer", "lock", "undo", "plan", "requests"],
+  "teamCaps": ["library", "bible", "requests"],
   "actions": {
-    "state": { "kind": "R", "result": "state", "args": {} },
+    "state": { "kind": "R", "team": true, "result": "state", "args": {} },
     "library": {
       "kind": "R",
       "cap": "library",
+      "team": true,
+      "teamArgs": { "tab": ["songs"] },
       "result": "library",
       "args": {
         "tab": { "type": "enum", "values": ["songs", "media", "pieces", "materials"], "required": true },
@@ -137,6 +151,7 @@
     "bibleFind": {
       "kind": "R",
       "cap": "bible",
+      "team": true,
       "result": "passage",
       "args": {
         "ref": { "type": "str", "max": 40, "required": true },
@@ -253,6 +268,70 @@
       "label": "avançar sozinho",
       "args": { "on": { "type": "bool", "required": true } },
       "$comment": "Setlist automática (Rodada N2): the culto's switch (Service.autoplay), as the Setlist header's. It writes the culto, never the live state (no ops), so it works locked; the console's own watcher then sends nothing while locked. No culto chosen: 409 nothing."
+    },
+    "setlist.add": {
+      "kind": "T",
+      "cap": "plan",
+      "label": "adicionou à setlist",
+      "result": "added",
+      "args": {
+        "kind": { "type": "enum", "values": ["song", "media", "material"], "required": true },
+        "id": { "type": "id", "required": true },
+        "book": { "type": "str", "max": 24, "required": true },
+        "chapter": { "type": "int", "min": 1, "max": 150, "required": true },
+        "verseStart": { "type": "int", "min": 1, "max": 176, "required": true },
+        "verseEnd": { "type": "int", "min": 1, "max": 176 },
+        "version": { "type": "str", "max": 12 }
+      },
+      "oneOf": [["kind", "id"], ["book", "chapter", "verseStart", "verseEnd", "version"]],
+      "$comment": "Rodada Q: an item at the end of the culto's Setlist (none chosen: today's starts), as the Biblioteca's drop and the palette's Adicionar. It writes the plan, never the live state (no ops), so it works locked. A passage needs its verses (a chapter alone is 400): it becomes a BiblePassage, never the whole chapter. 404 not_found when the row or the reference does not exist."
+    },
+    "chat.send": {
+      "kind": "T",
+      "cap": "requests",
+      "team": true,
+      "label": "mensagem da equipe",
+      "result": "sent",
+      "args": {
+        "from": { "type": "str", "max": 40, "required": true },
+        "text": { "type": "str", "max": 280, "required": true },
+        "link": { "type": "str", "max": 200 }
+      }
+    },
+    "request.send": {
+      "kind": "T",
+      "cap": "requests",
+      "team": true,
+      "label": "pedido de louvor",
+      "result": "sent",
+      "args": {
+        "from": { "type": "str", "max": 40, "required": true },
+        "singer": { "type": "str", "max": 60 },
+        "song": { "type": "str", "max": 80, "required": true },
+        "songId": { "type": "id" },
+        "note": { "type": "str", "max": 200 },
+        "link": { "type": "str", "max": 200 }
+      },
+      "$comment": "songId: a song of the library the phone listed; one the console no longer has is dropped and the typed song kept."
+    },
+    "requests": {
+      "kind": "R",
+      "cap": "requests",
+      "team": true,
+      "result": "requests",
+      "args": {
+        "kind": { "type": "enum", "values": ["chat", "pedido"] },
+        "skip": { "type": "int", "min": 0, "max": 5000 },
+        "limit": { "type": "int", "min": 1, "max": 30 }
+      },
+      "$comment": "skip counts back from the newest: skip 0 is the newest page, its rows oldest first (a chat)."
+    },
+    "songText": {
+      "kind": "R",
+      "cap": "requests",
+      "team": true,
+      "result": "songText",
+      "args": { "id": { "type": "id", "required": true } }
     }
   },
   "results": {
@@ -274,7 +353,8 @@
       "bible": "{ version, installed: str[] }",
       "timers": "[<= limits.timers] the timers prontos { id, minutes }: 5, 10, 15, 30 and 60 min, then the church's TimerPreset rows (timerPresets.js)",
       "alerts": "[<= limits.alerts] { id, message (<= limits.alertMessage) }: the AlertPreset rows",
-      "autoplay": "bool: the culto's Avançar sozinho is on (Setlist automática, Rodada N2; setlist.autoplay turns it)"
+      "autoplay": "bool: the culto's Avançar sozinho is on (Setlist automática, Rodada N2; setlist.autoplay turns it)",
+      "role": "control | team (Rodada Q): which code signed the phone in. An Equipe phone gets only v, app, caps (teamCaps), role, rev, service, serviceId, onAir, airItemId, items [{ id, title, type, section }] and truncated"
     },
     "library": {
       "tab": "songs | media | pieces | materials",
@@ -285,6 +365,21 @@
     },
     "passage": { "reference": "str", "text": "str (<= limits.passageText)", "version": "str" },
     "end": { "undo": "bool: Desfazer can put it back" },
-    "send": { "title": "str: what went on air, echoed" }
+    "send": { "title": "str: what went on air, echoed" },
+    "added": { "title": "str: the Setlist item made, echoed" },
+    "sent": { "id": "id: the ServiceMessage row (the one already made, for the same message again within limits.dedupeMs)", "at": "str: its sentAt (ISO)" },
+    "requests": {
+      "total": "int: the culto's messages (of that kind)",
+      "skip": "int: counted back from the newest",
+      "rows": "[<= limits.requestPage] oldest first { id, at (ISO), kind: chat | pedido, from, text, singer, song, songId?, link?, status: open | done }"
+    },
+    "songText": {
+      "id": "id",
+      "title": "str",
+      "artist": "str",
+      "key": "str: the song's key (Tom), or empty",
+      "parts": "[{ name: str (the part's label, empty for none), lines: str[] }] in the order sung, chords inline as the Palco shows them ([G]Grande é o Senhor); cut at limits.stateBytes",
+      "truncated": "bool"
+    }
   }
 }

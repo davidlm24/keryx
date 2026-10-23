@@ -32,6 +32,11 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
     // the key that signs the phones' cookie.
     const remote = () => config().remote || {};
     const saveRemote = (patch) => save({ remote: { ...remote(), ...patch } });
+    // The Equipe's ("network".team, Rodada Q): the same shape, its own code
+    // and key. The two codes are never the same (the code decides the role).
+    const team = () => config().team || {};
+    const saveTeam = (patch) => save({ team: { ...team(), ...patch } });
+    const codeOtherThan = (other) => { let code; do code = newRemoteCode(); while (code === other); return code; };
     let lastError = "";
 
     async function start() {
@@ -58,6 +63,7 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             hasPin: Boolean(pin),
             // Never the code itself (revealRemoteCode, on demand).
             remote: { enabled: Boolean(remote().enabled), hasCode: Boolean(remote().code) },
+            team: { enabled: Boolean(team().enabled), hasCode: Boolean(team().code) },
             error: lastError,
             urls: running ? lanAddresses().map((a) => ({ name: a.name, url: `http://${a.address}:${boundPort}` })) : [],
             clients: lan.clients(),
@@ -87,14 +93,25 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             // off, a new code, Desconectar todos (a new key) — each signs the
             // phones out but turning it on.
             setRemote: async (_event, enabled) => {
-                if (enabled) saveRemote({ enabled: true, code: remote().code || newRemoteCode(), secret: remote().secret || newRemoteSecret() });
-                else { saveRemote({ enabled: false }); lan.dropRemotes(); }
+                if (enabled) saveRemote({ enabled: true, code: remote().code || codeOtherThan(team().code), secret: remote().secret || newRemoteSecret() });
+                else { saveRemote({ enabled: false }); lan.dropRemotes("control"); }
                 logger.info(`[keryx-lan] controle remoto ${enabled ? "ligado" : "desligado"}`);
                 return info();
             },
-            newRemoteCode: async () => { saveRemote({ code: newRemoteCode(), secret: newRemoteSecret() }); lan.dropRemotes(); return info(); },
-            disconnectRemotes: async () => { saveRemote({ secret: newRemoteSecret() }); lan.dropRemotes(); return info(); },
+            newRemoteCode: async () => { saveRemote({ code: codeOtherThan(team().code), secret: newRemoteSecret() }); lan.dropRemotes("control"); return info(); },
+            disconnectRemotes: async () => { saveRemote({ secret: newRemoteSecret() }); lan.dropRemotes("control"); return info(); },
             revealRemoteCode: async () => ({ code: remote().code || "" }),
+            // The Equipe (Rodada Q): the same four, on its own code and key;
+            // changing one never signs the other's phones out.
+            setTeam: async (_event, enabled) => {
+                if (enabled) saveTeam({ enabled: true, code: team().code || codeOtherThan(remote().code), secret: team().secret || newRemoteSecret() });
+                else { saveTeam({ enabled: false }); lan.dropRemotes("team"); }
+                logger.info(`[keryx-lan] equipe ${enabled ? "ligada" : "desligada"}`);
+                return info();
+            },
+            newTeamCode: async () => { saveTeam({ code: codeOtherThan(remote().code), secret: newRemoteSecret() }); lan.dropRemotes("team"); return info(); },
+            disconnectTeam: async () => { saveTeam({ secret: newRemoteSecret() }); lan.dropRemotes("team"); return info(); },
+            revealTeamCode: async () => ({ code: team().code || "" }),
             // The PIN itself, on demand (Mostrar PIN): only the console asks
             // (keryx:network is a trusted channel); info() never carries it.
             revealPin: async () => ({ pin: config().pin || "" }),

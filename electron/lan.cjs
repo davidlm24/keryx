@@ -19,6 +19,11 @@
 //     signed in only with the remote's code reads only what its page uses
 //     (the live state, media, the User row, its event stream), and taps
 //     too fast get 429
+//   - the Equipe (Rodada Q) signs in on the same page with a third code of
+//     its own (off by default) and gets the role "team": only the actions
+//     the contract marks team: true (chat, song requests, lyrics, the
+//     Bíblia and the Setlist to read), checked here, never only hidden on
+//     the phone; it never changes the air or the setlist
 //   - every event stream gets a heartbeat ("hb", every 10 s) and is dropped
 //     when it stops reading (MAX_BACKLOG)
 //
@@ -67,6 +72,10 @@ const REMOTE_COOKIE = "keryx_remote";
 const REMOTE_ACTIONS = new Set(Object.keys(PROTOCOL.actions));
 const ID = new RegExp(PROTOCOL.idPattern);
 const remoteToken = ({ code, secret }) => crypto.createHmac("sha256", secret).update(`keryx-remote:${code}`).digest("hex");
+// The Equipe's own cookie (Rodada Q), signed with its own key: a phone that
+// knows only that code is the role "team".
+const TEAM_COOKIE = "keryx_team";
+const teamToken = ({ code, secret }) => crypto.createHmac("sha256", secret).update(`keryx-team:${code}`).digest("hex");
 // How long the console has to answer (the Bíblia reads chapters: longer).
 const remoteTimeout = (action) => (PROTOCOL.limits.slowActions.includes(action) ? PROTOCOL.limits.slowTimeoutMs : PROTOCOL.limits.timeoutMs);
 // A read is the phone keeping up (state every few seconds): never logged.
@@ -95,14 +104,31 @@ function argValue(schema, value) {
     }
 }
 
+// What a role may run (Rodada Q, the contract's notes.roles): the Equipe
+// only the actions marked team: true, with teamArgs' values; the Controle
+// everything but the Equipe's chat (cap requests). -> true | false.
+function roleAllows(action, args = {}, role = "control") {
+    const spec = Object.hasOwn(PROTOCOL.actions, action) ? PROTOCOL.actions[action] : null;
+    if (!spec) return false;
+    if (role !== "team") return spec.cap !== "requests";
+    if (spec.team !== true) return false;
+    for (const [key, values] of Object.entries(spec.teamArgs || {})) {
+        if (args[key] !== undefined && !values.includes(args[key])) return false;
+    }
+    return true;
+}
+const forbidden = () => Object.assign(new Error(PROTOCOL.messages.forbidden), { status: 403, code: "forbidden" });
+
 // A phone's command, checked against the contract: { action, args, v } with
 // only the args that action takes (unknown keys dropped), or an Error with a
-// status. No v = a version 1 page. Pure (tested).
-function remoteCommand(body) {
+// status. No v = a version 1 page. role: the code that signed the phone in
+// ("control" | "team"); what that role may not run is 403. Pure (tested).
+function remoteCommand(body, role = "control") {
     const fail = (message) => Object.assign(new Error(message), { status: 400 });
     if (!body || typeof body !== "object" || Array.isArray(body)) throw fail("Comando inválido.");
     const { action } = body;
     if (typeof action !== "string" || !REMOTE_ACTIONS.has(action)) throw fail("Comando desconhecido.");
+    if (!roleAllows(action, {}, role)) throw forbidden();
     const v = body.v === undefined ? 1 : body.v;
     if (!Number.isInteger(v) || v < 1 || v > 99) throw fail("Comando inválido.");
     const given = body.args === undefined || body.args === null ? {} : body.args;
@@ -124,6 +150,7 @@ function remoteCommand(body) {
     for (const [key, schema] of Object.entries(spec.args)) {
         if (schema.required && !grouped.has(key) && !(key in args)) throw fail(argProblem(key));
     }
+    if (!roleAllows(action, args, role)) throw forbidden();
     return { action, args, v };
 }
 
@@ -143,8 +170,13 @@ function remoteReply(answer) {
 // bucket per address (burst 10, 8 a second) and at most 4 commands waiting
 // on the console per address, 8 in all. Pure but for the clock (tested).
 const RATE = { burst: 10, perSecond: 8, perIp: 4, total: 8 };
+// The Equipe's messages (chat.send, request.send) have a bucket of their
+// own per address on top: 3 in a row, then one every 2 s.
+const MESSAGE_RATE = { burst: 3, perSecond: 0.5 };
+const MESSAGE_ACTIONS = new Set(["chat.send", "request.send"]);
 function createRemoteGate(now = () => Date.now()) {
     const buckets = new Map(); // ip -> { tokens, at }
+    const messages = new Map(); // ip -> { tokens, at }
     const waiting = new Map(); // ip -> count
     let total = 0;
     return {
@@ -173,6 +205,20 @@ function createRemoteGate(now = () => Date.now()) {
                     if (n) waiting.set(ip, n); else waiting.delete(ip);
                 },
             };
+        },
+        // A message (chat.send, request.send) from this address: taken from
+        // its own bucket, or { ok: false, … 429 }. Any other action: ok.
+        message(ip, action) {
+            if (!MESSAGE_ACTIONS.has(action)) return { ok: true };
+            const t = now();
+            const b = messages.get(ip) || { tokens: MESSAGE_RATE.burst, at: t };
+            b.tokens = Math.min(MESSAGE_RATE.burst, b.tokens + ((t - b.at) / 1000) * MESSAGE_RATE.perSecond);
+            b.at = t;
+            messages.set(ip, b);
+            if (messages.size > 256) for (const [k, x] of messages) if (t - x.at > 60000) messages.delete(k);
+            if (b.tokens < 1) return { ok: false, status: 429, code: "rate", message: PROTOCOL.messages.rate };
+            b.tokens -= 1;
+            return { ok: true };
         },
         waiting: () => total,
     };
@@ -250,7 +296,7 @@ const pinPage = (next, error) => page("KERYX", `<h1>KERYX</h1><p>Digite o PIN de
 <form method="post" action="/lan/pin"><input type="hidden" name="next" value="${next.replace(/[&"<>]/g, "")}">
 <input name="pin" inputmode="numeric" autocomplete="off" autofocus aria-label="PIN"><button type="submit">Entrar</button></form>${error ? `<p class="err">${error}</p>` : ""}`);
 
-const codePage = (error) => page("KERYX", `<h1>Controle remoto</h1><p>Digite o código do controle remoto (Configurações › Telas na rede, no computador do KERYX)</p>
+const codePage = (error) => page("KERYX", `<h1>KERYX no celular</h1><p>Digite o código do controle remoto ou da equipe (Configurações › Telas na rede, no computador do KERYX)</p>
 <form method="post" action="/lan/remote-code">
 <input name="code" inputmode="numeric" autocomplete="off" autofocus aria-label="Código"><button type="submit">Entrar</button></form>${error ? `<p class="err">${error}</p>` : ""}`);
 
@@ -306,10 +352,17 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     // that code made (a new code or Desconectar todos signs every phone out).
     const remoteOn = () => { const r = getConfig().remote; return Boolean(r && r.enabled && r.code && r.secret); };
     const isRemote = (req) => remoteOn() && safeEqual(parseCookies(req.headers.cookie)[REMOTE_COOKIE] || "", remoteToken(getConfig().remote));
-    // Signed in only as the controle remoto (no PIN cookie while the screens
-    // have a PIN): it reads only what its page uses — the live state, the
-    // media, the church's profile (User), and its own event stream.
-    const remoteOnly = (req) => !isAuthed(req) && isRemote(req);
+    // The Equipe's (Rodada Q): the same, with its own code, key and cookie.
+    const teamOn = () => { const r = getConfig().team; return Boolean(r && r.enabled && r.code && r.secret); };
+    const isTeam = (req) => teamOn() && safeEqual(parseCookies(req.headers.cookie)[TEAM_COOKIE] || "", teamToken(getConfig().team));
+    const phonesOn = () => remoteOn() || teamOn();
+    // The phone's role: the Controle's code wins (signing in with one code
+    // clears the other's cookie), else the Equipe's, else none.
+    const roleOf = (req) => (isRemote(req) ? "control" : isTeam(req) ? "team" : null);
+    // Signed in only as a phone (no PIN cookie while the screens have a
+    // PIN): it reads only what its page uses — the live state, the media,
+    // the church's profile (User), and its own event stream.
+    const remoteOnly = (req) => !isAuthed(req) && Boolean(roleOf(req));
 
     // Wrong codes (the PIN's and the remote's): five, then a minute out.
     const tooMany = (key) => (attempts.get(key)?.until || 0) > Date.now();
@@ -321,16 +374,23 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     };
 
     async function handleRemoteCode(req, res) {
-        if (!remoteOn()) return html(res, 404, notFoundPage);
+        if (!phonesOn()) return html(res, 404, notFoundPage);
         if (req.method === "GET") return html(res, 200, codePage(""));
         if (req.method !== "POST") return res.writeHead(405).end();
         const key = `remote:${req.socket.remoteAddress}`;
         if (tooMany(key)) return html(res, 429, codePage("Muitas tentativas. Aguarde um minuto."));
         const form = new URLSearchParams(await readBody(req, 2048));
-        const remote = getConfig().remote;
-        if (safeEqual(form.get("code") || "", remote.code)) {
+        const { remote, team } = getConfig();
+        const given = form.get("code") || "";
+        // The code decides the role; the other role's cookie goes.
+        const cookie = (name, value) => `${name}=${value}; Path=/; Max-Age=${value ? 31536000 : 0}; HttpOnly; SameSite=Strict`;
+        if (remoteOn() && safeEqual(given, remote.code)) {
             attempts.delete(key);
-            return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": `${REMOTE_COOKIE}=${remoteToken(remote)}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict` }).end();
+            return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": [cookie(REMOTE_COOKIE, remoteToken(remote)), cookie(TEAM_COOKIE, "")] }).end();
+        }
+        if (teamOn() && safeEqual(given, team.code)) {
+            attempts.delete(key);
+            return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": [cookie(TEAM_COOKIE, teamToken(team)), cookie(REMOTE_COOKIE, "")] }).end();
         }
         missed(key);
         return html(res, 401, codePage("Código incorreto."));
@@ -340,9 +400,10 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     // other site can post it with the cookie), a checked command, and the
     // console's answer — or "não respondeu" after a few seconds.
     async function handleRemote(req, res) {
-        if (!remoteOn()) return json(res, 404, { error: { message: "Controle remoto desligado.", status: 404 } });
+        if (!phonesOn()) return json(res, 404, { error: { message: "Controle remoto desligado.", status: 404 } });
         if (req.method !== "POST") return res.writeHead(405).end();
-        if (!isRemote(req)) return json(res, 401, { error: { message: "Código do controle remoto necessário.", status: 401 } });
+        const role = roleOf(req);
+        if (!role) return json(res, 401, { error: { message: "Código do controle remoto necessário.", status: 401 } });
         const origin = req.headers.origin;
         if (req.headers["x-keryx"] !== "1" || (origin && origin !== `http://${req.headers.host}`)) return json(res, 403, { error: { message: "Pedido não autorizado.", status: 403 } });
         const ip = req.socket.remoteAddress;
@@ -354,14 +415,19 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         try {
             let command;
             try {
-                command = remoteCommand(JSON.parse(await readBody(req, PROTOCOL.limits.bodyBytes)));
+                command = remoteCommand(JSON.parse(await readBody(req, PROTOCOL.limits.bodyBytes)), role);
             } catch (err) {
-                return json(res, err.status || 400, { error: { message: err.status ? err.message : "Pedido inválido.", status: err.status || 400 } });
+                return json(res, err.status || 400, { error: { message: err.status ? err.message : "Pedido inválido.", status: err.status || 400, ...(err.code ? { code: err.code } : {}) } });
+            }
+            const message = gate.message(ip, command.action);
+            if (!message.ok) {
+                const { status, body } = remoteReply(message);
+                return json(res, status, body, { "Retry-After": "2" });
             }
             if (!onRemote) return json(res, 503, { error: { message: PROTOCOL.messages.consoleClosed, status: 503, code: "busy" } });
             let timer;
             const answer = await Promise.race([
-                Promise.resolve().then(() => onRemote(command.action, command.args, { ip, v: command.v })),
+                Promise.resolve().then(() => onRemote(command.action, command.args, { ip, v: command.v, role })),
                 // 504: the outcome is unknown (the phone says so, never retries).
                 new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, message: "O console não respondeu.", status: 504 }), remoteTimeout(command.action)); }),
             ]).catch((err) => ({ ok: false, message: err?.message || "O console não conseguiu.", status: 500 }));
@@ -405,8 +471,9 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
         res.write("retry: 3000\n\n");
         const asked = url ? String(url.searchParams.get("screen") || "").replace(/\/+$/, "") : "";
-        const screen = SCREEN_PATHS.has(asked) || (asked === REMOTE_PATH && isRemote(req)) ? asked : "";
-        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen, remoteOnly: remoteOnly(req) };
+        const role = roleOf(req);
+        const screen = SCREEN_PATHS.has(asked) || (asked === REMOTE_PATH && role) ? asked : "";
+        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen, role: screen === REMOTE_PATH ? role : null, remoteOnly: remoteOnly(req) };
         clients.add(client);
         req.on("close", () => clients.delete(client));
     }
@@ -474,14 +541,14 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         // The remote's page: only while it is on, only with its code.
         const routeNow = pathname.replace(/\/+$/, "");
         if (routeNow === REMOTE_PATH && req.method === "GET") {
-            if (!remoteOn()) return html(res, 404, notFoundPage);
-            if (!isRemote(req)) return res.writeHead(303, { Location: "/lan/remote-code" }).end();
+            if (!phonesOn()) return html(res, 404, notFoundPage);
+            if (!roleOf(req)) return res.writeHead(303, { Location: "/lan/remote-code" }).end();
             return serveIndex(req, res, { remote: true });
         }
 
         // A signed-in phone also reads what the screens read (the live
         // state, the Setlist's rows), PIN or not.
-        if (!isAuthed(req) && !isRemote(req)) {
+        if (!isAuthed(req) && !roleOf(req)) {
             const wantsPage = req.method === "GET" && String(req.headers.accept || "").includes("text/html");
             if (wantsPage) return res.writeHead(303, { Location: `/lan/pin?next=${encodeURIComponent(req.url)}` }).end();
             return json(res, 401, { error: { message: "PIN necessário.", status: 401 } });
@@ -539,8 +606,9 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
                 for (const client of [...clients]) if (to(client) && !writeFrame(client, frame)) clients.delete(client);
             };
             unsubscribe = store.onChange((change) => {
-                // A phone signed in only as the remote hears only the profile.
-                broadcast(`data: ${JSON.stringify(change)}\n\n`, (client) => !client.remoteOnly || change.entity === "User");
+                // A phone signed in only by its code hears only the profile;
+                // the Equipe's, its messages too (Rodada Q).
+                broadcast(`data: ${JSON.stringify(change)}\n\n`, (client) => !client.remoteOnly || change.entity === "User" || (client.role === "team" && change.entity === "ServiceMessage"));
             });
             if (live) {
                 unsubscribeLive = live.onChange((snapshot) => broadcast(`event: live\ndata: ${JSON.stringify(snapshot)}\n\n`));
@@ -575,11 +643,12 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         },
         running: () => Boolean(server && server.listening),
         port: () => (server && server.listening ? server.address().port : null),
-        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, label: screen === REMOTE_PATH ? "Controle remoto" : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
+        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen, role }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle remoto") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
         // Desconectar todos: the phones' event streams close now (their
-        // cookie stops working with the new key the caller saves).
-        dropRemotes() { for (const client of [...clients]) if (client.screen === REMOTE_PATH) { client.res.end(); clients.delete(client); } },
+        // cookie stops working with the new key the caller saves). role:
+        // only the Controle's ("control") or only the Equipe's ("team").
+        dropRemotes(role = "control") { for (const client of [...clients]) if (client.screen === REMOTE_PATH && (client.role || "control") === role) { client.res.end(); clients.delete(client); } },
     };
 }
 
-module.exports = { createLanServer, lanAddresses, NETWORK_SCREENS, authToken, safeNext, remoteCommand, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, remoteToken, REMOTE_PATH, REMOTE_ACTIONS };
+module.exports = { createLanServer, lanAddresses, NETWORK_SCREENS, authToken, safeNext, remoteCommand, roleAllows, teamToken, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, remoteToken, REMOTE_PATH, REMOTE_ACTIONS };

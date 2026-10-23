@@ -1629,6 +1629,27 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Additive only: never rename or retype a field; a changed `app` reloads
   the page; an unknown action is 400 and the phone says "Atualize o
   KERYX no computador". A new action is an entry in the JSON first.
+  **The Equipe** (Rodada Q, PR1; S6 = A, S8 = A): a third code beside the
+  screens' PIN and the controle remoto's (`network.team` in the electron
+  settings, the same shape as `network.remote`, off by default, never equal
+  to the remote's; Configurações › Telas na rede › Equipe, `RemoteBlock
+  role="team"`). Both codes sign in on the same page and the code decides
+  the role (its own cookie `keryx_team`; signing in with one clears the
+  other's): `team` runs only the actions marked `team: true` (with
+  `teamArgs`: the library's songs only) — `state` (the reduced `teamState`),
+  `library`, `bibleFind`, `songText`, `requests`, `chat.send`,
+  `request.send` — checked by `remoteCommand(body, role)` in lan.cjs (403
+  `forbidden`) and again by the runner (`remoteRoleAllows`); the Controle
+  never runs the `requests` cap and gets `plan` (`setlist.add`: a song,
+  media or material through `addStageToSetlist(…, { silent })`, a passage
+  only with its verses through `addPassage`). The chat and song requests
+  are `ServiceMessage` rows of the culto (synced; `sender`, not `from`;
+  never the legacy ChatMessage), made quietly (the console's toast comes
+  from the rows), a link only YouTube's rebuilt from its id
+  (`youtubeLink`), the same message within 30 s returning the row made, 3
+  in a row then one every 2 s per address (`gate.message`); an Equipe
+  phone's event stream hears ServiceMessage changes too. In the preview a
+  cookie `keryx_role=team` makes the /Remote tab the Equipe's.
   `remoteCommand` (lan.cjs) checks every command against it; a phone
   signed in only with the remote's code (the screens have a PIN it does
   not have) reads only `/api/live`, `/media`, `User` `get` and its own

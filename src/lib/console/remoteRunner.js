@@ -12,7 +12,7 @@
 // Pure: everything the console owns comes in as deps (node:test cannot
 // resolve `@/`), read once per command so it sees the latest state. Tested
 // (remoteRunner.test.mjs).
-import { PROTOCOL, EMERGENCY, remoteKind, remoteState, remoteSay, passagePreview, refFromArgs, libraryPage, backItemOf } from "./remote.js";
+import { PROTOCOL, EMERGENCY, remoteKind, remoteState, remoteSay, passagePreview, refFromArgs, libraryPage, backItemOf, remoteRoleAllows, teamState, messageRow, sameMessage, requestsPage, songTextOf } from "./remote.js";
 import { isSection } from "./setlist.js";
 import { playerLayer, playerLayers, playerOp, videoSwap, followsItem, clockFollow } from "./player.js";
 import { followAction } from "./followWords.js";
@@ -97,8 +97,10 @@ async function reference(d, args) {
 // refuses anyway: bringing the video back, the corner logo).
 export const REMOTE_HANDLERS = {
     state: {
-        run: async ({ d, live, v }) => {
+        run: async ({ d, live, v, role }) => {
             const { items, airItemId, airNow } = d;
+            // The Equipe's phone: what is on air and the Setlist to read (Rodada Q).
+            if (role === "team") return ok("", teamState({ app: d.app?.() || "", service: d.service, items, airItemId: airNow ? airItemId : null, live }));
             return ok("", remoteState({
                 v, app: d.app?.() || "", service: d.service, items, rows: d.rows, media: d.media, progressOf: d.progressOf,
                 airItemId: airNow ? airItemId : null, nextItemId: d.nextItem?.id || null, backItemId: backItemOf(live, items, airNow ? airItemId : null),
@@ -278,7 +280,64 @@ export const REMOTE_HANDLERS = {
             return ok(remoteSay("setlist.autoplay", word));
         },
     },
+    // Rodada Q: an item at the end of the Setlist (never the air), as the
+    // Biblioteca's drop; a passage only with its verses, as the palette's
+    // Adicionar (a BiblePassage, never the whole chapter).
+    "setlist.add": {
+        run: async ({ d, args }) => {
+            if (args.kind !== undefined) {
+                const list = { song: d.songs, media: d.media, material: d.materials }[args.kind] || [];
+                const row = list.find((r) => r.id === args.id);
+                if (!row) return fail("not_found", M.notFound);
+                const build = { song: () => d.stages.song(row, {}, d.themes), media: () => d.stages.media(row, {}), material: () => d.stages.material(row) }[args.kind];
+                let stage;
+                try { stage = await build(); } catch { stage = null; }
+                if (!stage) return fail("not_found", M.notFound);
+                const r = await d.addToSetlist(stage);
+                const title = r?.added?.[0];
+                if (!title) return refuse(r?.error || "Esse item não entra na setlist.", 409, "blocked");
+                return ok(remoteSay("setlist.add", `adicionou "${title}" à setlist`), { title });
+            }
+            if (args.verseStart === undefined) return refuse(M.noVerses, 400);
+            const r = await reference(d, args);
+            if (r.error) return r.error;
+            if (!r.nums.length) return refuse(M.noVerses, 400);
+            const added = await d.addPassage(r);
+            if (!added?.title) return notInBible(r.ref, r.version);
+            return ok(remoteSay("setlist.add", `adicionou ${added.title} à setlist`), { title: added.title });
+        },
+    },
+    // The Equipe's chat and song requests (Rodada Q): a ServiceMessage row,
+    // nothing said here (the console's Pedidos tab and toast come from the
+    // rows). The same message again within limits.dedupeMs is the row made.
+    "chat.send": { quiet: true, run: sendMessage },
+    "request.send": { quiet: true, run: sendMessage },
+    requests: {
+        run: ({ d, args }) => ok("", requestsPage({ ...args, messages: d.messages || [] })),
+    },
+    songText: {
+        run: ({ d, args }) => {
+            const song = (d.songs || []).find((s) => s.id === args.id);
+            if (!song) return fail("not_found", M.notFound);
+            return ok("", songTextOf(song));
+        },
+    },
 };
+
+async function sendMessage({ d, args, action, recent }) {
+    const now = typeof d.now === "function" ? d.now() : Date.now();
+    const row = messageRow(action, args, new Date(now).toISOString());
+    if (row.error) return refuse(M.notYouTube, 400);
+    if (!row.sender || (row.kind === "chat" ? !row.text : !row.song)) return refuse("Comando inválido.", 400);
+    // A song the console no longer has: the typed name stays, the id goes.
+    if (row.songId && !(d.songs || []).some((s) => s.id === row.songId)) delete row.songId;
+    const again = sameMessage([...recent.rows, ...(d.messages || [])], row, now);
+    if (again) return ok("", { id: again.id, at: again.sentAt });
+    const serviceId = d.service?.id || await d.ensureService();
+    const made = await d.createMessage({ ...row, serviceId });
+    recent.rows = [...recent.rows.filter((r) => Math.abs(now - Date.parse(r.sentAt || "")) <= PROTOCOL.limits.dedupeMs), made];
+    return ok("", { id: made.id, at: made.sentAt });
+}
 
 async function step({ d, live, action }) {
     if (!live?.content) return fail("nothing", M.noSlides);
@@ -314,6 +373,9 @@ const thrown = (err) => {
 //   callOp, liveOp, clearText, say, end({ by }) → whether Desfazer is offered, undo() → whether it ran
 //   sendStage(stage, { keepPrev, why }) → true when it went; buildStage(item, index)
 //   setAutoplay(on)   the culto's Avançar sozinho (Service.autoplay)
+//   addToSetlist(stage) → { added: [title], left, error? }   at the end of the Setlist, no toast
+//   addPassage({ ref, version, verses, pair }) → { title } | null   a BiblePassage at the end of the Setlist
+//   messages          the culto's ServiceMessage rows; createMessage(fields) → the row; ensureService() → id
 //   referenceVerses(ref, version?) → { version, verses }
 //   stages: { song, media, piece, material, verses, tool }   the stage builders (stage.js)
 export function createRemoteRunner(deps) {
@@ -334,13 +396,19 @@ export function createRemoteRunner(deps) {
         return fail("nothing", "Não foi para o ar.");
     };
 
-    const exec = async ({ action, args = {}, v = 1 }) => {
+    // The Equipe's messages made lately (the 30 s dedupe sees them before
+    // the store's list catches up).
+    const recent = { rows: [] };
+
+    const exec = async ({ action, args = {}, v = 1, role = "control" }) => {
         const d = current();
         const handler = Object.hasOwn(REMOTE_HANDLERS, action) ? REMOTE_HANDLERS[action] : null;
         if (!handler) return refuse("Comando desconhecido.", 400);
+        // What the code that signed the phone in may run (lan.cjs checked it too).
+        if (!remoteRoleAllows(action, args || {}, role)) return fail("forbidden", M.forbidden);
         const live = d.live();
         const locked = d.locked ?? Boolean(live?.locked);
-        const ctx = { d, live, args: args || {}, v, action };
+        const ctx = { d, live, args: args || {}, v, action, role, recent };
         if (locked && (remoteKind(action, ctx.args) === "S" || handler.locks?.(ctx))) return refuse(d.lockedSay || M.locked, 423, "locked");
         return handler.run({ ...ctx, send: sender(d, action) });
     };

@@ -101,10 +101,24 @@ test("the remote's commands reach the last console tab and its answer comes back
     let text = "";
     while (!text.includes("event: remote")) text += new TextDecoder().decode((await reader.read()).value);
     const command = JSON.parse(text.split("\n").find((l) => l.startsWith("data: ")).slice(6));
-    assert.deepEqual({ ...command, id: 0 }, { id: 0, action: "goto", args: { index: 2 }, v: 2 });
+    assert.deepEqual({ ...command, id: 0 }, { id: 0, action: "goto", args: { index: 2 }, v: 2, role: "control" });
     assert.deepEqual((await f.post("remote-result", { id: command.id, ok: false, status: 423, code: "locked", message: "Telas travadas." })).data, true);
     const answer = await pending;
     assert.equal(answer.status, 423);
     assert.deepEqual((await answer.json()).error, { message: "Telas travadas.", status: 423, code: "locked" });
     assert.ok(first.ok, "the older tab stays connected, unused");
+
+    // The Equipe's phone (Rodada Q; a cookie in the preview): refused what it may not run, its role on what it may.
+    const team = { "X-Keryx": "1", cookie: "keryx_role=team" };
+    const refused = await remote({ v: 2, action: "next" }, team);
+    assert.equal(refused.status, 403);
+    assert.equal((await refused.json()).error.code, "forbidden");
+    assert.equal((await remote({ v: 2, action: "chat.send", args: { from: "Ana", text: "Oi" } })).status, 403, "the Controle has no chat");
+    const chat = remote({ v: 2, action: "chat.send", args: { from: "Ana", text: "Oi" } }, team);
+    text = "";
+    while (!text.includes("chat.send")) text += new TextDecoder().decode((await reader.read()).value);
+    const sent = JSON.parse(text.split("\n").find((l) => l.startsWith("data: ") && l.includes("chat.send")).slice(6));
+    assert.equal(sent.role, "team");
+    await f.post("remote-result", { id: sent.id, ok: true, message: "" });
+    assert.equal((await chat).status, 200);
 });

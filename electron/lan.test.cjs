@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
-const { createLanServer, lanAddresses, safeNext, remoteCommand, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, REMOTE_ACTIONS } = require("./lan.cjs");
+const { createLanServer, lanAddresses, safeNext, remoteCommand, roleAllows, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, REMOTE_ACTIONS } = require("./lan.cjs");
 const PROTOCOL = require("../shared/remoteProtocol.json");
 const { createLive, loadLiveRules } = require("./live.cjs");
 
@@ -545,4 +545,119 @@ test("remote: the phone's page is a home-screen app; the screens' pages are not"
     assert.match(remote, /apple-mobile-web-app-capable/);
     assert.match(remote, /window\.keryxLan=true/);
     assert.doesNotMatch(await (await page(f.base, "/Projection")).text(), /theme-color/);
+});
+
+// -- The Equipe (Rodada Q): a third code, the role "team" --------------------
+
+const TEAM = { ...REMOTE, team: { enabled: true, code: "975310", secret: "t3am" } };
+async function teamSignedIn(f) {
+    const res = await fetch(`${f.base}/lan/remote-code`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "code=975310" });
+    assert.equal(res.status, 303);
+    assert.equal(res.headers.get("location"), "/Remote");
+    const set = res.headers.get("set-cookie");
+    assert.match(set, /keryx_team=[0-9a-f]{64}; Path=\/; Max-Age=31536000; HttpOnly; SameSite=Strict/);
+    assert.match(set, /keryx_remote=; Path=\/; Max-Age=0/, "the Controle's cookie goes");
+    return set.split(";")[0];
+}
+
+test("equipe: what a role may run is checked by the server", () => {
+    // The Equipe: only team: true, and the library's songs only.
+    for (const action of ["next", "prev", "goto", "black", "logo", "clear", "off", "end", "undo", "sendNext", "sendItem", "sendMedia", "bibleSend", "player", "play", "follow", "layer", "alert", "alertClear", "tool", "timerAdjust", "lock", "setlist.autoplay", "setlist.add"]) {
+        assert.throws(() => remoteCommand({ v: 2, action, args: {} }, "team"), (err) => err.status === 403 && err.code === "forbidden", action);
+    }
+    assert.throws(() => remoteCommand({ v: 2, action: "sendMedia", args: { kind: "song", id: "s1" } }, "team"), (err) => err.status === 403);
+    assert.throws(() => remoteCommand({ v: 2, action: "library", args: { tab: "media" } }, "team"), (err) => err.status === 403);
+    assert.deepEqual(remoteCommand({ v: 2, action: "library", args: { tab: "songs", q: "graça" } }, "team").args, { tab: "songs", q: "graça" });
+    assert.deepEqual(remoteCommand({ v: 2, action: "chat.send", args: { from: " Ana ", text: "Oi" } }, "team").args, { from: "Ana", text: "Oi" });
+    assert.deepEqual(remoteCommand({ v: 2, action: "request.send", args: { from: "Lucas", song: "Raridade", singer: "Ana", songId: "s1", junk: 1 } }, "team").args, { from: "Lucas", song: "Raridade", singer: "Ana", songId: "s1" });
+    for (const action of ["state", "bibleFind", "requests", "songText"]) assert.equal(roleAllows(action, {}, "team"), true, action);
+    // The Controle: everything but the Equipe's chat.
+    for (const action of ["chat.send", "request.send", "requests", "songText"]) {
+        assert.throws(() => remoteCommand({ v: 2, action, args: {} }), (err) => err.status === 403, action);
+    }
+    assert.equal(roleAllows("setlist.add", {}, "control"), true);
+    assert.equal(roleAllows("toString", {}, "team"), false);
+    // The checks of the args still hold: a too long text, a chapter alone.
+    assert.throws(() => remoteCommand({ v: 2, action: "chat.send", args: { from: "Ana", text: "x".repeat(281) } }, "team"), (err) => err.status === 400);
+    assert.throws(() => remoteCommand({ v: 2, action: "chat.send", args: { text: "Oi" } }, "team"), (err) => err.status === 400);
+    assert.throws(() => remoteCommand({ v: 2, action: "setlist.add", args: { book: "João", chapter: 3 } }), (err) => err.status === 400, "a passage needs its verses");
+    assert.throws(() => remoteCommand({ v: 2, action: "setlist.add", args: { kind: "song", id: "s1", book: "João" } }), (err) => err.status === 400);
+    assert.deepEqual(remoteCommand({ v: 2, action: "setlist.add", args: { book: "João", chapter: 3, verseStart: 16 } }).args, { book: "João", chapter: 3, verseStart: 16 });
+    assert.deepEqual(remoteCommand({ v: 2, action: "setlist.add", args: { kind: "media", id: "m1" } }).args, { kind: "media", id: "m1" });
+});
+
+test("equipe: off by default; its code signs in as the team, which never touches the air", async (t) => {
+    const calls = [];
+    const f = await started(TEAM, { onRemote: async (a, args, meta) => { calls.push([a, meta.role]); return { ok: true }; } });
+    t.after(() => f.lan.stop());
+    const cookie = await teamSignedIn(f);
+    assert.equal((await page(f.base, "/Remote", { cookie })).status, 200);
+    for (const [action, args] of [["next", {}], ["black", { on: true }], ["setlist.add", { kind: "song", id: "s1" }], ["sendMedia", { kind: "song", id: "s1" }]]) {
+        const res = await send(f, { v: 2, action, args }, { cookie });
+        assert.equal(res.status, 403, action);
+        assert.equal((await res.json()).error.code, "forbidden");
+    }
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 200);
+    assert.equal((await send(f, { v: 2, action: "chat.send", args: { from: "Ana", text: "Oi" } }, { cookie })).status, 200);
+    assert.deepEqual(calls, [["state", "team"], ["chat.send", "team"]], "only what the team may run reaches the console, with its role");
+    // The Controle's code cannot chat.
+    const control = await remoteSignedIn(f);
+    const chat = await send(f, { v: 2, action: "chat.send", args: { from: "Ana", text: "Oi" } }, { cookie: control });
+    assert.equal(chat.status, 403);
+    assert.equal((await send(f, { v: 2, action: "next" }, { cookie: control })).status, 200);
+    assert.deepEqual(calls.at(-1), ["next", "control"]);
+    // Turned off: the team's cookie stops working; the Controle's goes on.
+    f.cfg.team = { ...f.cfg.team, enabled: false };
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 401);
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: control })).status, 200);
+    // Only the Equipe on: the page and the API answer it, the Controle's cookie does not.
+    f.cfg.team = { ...f.cfg.team, enabled: true };
+    f.cfg.remote = { ...f.cfg.remote, enabled: false };
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 200);
+    assert.equal((await send(f, { v: 2, action: "next" }, { cookie: control })).status, 401);
+    // A new key signs the team's phones out.
+    f.cfg.team = { ...f.cfg.team, secret: "other" };
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 401);
+});
+
+test("equipe: with the screens' PIN it reads only its page's data, and hears its messages", async (t) => {
+    const f = await started({ ...TEAM, pin: "4321" }, { onRemote: async () => ({ ok: true }), heartbeatMs: 100 });
+    t.after(() => f.lan.stop());
+    const cookie = await teamSignedIn(f);
+    const db = (body) => f.db(body, { "x-keryx": "1", cookie });
+    assert.equal((await db({ entity: "User", op: "get", args: ["me"] })).status, 200);
+    assert.equal((await db({ entity: "Song", op: "list", args: [] })).status, 403);
+    assert.equal((await db({ entity: "ServiceMessage", op: "list", args: [] })).status, 403, "the messages come through requests");
+    assert.equal((await fetch(`${f.base}/api/screens`, { headers: { cookie } })).status, 401);
+    assert.equal((await fetch(`${f.base}/api/live`, { headers: { cookie } })).status, 200);
+    const controller = new AbortController();
+    t.after(() => controller.abort());
+    const events = await fetch(`${f.base}/api/events?screen=%2FRemote`, { headers: { cookie }, signal: controller.signal });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.deepEqual(f.lan.clients().map((c) => [c.screen, c.role, c.label]), [["/Remote", "team", "Equipe"]]);
+    f.store.call("Song", "create", [{ title: "Segredo", lyrics: "x" }]);
+    f.store.call("ServiceMessage", "create", [{ serviceId: "svc", kind: "chat", sender: "Ana", text: "Chegando", sentAt: "2026-10-23T22:00:00.000Z" }]);
+    const text = await framesUntil(events, (x) => x.includes("Chegando") && x.includes("event: hb"));
+    assert.match(text, /Chegando/);
+    assert.doesNotMatch(text, /Segredo/);
+    // Desconectar todos of the Controle leaves the Equipe's phones.
+    f.lan.dropRemotes("control");
+    assert.equal(f.lan.clients().length, 1);
+    f.lan.dropRemotes("team");
+    assert.equal(f.lan.clients().length, 0);
+});
+
+test("equipe: messages have a bucket of their own, 3 in a row then one every 2 s", () => {
+    let now = 0;
+    const gate = createRemoteGate(() => now);
+    for (let i = 0; i < 3; i++) assert.equal(gate.message("a", "chat.send").ok, true);
+    const refused = gate.message("a", "request.send");
+    assert.deepEqual([refused.ok, refused.status, refused.code], [false, 429, "rate"]);
+    assert.equal(gate.message("b", "chat.send").ok, true, "per address");
+    assert.equal(gate.message("a", "state").ok, true, "only the messages");
+    now += 1000;
+    assert.equal(gate.message("a", "chat.send").ok, false);
+    now += 1000;
+    assert.equal(gate.message("a", "chat.send").ok, true);
+    assert.equal(gate.message("a", "chat.send").ok, false);
 });

@@ -18,7 +18,7 @@ import { useConsole } from "@/components/console/useConsole";
 import { useRemote } from "@/components/console/useRemote";
 import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
-import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
+import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService, useServiceMessages } from "@/components/console/useConsoleData";
 import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion, SelectManyBtn } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
@@ -654,11 +654,14 @@ export default function Console() {
     // Library items dropped on the Setlist: ServiceItems at that position, in
     // the order they came (several marked rows dragged together, Rodada O2),
     // the rows below renumbered once and one toast.
-    const addStageToSetlist = useCallback(async (given, index) => {
+    // -> { added: titles, left, error? } (the controle remoto's setlist.add
+    // reads it; silent: no toast, the runner says it).
+    const addStageToSetlist = useCallback(async (given, index, { silent = false } = {}) => {
+        const say = silent ? () => {} : c.say;
         const stages = (Array.isArray(given) ? given : [given]).filter(Boolean);
         const rows = stages.map((stage) => ({ stage, item: stageItem(stage) })).filter((r) => r.item);
         const left = stages.length - rows.length;
-        if (!rows.length) { c.say(addedSay([], left)); return; }
+        if (!rows.length) { say(addedSay([], left)); return { added: [], left }; }
         const at = Math.max(0, Math.min(items.length, index ?? items.length));
         const added = [];
         try {
@@ -675,7 +678,8 @@ export default function Console() {
                 await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at + added.length, duration: stage.args?.duration || defaultDuration(type, getPrefs()) });
                 added.push(stage.title);
             }
-            c.say(addedSay(added, left));
+            say(addedSay(added, left));
+            return { added, left };
         } catch (err) {
             // Stopped part way (a YouTube link that would not save): the rows
             // below close the gap the missing ones left, and the toast says
@@ -685,7 +689,8 @@ export default function Console() {
                 try { for (let i = at; i < items.length; i++) await keryx.entities.ServiceItem.update(items[i].id, { order: i + added.length }); } catch { /* the order keeps a gap; it still sorts */ }
             }
             const why = err?.message || "Não foi possível adicionar.";
-            c.say(added.length ? `${addedSay(added, left + gap)} ${why}` : why);
+            say(added.length ? `${addedSay(added, left + gap)} ${why}` : why);
+            return { added, left: left + gap, error: why };
         }
     }, [c, items, ensureService]);
 
@@ -833,21 +838,29 @@ export default function Console() {
         } catch (err) { c.say(err?.message || "Não foi possível abrir a passagem."); }
     };
     // Or as a passage at the end of the Setlist (never the whole chapter).
+    // The verses already read -> { title } | null (no such verses); the
+    // controle remoto's setlist.add goes through here too.
+    const addPassage = async ({ ref, version, verses, pair }) => {
+        const passage = passageOf({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, pair });
+        if (!passage) return null;
+        const sid = await ensureService();
+        const row = await keryx.entities.BiblePassage.create(passage);
+        const title = `${ref.book} ${ref.chapter}:${passage.verses}`;
+        await keryx.entities.ServiceItem.create({ serviceId: sid, type: "BIBLE", title, contentId: row.id, order: items.length, duration: defaultDuration("BIBLE", getPrefs()) });
+        return { title };
+    };
     const addReference = async (ref) => {
         try {
             const { version, verses, pair } = await referenceVerses(ref);
-            const passage = passageOf({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, pair });
-            if (!passage) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
-            const sid = await ensureService();
-            const row = await keryx.entities.BiblePassage.create(passage);
-            const title = `${ref.book} ${ref.chapter}:${passage.verses}`;
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "BIBLE", title, contentId: row.id, order: items.length, duration: defaultDuration("BIBLE", getPrefs()) });
-            c.say(`${title} adicionado ao fim da setlist.`);
+            const added = await addPassage({ ref, version, verses, pair });
+            c.say(added ? `${added.title} adicionado ao fim da setlist.` : `${formatReference(ref)} não existe na ${version}.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
     // Controle remoto (a phone, electron/lan.cjs): useRemote.js runs each
-    // command as the console's own key or palette would.
-    useRemote({ c, data, service, items, rows: setPlan.rows, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses });
+    // command as the console's own key or palette would; the Equipe's
+    // messages are the culto's ServiceMessage rows (Rodada Q).
+    const messages = useServiceMessages(serviceId);
+    useRemote({ c, data, service, items, rows: setPlan.rows, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses, messages, ensureService, addPassage, addToSetlist: (stage) => addStageToSetlist(stage, undefined, { silent: true }) });
 
     // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
     // electron/consoleZoom.cjs): say where it stands. Ctrl+wheel (and a

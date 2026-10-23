@@ -815,6 +815,11 @@ function churchInABox(mediaDir) {
             autoplay: true, autoplay_gap: 3,
         }],
         ServiceItem: [{ serviceId: ids.service, order: 1, type: "SONG", title: "Grande é o Senhor", contentId: ids.song, end_action: "loop" }],
+        // The Equipe's chat and a song request (Rodada Q): only text, no file.
+        ServiceMessage: [
+            { serviceId: ids.service, kind: "chat", sender: "Marcos", text: "O baixo vai atrasar uns 5 minutos.", status: "open", sentAt: "2026-10-25T21:52:00.000Z" },
+            { serviceId: ids.service, kind: "pedido", sender: "Lucas", singer: "Ana", song: "Grande é o Senhor", songId: ids.song, text: "Depois da oferta", link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", status: "done", sentAt: "2026-10-25T22:05:00.000Z" },
+        ],
         ServiceTemplate: [{ name: "Domingo à noite", background: { kind: "video", value: file("ServiceTemplate.background", ".mp4") }, items: [{ type: "SECTION", title: "Louvor" }] }],
         Song: [
             {

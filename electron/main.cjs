@@ -670,9 +670,10 @@ app.whenReady().then(async () => {
         // Past the longest wait lan.cjs gives (8 s for the Bíblia).
         setTimeout(() => remotePending.delete(id), 10000).unref();
         // Reads (state every few seconds, the library) are not logged.
-        if (!remoteReads(action)) logger.info(`[keryx-remote] ${action} de ${String(meta.ip || "").replace(/^::ffff:/, "")}`);
+        if (!remoteReads(action)) logger.info(`[keryx-remote] ${action} de ${String(meta.ip || "").replace(/^::ffff:/, "")}${meta.role === "team" ? " (equipe)" : ""}`);
         // v: the phone's protocol version (1 = an old page; state answers it in its shape).
-        mainWindow.webContents.send("keryx:remote", { id, action, args, v: meta.v || 1 });
+        // role: the code that signed it in (lan.cjs checked it may run this).
+        mainWindow.webContents.send("keryx:remote", { id, action, args, v: meta.v || 1, role: meta.role === "team" ? "team" : "control" });
     });
 
     // Destacar em janela (Rodada F5): a page in a window of its own (/Janela;

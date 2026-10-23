@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { remoteState, remoteSay, passagePreview, remoteKind, remoteOps, EMERGENCY, REMOTE_CAPS, PROTOCOL, libraryPage, refFromArgs, backItemOf, relativeMedia, itemStatus } from "./remote.js";
+import { teamState, youtubeLink, cleanText, songTextOf, remoteRoleAllows, TEAM_CAPS, remoteState, remoteSay, passagePreview, remoteKind, remoteOps, EMERGENCY, REMOTE_CAPS, PROTOCOL, libraryPage, refFromArgs, backItemOf, relativeMedia, itemStatus } from "./remote.js";
 import { WHILE_LOCKED } from "../../../shared/live-state.mjs";
 
 test("the phone's view of the service: on air, the Setlist, the next item", () => {
@@ -62,7 +62,10 @@ test("state v2: caps, the version, the service per request version, capped lists
     assert.equal(st.v, 2);
     assert.equal(st.app, "0.2.20");
     assert.deepEqual(st.caps, REMOTE_CAPS);
-    assert.deepEqual(REMOTE_CAPS, PROTOCOL.caps);
+    // The Controle: every section but the Equipe's chat (Rodada Q).
+    assert.deepEqual(REMOTE_CAPS, PROTOCOL.caps.filter((cap) => cap !== "requests"));
+    assert.ok(REMOTE_CAPS.includes("plan"));
+    assert.equal(st.role, "control");
     assert.deepEqual(st.service, { id: "s", title: "Culto", date: "2026-10-19" });
     assert.equal(st.serviceId, "s");
     assert.ok(st.items.length <= PROTOCOL.limits.items && st.items.length > 100, "capped by count and by size");
@@ -158,4 +161,27 @@ test("a PDF whose pages are being made says how far on the phone (state.items an
     progress.pdf1 = { error: { cause: "o arquivo está corrompido ou incompleto", retryable: true } };
     assert.equal(libraryPage({ tab: "media", media, progressOf }).rows.find((r) => r.id === "pdf1").progress, "Não deu para preparar as páginas: o arquivo está corrompido ou incompleto.");
     assert.equal("progress" in libraryPage({ tab: "media", media, progressOf }).rows.find((r) => r.id === "img"), false);
+});
+
+test("the Equipe (Rodada Q): links only YouTube's, rebuilt; texts clean; capped state and lyrics", () => {
+    const yt = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    for (const ok of ["https://youtu.be/dQw4w9WgXcQ", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3", "http://m.youtube.com/shorts/dQw4w9WgXcQ", "https://music.youtube.com/watch?v=dQw4w9WgXcQ"]) assert.equal(youtubeLink(ok), yt, ok);
+    for (const bad of ["https://evil.com/youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com.evil.com/watch?v=dQw4w9WgXcQ", "javascript:alert(1)//youtu.be/dQw4w9WgXcQ", "https://user@youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com/", "youtu.be/dQw4w9WgXcQ", ""]) assert.equal(youtubeLink(bad), null, bad);
+    assert.equal(cleanText("  a\u0000b\nc\u001b ", 10), "ab\nc");
+    assert.equal(cleanText("x".repeat(50), 40).length, 40);
+    // The roles as lan.cjs reads them.
+    assert.equal(remoteRoleAllows("library", { tab: "songs" }, "team"), true);
+    assert.equal(remoteRoleAllows("library", { tab: "media" }, "team"), false);
+    assert.equal(remoteRoleAllows("next", {}, "team"), false);
+    assert.equal(remoteRoleAllows("requests", {}, "control"), false);
+    assert.equal(remoteRoleAllows("constructor", {}, "team"), false);
+    // A long Setlist and a long song stay under the cap.
+    const items = Array.from({ length: 400 }, (_, i) => ({ id: `i${i}`, type: "SONG", title: "t".repeat(200) }));
+    const st = teamState({ items, service: { id: "s", title: "Culto" } });
+    assert.deepEqual(st.caps, TEAM_CAPS);
+    assert.equal(st.truncated, true);
+    assert.ok(JSON.stringify(st).length <= PROTOCOL.limits.stateBytes);
+    const long = songTextOf({ id: "s", title: "Longa", lyrics: Array.from({ length: 400 }, (_, i) => `[Verso ${i}]\n${"palavra ".repeat(30)}`).join("\n\n") });
+    assert.equal(long.truncated, true);
+    assert.ok(JSON.stringify(long).length <= PROTOCOL.limits.stateBytes);
 });

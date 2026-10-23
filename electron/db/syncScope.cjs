@@ -18,6 +18,9 @@ const SYNC_ENTITIES = new Set([
     "ProjectionTheme",
     "Service",
     "ServiceItem",
+    // The Equipe's messages and song requests to the operator (Rodada Q):
+    // whichever computer runs the console shows them.
+    "ServiceMessage",
     "ServiceTemplate",
     "Song",
     "SongHistory",
