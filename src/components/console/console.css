@@ -843,7 +843,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    header is narrow, the switch stays), the mark of what the item on air does
    at its end, and the countdown on the next row ("Próximo em 5 s · Cancelar";
    amber when it stopped instead). */
-.console .setlist-panel > .kx-panel-h { container: setlist-h / inline-size; }
 .console .rund-auto, .console .dock-lock { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-sm); padding: 0 var(--space-1); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: 500 var(--fs-ui)/1 var(--font-sans); white-space: nowrap; cursor: pointer; }
 .console .rund-auto:not(:disabled):hover, .console .dock-lock:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .rund-auto[aria-checked="true"], .console .dock-lock[aria-checked="true"] { color: var(--fg-1); }
@@ -852,7 +851,16 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    itens · tempo" ellipsizes first (the title's kx-section shrinks). Only
    where even "Setlist" would be cut does the word go: the switch alone, a
    24 px button. */
-@container setlist-h (width < 310px) { .console .rund-auto { width: var(--control-sm); padding: 0; justify-content: center; } .console .rund-auto-l { display: none; } }
+/* Rodada Q, Q1: the Autoplay switch and the two step buttons are the Setlist's
+   footer, not its header; the body is a column, the list scrolls, the footer
+   stays (the pattern of .slidesnav). */
+.console .setlist-panel > .kx-panel-b { display: flex; flex-direction: column; overflow: hidden; }
+.console .rund-scroll { flex: 1; min-height: 0; overflow: auto; }
+.console .rund-foot { flex: none; container: setlist-f / inline-size; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); height: var(--band); padding: 0 var(--space-3) 0 var(--space-1); border-top: 1px solid var(--line); min-width: 0; }
+.console .rund-foot-steps { display: inline-flex; align-items: center; gap: var(--space-1); }
+.console .rund-step { width: var(--control-sm); padding: 0; }
+.console .rund-step .kx-act-l { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@container setlist-f (width < 200px) { .console .rund-auto { width: var(--control-sm); padding: 0; justify-content: center; } .console .rund-auto-l { display: none; } }
 .console .rund-end { flex: none; display: inline-grid; place-items: center; width: 16px; color: var(--fg-3); }
 .console .rund .kx-row.is-air .rund-end { color: inherit; }
 .console .rund-cd { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: 22px; padding: 0 2px 0 var(--space-2); border-radius: var(--radius-round); background: var(--brand-tint); color: var(--brand); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -891,13 +899,34 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    the chapter is what goes next). */
 /* The "No ar agora" monitor: at most 35 % of the column's height, so the
    selection and the actions below it stay in view on short windows. */
-.console .bible-air-col .kx-panel-b { container-type: size; }
+.console .bible-air-col .kx-panel-b { container: bbar-c / size; }
 .console .bible-air { padding: var(--space-1); flex: none; display: flex; justify-content: center; }
-/* The bar under the No ar screen (Rodada P, P2-1 = A): how a passage shows
-   on the screens — Tema…, A− / A / A+, Ref., verses per slide; the version,
-   a 2ª versão and where it goes. Always on screen, two rows that wrap. */
-.console .bbar { flex: none; display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
-.console .bbar-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+/* The Bíblia's line above the No ar screen (Rodada Q, Q5; reverses P2-1):
+   how a passage shows on the screens — Tema, Ref., verses per slide, the
+   version, a 2ª versão and where it goes. ONE line that never wraps: it
+   shrinks in steps by the column's width (@container bbar-c) and every
+   control stays reachable at the 300 px minimum. */
+.console .bbar { flex: none; display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-1) 0; min-width: 0; }
+.console .bbar > * { flex: none; }
+.console .bbar .bb-short { display: none; }
+.console .bbar .bb-pair .kx-t { padding: 0 6px; }
+@container bbar-c (width < 460px) {
+    .console .bbar .bb-full { display: none; }
+    .console .bbar .bb-short { display: inline; }
+    .console .bbar .bb-2l { display: none; }
+    .console .bbar .bver + .bver > select { width: 64px; }
+}
+@container bbar-c (width < 400px) {
+    .console .bbar { gap: 2px; padding-inline: 2px; }
+    .console .bbar .bver > select, .console .bbar .bver + .bver > select { width: 56px; }
+    .console .bbar :is(.kx-btn, .kx-seg .kx-t) { min-width: 0; padding-inline: 6px; }
+}
+@container bbar-c (width < 330px) {
+    .console .bbar { padding-inline: 0; }
+    .console .bbar .bver > select, .console .bbar .bver + .bver > select { width: 46px; }
+    .console .bbar .bver-v { inset-inline: 4px 14px; }
+    .console .bbar :is(.kx-btn, .kx-seg .kx-t) { padding-inline: 4px; }
+}
 .console .vslide-2 { display: block; margin-top: 2px; color: var(--fg-2); font-size: var(--fs-meta); }
 .console .vslide-2 > b { color: var(--fg-3); font-weight: 600; margin-right: 4px; }
 
@@ -1782,6 +1811,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .lib-dialog { position: absolute; z-index: var(--z-library); left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
 .console .lib-body { flex: 1; min-height: 0; display: flex; }
 .console .lib-main { flex: 1; min-width: 0; overflow: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+/* Imagens and Vídeos (Rodada Q, Q2): the chips and the marks bar stay, only the grid scrolls; the padding keeps the tiles' outside rings whole. */
+.console .lib-main.is-fixed { overflow: hidden; padding-bottom: 0; }
+.console .lib-main.is-fixed > :not(.lib-scroll) { flex: none; }
+.console .lib-scroll { flex: 1; min-height: 0; overflow: auto; padding: var(--space-1) var(--space-1) var(--space-3); }
 .console .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--space-2); align-content: start; }
 .console .lib-thumb { position: absolute; inset: 0; container-type: inline-size; }
 .console .lib-thumb > .ks-box { width: 100%; }

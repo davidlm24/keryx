@@ -893,14 +893,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   header. **The (+) lists only what is missing here** (Rodada P, P3;
   `installableEditions`), then "Instalar uma edição própria…" (the
   `OwnBibleDialog` of Configurações, the BKJ 1611's door) and "Bíblias
-  instaladas…". **A bar under the No ar screen, always on screen** (Rodada
-  P, P2-1 = A; `.bbar`): Tema… (the Tema da Bíblia picker), Ref.
-  (`bible_show_reference`), versículos por slide 1/2/3/Auto, the version
-  and "+ 2ª versão" with Lado a lado | Empilhadas — church preferences
-  stamped at send (`withLookDefaults`). No size there (owner 2026-10-22:
+  instaladas…". **One line ABOVE the No ar screen, always on screen** (Rodada Q, Q5 = owner 2026-10-23, S2 = A; reverses P2-1's bar under it; `.bbar`): Tema as an icon button (`palette`, "Tema da Bíblia…"), Ref. (`bible_show_reference`), versículos por slide 1/2/3/Auto, the version, "+ 2ª" / "2ª: X" and, only with a 2ª versão, Lado a lado | Empilhadas as two icon segments (`cols`, `rows`) — church preferences stamped at send (`withLookDefaults`). The line NEVER wraps: container queries on the column (`bbar-c`) shrink it in steps (under 460 px Auto→A and the 2ª shows only its sigla; under 330 px the selects narrow and the gaps tighten), every control reachable at the column's 300 px minimum. No size there (owner 2026-10-22:
   the screens' size is the Bíblia theme's; `bible_text_size` is gone).
   **The bar's changes reach what is on air at once** (owner 2026-10-22, as
-  in Holyrics: the Bíblia has no Prévia, the screen above the bar is No
+  in Holyrics: the Bíblia has no Prévia, the screen under the line is No
   ar), when a passage is on air and the screens are not locked: Tema
   through `applyThemeOnAir(c, theme, { inUse: false })` (text look + Fundo,
   padlock respected, never the songs' theme in use); Ref. and Lado a lado |
@@ -1308,8 +1304,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   setlist…" / "Tirar a seção…" (`setlistActions.js`: asks with
   `useConfirm`, then renumbers from the store; 0.2.19). **Setlist automática**
   (owner 2026-10-20, Rodada N2): "Autoplay" (Rodada O3; "Avançar sozinho"
-  in its tooltip) in the Setlist's header — whose count is only "· n itens ·
-  tempo", no culto name — is the culto's switch (`Service.autoplay`,
+  in its tooltip) in the Setlist's FOOTER (Rodada Q, Q1, owner's pick S1 = A:
+  the header keeps only "Setlist · n itens · tempo" and its icons; the footer
+  `SetlistFooter` in Rundown.jsx holds the switch and two icon-only buttons,
+  Item anterior / Próximo item, the words in the tooltip with the item's name
+  and as screen-reader text; they send the neighbours of the item on air in
+  SETLIST order — `neighbours` in setlist.js, tested, nothing on air = the
+  first playable item — as the autoplay sends, `keepPrev`, the Prévia
+  untouched, a locked screen refusing with the usual message; the body is a
+  column: `.rund-scroll` scrolls, the footer stays) is the culto's switch (`Service.autoplay`,
   synced); with it on, the item on air that ends does what its "Ao terminar" says (`ServiceItem.end_action`:
   next — the default, "" and the old `autoAdvance` too — loop or stop; the
   row's menu and Planejar o culto): the next playable item (sections and
@@ -1685,8 +1688,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   sent through `UploadFile`); it rides in the live item as `poster` for the
   Prévia and shows on hover in the Biblioteca. **A video Fundo plays only on
   the outputs and the Programa monitor** (Rodada O, item 11; like a generator,
-  `!preview || motion`): the Prévia, the Temas thumbnails and the library draw
-  `VideoStill` (the row's still by file, `src/lib/videoFiles.js`, filled by
+  `!preview || motion`): the Prévia and the Temas thumbnails draw
+  `VideoStill`; **the background library plays** (Rodada Q, Q3): the side sample
+  plays the chosen clip (muted, loop) and a clip's tile plays under the pointer
+  or focus after 200 ms — one tile at a time (`useHoverPlay`), never a tile
+  still syncing, never with reduced motion, never the media pool — the rest
+  draw `VideoStill`; the Imagens/Vídeos chips and marks bar stay on screen and
+  only the grid scrolls (`.lib-main.is-fixed`, `.lib-scroll`, as the Mídia's) (the row's still by file, `src/lib/videoFiles.js`, filled by
   the console and /Janela; else the paused first frame) — one file decoded
   15 times kept the loops still. A video's codec is read from its bytes
   (`src/lib/videoCodec.js`, tested: the MP4/MOV `stsd`, bit depth and chroma

@@ -47,6 +47,26 @@ const ALL = "__all";
 const COLORS = ["#000000", "#0f1a2e", "#1f1308", "#101f14", "#1b1030", "#2a0d12", "#0d2a2a", "#333333", "#5b8fc9", "#c9a25b", "#7a2e3a", "#ffffff"];
 const GEN_NAMES = Object.fromEntries(GENERATORS.map((g) => [g.id, g.name]));
 const SAMPLE = SAMPLE_SLIDES.slice(0, 1);
+const HOVER_MS = 200;
+const calmComputer = () => typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+
+// Which tile is "hot": set HOVER_MS after the pointer/focus arrives, cleared on
+// leave/blur. One key at a time, so at most one decoder runs in the library.
+// Never the media pool (that is for the live LiveVideo).
+function useHoverPlay() {
+    const [hot, setHot] = useState(null);
+    const timer = useRef(0);
+    useEffect(() => () => clearTimeout(timer.current), []);
+    const off = () => { clearTimeout(timer.current); setHot(null); };
+    const on = (key) => { clearTimeout(timer.current); if (calmComputer()) return; timer.current = setTimeout(() => setHot(key), HOVER_MS); };
+    const props = (key) => ({ onMouseEnter: () => on(key), onFocus: () => on(key), onMouseLeave: off, onBlur: off });
+    return { hot, props };
+}
+
+// A clip's thumbnail: the still, or the clip itself when its tile is hot.
+function ClipThumb({ src, hot }) {
+    return hot ? <video src={src} autoPlay loop muted playsInline /> : <VideoStill src={src} className="" />;
+}
 
 // What a picked spec looks like on air: the Fundo, then a slide over it.
 function sampleDoc(now, args, style = {}) {
@@ -74,6 +94,9 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     // edited here, where they are used).
     const [view, setView] = useState(() => (request.view === "categories" ? "categories" : "grid"));
     const save = useSaveBackgroundPref(c.say);
+    // The one tile playing under the pointer (Rodada Q, Q3): a clip's tile
+    // is a still until the pointer or the focus rests on it for a moment.
+    const hover = useHoverPlay();
     // Right click: every background can leave the library, each as its origin
     // says (backgroundActions; owner 2026-10-16 — the factory ones too, for
     // good since 2026-10-23: there is no Excluídos to bring one back).
@@ -249,6 +272,9 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     const doc = useMemo(() => sampleDoc(keryx.live.now(), previewArgs, themeMode && selTheme ? themeStyle(selTheme) : {}), [JSON.stringify(previewArgs), selTheme]); // eslint-disable-line react-hooks/exhaustive-deps
     // Gerados: the background alone, big and moving.
     const big = tab === "generator";
+    // Imagens and Vídeos keep their chips on screen and scroll only the grid
+    // (Rodada Q, Q2; as the Mídia's .mv-body).
+    const fixedChips = (tab === "image" || tab === "video") && view === "grid";
     const bigDoc = useMemo(() => {
         if (!big || !previewArgs) return null;
         const t = keryx.live.now();
@@ -275,7 +301,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                     <IconBtn name="x" title="Fechar · Esc" onClick={() => done(null)} />
                 </div>
                 <div className="lib-body">
-                    <div className={`lib-main ${big ? "is-gen" : ""}`}>
+                    <div className={`lib-main ${big ? "is-gen" : ""} ${fixedChips ? "is-fixed" : ""}`}>
                         {tab === "temas" && (
                             <div className="lib-grid lib-themes">
                                 {(themeMode ? themes : withBg).map((t) => {
@@ -301,8 +327,8 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                                 <div className="listhead"><span className="kx-section">Da Mídia <span className="kx-count">· clique para trazer para os fundos (a Mídia continua com o arquivo)</span></span></div>
                                 <div className="lib-grid">
                                     {mediaOfTab.map((m) => (
-                                        <button type="button" key={m.id} className="kx-t fg-tile" aria-label={m.title} title={m.title} onClick={() => bring(m)}>
-                                            <span className="fg-img">{m.type === "video" ? <VideoStill src={m.file_url} className="" /> : <img src={tileUrl(m)} alt="" loading="lazy" decoding="async" />}</span>
+                                        <button type="button" key={m.id} className="kx-t fg-tile" aria-label={m.title} title={m.title} onClick={() => bring(m)} {...(m.type === "video" ? hover.props(m.id) : {})}>
+                                            <span className="fg-img">{m.type === "video" ? <ClipThumb src={m.file_url} hot={hover.hot === m.id} /> : <img src={tileUrl(m)} alt="" loading="lazy" decoding="async" />}</span>
                                             <span className="fg-name">{m.title}</span>
                                             {m.type === "video" && <CodecMark row={m} />}
                                         </button>
@@ -318,7 +344,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                             {selectable && <SelBar count={picked.length} total={shownKeys.length} onAll={ms.all} onClear={ms.clear}>
                                 <Btn small onClick={() => removeMany()} title="Os de fábrica e os enviados do computador saem de vez · os da Mídia só saem dos fundos · Delete"><Icon name={pickedAction.icon} />{pickedAction.label}</Btn>
                             </SelBar>}
-                            <div className={`lib-grid ${selectable && ms.picking ? "is-picking" : ""}`} onKeyDown={selectable ? (e) => ms.keyDown(e, { onDelete: removeMany }) : undefined}>
+                            <div className="lib-scroll"><div className={`lib-grid ${selectable && ms.picking ? "is-picking" : ""}`} onKeyDown={selectable ? (e) => ms.keyDown(e, { onDelete: removeMany }) : undefined}>
                                 {shown.map((b) => {
                                     const on = sel?.kind === b.kind && sourceOf(sel.value) === b.source;
                                     const waiting = pending.has(b.url);
@@ -326,15 +352,15 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                                     return (
                                         <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${selectable && ms.has(b.source) ? "is-marked" : ""}`} aria-pressed={on} aria-label={`${b.name}${selectable && ms.has(b.source) ? ", selecionado" : ""}`} title={tip}
                                             onClick={(e) => { if (selectable && ms.click(b.source, e)) return; if (waiting) c.say(PENDING_SAY); else setSel({ kind: b.kind, value: b.url }); }}
-                                            onDoubleClick={() => { if (!waiting && !ms.picking) take({ kind: b.kind, value: b.url }); }} onContextMenu={(e) => tileMenu(e, b)}>
-                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <VideoStill src={b.url} className="" /> : <img src={b.thumb} alt="" loading="lazy" decoding="async" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}{selectable && ms.picking && <RowMark />}</span>
+                                            onDoubleClick={() => { if (!waiting && !ms.picking) take({ kind: b.kind, value: b.url }); }} onContextMenu={(e) => tileMenu(e, b)} {...(b.kind === "video" && !waiting ? hover.props(b.source) : {})}>
+                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <ClipThumb src={b.url} hot={hover.hot === b.source} /> : <img src={b.thumb} alt="" loading="lazy" decoding="async" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}{selectable && ms.picking && <RowMark />}</span>
                                             <span className="fg-name">{b.favorite && <Icon name="star" size={12} />}{b.name}</span>
                                             {b.kind === "video" && <CodecMark src={b.url} />}
                                         </button>
                                     );
                                 })}
                                 {!shown.length && <span className="kx-meta">{tab === "video" ? "Nenhum vídeo. Envie um do computador (MP4 ou WebM); ele toca em loop, sem som." : "Nenhuma imagem nesta categoria."}</span>}
-                            </div>
+                            </div></div>
                         </>}
                         {tab === "generator" && (
                             <div className="lib-big">
@@ -365,8 +391,8 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                         )}
                     </div>
                     {!big && <div className="lib-side">
-                        {/* A generator moves here; a video shows its still (Rodada O, item 11). */}
-                        <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} preview motion={sel?.kind !== "video"} />}</div>
+                        {/* A generator and the chosen video move here (muted, in loop; Rodada Q, Q3). */}
+                        <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} preview motion />}</div>
                         <div className="lib-label"><span className="kx-meta">Escolhido</span><span className="t">{label}</span></div>
                         {entry && <FundoDetail key={entry.source} b={entry} save={save} sample={false}
                             categories={managedCategories(storedCats, list)} onCategories={() => setView("categories")} />}
