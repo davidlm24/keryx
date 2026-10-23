@@ -1121,7 +1121,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `Service.operator_notes`, saved a moment after typing stops and on
   leaving the field; never in the PDF, never on a screen; with no service
   the first one starts the day's draft), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
-  defaults), **Ferramentas** and **Esteve no ar** (the "Voltar ao
+  defaults), **Pedidos** (Rodada Q, PR2: the Equipe's chat and song
+  requests, below), **Ferramentas** and **Esteve no ar** (the "Voltar ao
   anterior" history). Where the panel shows the Aviso rápido or the
   Ferramentas, Biblioteca › Avisos leaves them out (`elsewhere`); the
   Biblioteca's search-row "+" stays "add content". **One gutter
@@ -1659,6 +1660,26 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   in a row then one every 2 s per address (`gate.message`); an Equipe
   phone's event stream hears ServiceMessage changes too. In the preview a
   cookie `keryx_role=team` makes the /Remote tab the Equipe's.
+  **The console's Pedidos tab** (PR2; the owner's mockup, S6 = A, S8 = A;
+  `PedidosTab.jsx`, pure rules in `src/lib/console/pedidos.js`, tested):
+  the culto's rows (`useServiceMessages`) oldest first, the newest at the
+  bottom; a chat is a line "who · hh:mm" and its text, a pedido a card
+  "<singer> canta <song>" with its note, every text drawn as plain text
+  (it came from a phone). A card's actions are always on screen: Pôr na
+  prévia and Setlist when the song is the console's (`songOfPedido`: its
+  songId, else the title folded), else "não está na biblioteca" and
+  Procurar a letra… (LyricsSearch opens with the song, `initial`);
+  Atendido (`status` done, the card dims, the toast has Desfazer);
+  Excluir… via useConfirm. A YouTube link shows its cover with Pôr na
+  prévia and Adicionar à Mídia (`mediaFromYouTube`): nothing enters the
+  Mídia by itself. The toast is `usePedidos` (Console.jsx only, never
+  /Janela): a row sent within 2 min (`FRESH_MS`) whose id this window has
+  not said (sessionStorage, so a reload never repeats one) says "Pedido de
+  <nome>: <louvor>" / "Mensagem de <nome>" with Ver; it also puts Pedidos
+  back in the panel's tabs when the operator's `layout.tabs` leaves it
+  out (`showTab`). The tab's dot (`dot` on a TabRow tab, `.kx-tc-dot`
+  after the name, the brand's gold) is a row newer than the last one seen
+  with the tab open (localStorage `keryx.console.pedidos.seen`).
   `remoteCommand` (lan.cjs) checks every command against it; a phone
   signed in only with the remote's code (the screens have a PIN it does
   not have) reads only `/api/live`, `/media`, `User` `get` and its own

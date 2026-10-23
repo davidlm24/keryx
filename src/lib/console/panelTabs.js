@@ -12,6 +12,8 @@ export const PANEL_TABS = {
         { id: "notas", name: "Notas", on: true },
         { id: "aviso", name: "Aviso rápido", on: true },
         { id: "timers", name: "Timers", on: true },
+        // The Equipe's chat and song requests (Rodada Q; PedidosTab.jsx).
+        { id: "pedidos", name: "Pedidos", on: true },
         { id: "ferramentas", name: "Ferramentas", hint: "relógio, cronômetro, texto" },
         { id: "historico", name: "Esteve no ar" },
     ],

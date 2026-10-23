@@ -6,6 +6,7 @@ import { QuickAlert, ReadyTimers, OnAirTimer, ToolsPicker } from "./QuickTools";
 import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory } from "@/lib/console/stage";
 import { TABS_MENU_TITLE } from "@/lib/console/panelTabs";
+import PedidosTab from "./PedidosTab";
 
 // A row of tabs the operator trims (the Biblioteca's, the panel beside the
 // Prévia): only the tabs that show. Which ones is the chooser (the eye) in
@@ -15,6 +16,7 @@ import { TABS_MENU_TITLE } from "@/lib/console/panelTabs";
 // cultos, Rodada O, O9): each tab's × (out of the Tab order: Delete on the
 // focused tab closes it), an optional dot before its name (`dot`: what it
 // means, said to screen readers too) and its right click (`onMenu(e, tab)`).
+// Without it a tab may carry a dot too, after its name (Pedidos' "novos").
 export function TabRow({ tabs, active, onPick, onClose = null, onMenu = null, label }) {
     const anyOn = tabs.some((t) => t.id === active);
     if (onClose) return (
@@ -45,7 +47,12 @@ export function TabRow({ tabs, active, onPick, onClose = null, onMenu = null, la
     );
     return (
         <div className="kx-tabs tabrow" role="tablist" onKeyDown={onTabsKey}>
-            {tabs.map((t, i) => <button type="button" role="tab" aria-selected={active === t.id} tabIndex={tabStop(i, active === t.id, anyOn)} key={t.id} className={`kx-t ${active === t.id ? "is-on" : ""}`} onClick={() => onPick(t.id)}>{t.name}</button>)}
+            {tabs.map((t, i) => (
+                <button type="button" role="tab" aria-selected={active === t.id} tabIndex={tabStop(i, active === t.id, anyOn)} key={t.id} className={`kx-t ${active === t.id ? "is-on" : ""}`}
+                    aria-label={t.dot ? `${t.name} · ${t.dot}` : undefined} onClick={() => onPick(t.id)}>
+                    {t.name}{t.dot && <span className="kx-tc-dot" aria-hidden="true" />}
+                </button>
+            ))}
         </div>
     );
 }
@@ -145,7 +152,7 @@ function AirHistory({ c, onPrepare, onGo }) {
 // audit): one tab at a time, the ones the operator checked in its chooser. Its
 // thin header (title "Painel", the chooser at its right) is Rodada E1's;
 // the fold chevron (`fold`, the dock's: Panel) right of it, Rodada F4.
-export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo, fold }) {
+export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo, fold, messages, onAddSong, onLyricsSearch }) {
     const strip = foldStrip(fold);
     return (
         <div className={`kx-panel bb-side tabs-panel ${fold?.on ? "is-collapsed" : ""} ${strip ? "kx-strip" : ""}`} data-panel-tab={active}>
@@ -162,6 +169,7 @@ export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, me
                 {active === "aviso" && <div className="tabs-pad"><QuickAlert c={c} data={data} /></div>}
                 {active === "timers" && <div className="tabs-pad"><OnAirTimer c={c} /><ReadyTimers c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
                 {active === "ferramentas" && <div className="tabs-pad"><ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
+                {active === "pedidos" && <PedidosTab c={c} data={data} messages={messages} onPrepare={onPrepare} onAddSong={onAddSong} onLyricsSearch={onLyricsSearch} />}
                 {active === "historico" && <AirHistory c={c} onPrepare={onPrepare} onGo={onGo} />}
             </div>
         </div>
