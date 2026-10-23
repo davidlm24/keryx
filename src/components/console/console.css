@@ -1552,7 +1552,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .fg-img img, .console .fg-img video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .console .fg-kind { position: absolute; right: 3px; bottom: 3px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--radius-control); background: var(--chrome-on-screen); color: var(--fg-1); }
 .console .fg-tile.is-on .fg-img { box-shadow: 0 0 0 2px var(--fg-1); }
-.console .fg-tile.is-hidden .fg-img { opacity: .4; }
 .console .fg-name { display: flex; align-items: center; gap: 4px; font-size: var(--fs-meta); color: var(--fg-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .console .fg-name .kx-i { flex: none; color: var(--fg-1); }
 .console .cfg .fg-detail { flex: 0 0 380px; position: sticky; top: 0; padding: 0; grid-template-columns: 84px minmax(0, 1fr); }

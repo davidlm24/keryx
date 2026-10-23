@@ -105,7 +105,7 @@ test("a background is listed once, however many times Mídia holds it", () => {
     assert.equal(list[3].name, "Cruz");
 });
 
-test("every background can leave the library, each by its origin (owner 2026-10-16)", () => {
+test("every background can leave the library, each by its origin (owner 2026-10-16; for good since 2026-10-23)", () => {
     const list = backgroundList({
         bundled,
         images: [{ id: "m1", url: "http://h/media/own.png" }, { id: "m2", url: "http://h/media/midia.png", origin: "media" }],
@@ -115,9 +115,9 @@ test("every background can leave the library, each by its origin (owner 2026-10-
     assert.deepEqual(list.map((b) => b.origin), ["keryx", "keryx", "keryx", "own", "media"]);
     assert.equal(by("http://h/media/own.png").mediaId, "m1");
     assert.deepEqual(backgroundActions(by("bundled:a")), ["exclude"], "a factory photo is excluded, never its file");
-    assert.deepEqual(backgroundActions(by("bundled:b")), ["restore"], "excluded: it comes back");
+    assert.deepEqual(backgroundActions(by("bundled:b")), [], "excluded: for good, no Restaurar (owner 2026-10-23)");
     assert.deepEqual(backgroundActions(by("http://h/media/own.png")), ["delete"]);
-    assert.deepEqual(backgroundActions(by("http://h/media/midia.png")), ["restore", "untrack"], "an old Oculto Mídia picture: back, or out of the backgrounds");
+    assert.deepEqual(backgroundActions(by("http://h/media/midia.png")), [], "an old Oculto Mídia picture is never listed: nothing to offer");
     assert.deepEqual(backgroundActions(null), []);
     assert.deepEqual(visibleBackgrounds(list).map((b) => b.source), ["bundled:a", "bundled:c", "http://h/media/own.png"], "the excluded ones are not offered");
 });

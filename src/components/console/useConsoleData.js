@@ -5,6 +5,7 @@ import { remember, forget, localId, sameAnswer } from "@/lib/console/outputs";
 import { bundledBackgrounds } from "@/lib/backgrounds";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { backgroundList, sourceOf } from "@/lib/console/backgroundPrefs";
+import { tileUrl } from "@/lib/mediaPoster";
 import { useUser } from "@/hooks/useUser";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { useFontRows } from "@/hooks/useFonts";
@@ -153,7 +154,7 @@ export function useBackgrounds() {
     return useMemo(() => {
         // A file the sync is still bringing stays listed (the tile says Baixando…).
         const of = (type) => media.filter(([m]) => m.type === type && m.file_url && (!m.missing || m.syncing) && !(type === "video" && /youtu/.test(m.file_url)))
-            .map(([m, origin]) => ({ id: m.id, url: m.file_url, title: m.title, origin }));
+            .map(([m, origin]) => ({ id: m.id, url: m.file_url, title: m.title, origin, thumb: m.type === "image" ? tileUrl(m) : null }));
         return backgroundList({ bundled: BUNDLED, images: of("image"), videos: of("video"), prefs });
     }, [media, prefs]);
 }

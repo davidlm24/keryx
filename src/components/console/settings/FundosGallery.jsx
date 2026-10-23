@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { Btn, IconBtn, Seg } from "../kx";
-import Icon from "../Icon";
 import { FormRow } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
@@ -13,8 +12,8 @@ const SAMPLE = SAMPLE_SLIDES.slice(0, 1);
 // A background's own settings (BackgroundPref): its name, category, dim and
 // blur (a starting point for the items that use it), fit and position, and
 // a favourite mark (first in the library). Leaving the library is the
-// tile's right click (Excluir…; the old Oculto is the Excluídos chip now,
-// owner 2026-10-16). Drawn by the background library
+// tile's right click (Excluir…, for good: owner 2026-10-23 took the
+// Excluídos chip out). Drawn by the background library
 // (library/BackgroundLibrary.jsx); its door in Configurações is Temas e fundos.
 
 // One change to a background's settings (BackgroundPref): the row is
@@ -43,7 +42,7 @@ export function useSaveBackgroundPref(say) {
 // One background's settings and a sample. (The library window.) Its
 // category is one of the church's (`categories`; a free name made a
 // category the editor did not list), the editor one click away.
-export function FundoDetail({ b, save, sample = true, categories = [], onCategories, onRestore }) {
+export function FundoDetail({ b, save, sample = true, categories = [], onCategories }) {
     const cats = categories.includes(b.category) ? categories : [...categories, b.category];
     const [name, setName] = useState(b.pref?.name || "");
     const [dim, setDim] = useState(b.dim === null ? null : Math.round(b.dim * 100));
@@ -79,10 +78,6 @@ export function FundoDetail({ b, save, sample = true, categories = [], onCategor
             <FormRow k="Nome">
                 <input className="fg-input" value={name} placeholder={b.name} maxLength={80} onChange={(e) => setName(e.target.value)} onBlur={commitName} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} aria-label="Nome do fundo" />
             </FormRow>
-            {b.hidden && <FormRow k="">
-                <span className="kx-meta">Excluído: fora da biblioteca.</span>
-                {onRestore && <Btn small onClick={onRestore}><Icon name="undo" size={14} />Restaurar</Btn>}
-            </FormRow>}
             <FormRow k="Categoria">
                 <select className="fg-input" value={b.category} onChange={(e) => keep({ category: e.target.value })} aria-label="Categoria do fundo">
                     {cats.map((k) => <option key={k} value={k}>{k}</option>)}

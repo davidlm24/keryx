@@ -51,13 +51,46 @@ export function capturePoster(url) {
     });
 }
 
-// Takes a Media row's still and saves it as a media file of its own
-// (UploadFile: the adapter stores it as keryx-media://, never the http form),
-// filling the duration too when the row has none. -> the updated row
+// A picture made small (owner 2026-10-23): at most 480 px, as WebP (it keeps
+// a logo's transparency). Asked for in CORS mode, as the video above.
+// -> { blob, duration: 0 }
+export function capturePicture(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.decoding = "async";
+        const timer = setTimeout(() => reject(new Error("A imagem demorou demais para abrir.")), TIMEOUT_MS);
+        img.onerror = () => { clearTimeout(timer); reject(new Error("Não foi possível abrir a imagem.")); };
+        img.onload = () => {
+            clearTimeout(timer);
+            try {
+                const { width, height } = posterSize(img.naturalWidth, img.naturalHeight);
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const g = canvas.getContext("2d");
+                g.imageSmoothingQuality = "high";
+                g.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => (blob ? resolve({ blob, duration: 0 }) : reject(new Error("Sem imagem."))), "image/webp", 0.82);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        img.src = url;
+    });
+}
+
+// Takes a Media row's still (a video) or small copy (a picture) and saves it
+// as a media file of its own (UploadFile: the adapter stores it as
+// keryx-media://, never the http form), filling a video's duration too when
+// the row has none. -> the updated row
 export async function savePoster(row) {
     if (!needsPoster(row)) return row;
-    const { blob, duration } = await capturePoster(row.file_url);
-    const file = new File([blob], `${row.id || "video"}-miniatura.jpg`, { type: "image/jpeg" });
+    const picture = row.type === "image";
+    const { blob, duration } = picture ? await capturePicture(row.file_url) : await capturePoster(row.file_url);
+    const file = picture
+        ? new File([blob], `${row.id || "imagem"}-miniatura.webp`, { type: "image/webp" })
+        : new File([blob], `${row.id || "video"}-miniatura.jpg`, { type: "image/jpeg" });
     const { file_url } = await keryx.integrations.Core.UploadFile({ file });
     const patch = { thumbnail_url: file_url };
     if (!row.duration && duration > 0) patch.duration = Math.round(duration);

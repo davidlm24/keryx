@@ -10,9 +10,10 @@ const PAUSE_MS = 800;
 // over and over.
 const tried = new Set();
 
-// Gives every video of the library its still (Media.thumbnail_url), one at a
-// time with a pause between them: those sent now (their row arrives through
-// subscribe) and the ones from before there were stills. The console only,
+// Gives every video of the library its still and every picture its small
+// copy (Media.thumbnail_url; mediaPoster.js needsPoster), one at a time with a
+// pause between them: those sent now (their row arrives through subscribe)
+// and the ones from before there were stills. The console only,
 // where files can be sent; never a screen on the network.
 export function usePosterBackfill(rows) {
     const [tick, setTick] = useState(0);

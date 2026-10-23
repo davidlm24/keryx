@@ -69,10 +69,10 @@ export const BACKGROUND_NAMES = {
     "1476610182048-b716b8518aae": "Cachoeira ao entardecer",
 };
 
-// The factory set, once each: { id, url, category, name } in list order.
+// The factory set, once each: { id, url, thumb, category, name } in list order.
 export function bundledBackgrounds() {
     return [...new Set(Object.values(BACKGROUNDS).flat())]
-        .map((id) => ({ id, url: backgroundUrl(id), category: Object.keys(BACKGROUNDS).find((k) => BACKGROUNDS[k].includes(id)), name: BACKGROUND_NAMES[id] }));
+        .map((id) => ({ id, url: backgroundUrl(id), thumb: backgroundThumbUrl(id), category: Object.keys(BACKGROUNDS).find((k) => BACKGROUNDS[k].includes(id)), name: BACKGROUND_NAMES[id] }));
 }
 
 // Retired from the factory set; still a bundled file (imported rows keep it).
@@ -91,6 +91,15 @@ const desktopMediaBase = () => {
 export function backgroundUrl(id) {
     const base = desktopMediaBase();
     return base ? `${base}bundled/backgrounds/${id}.webp` : `https://images.unsplash.com/photo-${id}?w=1920&q=80`;
+}
+
+// Its small copy, for a gallery tile (owner 2026-10-23: the library decoded
+// each 1920 px photo whole for a 160 px tile): resources/backgrounds/thumbs/,
+// 480 px wide, made from the file above (backgrounds.test.mjs checks one
+// ships for every photo of the set).
+export function backgroundThumbUrl(id) {
+    const base = desktopMediaBase();
+    return base ? `${base}bundled/backgrounds/thumbs/${id}.webp` : `https://images.unsplash.com/photo-${id}?w=480&q=75`;
 }
 
 // The bundled id for an Unsplash URL saved before backgrounds were bundled

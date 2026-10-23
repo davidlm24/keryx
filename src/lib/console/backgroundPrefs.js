@@ -26,8 +26,9 @@ const clamp = (v, [lo, hi]) => {
 
 // Where a background comes from, which decides how it leaves the library:
 //   keryx  ships with KERYX (resources/): Excluir takes it out of the library
-//          (BackgroundPref.hidden) and Excluídos › Restaurar brings it back —
-//          the file is the app's, never deleted
+//          for good (BackgroundPref.hidden; owner 2026-10-23: no Excluídos,
+//          no Restaurar — the picture comes back only as a file brought from
+//          the computer) — the file is the app's, never deleted
 //   own    sent to the library or brought from the Mídia (a Media row of
 //          category "background"): Excluir deletes that row
 //   media  a Mídia picture set up as a background before the libraries were
@@ -41,11 +42,12 @@ export const ORIGINS = ["keryx", "own", "media"];
 // hidden (excluído), favorite, pref, origin, mediaId }.
 export function backgroundList({ bundled = [], images = [], videos = [], prefs = [] }) {
     const bySource = new Map(prefs.filter((p) => p?.source).map((p) => [p.source, p]));
-    const entry = (source, url, name, category, kind, origin, mediaId = null) => {
+    // `thumb`: the small copy a tile draws (owner 2026-10-23), else the file.
+    const entry = (source, url, name, category, kind, origin, mediaId = null, thumb = null) => {
         const pref = bySource.get(source) || null;
         const dim = clamp(pref?.dim_pct, DIM_PCT);
         return {
-            source, url, pref, kind, origin, mediaId,
+            source, url, thumb: thumb || url, pref, kind, origin, mediaId,
             name: pref?.name?.trim() || name,
             category: pref?.category?.trim() || category,
             dim: dim === null ? null : dim / 100,
@@ -55,8 +57,8 @@ export function backgroundList({ bundled = [], images = [], videos = [], prefs =
         };
     };
     const all = [
-        ...bundled.map((b, i) => entry(`bundled:${b.id}`, b.url, b.name || `Fundo ${i + 1}`, b.category || "Outros", "image", "keryx")),
-        ...images.map((m) => entry(sourceOf(m.url), m.url, m.title || "Imagem", OWN_IMAGES, "image", m.origin || "own", m.id ?? null)),
+        ...bundled.map((b, i) => entry(`bundled:${b.id}`, b.url, b.name || `Fundo ${i + 1}`, b.category || "Outros", "image", "keryx", null, b.thumb)),
+        ...images.map((m) => entry(sourceOf(m.url), m.url, m.title || "Imagem", OWN_IMAGES, "image", m.origin || "own", m.id ?? null, m.thumb)),
         // The church's own clips (local files): the Fundo layer plays them
         // looping and muted; never the idle screen or an item's own
         // background, which only take pictures.
@@ -79,16 +81,13 @@ export function visibleBackgrounds(list, { only, except } = {}) {
 
 // What a background's right click offers to take it out (owner 2026-10-16:
 // every background can leave the library, the factory ones included):
-//   "exclude"  a factory photo leaves the library (hidden), restorable
+//   "exclude"  a factory photo leaves the library for good (hidden)
 //   "delete"   the church's own file: its Media row is deleted
 //   "untrack"  a Mídia picture: Tirar dos fundos (its BackgroundPref goes)
-//   "restore"  an excluded one (the Excluídos chip) comes back
-// An excluded own file or Mídia picture (Oculto, before) can also go for good.
+// One already excluded (an old Oculto too) is never listed: nothing to offer.
 export function backgroundActions(b) {
-    if (!b) return [];
-    const out = b.origin === "own" ? "delete" : b.origin === "media" ? "untrack" : "exclude";
-    if (b.hidden) return out === "exclude" ? ["restore"] : ["restore", out];
-    return [out];
+    if (!b || b.hidden) return [];
+    return [b.origin === "own" ? "delete" : b.origin === "media" ? "untrack" : "exclude"];
 }
 
 // The categories in use, in a stable order: the church's list first (the

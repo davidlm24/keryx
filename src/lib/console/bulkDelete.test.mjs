@@ -92,27 +92,32 @@ test("Tirar dos fundos for several: one question that says where each origin goe
     assert.equal(q.title, "Excluir 4 fundos?", "a file deleted for good: Excluir");
     assert.deepEqual(q.list, ["Céu", "Mar", "Cruz", "Igreja"]);
     assert.equal(q.ok, "Excluir 4");
-    assert.deepEqual(q.warn, ["1 foi enviado para a biblioteca e é excluído de vez."]);
-    assert.equal(q.text, "2 vêm com o KERYX e vão para Excluídos: Restaurar traz de volta. 1 é da Mídia e sai só dos fundos: a Mídia continua com ele. 1 já está em Excluídos.");
+    assert.deepEqual(q.warn, ["2 vêm com o KERYX e saem da biblioteca de vez: para usar de novo, traga a imagem do computador.", "1 foi enviado para a biblioteca e é excluído de vez."]);
+    assert.equal(q.text, "1 é da Mídia e sai só dos fundos: a Mídia continua com ele. 1 já saiu da biblioteca.");
     assert.equal(focusesCancel(q), true, "a file deleted for good: it opens on Cancelar");
-    const soft = backgroundQuestion({ exclude: [b("Céu")] });
-    assert.equal(soft.title, "Tirar o fundo?");
-    assert.equal(soft.ok, "Tirar");
-    assert.deepEqual(soft.warn, []);
-    assert.equal(focusesCancel(soft), false, "Excluídos gives it back: it opens on Tirar");
+    // A factory photo leaves for good too (owner 2026-10-23: no Excluídos).
+    const factory = backgroundQuestion({ exclude: [b("Céu")] });
+    assert.equal(factory.title, "Excluir o fundo?");
+    assert.equal(factory.ok, "Excluir");
+    assert.deepEqual(factory.warn, ["1 vem com o KERYX e sai da biblioteca de vez: para usar de novo, traga a imagem do computador."]);
+    assert.equal(focusesCancel(factory), true, "nothing gives it back: it opens on Cancelar");
     assert.equal(backgroundQuestion({ skipped: [b("Campo")] }), null, "nothing can go further");
-    assert.equal(backgroundQuestion({ exclude: [b("Céu")], untrack: [b("Igreja")] }).title, "Tirar 2 fundos?", "nothing deleted for good: Tirar");
+    const soft = backgroundQuestion({ untrack: [b("Igreja")] });
+    assert.equal(soft.title, "Tirar o fundo?", "only a Mídia picture: Tirar");
+    assert.deepEqual(soft.warn, []);
+    assert.equal(focusesCancel(soft), false, "the Mídia keeps it: it opens on Tirar");
 });
 
-test("the marked backgrounds' action: Excluir with the trash when a file goes for good (owner 2026-10-22)", () => {
+test("the marked backgrounds' action: Excluir with the trash when anything goes for good (owner 2026-10-22/23)", () => {
     assert.deepEqual(backgroundAction({ exclude: [{}], delete: [{}] }), { label: "Excluir…", icon: "trash", verb: "Excluir" });
-    assert.deepEqual(backgroundAction({ exclude: [{}], untrack: [{}], delete: [] }), { label: "Tirar dos fundos…", icon: "x", verb: "Tirar" });
+    assert.deepEqual(backgroundAction({ exclude: [{}], untrack: [{}], delete: [] }), { label: "Excluir…", icon: "trash", verb: "Excluir" }, "a factory photo goes for good");
+    assert.deepEqual(backgroundAction({ untrack: [{}] }), { label: "Tirar dos fundos…", icon: "x", verb: "Tirar" });
     assert.deepEqual(backgroundAction(), { label: "Tirar dos fundos…", icon: "x", verb: "Tirar" });
 });
 
 test("the toast after Tirar dos fundos", () => {
-    assert.equal(backgroundSay({ exclude: 2, delete: 1, untrack: 1 }), "4 fundos saíram da biblioteca · 2 em Excluídos · 1 excluído · 1 só fora dos fundos.");
-    assert.equal(backgroundSay({ exclude: 1 }), "1 fundo saiu da biblioteca · 1 em Excluídos.");
+    assert.equal(backgroundSay({ exclude: 2, delete: 1, untrack: 1 }), "4 fundos saíram da biblioteca · 3 excluídos · 1 só fora dos fundos.");
+    assert.equal(backgroundSay({ exclude: 1 }), "1 fundo saiu da biblioteca · 1 excluído.");
     assert.equal(backgroundSay({ delete: 2, failed: 1 }), "2 fundos saíram da biblioteca · 2 excluídos · 1 não pôde sair.");
 });
 
