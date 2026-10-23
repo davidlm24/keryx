@@ -926,6 +926,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    tag on the row's one line, its name cut with "…" (the whole in its tooltip). */
 .console .rund-who { flex: 0 1 auto; min-width: 0; max-width: 45%; display: inline-flex; align-items: center; gap: var(--space-1); height: 18px; padding: 0 7px; border-radius: var(--radius-round); background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); font-size: var(--fs-meta); font-weight: 500; }
 .console .rund-who > svg { flex: none; width: 11px; height: 11px; }
+/* The title comes first: in a narrow column the tag gives way, down to its glyph. */
+.console .kx-row:has(> .rund-who) > .kx-row-main { min-width: 55%; }
 .console .rund-who > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .rund-end { flex: none; display: inline-grid; place-items: center; width: 16px; color: var(--fg-3); }
 .console .rund .kx-row.is-air .rund-end { color: inherit; }

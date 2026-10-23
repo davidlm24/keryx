@@ -96,7 +96,7 @@ function NewPedido({ songs, onWrite, onDone }) {
     const first = useRef(null);
     useEffect(() => { first.current?.focus(); }, []);
     const picked = songId ? songs.find((s) => s.id === songId) : null;
-    const matches = picked ? [] : songMatches(song, songs).filter((s) => s.title !== song);
+    const matches = picked ? [] : songMatches(song, songs, 3).filter((s) => s.title !== song);
     const save = async () => {
         const v = operatorPedido({ singer, song, songId, note }, songs);
         if (v.error) { setError(v.message); return; }
