@@ -1,16 +1,20 @@
-import React, { useMemo, useState } from "react";
+import React, { Suspense, lazy, useMemo, useState } from "react";
 import Icon from "@/components/console/Icon";
 import { useLiveNow, useLiveState } from "@/hooks/useLiveState";
 import { useChurch } from "@/hooks/useChurch";
 import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
-import { airHeader, bannerOf, canRun, capsOf } from "@/lib/network/remoteView";
+import { airHeader, bannerOf, canRun, capsOf, nowBarInfo } from "@/lib/network/remoteView";
 import { useCommands, useKeepAwake, usePhoneState, useStale } from "@/components/network/remote/usePhone";
 import { Cmd, HoldButton, Toast } from "@/components/network/remote/parts";
 import LiveTab from "@/components/network/remote/LiveTab";
-import SetlistTab from "@/components/network/remote/SetlistTab";
-import MoreTab from "@/components/network/remote/MoreTab";
-import MediaTab from "@/components/network/remote/MediaTab";
-import BibleTab from "@/components/network/remote/BibleTab";
+import NowBar from "@/components/network/remote/NowBar";
+
+// Ao vivo draws at once; the other tabs load when first opened, so the
+// page stays inside the outputs' budget (scripts/bundle-budget.cjs).
+const SetlistTab = lazy(() => import("@/components/network/remote/SetlistTab"));
+const MediaTab = lazy(() => import("@/components/network/remote/MediaTab"));
+const BibleTab = lazy(() => import("@/components/network/remote/BibleTab"));
+const MoreTab = lazy(() => import("@/components/network/remote/MoreTab"));
 
 // Controle remoto (/Remote): a phone on the church Wi-Fi conducts the
 // service. Only on the network, only while the operator turned it on, only
@@ -19,7 +23,7 @@ import BibleTab from "@/components/network/remote/BibleTab";
 // what is on air comes from the live state, like the screens. Tabs at the
 // bottom, in reach of the thumb (owner's pick); a left rail in landscape and
 // on a tablet (remote.css). Sections the console does not run (its `caps`)
-// are not shown.
+// are not shown. Under every tab but Ao vivo, the No ar bar (Rodada Q).
 const TABS = [
     ["live", "Ao vivo", "monitor", "live"],
     ["setlist", "Setlist", "list", "setlist"],
@@ -43,6 +47,7 @@ export default function RemoteView() {
     const tabs = TABS.filter(([, , , cap]) => !cap || !state || caps.has(cap));
     const shown = tabs.some(([k]) => k === tab) ? tab : "live";
     const banner = bannerOf({ stale, unknown: cmd.unknown, locked, canUnlock: caps.has("lock") });
+    const hasNow = shown !== "live" && Boolean(nowBarInfo(live));
     const again = () => { cmd.clearUnknown(); setGate(null); refresh(); };
 
     if (gate) {
@@ -59,7 +64,7 @@ export default function RemoteView() {
     }
 
     return (
-        <div className="net rm">
+        <div className={`net rm ${hasNow ? "has-now" : ""}`}>
             <Header live={live} stale={stale} c={c} church={church.name} />
             {banner && (
                 <div className={`rm-ban is-${banner.tone}`} role="status">
@@ -68,11 +73,16 @@ export default function RemoteView() {
                 </div>
             )}
             <div className="rm-body">
-                {shown === "live" && <LiveTab live={live} state={state} caps={caps} c={c} />}
-                {shown === "setlist" && <SetlistTab live={live} state={state} c={c} onRefresh={refresh} />}
-                {shown === "media" && <MediaTab c={c} setGate={setGate} />}
-                {shown === "bible" && <BibleTab state={state} c={c} />}
-                {shown === "more" && <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />}
+                <div className="rm-pane">
+                    {shown === "live" && <LiveTab live={live} state={state} caps={caps} c={c} />}
+                    <Suspense fallback={<div className="rm-main" aria-busy="true" />}>
+                        {shown === "setlist" && <SetlistTab live={live} state={state} c={c} onRefresh={refresh} />}
+                        {shown === "media" && <MediaTab caps={caps} c={c} setGate={setGate} />}
+                        {shown === "bible" && <BibleTab state={state} caps={caps} c={c} />}
+                        {shown === "more" && <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />}
+                    </Suspense>
+                    {shown !== "live" && <NowBar live={live} state={state} caps={caps} c={c} />}
+                </div>
                 <nav className="rm-tabs" role="tablist" aria-label="Seções do controle remoto">
                     {tabs.map(([k, label, icon]) => (
                         <button type="button" key={k} role="tab" aria-selected={shown === k} className="rm-tab" onClick={() => setTab(k)}>

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "@/components/console/Icon";
 import { remoteCall } from "@/lib/console/remoteClient";
-import { BIBLE_SECTIONS, bibleArgs, bibleVersions, bookOf, fieldBook, fieldRef, refLabel, tapVerse } from "@/lib/network/remoteView";
+import { BIBLE_SECTIONS, bibleArgs, biblePlanArgs, bibleVersions, bookOf, fieldBook, fieldRef, refLabel, tapVerse } from "@/lib/network/remoteView";
 import { Cmd, Sheet } from "./parts";
 
 // Bíblia: type the reference ("jo 3 16" works, as on the console) or pick it,
@@ -9,7 +9,9 @@ import { Cmd, Sheet } from "./parts";
 // on the first verse and one on the last. The text is the console's
 // (`bibleFind`, the edition chosen there unless the chip picks another), and
 // the sticky "Enviar João 3:16-18 · NVI" sends it; a chapter alone goes whole.
-export default function BibleTab({ state, c }) {
+// "+ Setlist" beside it (a console with the `plan` cap) adds the passage at
+// the end of the culto's Setlist, only once its verses are chosen.
+export default function BibleTab({ state, caps, c }) {
     const versions = bibleVersions(state?.bible);
     const [version, setVersion] = useState("");
     const shownVersion = version || state?.bible?.version || versions[0]?.id || "";
@@ -54,6 +56,9 @@ export default function BibleTab({ state, c }) {
     const book = ref ? bookOf(ref.book) : null;
     const label = ref ? refLabel(ref) : "";
     const sendVersion = found?.ok ? found.version || shownVersion : shownVersion;
+    const canPlan = caps.has("plan");
+    const plan = canPlan ? biblePlanArgs(ref, version) : null;
+    const reset = () => { setField(""); setRef(null); setStep("book"); };
 
     return (
         <div className="rm-main">
@@ -112,9 +117,14 @@ export default function BibleTab({ state, c }) {
 
             <div className="rm-sticky">
                 {ref?.chapter
-                    ? <Cmd c={c} k="bibleSend" action="bibleSend" args={bibleArgs(ref, version)} className="is-go is-wide" disabled={found ? !found.ok : false} then={() => { setField(""); setRef(null); setStep("book"); }}>Enviar {label} · {sendVersion}</Cmd>
+                    ? (
+                        <div className="rm-sendrow">
+                            <Cmd c={c} k="bibleSend" action="bibleSend" args={bibleArgs(ref, version)} className="is-go" disabled={found ? !found.ok : false} then={reset}>Enviar {label} · {sendVersion}</Cmd>
+                            {plan && <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" disabled={found ? !found.ok : false} label={`Adicionar ${label} à setlist`}><Icon name="plus" size={18} />Setlist</Cmd>}
+                        </div>
+                    )
                     : <p className="rm-hint">Escolha o livro e o capítulo.</p>}
-                {ref?.chapter && step === "verse" && <p className="rm-hint">Toque num versículo; toque em outro para fazer um intervalo.</p>}
+                {ref?.chapter && step === "verse" && <p className="rm-hint">Toque num versículo; toque em outro para fazer um intervalo.{canPlan && !plan ? " Para pôr na setlist, escolha os versículos." : ""}</p>}
             </div>
 
             {picking && (

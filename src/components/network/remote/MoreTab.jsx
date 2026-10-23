@@ -3,8 +3,10 @@ import Icon from "@/components/console/Icon";
 import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
 import { allowed } from "@/lib/network/remoteView";
 import { Cmd, HoldButton, Toggle } from "./parts";
+import { SendLaunchers } from "./liveParts";
 
-// Mais: Travar telas (a tap; destravar is held, owner's pick "segurar"),
+// Mais: Enviar (Slides, Aviso, Timer: Rodada Q moved them from Ao vivo),
+// Travar telas (a tap; destravar is held, owner's pick "segurar"),
 // Camadas (the main text, the logo in the corner, the video screens), and
 // this phone's own: Travar toques, Manter a tela ligada, the version.
 export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefresh }) {
@@ -19,6 +21,8 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
     };
     return (
         <div className="rm-main">
+            <SendLaunchers live={live} state={state} caps={caps} c={c} />
+            {caps.has("lock") && <h2 className="rm-sec">Telas</h2>}
             {caps.has("lock") && (locked
                 ? (
                     <>

@@ -6,6 +6,7 @@ import {
     followInfo, timerInfo, setlistRows, sayOf,
     MEDIA_CHIPS, libraryArgs, emptyList, joinPage, mediaRow, sendMediaArgs,
     fieldRef, fieldBook, tapVerse, refLabel, bibleArgs, BIBLE_SECTIONS, bibleVersions,
+    nowBarInfo, addToSetlistArgs, biblePlanArgs,
 } from "./remoteView.js";
 
 const T = 1_000_000;
@@ -232,4 +233,36 @@ test("a presentation being prepared says how far, in the console's words, when i
     assert.deepEqual(rows.map((r) => r.stText), ["Preparando páginas 3/12", "Preparando páginas", "Arquivo não encontrado"], "a console that says nothing, or another state, keeps the old words");
     assert.equal(mediaRow({ id: "m", title: "Lição", st: "blocked", progress: "Não deu para preparar as páginas: o arquivo está corrompido ou incompleto." }).stText, "Não deu para preparar as páginas: o arquivo está corrompido ou incompleto.");
     assert.equal(mediaRow({ id: "m", title: "Lição", st: "ok", progress: "x" }).stText, "");
+});
+
+test("the No ar bar: nothing on air hides it; slides give the line, the place, the next and the arrows", () => {
+    assert.equal(nowBarInfo(null), null);
+    assert.equal(nowBarInfo(emptyState(T)), null);
+    const s = nowBarInfo(song());
+    assert.deepEqual(s, { tone: "air", now: "Tu és digno / de toda honra", pos: "1/3", next: "Próximo: Santo, santo", arrows: true, reveal: false });
+    // The last slide: the item's title under it.
+    assert.equal(nowBarInfo(song({ index: 2 })).next, "Tu és digno");
+    // A video: what the header says, no arrows.
+    const v = nowBarInfo(applyOp(emptyState(T), "media.show", { kind: "video", url: "http://x/v.mp4", title: "Abertura", duration: 200 }, T));
+    assert.equal(v.now, "Abertura");
+    assert.equal(v.arrows, false);
+    // Tela preta over a song: the bar says so, the arrows stay.
+    const black = nowBarInfo(applyOp(song(), "screen.set", { mode: "black" }, T));
+    assert.equal(black.now, "Tela preta");
+    assert.equal(black.tone, "amber");
+    assert.equal(black.arrows, true);
+    // An activity not revealed: → reveals.
+    const quiz = applyOp(emptyState(T), "content.show", { kind: "text", title: "Quiz", slides: [{ text: "Quem?", activity: { kind: "choice", options: ["A", "B"], answer: 0 } }], index: 0 }, T);
+    assert.equal(nowBarInfo(quiz).reveal, true);
+});
+
+test("+ Setlist: songs, files and materials go; avisos never; a passage only with its verses", () => {
+    assert.deepEqual(addToSetlistArgs("songs", "s1"), { kind: "song", id: "s1" });
+    for (const k of ["video", "image", "audio", "pdf"]) assert.deepEqual(addToSetlistArgs(k, "m"), { kind: "media", id: "m" });
+    assert.deepEqual(addToSetlistArgs("materials", "e"), { kind: "material", id: "e" });
+    assert.equal(addToSetlistArgs("pieces", "p"), null);
+    assert.equal(addToSetlistArgs("songs", ""), null);
+    assert.equal(biblePlanArgs(null), null);
+    assert.equal(biblePlanArgs({ book: "João", chapter: 3, verseStart: null, verseEnd: null }), null);
+    assert.deepEqual(biblePlanArgs({ book: "João", chapter: 3, verseStart: 16, verseEnd: 17 }, "NVI"), { book: "João", chapter: 3, verseStart: 16, verseEnd: 17, version: "NVI" });
 });
