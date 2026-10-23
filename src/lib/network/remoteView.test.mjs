@@ -266,3 +266,108 @@ test("+ Setlist: songs, files and materials go; avisos never; a passage only wit
     assert.equal(biblePlanArgs({ book: "João", chapter: 3, verseStart: null, verseEnd: null }), null);
     assert.deepEqual(biblePlanArgs({ book: "João", chapter: 3, verseStart: 16, verseEnd: 17 }, "NVI"), { book: "João", chapter: 3, verseStart: 16, verseEnd: 17, version: "NVI" });
 });
+
+// ---- The Equipe (Rodada Q PR4) ----
+import {
+    roleOf, tabsFor, teamStrip, cleanName, youtubeId, youtubeUrl, youtubeCover, pedidoArgs, chatArgs, PEDIDO_LIMITS,
+    messageRows, teamSetlistRows, lyricParts, hasChords, songSub,
+} from "./remoteView.js";
+import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" };
+
+test("the role picks the environment and its tabs", () => {
+    assert.equal(roleOf(null), null);
+    assert.equal(roleOf({ caps: [] }), "control");
+    assert.equal(roleOf({ role: "team", caps: [] }), "team");
+    const team = tabsFor({ role: "team", caps: PROTOCOL.teamCaps });
+    assert.deepEqual(team.map(([k]) => k), ["pedidos", "songs", "bible", "setlist"]);
+    const control = tabsFor({ role: "control", caps: PROTOCOL.caps.filter((c) => c !== "requests") });
+    assert.deepEqual(control.map(([k]) => k), ["live", "setlist", "media", "bible", "more"]);
+    // A team never gets a projection tab, whatever caps say.
+    assert.ok(!tabsFor({ role: "team", caps: PROTOCOL.caps }).some(([k]) => ["live", "media", "more"].includes(k)));
+    // A console without requests: no Pedidos tab.
+    assert.ok(!tabsFor({ role: "team", caps: ["library", "bible"] }).some(([k]) => k === "pedidos"));
+});
+
+test("every action an Equipe tab may run is one the contract lets the team run", () => {
+    for (const a of ["state", "library", "bibleFind", "songText", "requests", "chat.send", "request.send"]) assert.equal(PROTOCOL.actions[a].team, true, a);
+});
+
+test("the strip says what is on air and that the phone only reads", () => {
+    assert.deepEqual(teamStrip(song()), { tone: "air", text: "No ar · Tu és digno", pos: "1/3 · só leitura" });
+    assert.deepEqual(teamStrip(emptyState(T)), { tone: "grey", text: "Nada no ar", pos: "só leitura" });
+    assert.equal(teamStrip(song(), { stale: true }).text, "Sem sinal do computador");
+    assert.equal(teamStrip(null).tone, "grey");
+});
+
+test("YouTube links: only YouTube's, rebuilt from the id", () => {
+    assert.equal(youtubeId("youtu.be/dQw4w9WgXcQ"), "dQw4w9WgXcQ");
+    assert.equal(youtubeId("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10"), "dQw4w9WgXcQ");
+    assert.equal(youtubeId("https://m.youtube.com/shorts/dQw4w9WgXcQ"), "dQw4w9WgXcQ");
+    assert.equal(youtubeId("https://vimeo.com/123"), null);
+    assert.equal(youtubeId("https://evil.com/?v=dQw4w9WgXcQ"), null);
+    assert.equal(youtubeId("https://u:p@youtube.com/watch?v=dQw4w9WgXcQ"), null);
+    assert.equal(youtubeUrl("youtu.be/dQw4w9WgXcQ"), "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    assert.equal(youtubeCover("https://www.youtube.com/watch?v=dQw4w9WgXcQ"), "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg");
+});
+
+test("the pedido form against the contract's limits", () => {
+    assert.equal(pedidoArgs({ song: "Raridade" }).error, "from");
+    assert.equal(pedidoArgs({ from: "Lucas" }).error, "song");
+    assert.deepEqual(pedidoArgs({ from: " Lucas ", song: "Raridade", singer: "Ana", note: "Depois da oferta", songId: "s-1" }).args,
+        { from: "Lucas", song: "Raridade", singer: "Ana", note: "Depois da oferta", songId: "s-1" });
+    assert.equal(pedidoArgs({ from: "L", song: "x", songId: "bad id!" }).args.songId, undefined);
+    assert.equal(pedidoArgs({ from: "L", song: "x", link: "https://vimeo.com/1" }).message, PROTOCOL.messages.notYouTube);
+    assert.equal(pedidoArgs({ from: "L", song: "x", link: "youtu.be/dQw4w9WgXcQ" }).args.link, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    const long = pedidoArgs({ from: "N".repeat(99), song: "S".repeat(200), singer: "C".repeat(99), note: "O".repeat(400) }).args;
+    const spec = PROTOCOL.actions["request.send"].args;
+    assert.equal(long.from.length, spec.from.max);
+    assert.equal(long.song.length, spec.song.max);
+    assert.equal(long.singer.length, spec.singer.max);
+    assert.equal(long.note.length, spec.note.max);
+    assert.equal(cleanName("  Ana   Souza "), "Ana Souza");
+    assert.equal(PEDIDO_LIMITS.text, PROTOCOL.limits.requestText);
+});
+
+test("the chat composer: a text, or a link with a text of its own", () => {
+    assert.equal(chatArgs({ from: "L", text: "  " }).error, "text");
+    assert.deepEqual(chatArgs({ from: "L", text: "Oi" }).args, { from: "L", text: "Oi" });
+    assert.deepEqual(chatArgs({ from: "L", link: "youtu.be/dQw4w9WgXcQ" }).args, { from: "L", text: "Vídeo do YouTube", link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
+    assert.equal(chatArgs({ from: "L", text: "x".repeat(400) }).args.text.length, PROTOCOL.actions["chat.send"].args.text.max);
+});
+
+test("messages: mine on the right, a pedido's status", () => {
+    const rows = messageRows([
+        { id: "1", at: "2026-10-23T21:52:00.000Z", kind: "chat", from: "Marcos", text: "Oi", status: "open" },
+        { id: "2", at: "2026-10-23T21:55:00.000Z", kind: "pedido", from: "lucas", singer: "Ana", song: "Raridade", text: "", status: "open" },
+        { id: "3", at: "", kind: "pedido", from: "Ana", song: "X", status: "done", link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+    ], "Lucas");
+    assert.equal(rows[0].mine, false);
+    assert.equal(rows[1].mine, true);
+    assert.equal(rows[1].status, "Enviado · aguardando o operador");
+    assert.equal(rows[2].status, "✓ Atendido");
+    assert.equal(rows[2].head, "Ana");
+    assert.ok(rows[2].cover.startsWith("https://i.ytimg.com/"));
+    assert.equal(messageRows([{ id: "x", from: "A" }], "")[0].mine, false);
+});
+
+test("the Equipe's setlist: on air and the next one marked, songs open", () => {
+    const rows = teamSetlistRows({ airItemId: "b", items: [
+        { id: "a", title: "Aviso", type: "ANNOUNCEMENT" },
+        { id: "b", title: "Tu és digno", type: "SONG", songId: "s1" },
+        { id: "s", title: "Palavra", type: "SECTION", section: true },
+        { id: "c", title: "João 3", type: "BIBLE" },
+    ] });
+    assert.deepEqual(rows.map((r) => r.tag ?? (r.section ? "sec" : null)), [null, "air", "sec", "next"]);
+    assert.equal(rows[1].songId, "s1");
+    assert.equal(rows[3].songId, null);
+    assert.ok(teamSetlistRows({ items: [{ id: "a", type: "SONG" }] }).every((r) => !r.tag));
+});
+
+test("lyrics: chords cut out of the line, shown only with Cifra", () => {
+    const s = { artist: "Pedras Vivas", key: "G", parts: [{ name: "Estrofe 1", lines: ["[G]Te amo, [D]Deus", ""] }, { name: "", lines: [] }] };
+    assert.deepEqual(lyricParts(s), [{ name: "Estrofe 1", lines: [{ chords: "", text: "Te amo, Deus" }] }]);
+    assert.equal(lyricParts(s, { chords: true })[0].lines[0].chords, "G  D");
+    assert.equal(hasChords(s), true);
+    assert.equal(hasChords({ parts: [{ lines: ["sem"] }] }), false);
+    assert.equal(songSub(s), "Pedras Vivas · Tom G");
+});

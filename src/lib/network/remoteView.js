@@ -345,3 +345,190 @@ export function bibleVersions(bible) {
     const first = bible?.version && ids.includes(bible.version) ? [bible.version] : [];
     return [...first, ...ids.filter((id) => id !== bible?.version)].map((id) => ({ id, installed: installed.has(id) }));
 }
+
+// ---- The Equipe (Rodada Q PR4) ---------------------------------------------
+
+// Which environment the page is: the role the console's `state` answers
+// (the code that signed the phone in). Before the first answer the page
+// waits a moment for it (RemoteView), then draws the Controle.
+export const roleOf = (state) => (!state ? null : state.role === "team" ? "team" : "control");
+
+// The tabs of each environment: [key, label, icon, cap]. The Controle keeps
+// its five (Rodada Q PR3); the Equipe has four (the owner's mockup:
+// Pedidos, Músicas, Bíblia, Setlist) and never a projection.
+export const CONTROL_TABS = [
+    ["live", "Ao vivo", "monitor", "live"],
+    ["setlist", "Setlist", "list", "setlist"],
+    ["media", "Mídia", "media", "library"],
+    ["bible", "Bíblia", "book", "bible"],
+    ["more", "Mais", "more", null],
+];
+export const TEAM_TABS = [
+    ["pedidos", "Pedidos", "chat", "requests"],
+    ["songs", "Músicas", "music", "library"],
+    ["bible", "Bíblia", "book", "bible"],
+    ["setlist", "Setlist", "list", null],
+];
+// The tabs a phone shows: its role's, those whose cap the console runs
+// (all of them while no state came yet).
+export function tabsFor(state) {
+    const tabs = roleOf(state) === "team" ? TEAM_TABS : CONTROL_TABS;
+    if (!state) return tabs;
+    const caps = capsOf(state);
+    return tabs.filter(([, , , cap]) => !cap || caps.has(cap));
+}
+
+// The Equipe's strip on top (no buttons, no Tirar): what is on air, its
+// place, and that this phone only reads.
+//   -> { tone, text, pos }
+export function teamStrip(live, { stale = false } = {}) {
+    if (!live || stale) return { tone: "grey", text: "Sem sinal do computador", pos: "só leitura" };
+    const h = airHeader(live);
+    const on = h.title !== "Nada no ar";
+    return { tone: h.tone, text: on ? `No ar · ${h.title}` : "Nada no ar", pos: [on ? h.pos : "", "só leitura"].filter(Boolean).join(" · ") };
+}
+
+// The sender's name, asked once and kept on the phone (≤ limits.requestFrom).
+export const NAME_KEY = "keryx.remote.name";
+const REQ = PROTOCOL.actions["request.send"].args;
+const CHAT = PROTOCOL.actions["chat.send"].args;
+const clip = (value, max) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+export const cleanName = (value) => clip(value, PROTOCOL.limits.requestFrom);
+
+// A YouTube link as typed ("youtu.be/abc…", "https://www.youtube.com/watch?v=…",
+// a Shorts link) -> its id, or null when it is not YouTube's. What goes is
+// the URL rebuilt from the id; the console rebuilds it again (and refuses
+// anything else, 400).
+const YT_ID = /^[\w-]{11}$/;
+export function youtubeId(value) {
+    const raw = String(value || "").trim();
+    if (!raw || raw.length > PROTOCOL.limits.link) return null;
+    let url;
+    try { url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`); } catch { return null; }
+    if (url.username || url.password) return null;
+    const host = url.hostname.toLowerCase().replace(/^(www|m|music)\./, "");
+    let id = null;
+    if (host === "youtu.be") id = url.pathname.slice(1).split("/")[0];
+    else if (host === "youtube.com") id = url.searchParams.get("v") || (url.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]+)/) || [])[1];
+    return id && YT_ID.test(id) ? id : null;
+}
+export const youtubeUrl = (value) => {
+    const id = youtubeId(value);
+    return id ? `https://www.youtube.com/watch?v=${id}` : null;
+};
+// The cover of a YouTube link (the console's Pedidos shows YouTube's too).
+export const youtubeCover = (link) => {
+    const id = youtubeId(link);
+    return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : null;
+};
+
+// The pedido sheet's fields -> request.send's args, checked against the
+// contract's limits. -> { args } | { error, message }
+export function pedidoArgs({ from, singer, song, songId, note, link } = {}) {
+    const name = cleanName(from);
+    if (!name) return { error: "from", message: "Escreva o seu nome." };
+    const title = clip(song, REQ.song.max);
+    if (!title) return { error: "song", message: "Escreva o louvor ou escolha da biblioteca." };
+    const args = { from: name, song: title };
+    const who = clip(singer, REQ.singer.max);
+    if (who) args.singer = who;
+    if (songId && new RegExp(PROTOCOL.idPattern).test(songId)) args.songId = songId;
+    const obs = String(note ?? "").trim().slice(0, REQ.note.max);
+    if (obs) args.note = obs;
+    if (String(link || "").trim()) {
+        const url = youtubeUrl(link);
+        if (!url) return { error: "link", message: messages.notYouTube };
+        args.link = url;
+    }
+    return { args };
+}
+// The composer -> chat.send's args. A link alone goes with a text of its
+// own (the contract asks for one).
+export function chatArgs({ from, text, link } = {}) {
+    const name = cleanName(from);
+    if (!name) return { error: "from", message: "Escreva o seu nome." };
+    const args = { from: name, text: String(text ?? "").trim().slice(0, CHAT.text.max) };
+    if (String(link || "").trim()) {
+        const url = youtubeUrl(link);
+        if (!url) return { error: "link", message: messages.notYouTube };
+        args.link = url;
+        if (!args.text) args.text = "Vídeo do YouTube";
+    }
+    if (!args.text) return { error: "text", message: "Escreva a mensagem." };
+    return { args };
+}
+// The fields' maxLength, from the contract.
+export const PEDIDO_LIMITS = { from: PROTOCOL.limits.requestFrom, singer: REQ.singer.max, song: REQ.song.max, note: REQ.note.max, link: PROTOCOL.limits.link, text: CHAT.text.max };
+
+// Pedidos asks `requests` every 15 s while its tab is on screen, and right
+// after a send; the newest page only.
+export const REQUESTS_EVERY_MS = 15000;
+const hhmm = (iso) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? "" : `${two(d.getHours())}:${two(d.getMinutes())}`;
+};
+// The culto's messages as the phone lists them, oldest first: this phone's
+// own (by its name) on the right; a pedido says whether the operator saw to
+// it. Everything is drawn as plain text (it came from phones).
+export function messageRows(rows = [], me = "") {
+    const mine = cleanName(me).toLowerCase();
+    return rows.map((r) => {
+        const own = Boolean(mine) && cleanName(r.from).toLowerCase() === mine;
+        const at = hhmm(r.at);
+        const done = r.status === "done";
+        return {
+            id: r.id,
+            kind: r.kind === "pedido" ? "pedido" : "chat",
+            mine: own,
+            head: [r.from || "Equipe", at].filter(Boolean).join(" · "),
+            at,
+            text: String(r.text || ""),
+            singer: String(r.singer || ""),
+            song: String(r.song || ""),
+            link: r.link || null,
+            cover: r.link ? youtubeCover(r.link) : null,
+            done,
+            status: done ? "✓ Atendido" : own ? "Enviado · aguardando o operador" : "Aguardando o operador",
+        };
+    });
+}
+
+// The Equipe's Setlist to read: the item on air marked and the next
+// playable one after it. A song opens its lyrics.
+const isSection = (it) => Boolean(it.section) || String(it.type).toUpperCase() === "SECTION";
+export function teamSetlistRows(state) {
+    const items = state?.items || [];
+    const air = state?.airItemId || null;
+    const at = air ? items.findIndex((it) => it.id === air) : -1;
+    const next = at >= 0 ? items.slice(at + 1).find((it) => !isSection(it))?.id || null : null;
+    return items.map((it) => {
+        if (isSection(it)) return { id: it.id, section: true, title: it.title || "Seção" };
+        return {
+            id: it.id,
+            section: false,
+            title: it.title || "Sem título",
+            icon: typeIcon(it.type),
+            sub: typeLabel(it.type),
+            // A song opens its lyrics when the console says which song it is.
+            songId: String(it.type || "").toUpperCase() === "SONG" && it.songId ? it.songId : null,
+            tag: it.id === air ? "air" : it.id === next ? "next" : null,
+        };
+    });
+}
+
+// A song's lyrics on the phone (songText): the chords cut out of each line
+// and shown above it (Cifra), or left out. -> [{ name, lines: [{ chords, text }] }]
+const CHORD = /\[([^\]\n]{1,12})\]/g;
+export function lyricParts(song, { chords = false } = {}) {
+    return (song?.parts || []).map((p) => ({
+        name: String(p.name || "").trim(),
+        lines: (p.lines || []).map((line) => {
+            const found = [...String(line).matchAll(CHORD)].map((m) => m[1]);
+            const text = String(line).replace(CHORD, "").replace(/\s{2,}/g, " ").trim();
+            return { chords: chords ? found.join("  ") : "", text };
+        }).filter((l) => l.text || l.chords),
+    })).filter((p) => p.lines.length);
+}
+export const hasChords = (song) => (song?.parts || []).some((p) => (p.lines || []).some((l) => /\[[^\]\n]{1,12}\]/.test(l)));
+// "Pedras Vivas · Tom G"
+export const songSub = (song) => [song?.artist, song?.key ? `Tom ${song.key}` : ""].filter(Boolean).join(" · ");

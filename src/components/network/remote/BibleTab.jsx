@@ -11,7 +11,9 @@ import { Cmd, Sheet } from "./parts";
 // the sticky "Enviar João 3:16-18 · NVI" sends it; a chapter alone goes whole.
 // "+ Setlist" beside it (a console with the `plan` cap) adds the passage at
 // the end of the culto's Setlist, only once its verses are chosen.
-export default function BibleTab({ state, caps, c }) {
+// readOnly (the Equipe, Rodada Q PR4): the text to read, no Enviar and no
+// + Setlist — the Equipe never touches the air.
+export default function BibleTab({ state, caps, c, readOnly = false }) {
     const versions = bibleVersions(state?.bible);
     const [version, setVersion] = useState("");
     const shownVersion = version || state?.bible?.version || versions[0]?.id || "";
@@ -56,7 +58,7 @@ export default function BibleTab({ state, caps, c }) {
     const book = ref ? bookOf(ref.book) : null;
     const label = ref ? refLabel(ref) : "";
     const sendVersion = found?.ok ? found.version || shownVersion : shownVersion;
-    const canPlan = caps.has("plan");
+    const canPlan = !readOnly && caps.has("plan");
     const plan = canPlan ? biblePlanArgs(ref, version) : null;
     const reset = () => { setField(""); setRef(null); setStep("book"); };
 
@@ -111,19 +113,19 @@ export default function BibleTab({ state, caps, c }) {
             {ref?.chapter && (finding || found) && (
                 <div className="rm-card">
                     <span className="rm-k">{found?.ok ? `${found.reference} · ${found.version}` : "Texto"}</span>
-                    <span className={`rm-v is-prose ${found && !found.ok ? "is-bad" : ""}`}>{finding && !found ? "Buscando no computador…" : found?.ok ? found.text : found?.message}</span>
+                    <span className={`rm-v is-prose ${readOnly ? "is-read" : ""} ${found && !found.ok ? "is-bad" : ""}`}>{finding && !found ? "Buscando no computador…" : found?.ok ? found.text : found?.message}</span>
                 </div>
             )}
 
             <div className="rm-sticky">
-                {ref?.chapter
+                {ref?.chapter && !readOnly
                     ? (
                         <div className="rm-sendrow">
                             <Cmd c={c} k="bibleSend" action="bibleSend" args={bibleArgs(ref, version)} className="is-go" disabled={found ? !found.ok : false} then={reset}>Enviar {label} · {sendVersion}</Cmd>
                             {plan && <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" disabled={found ? !found.ok : false} label={`Adicionar ${label} à setlist`}><Icon name="plus" size={18} />Setlist</Cmd>}
                         </div>
                     )
-                    : <p className="rm-hint">Escolha o livro e o capítulo.</p>}
+                    : <p className="rm-hint">{ref?.chapter ? "Só leitura: quem põe no ar é o operador." : "Escolha o livro e o capítulo."}</p>}
                 {ref?.chapter && step === "verse" && <p className="rm-hint">Toque num versículo; toque em outro para fazer um intervalo.{canPlan && !plan ? " Para pôr na setlist, escolha os versículos." : ""}</p>}
             </div>
 

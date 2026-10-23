@@ -16,6 +16,7 @@ import { getYouTubeId } from "../../utils/youtube.js";
 
 export { PROTOCOL };
 const { limits } = PROTOCOL;
+const SONG_ID = new RegExp(PROTOCOL.idPattern);
 
 // What the console says when a phone did something ("Celular: Tela preta").
 // The version 1 actions' words; the contract has the same (remoteProtocol.test).
@@ -243,7 +244,9 @@ export function teamState({ app = "", service = null, items = [], airItemId = nu
         airItemId,
         items: items.slice(0, limits.items).map((it) => {
             const type = String(it.type || "").toUpperCase();
-            return { id: it.id, title: String(it.title || "").slice(0, limits.itemTitle), type, section: type === "SECTION" };
+            // A song's own id (Rodada Q PR4): the Equipe opens its lyrics (songText).
+            const songId = type === "SONG" && SONG_ID.test(String(it.contentId || "")) ? { songId: it.contentId } : {};
+            return { id: it.id, title: String(it.title || "").slice(0, limits.itemTitle), type, section: type === "SECTION", ...songId };
         }),
         truncated: items.length > limits.items,
     };

@@ -1735,7 +1735,29 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   only with verses) runs `setlist.add`, shown only with the `plan` cap;
   it is T, so a row can be picked for it while locked. Only Ao vivo is in
   the page's first load: the other tabs are lazy chunks (the outputs'
-  budget). `remoteCall` sends `v: 2` once and never again (504
+  budget). **The Equipe's page** (Rodada Q PR4, the owner's mockup, S8 = A)
+  is the same `/Remote` signed in with the Equipe's code: `state.role`
+  "team" draws `remote/EquipeView.jsx` (a lazy chunk) instead (`roleOf`;
+  the role last seen kept in localStorage `keryx.remote.role`, so a reload
+  draws the right page at once; a phone that never had an answer waits
+  1.5 s for one, then draws the Controle). Four tabs (`TEAM_TABS`,
+  `tabsFor`): Pedidos, Músicas, Bíblia, Setlist; on top a strip with no
+  buttons, "No ar · título · 3/9 · só leitura" (`teamStrip`), never the
+  NowBar. Pedidos is the culto's `requests` page (asked when the tab opens,
+  every 15 s while it is on screen and after a send; `messageRows`: this
+  phone's own on the right by its name, a pedido's "✓ Atendido"), a
+  composer (`chatArgs`: a YouTube link alone goes as "Vídeo do YouTube") and
+  the "Pedido de louvor" sheet (Quem canta, O louvor typed or "Escolher da
+  biblioteca", the link, Observação; `pedidoArgs`, the contract's limits);
+  the sender's name is asked once and kept (`keryx.remote.name`, ≤ 40).
+  Músicas lists the library's songs; a song opens its `songText`
+  (`lyricParts`: Cifra when it has chords, A+) with "Pedir este louvor".
+  The Bíblia is `BibleTab readOnly` (no Enviar, no + Setlist). The Setlist
+  is read only (`teamSetlistRows`: no ar, próximo); a song item opens its
+  lyrics through `songId`, which `teamState` items carry. Every text from a
+  phone is drawn as plain text; no S or T projection action is wired for
+  the team role (lan.cjs answers 403 anyway, and its message is the toast).
+  `remoteCall` sends `v: 2` once and never again (504
   or a lost link = "Não sei se foi"). "Manter a tela ligada" loops
   `public/nosleep.mp4` (made by `scripts/nosleep-mp4.mjs`). Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists

@@ -12,9 +12,9 @@ import {
     AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bell, Book, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight,
     ChevronUp, ChevronsDownUp, ChevronsUpDown, Circle, CircleHelp, Clock, Cloud, Columns2, Copy, CornerDownLeft, Download,
     Ellipsis, Eraser, ExternalLink, Eye, EyeOff, Film, Folder, Footprints, Globe, GripVertical, History, Image, Info,
-    Keyboard, Layers, LayoutGrid, LayoutPanelLeft, Library, List, ListChecks, Lock, LockOpen, Megaphone, Menu, Minus, Monitor, Music,
+    Keyboard, Layers, LayoutGrid, LayoutPanelLeft, Library, Link, List, ListChecks, Lock, LockOpen, Megaphone, Menu, MessageSquare, Minus, Monitor, Music,
     Palette, Pause, Pencil, Pin, Play, Plus, Power, Presentation, Projector, Redo2, RefreshCw, Rows2, Save,
-    Search, SkipBack, SkipForward, SlidersHorizontal, Square, Star, Tablet, Trash2, TriangleAlert, Tv,
+    Search, SendHorizontal, SkipBack, SkipForward, SlidersHorizontal, Square, Star, Tablet, Trash2, TriangleAlert, Tv,
     Type, Undo2, User, Volume2, VolumeX, Wifi, WifiOff, X, Youtube,
 } from "lucide";
 
@@ -122,6 +122,10 @@ export const ICON_NODES = {
     presentation: Presentation,
     youtube: Youtube,
     synced: Synced,
+    // The Equipe on the phone (Rodada Q PR4): its chat, a link, send.
+    chat: MessageSquare,
+    link: Link,
+    send: SendHorizontal,
     // The text bar's alignment (Rodada P, P8-1).
     alignLeft: AlignLeft,
     alignCenter: AlignCenter,
