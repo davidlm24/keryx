@@ -1614,7 +1614,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   BibleProjectionSync, BannerTemplate, ChatMessage) are kept: user data.
 - **Network screens** (`electron/lan.cjs`) see only the pages in
   `NETWORK_SCREENS` and only read the database. A page added there must
-  work from the database and the live state alone. The one thing on the
+  work from the database and the live state alone. They load their pages
+  from the built `dist/`, never from Vite, even under `desktop:dev`: a
+  phone showing an old /Remote means a stale `dist/` (the 23/10 Equipe
+  test), not a bug. `desktop:dev` now rebuilds it when a file under `src/`
+  or `shared/` is newer than `dist/index.html` (`scripts/dist-stale.cjs`,
+  tested; `KERYX_SKIP_BUILD=1` only warns); a hand-run `vite` or a
+  Vite-only preview does not, so `npm run build` first.
+  The one thing on the
   network that changes what is on air is the **controle remoto**
   (`/Remote`, a phone): off by default, behind its own code (never
   optional, separate from the screens' PIN), it posts commands from a
