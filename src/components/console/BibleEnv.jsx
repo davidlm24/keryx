@@ -637,6 +637,19 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         ),
         air: (
             <Panel className="bible-air-col" noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <div className="bbar" role="group" aria-label="Como a Bíblia aparece nas telas">
+                    <Btn small kind="icon" onClick={chooseTheme} aria-label="Tema da Bíblia…" title={`Tema da Bíblia… · ${themeLabel}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`}><Icon name="palette" /></Btn>
+                    <Btn small on={showRef} onClick={() => { savePref({ bible_show_reference: !showRef }, showRef ? "Telas sem a referência." : "Telas com a referência."); restyleAir({ bible_show_reference: !showRef }); }} title={showRef ? "A referência (João 3:16) aparece nas telas · clique para tirar" : "Sem a referência nas telas · clique para mostrar"}>Ref.</Btn>
+                    <div className="kx-seg is-small" role="group" aria-label="Versículos por slide">
+                        {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} aria-pressed={how === v} aria-label={v === "auto" ? "Auto" : undefined} onClick={() => setHow(v)} title={v === "auto" ? "Versículos por slide: pelo tamanho do texto" : `${v} versículo${v === "1" ? "" : "s"} por slide`}>{v === "auto" ? <><span className="bb-full">Auto</span><span className="bb-short" aria-hidden="true">A</span></> : l}</button>)}
+                    </div>
+                    <VersionSelect value={wanted} groups={groups} onChange={chooseVersion} shown={wanted} dot={Boolean(badge)}
+                        label={badge ? `Versão: ${badge.text}` : "Versão"} tip={[badge?.text, credit].filter(Boolean).join(" · ") || "Versão da Bíblia"} />
+                    <VersionSelect value={want2} groups={groups2} none="Sem 2ª versão" onChange={(v) => { savePref({ bible_version_2: v }, v ? `2ª versão nas telas: ${v}.` : "Uma versão só nas telas."); rebuildAir({ bible_version_2: v }); }}
+                        shown={want2 ? <><span className="bb-2l">2ª: </span>{want2}</> : <>+ 2ª<span className="bb-2l"> versão</span></>} dot={pairFailed || Boolean(want2 && want2 === (ver || wanted))} label={`Segunda versão nas telas · ${want2 || "nenhuma"}`} tip={pairTip} />
+                    {want2 && <Seg small className="bb-pair" label="Onde fica a 2ª versão" value={prefs.bible_pair} onChange={(v) => { savePref({ bible_pair: v }); restyleAir({ bible_pair: v }); }}
+                        options={[["side", <Icon name="cols" />, { title: "Lado a lado: as duas versões lado a lado", "aria-label": "Lado a lado" }], ["stack", <Icon name="rows" />, { title: "Empilhadas: a 2ª versão embaixo da primeira, um pouco menor", "aria-label": "Empilhadas" }]]} />}
+                </div>
                 <div className="bible-air">
                     {/* No header (owner 2026-10-16): the screen sits on top, and
                         its pill is the Programa's with icons only — the state's
@@ -644,23 +657,6 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     <div className={`kx-mon ${c.locked ? "is-rh" : airIdle ? "" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} logoUrl={logoUrl} preview />
                         <div className={`prog-pill kx-pill scr-pill is-${airTone}`} role="group" aria-label={`No ar · ${airSaid}`} title={airSaid}><i className="pp-dot kx-pill-dot" aria-hidden="true" /><ScreenActions c={c} onEnd={onEnd} /></div>
                     </div></div>
-                </div>
-                <div className="bbar" role="group" aria-label="Como a Bíblia aparece nas telas">
-                    <div className="bbar-row">
-                        <Btn small onClick={chooseTheme} title={`Tema da Bíblia · ${themeLabel}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`}>Tema…</Btn>
-                        <Btn small on={showRef} onClick={() => { savePref({ bible_show_reference: !showRef }, showRef ? "Telas sem a referência." : "Telas com a referência."); restyleAir({ bible_show_reference: !showRef }); }} title={showRef ? "A referência (João 3:16) aparece nas telas · clique para tirar" : "Sem a referência nas telas · clique para mostrar"}>Ref.</Btn>
-                        <div className="kx-seg is-small" role="group" aria-label="Versículos por slide">
-                            {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} aria-pressed={how === v} onClick={() => setHow(v)} title={v === "auto" ? "Versículos por slide: pelo tamanho do texto" : `${v} versículo${v === "1" ? "" : "s"} por slide`}>{l}</button>)}
-                        </div>
-                    </div>
-                    <div className="bbar-row">
-                        <VersionSelect value={wanted} groups={groups} onChange={chooseVersion} shown={wanted} dot={Boolean(badge)}
-                            label={badge ? `Versão: ${badge.text}` : "Versão"} tip={[badge?.text, credit].filter(Boolean).join(" · ") || "Versão da Bíblia"} />
-                        <VersionSelect value={want2} groups={groups2} none="Sem 2ª versão" onChange={(v) => { savePref({ bible_version_2: v }, v ? `2ª versão nas telas: ${v}.` : "Uma versão só nas telas."); rebuildAir({ bible_version_2: v }); }}
-                            shown={want2 ? `2ª: ${want2}` : "+ 2ª versão"} dot={pairFailed || Boolean(want2 && want2 === (ver || wanted))} label={`Segunda versão nas telas · ${want2 || "nenhuma"}`} tip={pairTip} />
-                        {want2 && <Seg small label="Onde fica a 2ª versão" value={prefs.bible_pair} onChange={(v) => { savePref({ bible_pair: v }); restyleAir({ bible_pair: v }); }}
-                            options={[["side", "Lado a lado", { title: "As duas versões lado a lado" }], ["stack", "Empilhadas", { title: "A 2ª versão embaixo da primeira, um pouco menor" }]]} />}
-                    </div>
                 </div>
                 <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
                     <span className="kx-section">Selecionado <span className="kx-count">· {error ? `${book} ${chapter} indisponível nesta versão` : sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
