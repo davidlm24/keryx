@@ -1,9 +1,9 @@
-import React, { Suspense, lazy, useMemo, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/console/Icon";
 import { useLiveNow, useLiveState } from "@/hooks/useLiveState";
 import { useChurch } from "@/hooks/useChurch";
 import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
-import { airHeader, bannerOf, canRun, capsOf, nowBarInfo } from "@/lib/network/remoteView";
+import { airHeader, bannerOf, canRun, capsOf, nowBarInfo, roleOf, tabsFor } from "@/lib/network/remoteView";
 import { useCommands, useKeepAwake, usePhoneState, useStale } from "@/components/network/remote/usePhone";
 import { Cmd, HoldButton, Toast } from "@/components/network/remote/parts";
 import LiveTab from "@/components/network/remote/LiveTab";
@@ -15,6 +15,8 @@ const SetlistTab = lazy(() => import("@/components/network/remote/SetlistTab"));
 const MediaTab = lazy(() => import("@/components/network/remote/MediaTab"));
 const BibleTab = lazy(() => import("@/components/network/remote/BibleTab"));
 const MoreTab = lazy(() => import("@/components/network/remote/MoreTab"));
+// The Equipe (Rodada Q PR4): a phone signed in with the Equipe's code.
+const EquipeView = lazy(() => import("@/components/network/remote/EquipeView"));
 
 // Controle remoto (/Remote): a phone on the church Wi-Fi conducts the
 // service. Only on the network, only while the operator turned it on, only
@@ -24,13 +26,14 @@ const MoreTab = lazy(() => import("@/components/network/remote/MoreTab"));
 // bottom, in reach of the thumb (owner's pick); a left rail in landscape and
 // on a tablet (remote.css). Sections the console does not run (its `caps`)
 // are not shown. Under every tab but Ao vivo, the No ar bar (Rodada Q).
-const TABS = [
-    ["live", "Ao vivo", "monitor", "live"],
-    ["setlist", "Setlist", "list", "setlist"],
-    ["media", "Mídia", "media", "library"],
-    ["bible", "Bíblia", "book", "bible"],
-    ["more", "Mais", "more", null],
-];
+// The code that signed the phone in decides which page it is (state.role):
+// the Controle, or the Equipe's (EquipeView, Rodada Q PR4). The role last
+// seen is kept on the phone, so a reload draws the right one at once; a
+// phone that never had an answer waits up to ROLE_WAIT_MS for one, then
+// draws the Controle (a reload never waits: the role kept answers).
+const ROLE_KEY = "keryx.remote.role";
+const ROLE_WAIT_MS = 1500;
+const storedRole = () => { try { const r = localStorage.getItem(ROLE_KEY); return r === "team" || r === "control" ? r : null; } catch { return null; } };
 
 export default function RemoteView() {
     const live = useLiveState();
@@ -44,11 +47,16 @@ export default function RemoteView() {
     const caps = useMemo(() => capsOf(state), [state]);
     const locked = Boolean(live?.locked);
     const c = { busy: cmd.busy, run: cmd.run, flags: { stale, locked } };
-    const tabs = TABS.filter(([, , , cap]) => !cap || !state || caps.has(cap));
+    const tabs = tabsFor(state);
     const shown = tabs.some(([k]) => k === tab) ? tab : "live";
     const banner = bannerOf({ stale, unknown: cmd.unknown, locked, canUnlock: caps.has("lock") });
     const hasNow = shown !== "live" && Boolean(nowBarInfo(live));
     const again = () => { cmd.clearUnknown(); setGate(null); refresh(); };
+    const [kept] = useState(storedRole);
+    const [waited, setWaited] = useState(false);
+    useEffect(() => { const t = setTimeout(() => setWaited(true), ROLE_WAIT_MS); return () => clearTimeout(t); }, []);
+    const role = roleOf(state) || kept || (waited ? "control" : null);
+    useEffect(() => { const r = roleOf(state); if (r) try { localStorage.setItem(ROLE_KEY, r); } catch { /* not kept */ } }, [state]);
 
     if (gate) {
         return (
@@ -60,6 +68,15 @@ export default function RemoteView() {
                     <button type="button" className="rm-b is-sm" onClick={again}><Icon name="refresh" size={18} />Tentar de novo</button>
                 </div>
             </div>
+        );
+    }
+
+    if (!role) return <div className="net rm"><p className="rm-gate" aria-busy="true">Conectando ao KERYX…</p></div>;
+    if (role === "team") {
+        return (
+            <Suspense fallback={<div className="net rm" aria-busy="true" />}>
+                <EquipeView live={live} state={roleOf(state) === "team" ? state : null} stale={stale} cmd={cmd} />
+            </Suspense>
         );
     }
 

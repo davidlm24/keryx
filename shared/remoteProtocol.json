@@ -354,7 +354,7 @@
       "timers": "[<= limits.timers] the timers prontos { id, minutes }: 5, 10, 15, 30 and 60 min, then the church's TimerPreset rows (timerPresets.js)",
       "alerts": "[<= limits.alerts] { id, message (<= limits.alertMessage) }: the AlertPreset rows",
       "autoplay": "bool: the culto's Avançar sozinho is on (Setlist automática, Rodada N2; setlist.autoplay turns it)",
-      "role": "control | team (Rodada Q): which code signed the phone in. An Equipe phone gets only v, app, caps (teamCaps), role, rev, service, serviceId, onAir, airItemId, items [{ id, title, type, section }] and truncated"
+      "role": "control | team (Rodada Q): which code signed the phone in. An Equipe phone gets only v, app, caps (teamCaps), role, rev, service, serviceId, onAir, airItemId, items [{ id, title, type, section, songId? (a SONG item's song, for songText; Rodada Q PR4) }] and truncated"
     },
     "library": {
       "tab": "songs | media | pieces | materials",

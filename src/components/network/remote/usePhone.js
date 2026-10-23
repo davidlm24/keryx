@@ -98,7 +98,7 @@ export function useCommands({ setGate }) {
         else if (!quiet) say(sayOf(r));
         return r;
     }, [say, setGate]);
-    return { busy, run, toast, closeToast: () => setToast(null), unknown, clearUnknown: () => setUnknown(false) };
+    return { busy, run, say, toast, closeToast: () => setToast(null), unknown, clearUnknown: () => setUnknown(false) };
 }
 
 // "Manter a tela ligada" (owner's pick: opt-in). The Wake Lock API needs

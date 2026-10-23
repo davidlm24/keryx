@@ -185,3 +185,12 @@ test("the Equipe (Rodada Q): links only YouTube's, rebuilt; texts clean; capped 
     assert.equal(long.truncated, true);
     assert.ok(JSON.stringify(long).length <= PROTOCOL.limits.stateBytes);
 });
+
+test("the Equipe's setlist carries a song item's song (Rodada Q PR4: songText)", () => {
+    const st = teamState({ items: [
+        { id: "i1", type: "SONG", title: "Raridade", contentId: "song-1" },
+        { id: "i2", type: "BIBLE", title: "João 3", contentId: "p-1" },
+        { id: "i3", type: "SONG", title: "Sem id" },
+    ] });
+    assert.deepEqual(st.items.map((it) => it.songId ?? null), ["song-1", null, null]);
+});

@@ -232,6 +232,84 @@
 /* Manter a tela ligada: the video that keeps it on (never seen). */
 .rm-awake { position: fixed; right: 0; bottom: 0; width: 2px; height: 2px; opacity: .01; pointer-events: none; }
 
+
+/* The Equipe (Rodada Q PR4; the owner's mockup): the same page signed in
+   with the Equipe's code. A thin strip on top with what is on air, only to
+   read; Pedidos (a chat with the operator), Músicas (the lyrics), Bíblia and
+   the Setlist to read. */
+.rm-strip { flex: none; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: calc(4px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 4px max(16px, env(safe-area-inset-left)); background: var(--bg-1); border-bottom: 1px solid var(--line); font-size: 13px; }
+.rm-strip .rm-dot { width: 8px; height: 8px; box-shadow: none; }
+.rm-strip.is-amber .rm-dot { background: var(--warn-fg); }
+.rm-strip.is-grey .rm-dot { background: var(--fg-3); }
+.rm-strip b { flex: 1 1 auto; min-width: 0; color: var(--fg-1); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-strip.is-grey b { color: var(--fg-3); }
+.rm-strip > span:last-child { flex: none; color: var(--fg-3); font-size: 12px; }
+.rm-env { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px max(16px, env(safe-area-inset-right)) 4px max(16px, env(safe-area-inset-left)); }
+.rm-env b { flex: none; color: var(--fg-1); font-size: 17px; }
+.rm-env-me { font-family: inherit; margin-left: auto; min-width: 0; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--fg-3); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Pedidos: the messages, newest at the bottom. */
+.rm-scroll.rm-chat { gap: 8px; }
+.rm-chat > :first-child { margin-top: auto; }
+.rm-msg { max-width: 82%; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.rm-msg.is-mine { align-self: flex-end; align-items: flex-end; }
+.rm-msg-h { padding: 0 4px; font-size: 11px; color: var(--fg-3); }
+.rm-msg-t { display: flex; flex-direction: column; gap: 6px; max-width: 100%; padding: 9px 12px; border-radius: 14px 14px 14px 4px; background: var(--bg-2); color: var(--fg-1); font-size: 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rm-msg.is-mine .rm-msg-t { border-radius: 14px 14px 4px 14px; background: color-mix(in srgb, var(--brand) 20%, var(--bg-2)); }
+.rm-ped .rm-msg-h { color: var(--brand); letter-spacing: .04em; }
+.rm-ped-w { font-size: 15px; line-height: 1.35; }
+.rm-ped-w b { font-weight: 600; }
+.rm-ped-n { font-size: 13px; color: var(--fg-2); }
+.rm-ped-s { font-size: 12px; color: var(--fg-3); }
+.rm-ped-s.is-done { color: var(--ok-fg); }
+.rm-yt { display: flex; align-items: center; gap: 10px; min-width: 0; color: inherit; text-decoration: none; }
+.rm-yt img { flex: none; width: 96px; height: 54px; border-radius: 8px; object-fit: cover; background: var(--bg-3); }
+.rm-yt > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.rm-yt small { font-size: 11.5px; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-compose { gap: 8px; padding-bottom: 10px; }
+.rm-cbar { display: flex; align-items: center; gap: 8px; }
+.rm-round { flex: none; width: 46px; height: 46px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-strong); border-radius: 50%; background: none; color: var(--fg-2); touch-action: manipulation; }
+.rm-round[aria-pressed="true"] { border-color: var(--brand); color: var(--fg-1); }
+.rm-round.is-go { border-color: var(--brand); background: var(--brand); color: var(--on-brand); }
+.rm-round:disabled { opacity: .38; }
+.rm-cin { flex: 1 1 auto; min-width: 0; height: 46px; padding: 0 16px; border: 1px solid var(--line); border-radius: 23px; background: var(--bg-1); color: var(--fg-1); font: inherit; font-size: 16px; outline: 0; }
+.rm-cin:focus { border-color: var(--rh); }
+
+/* The pedido sheet and the name: labelled fields. */
+.rm-f { display: flex; flex-direction: column; gap: 6px; }
+.rm-f > span, .rm-f > label { font-size: 13px; color: var(--fg-2); }
+.rm-in { height: 48px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-1); color: var(--fg-1); font: inherit; font-size: 16px; outline: 0; }
+.rm-in:focus { border-color: var(--rh); }
+.rm-in.is-bad { border-color: var(--warn); }
+.rm-lib { font-family: inherit; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 2px; border: 0; background: none; color: var(--brand); font-size: 13.5px; }
+.rm-picked { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 4px 0 14px; border-radius: 12px; background: color-mix(in srgb, var(--brand) 14%, var(--bg-1)); box-shadow: inset 0 0 0 1.5px var(--brand); color: var(--fg-1); font-size: 15px; }
+.rm-picked b { flex: 1 1 auto; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-picked small { flex: none; font-size: 12px; color: var(--fg-2); }
+.rm-picked-x { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--fg-2); }
+.rm-err { margin: 0; font-size: 13px; color: var(--warn-fg); }
+
+/* A song's lyrics. */
+.rm-fix.rm-songtop { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; padding-bottom: 8px; }
+.rm-back { font-family: inherit; display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 14px 0 8px; border: 0; border-radius: 999px; background: var(--bg-1); color: var(--fg-2); font-size: 14px; }
+.rm-songtools { display: flex; gap: 6px; }
+.rm-songttl { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
+.rm-songttl b { color: var(--fg-1); font-size: 17px; }
+.rm-songttl span { font-size: 13px; color: var(--fg-3); }
+.rm-lyrics { gap: 14px; }
+.rm-part { display: flex; flex-direction: column; gap: 3px; padding: 0 4px; }
+.rm-part h3 { margin: 0 0 2px; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-3); }
+.rm-part p { margin: 0; display: flex; flex-direction: column; color: var(--fg-1); font-size: 16px; line-height: 1.45; }
+.rm-lyrics.is-big .rm-part p { font-size: 28px; line-height: 1.3; }
+.rm-ch { color: var(--brand); font-size: 12px; font-weight: 600; white-space: pre; }
+.rm-lyrics.is-big .rm-ch { font-size: 15px; }
+
+/* The Setlist to read: an item that is not a song is not a button. */
+.rm-item.is-read { cursor: default; }
+.is-team .rm-item.is-air { border-color: color-mix(in srgb, var(--air) 45%, transparent); }
+.rm-foot.rm-hint { margin: 0; padding-top: 10px; padding-bottom: 12px; }
+.rm-v.is-read { -webkit-line-clamp: unset; display: block; }
+/* The answer under the strip, never over the composer. */
+.rm.is-team .rm-toast { top: calc(48px + env(safe-area-inset-top)); bottom: auto; }
 /* Landscape and a tablet: the tabs as a rail on the left, Ao vivo in two
    columns (the mockup's frame at 812 × 375). */
 @container rm (min-width: 600px) {
