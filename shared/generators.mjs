@@ -1,13 +1,14 @@
 // Fundos gerados (2026-10-12, as ProPresenter's generated backgrounds): a
 // background the screens compute as they go — slow marble veins, drifting
-// clouds, an aurora, bokeh lights, a living gradient — described by a
+// clouds, an aurora, bokeh lights, a living gradient, rising particles,
+// rays of light, a starry sky, mist — described by a
 // generator id and a few numbers, never a file. The live state carries it
 // as `background: { kind: "generator", value: <id>, gen: {...} }`
 // (live-state.mjs); the shaders and the presets are src/lib/generators.js
 // (the renderer's), this module only says what the numbers are, so the
 // main process can check an op without the shaders. Pure, shared.
 
-export const GENERATOR_IDS = ["fluid", "clouds", "aurora", "bokeh", "gradient"];
+export const GENERATOR_IDS = ["fluid", "clouds", "aurora", "bokeh", "gradient", "particles", "rays", "stars", "mist"];
 
 // Each parameter: [min, max, default]. Not every generator uses every one
 // (src/lib/generators.js says which); unused ones are kept at the default.

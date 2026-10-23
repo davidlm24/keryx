@@ -15,5 +15,5 @@ test("normalizeGenerator: defaults, clamps, colours", () => {
     assert.equal(normalizeGenerator({ audio: "yes" }).audio, false, "only a real true");
     assert.equal(normalizeGenerator({ id: "nope" }).id, "fluid");
     assert.equal(normalizeGenerator("junk").id, "fluid");
-    assert.equal(GENERATOR_IDS.length, 5);
+    assert.equal(GENERATOR_IDS.length, 9);
 });
