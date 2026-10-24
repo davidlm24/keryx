@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PANEL_HEAD, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween, GUTTER, dockLocked, setDockLock, withLockOf, setSplitWeights, resizeExact, evenExact, presetsForSplit, weightsLabel, parseWeights, toWeights, allocateWeights } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PANEL_HEAD, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween, GUTTER, dockLocked, setDockLock, withLockOf, setSplitWeights, resizeExact, evenExact, presetsForSplit, weightsLabel, parseWeights, toWeights, allocateWeights, bibleLocks, BIBLE_FIT_MAX } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -755,4 +755,33 @@ test("Exato: presets, labels and what is typed", () => {
     assert.deepEqual(toWeights([1, 2]), [33.33, 66.67]);
     assert.deepEqual(allocateWeights([50, 50], [100, 400], 600), [200, 400]);
     assert.deepEqual(allocateWeights([1, 1, 2], [0, 0, 0], 400), [100, 100, 200]);
+});
+
+test("bibleLocks: Livros, Capítulos and Versículos stay stacked at 1366 × 768", () => {
+    // Compacta at 1366 × 768: a 654 px column, 32 px headers. Salmos' 150
+    // chapters and the 66 books both reach 40 %: with Versículos' minimum
+    // the column overflowed and fitDock joined Livros and Capítulos as tabs.
+    const d = fromBibleArrangement({});
+    const h = 654, head = 32;
+    const groups = (f) => f.children[0].frame.children.map((ch) => ch.frame.tabs.join(" "));
+    const naive = { books: head + Math.round(h * BIBLE_FIT_MAX), chapters: head + Math.round(h * BIBLE_FIT_MAX) };
+    assert.deepEqual(groups(fitDock(d, 1366, h, { locked: naive, head })), ["books chapters", "verses"]);
+    const locks = bibleLocks(d, { books: 324, chapters: 600, verses: 0 }, h, head);
+    assert.equal(locks.books, naive.books);
+    assert.equal(locks.chapters, h - 2 * GUTTER - MODULES.verses.minH - locks.books);
+    assert.equal(locks.verses, 0);
+    const f = fitDock(d, 1366, h, { locked: locks, head });
+    assert.deepEqual(groups(f), ["books", "chapters", "verses"]);
+    assert.ok(f.children[0].frame.children[2].size >= MODULES.verses.minH);
+    // A short book (Rute): nothing to give, the measured heights as they are.
+    assert.deepEqual(bibleLocks(d, { books: 324, chapters: 34, verses: 60 }, h, head), { books: naive.books, chapters: head + 34, verses: head + 60 });
+    // Never under a module's minimum, Livros giving way after Capítulos
+    // (a column too short for even that joins them, as before).
+    const tiny = bibleLocks(d, { books: 400, chapters: 400 }, 300, head);
+    assert.equal(tiny.chapters, MODULES.chapters.minH);
+    assert.equal(tiny.books, MODULES.books.minH);
+    // The operator's own arrangement (Livros beside the text): left alone.
+    const apart = moveModules(d, ["books"], { kind: "group", path: pathOf(d.tree, "reading"), zone: "left" });
+    assert.notDeepEqual(pathOf(apart.tree, "books").slice(0, -1), pathOf(apart.tree, "chapters").slice(0, -1));
+    assert.deepEqual(bibleLocks(apart, { books: 324, chapters: 600 }, h, head), { books: naive.books, chapters: naive.books, verses: 0 });
 });
