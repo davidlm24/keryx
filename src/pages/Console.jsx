@@ -72,7 +72,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode, dockLocked, setDockLock, withLockOf, nodeAt, isSplit, setSplitWeights, presetsForSplit, weightsLabel, parseWeights } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode, dockLocked, setDockLock, withLockOf, nodeAt, isSplit, setSplitWeights, presetsForSplit, weightsLabel, parseWeights, bibleLocks } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
@@ -1069,10 +1069,9 @@ export default function Console() {
     // rest (fitDock), so Versículos still fills it.
     const [booksFitH, setBooksFitH] = useState(0);
     const [versesFitH, setVersesFitH] = useState(0);
-    const fitCap = (px) => (px ? PANEL_HEAD + Math.min(px, Math.round(mainSize.h * 0.4)) : 0);
-    const chaptersH = fitCap(chaptersFitH);
-    const booksH = fitCap(booksFitH);
-    const versesH = fitCap(versesFitH);
+    // In one column, Capítulos then Livros give way before the column would
+    // overflow (bibleLocks, dock.js): they never join as tabs.
+    const { books: booksH, chapters: chaptersH, verses: versesH } = bibleLocks(bibleDock, { books: booksFitH, chapters: chaptersFitH, verses: versesFitH }, mainSize.h, PANEL_HEAD);
     const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h, {
         locked: { ...(chaptersH ? { chapters: chaptersH } : {}), ...(booksH ? { books: booksH } : {}), ...(versesH ? { verses: versesH } : {}) },
         folded: folded ? folded.split(",") : [], head: PANEL_HEAD,

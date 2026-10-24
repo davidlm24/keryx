@@ -958,13 +958,15 @@ async function checkConsole(webContents, { live, outputs }) {
         // The projector's letters are the Geist that ships with KERYX (src/fonts.css),
         // loaded from the app, never from the internet.
         result.progTitle13 = (await capTitle(PROG)) === "Canto do console" && await js(`getComputedStyle(document.querySelector("${capSel(PROG)}")).fontSize === "13px"`).catch(() => false);
-        // No "Programa" word (owner 2026-10-14): the title itself is red while on
-        // air, and no permanent red frame on the monitor.
+        // No "Programa" word (owner 2026-10-14): the title itself wears the
+        // on-air colour (green since Rodada P, P1 = B: the --air-fg token), and
+        // no permanent frame of the alert red on the monitor.
         result.progOneTitle = await js(`(() => {
             const caps = [...document.querySelectorAll(".console .dock .kx-live-cap")].filter((e) => /^programa/i.test(e.textContent.trim()));
             const title = document.querySelector(".prog-pill:not(.prev-pill) .prog-cap .kx-mon-t");
+            const tone = (v) => { const p = document.createElement("i"); p.style.color = "var(" + v + ")"; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
             const frame = getComputedStyle(document.querySelector(".prog .kx-mon-screen"), "::after").borderTopColor;
-            return caps.length === 0 && Boolean(title) && getComputedStyle(title).color === "rgb(255, 107, 112)" && frame !== "rgb(229, 72, 77)" && !document.querySelector(".prog .kx-mon-cap");
+            return caps.length === 0 && Boolean(title) && getComputedStyle(title).color === tone("--air-fg") && frame !== tone("--danger") && !document.querySelector(".prog .kx-mon-cap");
         })()`).catch(() => false);
         result.projectorFont = Boolean(main) && await main.webContents.executeJavaScript(`(async () => {
             const faces = await document.fonts.load("40px Geist");
@@ -1025,9 +1027,11 @@ async function checkConsole(webContents, { live, outputs }) {
             if (!g || document.querySelector(".topbar .tb-screens")) return false;
             const bs = [...g.querySelectorAll("button")];
             const named = ["Tela preta", "Mostrar logo", "Limpar texto", "Encerrar a projeção"].every((t) => bs.some((b) => b.getAttribute("aria-label") === t && b.title));
+            // Ver and the bell each sit in a .tb-bell (Ver's carries the gold
+            // dot of pedidos not seen, Rodada Q S9): Ver's comes right before the bell's.
             const ver = document.querySelector(".topbar .tb-ver");
-            const bell = document.querySelector(".topbar .tb-bell");
-            return named && bs.length === 4 && bs.every((b) => !b.textContent.trim()) && Boolean(ver && bell && ver.nextElementSibling === bell);
+            const bell = document.querySelector('.topbar .tb-bell button[title^="Notificações"]');
+            return named && bs.length === 4 && bs.every((b) => !b.textContent.trim()) && Boolean(ver && bell && ver.closest(".tb-bell").nextElementSibling === bell.closest(".tb-bell"));
         })()`);
         // The Programa has no header: its screen starts at the top of its cell
         // (so it lines up with the panels beside it), and the pill sits inside
@@ -1504,8 +1508,11 @@ async function checkConsole(webContents, { live, outputs }) {
         // One verse (Enter) goes out as the whole chapter, at that verse. The
         // Bíblia has its own theme (User.bible_theme_id): the passage goes on
         // air with its look and its background in the Fundo.
+        // One verse a slide for the walk below: Auto, the default, groups the
+        // chapter since Rodada P (#338), and the sample's 5 verses would not be
+        // 5 slides.
         const bibleTheme = (await js('window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Tema Bíblia Smoke", font_family: "georgia", background: { kind: "color", value: "#123456" } }])')).data;
-        await js(`window.keryxDesktop.db.call("User", "update", ["local", { bible_theme_id: ${JSON.stringify(bibleTheme.id)} }])`);
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { bible_theme_id: ${JSON.stringify(bibleTheme.id)}, bible_verses_per_slide: "1" }])`);
         await sleep(800);
         await waitFor(() => js("document.querySelectorAll('.kx-verse').length === 5"), 8000);
         await js("document.activeElement && document.activeElement.blur(); true");
@@ -1525,6 +1532,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.selMoved = await waitFor(() => js("(() => { const s = document.querySelector('.kx-verse.is-prev'); return s && s.dataset.verse === '18'; })()")) && live.get().content?.index === 3;
         await press("Enter");
         result.selSent = await waitFor(() => live.get().content?.index === 4);
+        await js('window.keryxDesktop.db.call("User", "update", ["local", { bible_verses_per_slide: null }])');
         // Esc in the quick jump cancels it and never ends the projection.
         await press("g");
         await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
@@ -1730,7 +1738,9 @@ async function checkConsole(webContents, { live, outputs }) {
             svc = rows.find((r) => /^Setlist de \d\d\/\d\d$/.test(r.title)) || null;
             return Boolean(svc);
         }, 8000);
-        result.autoSetlistShown = await waitText(webContents, "Setlist de");
+        // The Setlist's header shows the draft culto: its name is the header's
+        // tooltip since Rodada O3 (no title text), the count says its item.
+        result.autoSetlistShown = await waitFor(() => js(`(() => { const h = document.querySelector('[data-dock-mods~="setlist"] .setlist-panel > .kx-panel-h'); return Boolean(h) && /^Setlist de \\d\\d\\/\\d\\d$/.test(h.title || "") && /1 item/.test(h.textContent); })()`), 5000);
         if (!svc) throw new Error("a setlist do dia não foi criada");
         result.cultoDefaults = svc.startTime === "18:30" && await waitFor(async () => {
             const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
@@ -1826,14 +1836,14 @@ async function checkConsole(webContents, { live, outputs }) {
         await click('[data-tabs-plus="panel"]');
         const tabsMenuOpen = await waitFor(() => js(`Boolean(document.querySelector(".tabs-menu"))`), 3000);
         await menuItem("Aviso rápido");
-        const tabsHidden = await waitFor(async () => (await panelTabs()) === "Notas,Timers", 3000);
-        await menuItem("Timers");
-        await sleep(200);
+        const tabsHidden = await waitFor(async () => (await panelTabs()) === "Notas,Timers,Pedidos,Chat", 3000);
+        // Pedidos and Chat are default tabs too since Rodada Q (PR2, S12).
+        for (const t of ["Timers", "Pedidos", "Chat"]) { await menuItem(t); await sleep(200); }
         await menuItem("Notas");
         await sleep(300);
         const tabsLastStays = (await panelTabs()) === "Notas";
         await menuItem("Restaurar abas padrão");
-        const tabsRestored = await waitFor(async () => (await panelTabs()) === "Notas,Aviso rápido,Timers", 3000);
+        const tabsRestored = await waitFor(async () => (await panelTabs()) === "Notas,Aviso rápido,Timers,Pedidos,Chat", 3000);
         await press("Escape");
         const tabsClosed = await waitFor(() => js(`!document.querySelector(".tabs-menu")`), 3000);
         result.tabsMenu = tabsMenuOpen && tabsHidden && tabsLastStays && tabsRestored && tabsClosed;
@@ -2253,7 +2263,7 @@ async function checkConsole(webContents, { live, outputs }) {
         const saveBtn = "[...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar tema')";
         result.themeNeedsBg = await js(`(() => { const b = ${saveBtn}; return Boolean(b && b.disabled) && Boolean(document.querySelector('.win-dialog.is-editor .bgchip.is-missing')); })()`).catch(() => false);
         await js("(() => { const b = document.querySelector('.win-dialog.is-editor .bgchip button'); if (b) b.click(); return Boolean(b); })()");
-        await waitFor(() => js("(() => { const t = [...document.querySelectorAll('.lib-tabs [role=tab]')].find((x) => x.textContent.trim() === 'Cor'); if (t) t.click(); return Boolean(t); })()"), 5000);
+        await waitFor(() => js("(() => { const t = [...document.querySelectorAll('.lib-dialog .kx-win-tabs [role=tab]')].find((x) => x.textContent.trim() === 'Cor'); if (t) t.click(); return Boolean(t); })()"), 5000);
         await waitFor(() => js("(() => { const s = document.querySelector('.lib-swatch'); if (s) s.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); return Boolean(s); })()"), 4000);
         result.themeBgPicked = await waitFor(() => js(`(() => { const b = ${saveBtn}; return !document.querySelector('.lib-dialog') && Boolean(b && !b.disabled); })()`), 4000);
         await js(`(() => { const b = ${saveBtn}; if (b) b.click(); return Boolean(b); })()`);
@@ -2391,7 +2401,7 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear", {});
         await waitFor(() => !live.get().content);
         result.libOpen = await openWallpaper();
-        await click(".lib-tabs button", "Vídeos");
+        await click(".lib-dialog .kx-win-tabs button", "Vídeos");
         await waitFor(() => js("Boolean(document.querySelector('.lib-dialog [aria-label=\"Clipe de fundo\"]'))"), 8000);
         await dblclick(".lib-dialog .fg-tile", "Clipe de fundo");
         result.libClosed = await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 4000);
@@ -2465,7 +2475,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Gerados in the library (the papel de parede's door): the
         // background big and moving; Esc closes it without choosing.
         await openWallpaper();
-        await click(".lib-tabs button", "Gerados");
+        await click(".lib-dialog .kx-win-tabs button", "Gerados");
         await js("(() => { const b = [...document.querySelectorAll('.lib-dialog .lyr-gen')].find((n) => n.textContent.includes('Aurora')); if (b) b.click(); return Boolean(b); })()");
         result.libBig = await waitFor(() => js("Boolean(document.querySelector('.lib-dialog .lib-big-screen .ks'))"), 4000);
         await press("Escape");
@@ -2490,7 +2500,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // live door, Rodada B 2026-10-14): the menu opens the library, the
         // choice is saved on the service and the screens follow at once.
         await openWallpaper();
-        await click(".lib-tabs button", "Cor");
+        await click(".lib-dialog .kx-win-tabs button", "Cor");
         await js("(() => { const b = document.querySelector('.lib-dialog .lib-colors button'); if (b) b.click(); return Boolean(b); })()");
         await click(".lib-foot button", "Usar");
         result.serviceFundoButton = await waitFor(async () => {
@@ -2566,8 +2576,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await setVal(".pl-pad .kx-field input[list=pl-team]", "Ana Souza · Ministra");
         await press("Enter");
         result.plTeam = await waitFor(async () => { const t = ((await js(`window.keryxDesktop.db.call("Service", "get", ["${svc.id}"])`)).data || {}).worship_team || []; return t.some((m) => m.member_name === "Ana Souza" && m.role === "Ministra"); }, 6000);
-        // The template actions live in the bar's Modelos menu (Rodada C, fase b).
-        await click(".win-bar button", "Modelos");
+        // The template actions are the Modelos menu (Rodada C, fase b), in the
+        // Culto panel's header since Rodada O (O7), no longer the window's bar.
+        await click(".pl-popwrap button", "Modelos");
         await click(".pl-pop .kx-row", "Salvar como modelo…");
         await setVal(".pl-pop .kx-field input", "Modelo do smoke");
         await click(".pl-pop button", "Salvar modelo");
@@ -3410,9 +3421,10 @@ async function checkUpdates(webContents, { system, live, settings }) {
         // The bell: a red dot for an unread notification; opening it reads it.
         system.notifications.add({ key: "smoke", kind: "warn", title: "Aviso do smoke", body: "Só um teste.", action: "settings:dados" });
         result.bellDot = await waitFor(() => js("Boolean(document.querySelector('.tb-bell-dot'))"));
-        await js("document.querySelector('.tb-bell button').click(); true");
+        const BELL = ".topbar .tb-bell button[title^='Notificações']"; // Ver sits in a .tb-bell too (Rodada Q S9)
+        await js(`document.querySelector("${BELL}").click(); true`);
         result.bellList = await waitFor(() => has(".notifs .note-t", "Aviso do smoke"));
-        result.bellAnchored = await js("(() => { const p = document.querySelector('.notifs'); const b = document.querySelector('.topbar .tb-bell button'); if (!p || !b) return false; const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect(); return pr.left >= 0 && pr.right <= innerWidth + 1 && Math.abs(pr.right - br.right) <= 2; })()");
+        result.bellAnchored = await js(`(() => { const p = document.querySelector('.notifs'); const b = document.querySelector("${BELL}"); if (!p || !b) return false; const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect(); return pr.left >= 0 && pr.right <= innerWidth + 1 && Math.abs(pr.right - br.right) <= 2; })()`);
         await shot("sino");
         result.bellRead = await waitFor(() => system.notifications.unread() === 0, 4000) && await waitFor(() => js("!document.querySelector('.tb-bell-dot')"));
         await js("document.querySelector('.scrim') && document.querySelector('.scrim').click(); true");
