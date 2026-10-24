@@ -974,6 +974,36 @@ export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head 
     return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked, shut, head, exact: dock.mode === "exact" });
 }
 
+// The Bíblia's Livros, Capítulos and Versículos as tall as their cells, each
+// up to 40 % of the column (Rodada P, P4-3), for fitDock's `locked`. `fit`:
+// the measured heights (0 = not measured), `h`: the column's height, `head`:
+// the density's header. When Livros and Capítulos stacked in one column with
+// Versículos leave Versículos less than its minimum, Capítulos (then Livros)
+// gives way and scrolls: otherwise fitDock joined Livros and Capítulos as
+// tabs at 1366 × 768 with Salmos open, and they stayed joined after a short
+// book, the hidden Capítulos no longer measuring.
+export const BIBLE_FIT_MAX = 0.4;
+export function bibleLocks(dock, { books = 0, chapters = 0, verses = 0 } = {}, h, head = PANEL_HEAD) {
+    const cap = (px) => (px > 0 ? head + Math.min(px, Math.round(h * BIBLE_FIT_MAX)) : 0);
+    const out = { books: cap(books), chapters: cap(chapters), verses: cap(verses) };
+    const tree = dock?.tree;
+    const at = (id) => pathOf(tree, id);
+    const pb = at("books"), pc = at("chapters"), pv = at("verses");
+    const parent = (p) => (p && p.length ? JSON.stringify(p.slice(0, -1)) : null);
+    const col = pb && pc && pv && parent(pb) === parent(pc) && parent(pc) === parent(pv) ? nodeAt(tree, pb.slice(0, -1)) : null;
+    // Only a column of exactly these three, alone (the default's), and only
+    // the two that are locked.
+    if (!col || col.dir !== "col" || col.children.length !== 3 || [pb, pc, pv].some((p) => nodeAt(tree, p).tabs.length !== 1)) return out;
+    if (!out.books || !out.chapters) return out;
+    const room = h - 2 * G - MODULES.verses.minH;
+    let over = out.books + out.chapters - room;
+    if (over <= 0) return out;
+    const give = (id) => { const was = out[id]; out[id] = Math.max(MODULES[id].minH, was - over); over -= was - out[id]; };
+    give("chapters");
+    if (over > 0) give("books");
+    return out;
+}
+
 // The module a node is when the operator can fold it there: a group of one.
 const foldable = (node) => (isGroup(node) && node.tabs.length === 1 && canFoldModule(node.tabs[0]) ? node.tabs[0] : null);
 
