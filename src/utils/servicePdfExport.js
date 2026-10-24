@@ -1,6 +1,7 @@
 import { keryx } from "@/api/keryxClient";
 import { stripChords } from "../lib/chords.js";
 import { plan, clockAt, span, total, typeLabel, isSection } from "@/lib/console/setlist";
+import { singerOf } from "@/lib/console/pedidos";
 
 const dateBR = (iso) => (/^\d{4}-\d{2}-\d{2}$/.test(String(iso || "")) ? iso.split("-").reverse().join("/") : iso || "");
 
@@ -79,11 +80,23 @@ export async function exportServiceToPdf(service, items, church = null) {
             continue;
         }
 
-        // Cabeçalho do item: the planned time, the kind, the title, the length.
+        // Cabeçalho do item: the planned time, the kind, the title, the length,
+        // and who sings when it came from a pedido ("· pedido de Ana", Rodada Q S13).
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
         const at = p.rows[i]?.at;
-        doc.text(`${hasStart && at != null ? `${clockAt(at)}  ` : ""}${typeLabel(item.type)}: ${item.title || ""}${item.duration ? `  (${span(item.duration)})` : ""}`, margin, y);
+        const head = `${hasStart && at != null ? `${clockAt(at)}  ` : ""}${typeLabel(item.type)}: ${item.title || ""}`;
+        doc.text(head, margin, y);
+        let x = margin + doc.getTextWidth(head);
+        const who = singerOf(item);
+        if (who) {
+            doc.setFont("helvetica", "italic");
+            const by = ` · pedido de ${who}`;
+            doc.text(by, x, y);
+            x += doc.getTextWidth(by);
+            doc.setFont("helvetica", "bold");
+        }
+        if (item.duration) doc.text(`  (${span(item.duration)})`, x, y);
         y += 7;
 
         doc.setFontSize(10);

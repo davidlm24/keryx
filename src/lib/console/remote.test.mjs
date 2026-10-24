@@ -194,3 +194,11 @@ test("the Equipe's setlist carries a song item's song (Rodada Q PR4: songText)",
     ] });
     assert.deepEqual(st.items.map((it) => it.songId ?? null), ["song-1", null, null]);
 });
+
+test("the Equipe's setlist says who sings a pedido's item (Rodada Q S13)", () => {
+    const st = teamState({ items: [
+        { id: "i1", type: "SONG", title: "Bondade de Deus", contentId: "song-1", requested_by: " Ana Souza " },
+        { id: "i2", type: "SONG", title: "Raridade", contentId: "song-2", requested_by: "" },
+    ] });
+    assert.deepEqual(st.items.map((it) => it.singer ?? null), ["Ana Souza", null]);
+});

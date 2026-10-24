@@ -246,7 +246,9 @@ export function teamState({ app = "", service = null, items = [], airItemId = nu
             const type = String(it.type || "").toUpperCase();
             // A song's own id (Rodada Q PR4): the Equipe opens its lyrics (songText).
             const songId = type === "SONG" && SONG_ID.test(String(it.contentId || "")) ? { songId: it.contentId } : {};
-            return { id: it.id, title: String(it.title || "").slice(0, limits.itemTitle), type, section: type === "SECTION", ...songId };
+            // Who sings, when the item came from a pedido (Rodada Q, S13).
+            const who = cleanText(it.requested_by, 60);
+            return { id: it.id, title: String(it.title || "").slice(0, limits.itemTitle), type, section: type === "SECTION", ...songId, ...(who ? { singer: who } : {}) };
         }),
         truncated: items.length > limits.items,
     };
@@ -298,7 +300,7 @@ export function messageRow(action, args = {}, at = new Date().toISOString()) {
         link = youtubeLink(args.link);
         if (!link) return { error: "link" };
     }
-    const base = { sender: cleanText(args.from, limits.requestFrom), status: "open", sentAt: at, ...(link ? { link } : {}) };
+    const base = { sender: cleanText(args.from, limits.requestFrom), side: "team", status: "open", sentAt: at, ...(link ? { link } : {}) };
     if (action === "chat.send") return { ...base, kind: "chat", text: cleanText(args.text, limits.requestText) };
     return {
         ...base,
@@ -332,6 +334,8 @@ export function requestsPage({ messages = [], kind = null, skip = 0, limit = lim
         id: m.id,
         at: m.sentAt || "",
         kind: m.kind === "pedido" ? "pedido" : "chat",
+        // Who wrote it (S12/S14): the operator on the console, else a phone.
+        side: m.side === "operator" ? "operator" : "team",
         from: String(m.sender || ""),
         text: String(m.text || ""),
         singer: String(m.singer || ""),

@@ -707,10 +707,11 @@ export default function Console() {
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
 
-    const addSong = async (song) => {
+    // extra: a pedido's who sings and note (pedidoItem, Rodada Q S13).
+    const addSong = async (song, extra = {}) => {
         try {
             const sid = await ensureService();
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || defaultDuration("SONG", getPrefs()) });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || defaultDuration("SONG", getPrefs()), ...extra });
             c.say(`${song.title} adicionada ao fim da setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
@@ -864,6 +865,13 @@ export default function Console() {
     // command as the console's own key or palette would; the Equipe's
     // messages are the culto's ServiceMessage rows (Rodada Q).
     const messages = useServiceMessages(serviceId);
+    // What the operator writes in the Chat or notes with Novo pedido (S12,
+    // S14): a row of the culto through the store, never a network action
+    // (no service: today's draft starts, as the notes do).
+    const writeMessage = async (fields) => {
+        const sid = await ensureService();
+        return keryx.entities.ServiceMessage.create({ serviceId: sid, ...fields });
+    };
     useRemote({ c, data, service, items, rows: setPlan.rows, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses, messages, ensureService, addPassage, addToSetlist: (stage) => addStageToSetlist(stage, undefined, { silent: true }) });
 
     // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
@@ -1026,13 +1034,19 @@ export default function Console() {
         folded: folded ? folded.split(",") : [], head: PANEL_HEAD,
     }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH, folded, PANEL_HEAD]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
-    // The Pedidos tab (Rodada Q): the toast of each new row, the tab put back
-    // in the panel's list when a message comes, its dot (usePedidos.js).
-    const showPedidos = () => { if (!tabLists.panel.includes("pedidos")) setTabList("panel", showTab("panel", tabLists.panel, "pedidos")); };
-    const pedidosOpen = env === "culto" && panelTabNow === "pedidos" && onScreen("abas") && !layout.folded?.abas;
+    // The Pedidos and Chat tabs (Rodada Q; S12 = B): the toast of each new
+    // row, its tab put back in the panel's list when a message comes, each
+    // tab's dot (usePedidos.js).
+    const showPanelTabs = (ids) => {
+        const next = ids.reduce((list, id) => showTab("panel", list, id), tabLists.panel);
+        if (next.length !== tabLists.panel.length) setTabList("panel", next);
+    };
+    const panelVisible = env === "culto" && onScreen("abas") && !layout.folded?.abas;
     const pedidosReachable = onScreen("abas");
-    const { unread: pedidosUnread } = usePedidos({ c, messages, tabOpen: pedidosOpen, reachable: pedidosReachable, show: showPedidos,
-        focus: () => { setOpen(null); setEnvState("culto"); showPedidos(); setPanelTab("pedidos"); } });
+    const { unread: teamUnread } = usePedidos({ c, messages, open: { pedidos: panelVisible && panelTabNow === "pedidos", chat: panelVisible && panelTabNow === "chat" },
+        reachable: pedidosReachable, show: showPanelTabs,
+        focus: (id) => { setOpen(null); setEnvState("culto"); showPanelTabs([id]); setPanelTab(id); } });
+    const pedidosUnread = teamUnread.pedidos || teamUnread.chat;
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });
     // Ver's and Configurações' module switches: the culto's tray on this
@@ -1248,8 +1262,9 @@ export default function Console() {
         </Panel>
     );
     // The tabs panel: the tabs the operator checked in its (+) (Notas, Aviso
-    // rápido, Timers, Pedidos, Ferramentas, Esteve no ar); Pedidos with its dot.
-    const panelTabsShown = shownTabs("panel", tabLists.panel).map((t) => (t.id === "pedidos" && pedidosUnread ? { ...t, dot: "novos" } : t));
+    // rápido, Timers, Pedidos, Chat, Ferramentas, Esteve no ar); Pedidos and
+    // Chat each with its dot.
+    const panelTabsShown = shownTabs("panel", tabLists.panel).map((t) => (teamUnread[t.id] ? { ...t, dot: "novos" } : t));
     const panelOnScreen = onScreen("abas");
     const panelHas = panelOnScreen ? Object.fromEntries(tabLists.panel.map((id) => [id, true])) : {};
     const prepare = (s) => c.setPrev(s);
@@ -1257,7 +1272,7 @@ export default function Console() {
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
             items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend}
-            messages={messages} onAddSong={addSong} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} />
+            messages={messages} onAddSong={addSong} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" actions={<>

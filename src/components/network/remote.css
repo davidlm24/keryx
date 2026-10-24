@@ -255,7 +255,22 @@
 .rm-msg.is-mine { align-self: flex-end; align-items: flex-end; }
 .rm-msg-h { padding: 0 4px; font-size: 11px; color: var(--fg-3); }
 .rm-msg-t { display: flex; flex-direction: column; gap: 6px; max-width: 100%; padding: 9px 12px; border-radius: 14px 14px 14px 4px; background: var(--bg-2); color: var(--fg-1); font-size: 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
-.rm-msg.is-mine .rm-msg-t { border-radius: 14px 14px 4px 14px; background: color-mix(in srgb, var(--brand) 20%, var(--bg-2)); }
+.rm-msg.is-mine .rm-msg-t { border-radius: 14px 14px 4px 14px; background: var(--bg-3); }
+/* The operator's (S12/S14): on the left, a gold wash and ring, "Operador" in gold. */
+.rm-msg.is-op .rm-msg-t { background: color-mix(in srgb, var(--brand) 14%, var(--bg-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent); }
+.rm-msg.is-op .rm-msg-h { color: var(--brand); }
+.rm-badge { display: inline-flex; align-items: center; height: 18px; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); font-size: 10.5px; letter-spacing: 0; }
+/* Pedidos | Chat (S12): a segmented switch, each side with its gold dot. */
+.rm-seg { flex: none; display: flex; gap: 2px; margin: 4px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); padding: 3px; border-radius: 12px; background: var(--bg-1); }
+.rm-seg button { font-family: inherit; flex: 1 1 0; min-width: 0; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 9px; background: none; color: var(--fg-3); font-size: 14px; font-weight: 500; }
+.rm-seg button[aria-pressed="true"] { background: var(--bg-3); color: var(--fg-1); }
+.rm-new { flex: none; width: 8px; height: 8px; border-radius: 999px; background: var(--brand); }
+.rm-new.is-tab { position: absolute; top: 9px; left: calc(50% + 10px); }
+.rm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Who sings, on the Setlist to read (S13). */
+.rm-who { flex: 0 1 auto; min-width: 0; max-width: 40%; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); font-size: 11px; font-weight: 500; }
+.rm-who svg { flex: none; }
+.rm-who > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rm-ped .rm-msg-h { color: var(--brand); letter-spacing: .04em; }
 .rm-ped-w { font-size: 15px; line-height: 1.35; }
 .rm-ped-w b { font-weight: 600; }
@@ -348,4 +363,10 @@
     .rm-tab[aria-selected="true"]::after, .rm-tg[aria-checked="true"]::before { background: Highlight; }
     .rm-item.is-sel, .rm-b.is-on, .rm-b[aria-pressed="true"], .rm-grid button.is-sel, .rm-grid button.is-range, .rm-chip[aria-pressed="true"] { outline: 2px solid Highlight; }
     .rm-dot { background: CanvasText; }
+    /* Pedidos | Chat: the side shown is chosen, a dot of news a system colour;
+       the operator's bubble, the badge and the singer's tag keep an edge. */
+    .rm-seg button[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+    .rm-new { background: LinkText; }
+    .rm-msg.is-op .rm-msg-t { outline: 2px solid Highlight; outline-offset: -2px; }
+    .rm-badge, .rm-who { outline: 1px solid CanvasText; outline-offset: -1px; }
 }

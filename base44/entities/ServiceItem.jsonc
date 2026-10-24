@@ -73,6 +73,10 @@
       "type": "boolean",
       "default": true,
       "description": "Item ativo no culto (itens desativados sao pulados mas mantidos)"
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "Quem canta, quando o item veio de um pedido de louvor (Rodada Q, S13): a etiqueta da Setlist, o campo Pedido de no planejador e o PDF do culto. Vazio = nenhum"
     }
   },
   "required": [

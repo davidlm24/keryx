@@ -483,7 +483,7 @@ test("chat.send / request.send: a row of the culto, quietly; the same again with
     const send = (action, args) => runner.answer({ action, args, v: 2, role: "team" });
     const first = await send("chat.send", { from: "Ana", text: "Dá pra deixar\u0007 o tom em Sol?" });
     assert.deepEqual(first, { ok: true, message: "", data: { id: "msg1", at: "2026-10-23T22:00:00.000Z" } });
-    assert.deepEqual(d.made[0], { id: "msg1", sender: "Ana", status: "open", sentAt: "2026-10-23T22:00:00.000Z", kind: "chat", text: "Dá pra deixar o tom em Sol?", serviceId: "svc" });
+    assert.deepEqual(d.made[0], { id: "msg1", sender: "Ana", side: "team", status: "open", sentAt: "2026-10-23T22:00:00.000Z", kind: "chat", text: "Dá pra deixar o tom em Sol?", serviceId: "svc" });
     d.tick = 5000;
     assert.equal((await send("chat.send", { from: "Ana", text: "Dá pra deixar o tom em Sol?" })).data.id, "msg1", "a retry: the row made");
     assert.equal(d.made.length, 1);
@@ -492,7 +492,7 @@ test("chat.send / request.send: a row of the culto, quietly; the same again with
     // A request: a song of the library keeps its id, one gone keeps the name.
     const asked = await send("request.send", { from: "Lucas", singer: "Ana Souza", song: "Hino", songId: "s1", note: "Depois da oferta", link: "https://youtu.be/dQw4w9WgXcQ?t=40" });
     assert.equal(asked.ok, true);
-    assert.deepEqual(d.made.at(-1), { id: "msg3", sender: "Lucas", status: "open", sentAt: d.made.at(-1).sentAt, link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", kind: "pedido", text: "Depois da oferta", singer: "Ana Souza", song: "Hino", songId: "s1", serviceId: "svc" });
+    assert.deepEqual(d.made.at(-1), { id: "msg3", sender: "Lucas", side: "team", status: "open", sentAt: d.made.at(-1).sentAt, link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", kind: "pedido", text: "Depois da oferta", singer: "Ana Souza", song: "Hino", songId: "s1", serviceId: "svc" });
     await send("request.send", { from: "Lucas", song: "Outra", songId: "nope" });
     assert.equal(d.made.at(-1).songId, undefined);
     // Only YouTube links.
@@ -515,8 +515,11 @@ test("requests: a page back from the newest; songText: a song's parts with chord
     assert.deepEqual([page.data.rows[0].id, page.data.rows.at(-1).id], ["m10", "m39"], "the newest page, oldest first");
     const older = await asTeam(d, "requests", { skip: 30 });
     assert.deepEqual(older.data.rows.map((r) => r.id), ["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"]);
-    assert.deepEqual(older.data.rows[1], { id: "m1", at: messages[1].sentAt, kind: "pedido", from: "Ana", text: "t1", singer: "", song: "Hino", status: "done" });
+    assert.deepEqual(older.data.rows[1], { id: "m1", at: messages[1].sentAt, kind: "pedido", side: "team", from: "Ana", text: "t1", singer: "", song: "Hino", status: "done" });
     assert.equal((await asTeam(d, "requests", { kind: "pedido", limit: 5 })).data.total, 20);
+    // What the operator wrote on the console says so (S12/S14); the rest is the Equipe's.
+    const op = planConsole({ messages: [{ id: "o1", kind: "chat", side: "operator", sender: "Operador", text: "Já mudei", status: "open", sentAt: messages[0].sentAt }, messages[1]] });
+    assert.deepEqual((await asTeam(op, "requests", {})).data.rows.map((r) => r.side), ["operator", "team"]);
     // songText reads the console's songs.
     d.songs = [{ id: "s1", title: "Hino", artist: "X", song_key: "G", lyrics: "[Verso 1]\n[G]Grande é o [D]Senhor\n\n[Refrão]\nSanto" }];
     const song = await asTeam(d, "songText", { id: "s1" });

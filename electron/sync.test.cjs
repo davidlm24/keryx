@@ -814,11 +814,15 @@ function churchInABox(mediaDir) {
             // Setlist automática (Rodada N2): the switch and the pause travel with the culto.
             autoplay: true, autoplay_gap: 3,
         }],
-        ServiceItem: [{ serviceId: ids.service, order: 1, type: "SONG", title: "Grande é o Senhor", contentId: ids.song, end_action: "loop" }],
-        // The Equipe's chat and a song request (Rodada Q): only text, no file.
+        // requested_by: who sings, when the item came from a pedido (Rodada Q, S13).
+        ServiceItem: [{ serviceId: ids.service, order: 1, type: "SONG", title: "Grande é o Senhor", contentId: ids.song, end_action: "loop", requested_by: "Ana" }],
+        // The Equipe's chat and a song request (Rodada Q): only text, no file;
+        // the operator's answer and the pedido it noted carry side (S12/S14).
         ServiceMessage: [
             { serviceId: ids.service, kind: "chat", sender: "Marcos", text: "O baixo vai atrasar uns 5 minutos.", status: "open", sentAt: "2026-10-25T21:52:00.000Z" },
             { serviceId: ids.service, kind: "pedido", sender: "Lucas", singer: "Ana", song: "Grande é o Senhor", songId: ids.song, text: "Depois da oferta", link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", status: "done", sentAt: "2026-10-25T22:05:00.000Z" },
+            { serviceId: ids.service, kind: "chat", side: "operator", sender: "Operador", text: "Beleza, começo pela música 2.", status: "open", sentAt: "2026-10-25T21:53:00.000Z" },
+            { serviceId: ids.service, kind: "pedido", side: "operator", sender: "Operador", singer: "Marcos", song: "Grande é o Senhor", songId: ids.song, status: "open", sentAt: "2026-10-25T22:09:00.000Z" },
         ],
         ServiceTemplate: [{ name: "Domingo à noite", background: { kind: "video", value: file("ServiceTemplate.background", ".mp4") }, items: [{ type: "SECTION", title: "Louvor" }] }],
         Song: [

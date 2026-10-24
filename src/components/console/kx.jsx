@@ -345,6 +345,14 @@ export function stateWords(cls = "") {
 export function SelectManyBtn({ on, onToggle }) {
     return <IconBtn name={SELECT_MANY.icon} small on={on} title={on ? `${SELECT_MANY.label} · Esc desliga` : SELECT_MANY.label} onClick={() => onToggle(!on)} />;
 }
+// Who sings, on a Setlist or planner row of an item that came from a pedido
+// (Rodada Q, S13 = A; ServiceItem.requested_by): a gold tag, the name cut
+// with "…", the whole in the tooltip. Nothing for an item without one.
+export function SingerTag({ name }) {
+    if (!name) return null;
+    return <span className="rund-who" title={`Pedido de ${name}`}><Icon name="user" /><span>{name}</span></span>;
+}
+
 export function RowMark() {
     return <span className="kx-pick" aria-hidden="true"><Icon name="check" size={12} /></span>;
 }

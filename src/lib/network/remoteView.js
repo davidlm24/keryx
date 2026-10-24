@@ -460,27 +460,38 @@ export function chatArgs({ from, text, link } = {}) {
 // The fields' maxLength, from the contract.
 export const PEDIDO_LIMITS = { from: PROTOCOL.limits.requestFrom, singer: REQ.singer.max, song: REQ.song.max, note: REQ.note.max, link: PROTOCOL.limits.link, text: CHAT.text.max };
 
-// Pedidos asks `requests` every 15 s while its tab is on screen, and right
-// after a send; the newest page only.
+// The Equipe asks `requests` for each kind (its Pedidos and its Chat, S12)
+// every 15 s, every 5 s for the chat while the Chat is open (the operator
+// answers there), and right after a send; the newest page only.
 export const REQUESTS_EVERY_MS = 15000;
+export const REQUESTS_CHAT_MS = 5000;
+export const requestsEvery = (kind, chatOpen) => (kind === "chat" && chatOpen ? REQUESTS_CHAT_MS : REQUESTS_EVERY_MS);
 const hhmm = (iso) => {
     const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? "" : `${two(d.getHours())}:${two(d.getMinutes())}`;
 };
 // The culto's messages as the phone lists them, oldest first: this phone's
-// own (by its name) on the right; a pedido says whether the operator saw to
-// it. Everything is drawn as plain text (it came from phones).
+// own (by its name) on the right as "Você"; the operator's (side
+// "operator", S12/S14: a reply in the console's Chat, a pedido it noted) as
+// "Operador" and "Anotado pelo operador"; a pedido says whether the operator
+// saw to it. Everything is drawn as plain text (it came from phones).
+const isMine = (r, mine) => Boolean(mine) && r.side !== "operator" && cleanName(r.from).toLowerCase() === mine;
 export function messageRows(rows = [], me = "") {
     const mine = cleanName(me).toLowerCase();
     return rows.map((r) => {
-        const own = Boolean(mine) && cleanName(r.from).toLowerCase() === mine;
+        const own = isMine(r, mine);
+        const op = r.side === "operator";
         const at = hhmm(r.at);
         const done = r.status === "done";
+        const who = op ? "Operador" : own ? "Você" : r.from || "Equipe";
         return {
             id: r.id,
             kind: r.kind === "pedido" ? "pedido" : "chat",
             mine: own,
-            head: [r.from || "Equipe", at].filter(Boolean).join(" · "),
+            operator: op,
+            head: [who, at].filter(Boolean).join(" · "),
+            // A pedido card's line on top.
+            by: op ? "Anotado pelo operador" : own ? "Você pediu" : `Pedido de ${r.from || "Equipe"}`,
             at,
             text: String(r.text || ""),
             singer: String(r.singer || ""),
@@ -488,9 +499,21 @@ export function messageRows(rows = [], me = "") {
             link: r.link || null,
             cover: r.link ? youtubeCover(r.link) : null,
             done,
-            status: done ? "✓ Atendido" : own ? "Enviado · aguardando o operador" : "Aguardando o operador",
+            status: done ? "✓ Atendido" : op ? "" : own ? "Enviado · aguardando o operador" : "Aguardando o operador",
         };
     });
+}
+
+// What this phone has not seen yet (the gold dots of Pedidos | Chat and of
+// the Pedidos tab, S12): a row it did not send, newer than the last one it
+// saw there (`seen`, an ISO time kept per kind in SEEN_KEY).
+export const SEEN_KEY = "keryx.remote.seen";
+export function newestAt(rows = []) {
+    return rows.reduce((m, r) => (String(r.at || "") > m ? String(r.at || "") : m), "");
+}
+export function hasUnseen(rows = [], seen = "", me = "") {
+    const mine = cleanName(me).toLowerCase();
+    return rows.some((r) => !isMine(r, mine) && String(r.at || "") > String(seen || ""));
 }
 
 // The Equipe's Setlist to read: the item on air marked and the next
@@ -511,6 +534,8 @@ export function teamSetlistRows(state) {
             sub: typeLabel(it.type),
             // A song opens its lyrics when the console says which song it is.
             songId: String(it.type || "").toUpperCase() === "SONG" && it.songId ? it.songId : null,
+            // Who sings, when the item came from a pedido (S13).
+            singer: String(it.singer || "").trim(),
             tag: it.id === air ? "air" : it.id === next ? "next" : null,
         };
     });
