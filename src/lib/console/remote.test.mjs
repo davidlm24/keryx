@@ -172,6 +172,11 @@ test("the Equipe (Rodada Q): links only YouTube's, rebuilt; texts clean; capped 
     // The roles as lan.cjs reads them.
     assert.equal(remoteRoleAllows("library", { tab: "songs" }, "team"), true);
     assert.equal(remoteRoleAllows("library", { tab: "media" }, "team"), false);
+    // S15: the Mídia only as its videos and audios, kind given.
+    assert.equal(remoteRoleAllows("library", { tab: "media", kind: "video" }, "team"), true);
+    assert.equal(remoteRoleAllows("library", { tab: "media", kind: "audio" }, "team"), true);
+    for (const args of [{ tab: "media", kind: "image" }, { tab: "media", kind: "pdf" }, { tab: "pieces" }, { tab: "materials" }, { tab: "songs", kind: "pdf" }]) assert.equal(remoteRoleAllows("library", args, "team"), false, JSON.stringify(args));
+    assert.equal(remoteRoleAllows("library", { tab: "media" }, "control"), true);
     assert.equal(remoteRoleAllows("next", {}, "team"), false);
     assert.equal(remoteRoleAllows("requests", {}, "control"), false);
     assert.equal(remoteRoleAllows("constructor", {}, "team"), false);

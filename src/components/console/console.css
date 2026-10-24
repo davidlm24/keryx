@@ -300,6 +300,13 @@
 .console .ped-f { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--fs-meta); color: var(--fg-3); }
 .console .ped-f .kx-input { width: 100%; color: var(--fg-1); background: var(--bg-3); font-size: var(--fs-ui); }
 .console .ped-matches { display: flex; flex-direction: column; gap: 2px; }
+/* O louvor's picker (S15 = A): Letras · Vídeos · Áudios, Buscar, the rows. */
+.console .ped-pick { display: flex; flex-direction: column; gap: var(--space-1); padding: 6px; border-radius: var(--radius-panel); background: var(--bg-4); box-shadow: var(--shadow-popover); }
+.console .ped-pick .kx-seg { align-self: stretch; }
+.console .ped-pick .kx-seg > button { flex: 1; }
+.console .ped-pick .ped-find { background: var(--bg-2); }
+.console .ped-pick .ped-match:hover { background: var(--bg-3); }
+.console .ped-none { margin: 0; padding: var(--space-1) var(--space-2); color: var(--fg-3); font-size: var(--fs-meta); }
 .console .ped-match { display: flex; align-items: center; gap: var(--space-2); min-width: 0; height: var(--row); padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); font-size: var(--fs-ui); text-align: left; }
 .console .ped-match:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .ped-match > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -318,13 +325,16 @@
 .console .ped-t { font-size: var(--fs-content); line-height: 1.4; color: var(--fg-1); overflow-wrap: anywhere; white-space: pre-wrap; }
 .console .ped-card { display: flex; flex-direction: column; gap: 6px; margin: 2px var(--space-1); padding: 10px var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); }
 .console .ped-card.is-done { opacity: .55; }
-.console .ped-song { font-size: var(--fs-content-lg); line-height: 1.35; color: var(--fg-1); overflow-wrap: anywhere; }
+.console .ped-song { display: flex; align-items: baseline; gap: 7px; font-size: var(--fs-content-lg); line-height: 1.35; color: var(--fg-1); overflow-wrap: anywhere; }
+.console .ped-song > svg { flex: none; align-self: center; width: 15px; height: 15px; color: var(--brand); }
+.console .ped-song > span { min-width: 0; }
 .console .ped-song b { font-weight: 600; }
 .console .ped-note { font-size: var(--fs-ui); line-height: 1.4; color: var(--fg-2); overflow-wrap: anywhere; white-space: pre-wrap; }
 .console .ped-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .console .ped-acts .kx-btn svg { width: 13px; height: 13px; margin-right: var(--space-1); }
 .console .ped-acts .kx-btn-icon svg { margin-right: 0; }
 .console .ped-badge { display: inline-flex; align-items: center; gap: var(--space-1); height: 18px; padding: 0 7px; margin-left: var(--space-1); border-radius: var(--radius-round); font-size: var(--fs-meta); }
+.console .ped-badge.is-kind { background: var(--bg-4); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-2); }
 .console .ped-badge.is-done { background: var(--ok-tint); color: var(--ok-fg); }
 .console .ped-badge.is-warn { background: var(--warn-tint); color: var(--warn-fg); }
 .console .ped-link { display: flex; align-items: center; gap: var(--space-2); margin-top: 2px; }
@@ -2185,7 +2195,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .tabrow .kx-tc-dot { background: LinkText; }
   /* Pedidos and Chat: a card and a bubble keep their edge, a badge its
      outline; what the operator noted or wrote is a solid Highlight ring. */
-  .console :is(.ped-card, .ped-badge, .ped-msg, .ped-picked) { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .console :is(.ped-card, .ped-badge, .ped-msg, .ped-picked, .ped-pick) { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console :is(.ped-card, .ped-msg).is-op { outline: 2px solid Highlight; outline-offset: -2px; }
   /* The Setlist's who sings (S13). */
   .console .rund-who { outline: 1px solid CanvasText; outline-offset: -1px; }

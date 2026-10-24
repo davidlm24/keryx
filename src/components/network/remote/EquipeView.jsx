@@ -3,7 +3,7 @@ import Icon from "@/components/console/Icon";
 import { remoteCall } from "@/lib/console/remoteClient";
 import {
     capsOf, chatArgs, cleanName, emptyList, hasChords, hasUnseen, joinPage, libraryArgs, lyricParts, mediaRow, messageRows, NAME_KEY, newestAt,
-    PEDIDO_LIMITS, pedidoArgs, requestsEvery, SEARCH_DEBOUNCE_MS, SEEN_KEY, songSub, tabsFor, TAG_TEXT, teamSetlistRows, teamStrip,
+    PEDIDO_LIMITS, pedidoArgs, PICK_CHIPS, chipOf, requestsEvery, SEARCH_DEBOUNCE_MS, SEEN_KEY, songSub, tabsFor, TAG_TEXT, teamSetlistRows, teamStrip,
 } from "@/lib/network/remoteView";
 import { Sheet, Toast } from "./parts";
 
@@ -13,7 +13,8 @@ const BibleTab = lazy(() => import("./BibleTab"));
 // page signed in with the Equipe's code (state.role "team"). Four tabs —
 // Pedidos, Músicas, Bíblia, Setlist — and a thin strip on top with what is
 // on air, "só leitura". It talks to the musicians' side of the console only
-// (chat.send, request.send, requests, songText, library's songs, bibleFind,
+// (chat.send, request.send, requests, songText, the library's songs and the
+// Mídia's videos and audios to pick a pedido's louvor (S15), bibleFind,
 // state): no button here ever runs an action that puts on or takes off the
 // air or changes the Setlist (lan.cjs would answer 403 anyway, and its
 // message is what the toast shows). Everything that came from a phone is
@@ -253,7 +254,7 @@ function Message({ m }) {
             <div className={`rm-msg rm-ped ${side}`}>
                 <span className="rm-msg-h">{m.by}{m.at ? ` · ${m.at}` : ""}{m.operator && <span className="rm-badge">operador</span>}</span>
                 <span className="rm-msg-t">
-                    <span className="rm-ped-w">{m.singer ? <><b>{m.singer}</b> canta <b>{m.song}</b></> : <b>{m.song}</b>}</span>
+                    <span className="rm-ped-w"><Icon name={m.icon} size={16} />{m.singer ? <><b>{m.singer}</b> canta <b>{m.song}</b></> : <b>{m.song}</b>}</span>
                     {m.text && <span className="rm-ped-n">{m.text}</span>}
                     {m.link && <YouTubeLink m={m} />}
                     {m.status && <span className={`rm-ped-s ${m.done ? "is-done" : ""}`}>{m.status}</span>}
@@ -281,18 +282,22 @@ function YouTubeLink({ m }) {
     );
 }
 
-// The pedido: who sings, the song (typed or from the library), a YouTube
-// link and a note; signed with the phone's name.
+// The pedido: who sings, the song (typed or from the library: Letras ·
+// Vídeos · Áudios, S15 = A), a YouTube link and a note; signed with the
+// phone's name.
 function PedidoSheet({ initial, name, busy, onSend, onClose }) {
     const [singer, setSinger] = useState("");
     const [song, setSong] = useState(initial.song || "");
     const [songId, setSongId] = useState(initial.songId || "");
+    const [mediaId, setMediaId] = useState("");
+    const [chip, setChip] = useState("songs");
+    const [pickedChip, setPickedChip] = useState("songs");
     const [link, setLink] = useState("");
     const [note, setNote] = useState("");
     const [picking, setPicking] = useState(false);
     const [error, setError] = useState(null);
     const go = async () => {
-        const v = pedidoArgs({ from: name, singer, song, songId, note, link });
+        const v = pedidoArgs({ from: name, singer, song, songId, mediaId, note, link });
         if (v.error) return setError(v);
         setError(null);
         await onSend(v.args);
@@ -300,7 +305,16 @@ function PedidoSheet({ initial, name, busy, onSend, onClose }) {
     if (picking) {
         return (
             <Sheet title="Escolher da biblioteca" onClose={() => setPicking(false)}>
-                <SongList compact onPick={(r) => { setSong(r.title); setSongId(r.id); setPicking(false); }} />
+                <div className="rm-seg is-sheet" role="group" aria-label="Da biblioteca">
+                    {PICK_CHIPS.map((c) => <button type="button" key={c.key} aria-pressed={chip === c.key} onClick={() => setChip(c.key)}><Icon name={c.icon} size={16} />{c.label}</button>)}
+                </div>
+                <SongList key={chip} chip={chip} compact onPick={(r) => {
+                    setSong(r.title.slice(0, PEDIDO_LIMITS.song));
+                    setSongId(chip === "songs" ? r.id : "");
+                    setMediaId(chip === "songs" ? "" : r.id);
+                    setPickedChip(chip);
+                    setPicking(false);
+                }} />
                 <button type="button" className="rm-b is-sm" onClick={() => setPicking(false)}>Voltar</button>
             </Sheet>
         );
@@ -313,11 +327,11 @@ function PedidoSheet({ initial, name, busy, onSend, onClose }) {
             </label>
             <div className="rm-f">
                 <label htmlFor="rm-ped-song">O louvor</label>
-                {songId
+                {songId || mediaId
                     ? (
                         <div className="rm-picked">
-                            <Icon name="music" size={16} /><b>{song}</b><small>da biblioteca</small>
-                            <button type="button" className="rm-picked-x" aria-label="Escrever outro" onClick={() => { setSongId(""); setSong(""); }}><Icon name="x" size={16} /></button>
+                            <Icon name={chipOf(pickedChip).icon} size={16} /><b>{song}</b><small>{{ songs: "da biblioteca", video: "vídeo da biblioteca", audio: "áudio da biblioteca" }[pickedChip]}</small>
+                            <button type="button" className="rm-picked-x" aria-label="Escrever outro" onClick={() => { setSongId(""); setMediaId(""); setSong(""); }}><Icon name="x" size={16} /></button>
                         </div>
                     )
                     : <input id="rm-ped-song" className={`rm-in ${error?.error === "song" ? "is-bad" : ""}`} value={song} onChange={(e) => setSong(e.target.value)} maxLength={PEDIDO_LIMITS.song} autoComplete="off" />}
@@ -340,9 +354,10 @@ function PedidoSheet({ initial, name, busy, onSend, onClose }) {
 
 // ---- Músicas: the library's songs, a song's lyrics ---------------------------
 
-// The library's songs a page at a time (`library` tab songs), searched as
-// typed; an answer for an older search is dropped.
-function useSongs(query) {
+// The library's songs a page at a time (`library` tab songs; or the Mídia's
+// videos or audios, chip video | audio, S15), searched as typed; an answer
+// for an older search is dropped.
+function useSongs(query, chip = "songs") {
     const [list, setList] = useState(() => emptyList(query));
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState("");
@@ -354,14 +369,14 @@ function useSongs(query) {
         asking.current = true;
         setLoading(true);
         const asked = keyRef.current;
-        const r = await remoteCall("library", libraryArgs("songs", asked, from.rows.length));
+        const r = await remoteCall("library", libraryArgs(chip, asked, from.rows.length));
         asking.current = false;
         if (keyRef.current !== asked) return;
         setLoading(false);
         if (!r.ok) return setFailed(r.message || "");
         setFailed("");
         setList((cur) => joinPage(cur, asked, r.result));
-    }, []);
+    }, [chip]);
     useEffect(() => {
         const fresh = emptyList(query);
         setList(fresh);
@@ -371,14 +386,17 @@ function useSongs(query) {
     return { list, loading, failed, more };
 }
 
-function SongList({ onPick, compact = false }) {
+const FIND = { songs: ["Buscar música", "Nenhuma música", "música"], video: ["Buscar vídeo", "Nenhum vídeo", "vídeo"], audio: ["Buscar áudio", "Nenhum áudio", "áudio"] };
+function SongList({ onPick, compact = false, chip = "songs" }) {
     const [q, setQ] = useState("");
     const [query, setQuery] = useState("");
     useEffect(() => {
         const t = setTimeout(() => setQuery(q.trim()), SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(t);
     }, [q]);
-    const { list, loading, failed, more } = useSongs(query);
+    const { list, loading, failed, more } = useSongs(query, chip);
+    const [placeholder, none] = FIND[chip] || FIND.songs;
+    const icon = chipOf(chip).icon;
     const sentinel = useRef(null);
     const scroller = useRef(null);
     useEffect(() => {
@@ -392,7 +410,7 @@ function SongList({ onPick, compact = false }) {
     const field = (
         <label className="rm-field">
             <Icon name="search" size={20} />
-            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar música" aria-label="Buscar música" maxLength={40} autoCapitalize="none" autoCorrect="off" enterKeyHint="search" />
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} maxLength={40} autoCapitalize="none" autoCorrect="off" enterKeyHint="search" />
         </label>
     );
     const body = (
@@ -401,7 +419,7 @@ function SongList({ onPick, compact = false }) {
                 {rows.map((r) => (
                     <li key={r.id}>
                         <button type="button" className="rm-item" onClick={() => onPick(r)}>
-                            <Icon name="music" size={18} />
+                            <Icon name={icon} size={18} />
                             <span className="rm-item-t"><b>{r.title}</b>{r.sub && <small>{r.sub}</small>}</span>
                             {!compact && <Icon name="chevron-right" size={18} />}
                         </button>
@@ -409,7 +427,7 @@ function SongList({ onPick, compact = false }) {
                 ))}
             </ul>
             {failed && <p className="rm-empty">{failed}</p>}
-            {!failed && !loading && list.done && !rows.length && <p className="rm-empty">{!list.ready ? "A biblioteca ainda está abrindo no computador." : query ? `Nenhuma música com "${query}".` : "Nenhuma música na biblioteca."}</p>}
+            {!failed && !loading && list.done && !rows.length && <p className="rm-empty">{!list.ready ? "A biblioteca ainda está abrindo no computador." : query ? `${none} com "${query}".` : `${none} na biblioteca.`}</p>}
             {loading && <p className="rm-hint">Carregando…</p>}
             {!list.done && !failed && <div ref={sentinel} className="rm-sentinel" aria-hidden="true" />}
         </>

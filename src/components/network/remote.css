@@ -264,6 +264,9 @@
 .rm-seg { flex: none; display: flex; gap: 2px; margin: 4px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); padding: 3px; border-radius: 12px; background: var(--bg-1); }
 .rm-seg button { font-family: inherit; flex: 1 1 0; min-width: 0; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 9px; background: none; color: var(--fg-3); font-size: 14px; font-weight: 500; }
 .rm-seg button[aria-pressed="true"] { background: var(--bg-3); color: var(--fg-1); }
+/* The Escolher da biblioteca sheet's Letras · Vídeos · Áudios (S15 = A). */
+.rm-seg.is-sheet { margin: 0 0 4px; background: var(--bg-0); }
+.rm-seg.is-sheet button[aria-pressed="true"] { background: var(--bg-2); }
 .rm-new { flex: none; width: 8px; height: 8px; border-radius: 999px; background: var(--brand); }
 .rm-new.is-tab { position: absolute; top: 9px; left: calc(50% + 10px); }
 .rm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -274,6 +277,7 @@
 .rm-ped .rm-msg-h { color: var(--brand); letter-spacing: .04em; }
 .rm-ped-w { font-size: 15px; line-height: 1.35; }
 .rm-ped-w b { font-weight: 600; }
+.rm-ped-w > svg { vertical-align: -3px; margin-right: 6px; color: var(--brand); }
 .rm-ped-n { font-size: 13px; color: var(--fg-2); }
 .rm-ped-s { font-size: 12px; color: var(--fg-3); }
 .rm-ped-s.is-done { color: var(--ok-fg); }

@@ -13,6 +13,7 @@ import { referenceFrom } from "./quickRef.js";
 import { songSlidesFor } from "../songImport.js";
 import { partOf } from "./songTheme.js";
 import { getYouTubeId } from "../../utils/youtube.js";
+import { pedidoMediaKind } from "./pedidos.js";
 
 export { PROTOCOL };
 const { limits } = PROTOCOL;
@@ -60,7 +61,9 @@ export function remoteRoleAllows(action, args = {}, role = "control") {
     if (!spec) return false;
     if (role !== "team") return spec.cap !== "requests";
     if (spec.team !== true) return false;
-    return Object.entries(spec.teamArgs || {}).every(([key, values]) => args?.[key] === undefined || values.includes(args[key]));
+    const given = (key) => args?.[key] !== undefined;
+    return Object.entries(spec.teamArgs || {}).every(([key, values]) => !given(key) || values.includes(args[key]))
+        && (spec.teamNeeds || []).every((need) => !Object.entries(need.when).every(([key, value]) => args?.[key] === value) || need.give.every(given));
 }
 
 // A Media row's state on the phone: ok | missing | syncing | blocked.
@@ -309,6 +312,7 @@ export function messageRow(action, args = {}, at = new Date().toISOString()) {
         singer: cleanText(args.singer, 60),
         song: cleanText(args.song, 80),
         ...(args.songId ? { songId: args.songId } : {}),
+        ...(args.mediaId ? { mediaId: args.mediaId } : {}),
     };
 }
 
@@ -322,12 +326,18 @@ export function sameMessage(rows = [], row, now = Date.now()) {
 
 // The culto's messages a page at a time, for the phone: skip counts back
 // from the newest (skip 0 = the newest page), the rows oldest first.
-export function requestsPage({ messages = [], kind = null, skip = 0, limit = limits.requestPage }) {
+// media: the console's Mídia rows, so a pedido of a video or an audio
+// says its kind (S15: the phone draws its glyph).
+export function requestsPage({ messages = [], kind = null, skip = 0, limit = limits.requestPage, media = [] }) {
     const n = Math.max(1, Math.min(limits.requestPage, limit || limits.requestPage));
     const all = messages
         .filter((m) => !kind || m.kind === kind)
         .slice()
         .sort((a, b) => String(a.sentAt || "").localeCompare(String(b.sentAt || "")));
+    const mediaOf = (id) => {
+        const k = pedidoMediaKind(media.find((x) => x.id === id));
+        return k ? { mediaId: id, media: k } : { mediaId: id };
+    };
     const back = Math.max(0, skip || 0);
     const end = Math.max(0, all.length - back);
     const rows = all.slice(Math.max(0, end - n), end).map((m) => ({
@@ -341,6 +351,7 @@ export function requestsPage({ messages = [], kind = null, skip = 0, limit = lim
         singer: String(m.singer || ""),
         song: String(m.song || ""),
         ...(m.songId ? { songId: m.songId } : {}),
+        ...(m.mediaId ? mediaOf(m.mediaId) : {}),
         ...(m.link ? { link: m.link } : {}),
         status: m.status === "done" ? "done" : "open",
     }));

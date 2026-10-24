@@ -423,8 +423,9 @@ export const youtubeCover = (link) => {
 };
 
 // The pedido sheet's fields -> request.send's args, checked against the
-// contract's limits. -> { args } | { error, message }
-export function pedidoArgs({ from, singer, song, songId, note, link } = {}) {
+// contract's limits. mediaId (S15): a video or an audio picked in the
+// sheet's Vídeos or Áudios; never beside a songId. -> { args } | { error, message }
+export function pedidoArgs({ from, singer, song, songId, mediaId, note, link } = {}) {
     const name = cleanName(from);
     if (!name) return { error: "from", message: "Escreva o seu nome." };
     const title = clip(song, REQ.song.max);
@@ -433,6 +434,7 @@ export function pedidoArgs({ from, singer, song, songId, note, link } = {}) {
     const who = clip(singer, REQ.singer.max);
     if (who) args.singer = who;
     if (songId && new RegExp(PROTOCOL.idPattern).test(songId)) args.songId = songId;
+    else if (mediaId && new RegExp(PROTOCOL.idPattern).test(mediaId)) args.mediaId = mediaId;
     const obs = String(note ?? "").trim().slice(0, REQ.note.max);
     if (obs) args.note = obs;
     if (String(link || "").trim()) {
@@ -476,6 +478,13 @@ const hhmm = (iso) => {
 // "Operador" and "Anotado pelo operador"; a pedido says whether the operator
 // saw to it. Everything is drawn as plain text (it came from phones).
 const isMine = (r, mine) => Boolean(mine) && r.side !== "operator" && cleanName(r.from).toLowerCase() === mine;
+// The Escolher da biblioteca sheet's tabs (S15 = A): Letras · Vídeos ·
+// Áudios, each a chip of the Mídia's list (its library args and glyph).
+export const PICK_CHIPS = ["songs", "video", "audio"].map((key) => ({ ...chipOf(key), label: { songs: "Letras", video: "Vídeos", audio: "Áudios" }[key] }));
+// A pedido's glyph: the kind of its video or audio (requests' media), else a song.
+const PEDIDO_GLYPH = { video: "film", youtube: "youtube", audio: "volume" };
+export const pedidoGlyph = (r) => PEDIDO_GLYPH[r?.media] || "music";
+
 export function messageRows(rows = [], me = "") {
     const mine = cleanName(me).toLowerCase();
     return rows.map((r) => {
@@ -496,6 +505,7 @@ export function messageRows(rows = [], me = "") {
             text: String(r.text || ""),
             singer: String(r.singer || ""),
             song: String(r.song || ""),
+            icon: pedidoGlyph(r),
             link: r.link || null,
             cover: r.link ? youtubeCover(r.link) : null,
             done,

@@ -12,6 +12,7 @@
 // Pure: everything the console owns comes in as deps (node:test cannot
 // resolve `@/`), read once per command so it sees the latest state. Tested
 // (remoteRunner.test.mjs).
+import { pedidoMediaKind } from "./pedidos.js";
 import { PROTOCOL, EMERGENCY, remoteKind, remoteState, remoteSay, passagePreview, refFromArgs, libraryPage, backItemOf, remoteRoleAllows, teamState, messageRow, sameMessage, requestsPage, songTextOf } from "./remote.js";
 import { isSection } from "./setlist.js";
 import { playerLayer, playerLayers, playerOp, videoSwap, followsItem, clockFollow } from "./player.js";
@@ -313,7 +314,7 @@ export const REMOTE_HANDLERS = {
     "chat.send": { quiet: true, run: sendMessage },
     "request.send": { quiet: true, run: sendMessage },
     requests: {
-        run: ({ d, args }) => ok("", requestsPage({ ...args, messages: d.messages || [] })),
+        run: ({ d, args }) => ok("", requestsPage({ ...args, messages: d.messages || [], media: d.media || [] })),
     },
     songText: {
         run: ({ d, args }) => {
@@ -331,6 +332,9 @@ async function sendMessage({ d, args, action, recent }) {
     if (!row.sender || (row.kind === "chat" ? !row.text : !row.song)) return refuse("Comando inválido.", 400);
     // A song the console no longer has: the typed name stays, the id goes.
     if (row.songId && !(d.songs || []).some((s) => s.id === row.songId)) delete row.songId;
+    // A video or an audio of the Mídia (S15): one the console has, of those
+    // kinds, and never beside a song; else only the typed name stays.
+    if (row.mediaId && (row.songId || !pedidoMediaKind((d.media || []).find((m) => m.id === row.mediaId)))) delete row.mediaId;
     const again = sameMessage([...recent.rows, ...(d.messages || [])], row, now);
     if (again) return ok("", { id: again.id, at: again.sentAt });
     const serviceId = d.service?.id || await d.ensureService();

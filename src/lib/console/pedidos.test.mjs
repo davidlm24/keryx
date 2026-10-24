@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
     messagesInOrder, messageSay, freshMessages, hasUnread, newestAt, songOfPedido, FRESH_MS,
-    isOperator, pedidosOf, chatOf, tabOf, chatHead, pedidoBy, operatorChat, operatorPedido, songMatches, pedidoItem, singerOf, PEDIDO_MAX,
+    isOperator, pedidosOf, chatOf, tabOf, chatHead, pedidoBy, operatorChat, operatorPedido, pedidoItem, singerOf, PEDIDO_MAX,
+    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pickRows, PICK_TABS,
 } from "./pedidos.js";
 
 const row = (id, sentAt, extra = {}) => ({ id, sentAt, kind: "chat", sender: "Ana", text: "oi", status: "open", ...extra });
@@ -101,12 +102,52 @@ test("a pedido the operator notes (S14 = A)", () => {
     assert.equal(operatorPedido({ song: "y".repeat(200) }, songs, at).fields.song.length, PEDIDO_MAX.song);
 });
 
-test("the library's songs that match what was typed", () => {
-    const songs = [{ id: "a", title: "Bondade de Deus", artist: "Isaias Saad" }, { id: "b", title: "Tua Graça Me Basta" }, { id: "c", title: "Raridade", artist: "Anderson Freire" }];
-    assert.deepEqual(songMatches("graca", songs).map((s) => s.id), ["b"]);
-    assert.deepEqual(songMatches("anderson", songs).map((s) => s.id), ["c"], "the artist counts");
-    assert.deepEqual(songMatches("", songs), []);
-    assert.equal(songMatches("a", songs, 2).length, 2);
+// S15 = A: a pedido of a video or an audio of the Mídia.
+const MEDIA = [
+    { id: "v1", type: "video", title: "Raridade · lyric video", file_url: "keryx-media://r.mp4", duration: 312 },
+    { id: "y1", type: "video", title: "Bondade de Deus · clipe", file_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+    { id: "a1", type: "audio", title: "Grande é o Senhor · playback", file_url: "keryx-media://g.mp3", duration: 260 },
+    { id: "i1", type: "image", title: "Raridade capa" },
+    { id: "p1", type: "pdf", title: "Raridade cifra" },
+    { id: "b1", type: "video", title: "Raridade fundo", category: "background" },
+    { id: "f1", type: "font", title: "Geist", category: "font" },
+];
+
+test("a pedido's louvor may be a video or an audio, nothing else", () => {
+    assert.deepEqual(MEDIA.map(pedidoMediaKind), ["video", "youtube", "audio", null, null, null, null]);
+    assert.deepEqual(MEDIA.map(pedidoMediaTag), ["vídeo", "vídeo", "áudio", "", "", "", ""]);
+    const r = { id: "r", kind: "pedido", song: "Raridade", mediaId: "v1" };
+    assert.equal(mediaOfPedido(r, MEDIA).id, "v1");
+    assert.equal(mediaOfPedido({ ...r, mediaId: "i1" }, MEDIA), null, "an image is never one");
+    assert.equal(mediaOfPedido({ ...r, mediaId: "gone" }, MEDIA), null);
+    assert.equal(mediaOfPedido({ ...r, kind: "chat" }, MEDIA), null);
+    assert.equal(mediaOfPedido({ ...r, mediaId: undefined }, MEDIA), null);
+    assert.deepEqual([MEDIA[0], { ...MEDIA[0], missing: true }, { ...MEDIA[0], missing: true, syncing: true }, null].map(pedidoMediaWarn), ["", "arquivo não encontrado", "baixando…", ""]);
+});
+
+test("the picker's three tabs: Letras · Vídeos · Áudios", () => {
+    assert.deepEqual(PICK_TABS.map((t) => t.label), ["Letras", "Vídeos", "Áudios"]);
+    const lib = { songs: [{ id: "s1", title: "Raridade", artist: "Anderson Freire" }, { id: "s2", title: "Bondade de Deus" }], media: MEDIA };
+    assert.deepEqual(pickRows("songs", "raridade", lib), [{ id: "s1", kind: "song", title: "Raridade", sub: "Anderson Freire", icon: "music" }]);
+    assert.deepEqual(pickRows("songs", "", lib).map((r) => r.id), ["s1", "s2"], "nothing typed: the first ones");
+    assert.deepEqual(pickRows("video", "", lib), [
+        { id: "v1", kind: "media", title: "Raridade · lyric video", sub: "5:12", icon: "film" },
+        { id: "y1", kind: "media", title: "Bondade de Deus · clipe", sub: "", icon: "youtube" },
+    ], "images, PDFs, backgrounds and fonts stay out");
+    assert.deepEqual(pickRows("video", "raridade", lib).map((r) => r.id), ["v1"]);
+    assert.deepEqual(pickRows("audio", "", lib), [{ id: "a1", kind: "media", title: "Grande é o Senhor · playback", sub: "4:20", icon: "volume" }]);
+    assert.equal(pickRows("songs", "", { songs: Array.from({ length: 9 }, (_, i) => ({ id: String(i), title: "x" })) }, 4).length, 4);
+});
+
+test("a pedido the operator notes may name a video or an audio (S15)", () => {
+    const at = "2026-10-23T19:09:00.000Z";
+    const songs = [{ id: "s1", title: "Raridade" }];
+    assert.equal(operatorPedido({ song: "Raridade · lyric video", mediaId: "v1" }, songs, at, MEDIA).fields.mediaId, "v1");
+    assert.equal(operatorPedido({ song: "Playback", mediaId: "a1" }, songs, at, MEDIA).fields.mediaId, "a1");
+    assert.equal(operatorPedido({ song: "Capa", mediaId: "i1" }, songs, at, MEDIA).fields.mediaId, undefined, "an image is only its title");
+    assert.equal(operatorPedido({ song: "Sumiu", mediaId: "gone" }, songs, at, MEDIA).fields.mediaId, undefined);
+    const both = operatorPedido({ song: "Raridade", songId: "s1", mediaId: "v1" }, songs, at, MEDIA).fields;
+    assert.deepEqual([both.songId, both.mediaId], ["s1", undefined], "never both");
 });
 
 test("a pedido on the Setlist keeps who sings and its note (S13 = A)", () => {

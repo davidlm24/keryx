@@ -8,6 +8,7 @@
 // HTML.
 import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" };
 import { fold } from "../bibleSearch.js";
+import { mediaIcon, mmss } from "./libraryRows.js";
 
 const REQ = PROTOCOL.actions["request.send"].args;
 
@@ -77,6 +78,50 @@ export function songOfPedido(r, songs = []) {
     return songs.find((s) => key(s.title) === want) || null;
 }
 
+// A pedido's louvor may be a video or an audio of the Mídia (S15 = A):
+// its kind, for the glyph and the tag — youtube | video | audio —, or null
+// for anything else (images, PDFs, a background, a font).
+export function pedidoMediaKind(m) {
+    if (!m || m.category === "background" || m.category === "font") return null;
+    if (m.type === "audio") return "audio";
+    if (m.type === "video") return /youtu.?be/.test(m.file_url || "") ? "youtube" : "video";
+    return null;
+}
+// The card's small tag: "vídeo" | "áudio" | "" (a song or typed).
+export const pedidoMediaTag = (m) => ({ video: "vídeo", youtube: "vídeo", audio: "áudio" })[pedidoMediaKind(m)] || "";
+
+// The video or audio a pedido names (its mediaId, while the Mídia has it
+// as a video or an audio). -> the Media row | null.
+export function mediaOfPedido(r, media = []) {
+    if (!isPedido(r) || !r.mediaId) return null;
+    const m = media.find((x) => x.id === r.mediaId);
+    return pedidoMediaKind(m) ? m : null;
+}
+
+// What the card says of that file when it cannot go yet ("" = it can).
+export const pedidoMediaWarn = (m) => (!m ? "" : m.syncing ? "baixando…" : m.missing ? "arquivo não encontrado" : "");
+
+// The picker of O louvor (S15 = A): one field, three tabs. Images, PDFs,
+// fonts and backgrounds never show.
+export const PICK_TABS = [
+    { id: "songs", label: "Letras", icon: "music" },
+    { id: "video", label: "Vídeos", icon: "film" },
+    { id: "audio", label: "Áudios", icon: "volume" },
+];
+// A tab's rows for what was typed (nothing = the first ones), the first `n`:
+// { id, kind: song | media, title, sub, icon }.
+export function pickRows(tab, query, { songs = [], media = [] } = {}, n = 6) {
+    const want = key(query);
+    if (tab === "songs") {
+        return songs.filter((s) => !want || key(s.title).includes(want) || key(s.artist).includes(want)).slice(0, n)
+            .map((s) => ({ id: s.id, kind: "song", title: s.title || "", sub: s.artist || "", icon: "music" }));
+    }
+    return media.filter((m) => {
+        const k = pedidoMediaKind(m);
+        return k && (tab === "audio" ? k === "audio" : k !== "audio") && (!want || key(m.title).includes(want));
+    }).slice(0, n).map((m) => ({ id: m.id, kind: "media", title: m.title || "", sub: m.duration > 0 ? mmss(m.duration) : "", icon: mediaIcon(m) }));
+}
+
 // A chat bubble's line over the text: "Marcos · 18:52", "Operador · 18:53".
 export function chatHead(r) {
     const who = isOperator(r) ? OPERATOR : String(r?.sender || "").trim() || "Equipe";
@@ -102,8 +147,10 @@ export function operatorChat(text, sentAt = new Date().toISOString()) {
 
 // A pedido the operator notes (Novo pedido; the phone's fields and limits:
 // quem canta, o louvor — from the library or typed —, a note). songId only
-// when that song is in the library. -> { fields } | { error, message }
-export function operatorPedido({ singer, song, songId, note } = {}, songs = [], sentAt = new Date().toISOString()) {
+// when that song is in the library; mediaId (S15) only when that video or
+// audio is in the Mídia, and never beside a songId. `media`: the console's
+// Mídia rows. -> { fields } | { error, message }
+export function operatorPedido({ singer, song, songId, mediaId, note } = {}, songs = [], sentAt = new Date().toISOString(), media = []) {
     const title = clip(song, REQ.song.max);
     if (!title) return { error: "song", message: "Escreva o louvor ou escolha da biblioteca." };
     const fields = { kind: "pedido", side: "operator", sender: OPERATOR, song: title, status: "open", sentAt };
@@ -112,18 +159,11 @@ export function operatorPedido({ singer, song, songId, note } = {}, songs = [], 
     const obs = String(note ?? "").trim().slice(0, REQ.note.max);
     if (obs) fields.text = obs;
     if (songId && songs.some((s) => s.id === songId)) fields.songId = songId;
+    else if (mediaId && pedidoMediaKind(media.find((m) => m.id === mediaId))) fields.mediaId = mediaId;
     return { fields };
 }
 // The fields' maxLength in the Novo pedido form, the contract's.
 export const PEDIDO_MAX = { singer: REQ.singer.max, song: REQ.song.max, note: REQ.note.max, chat: PROTOCOL.limits.requestText };
-
-// The library's songs whose title (or artist) holds what was typed in O
-// louvor, the first `n`, to pick one. Nothing typed = none.
-export function songMatches(query, songs = [], n = 5) {
-    const want = key(query);
-    if (!want) return [];
-    return songs.filter((s) => key(s.title).includes(want) || key(s.artist).includes(want)).slice(0, n);
-}
 
 // What a pedido gives the ServiceItem it becomes (its + Setlist, S13 = A):
 // who sings, and its note as the item's notes.

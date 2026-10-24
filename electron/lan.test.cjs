@@ -568,6 +568,22 @@ test("equipe: what a role may run is checked by the server", () => {
     assert.throws(() => remoteCommand({ v: 2, action: "sendMedia", args: { kind: "song", id: "s1" } }, "team"), (err) => err.status === 403);
     assert.throws(() => remoteCommand({ v: 2, action: "library", args: { tab: "media" } }, "team"), (err) => err.status === 403);
     assert.deepEqual(remoteCommand({ v: 2, action: "library", args: { tab: "songs", q: "graça" } }, "team").args, { tab: "songs", q: "graça" });
+    // A pedido of a video or an audio (S15): the Mídia's videos and audios
+    // to read, only with their kind — never images, PDFs, the whole Mídia,
+    // the avisos or the Escola.
+    for (const kind of ["video", "audio"]) {
+        assert.deepEqual(remoteCommand({ v: 2, action: "library", args: { tab: "media", kind, q: "x", skip: 30, limit: 30 } }, "team").args, { tab: "media", kind, q: "x", skip: 30, limit: 30 });
+    }
+    for (const args of [{ tab: "media", kind: "image" }, { tab: "media", kind: "pdf" }, { tab: "media", fav: true }, { tab: "pieces" }, { tab: "materials" }, { tab: "pieces", kind: "video" }, { tab: "songs", kind: "image" }]) {
+        assert.throws(() => remoteCommand({ v: 2, action: "library", args }, "team"), (err) => err.status === 403 && err.code === "forbidden", JSON.stringify(args));
+    }
+    assert.equal(roleAllows("library", { tab: "media" }, "team"), false);
+    assert.equal(roleAllows("library", { tab: "media", kind: "audio" }, "team"), true);
+    // The Controle keeps the whole library.
+    assert.deepEqual(remoteCommand({ v: 2, action: "library", args: { tab: "media" } }).args, { tab: "media" });
+    assert.deepEqual(remoteCommand({ v: 2, action: "library", args: { tab: "pieces" } }).args, { tab: "pieces" });
+    assert.deepEqual(remoteCommand({ v: 2, action: "request.send", args: { from: "Júlia", song: "Raridade · lyric video", mediaId: "m1" } }, "team").args, { from: "Júlia", song: "Raridade · lyric video", mediaId: "m1" });
+    assert.throws(() => remoteCommand({ v: 2, action: "request.send", args: { from: "Júlia", song: "Raridade", mediaId: "../x" } }, "team"), (err) => err.status === 400);
     assert.deepEqual(remoteCommand({ v: 2, action: "chat.send", args: { from: " Ana ", text: "Oi" } }, "team").args, { from: "Ana", text: "Oi" });
     assert.deepEqual(remoteCommand({ v: 2, action: "request.send", args: { from: "Lucas", song: "Raridade", singer: "Ana", songId: "s1", junk: 1 } }, "team").args, { from: "Lucas", song: "Raridade", singer: "Ana", songId: "s1" });
     for (const action of ["state", "bibleFind", "requests", "songText"]) assert.equal(roleAllows(action, {}, "team"), true, action);
