@@ -2433,10 +2433,17 @@ async function checkConsole(webContents, { live, outputs }) {
         const songThemeId = async () => ((await js(`window.keryxDesktop.db.call("Song", "get", [${JSON.stringify(song.id)}])`)).data || {}).theme_id || "";
         // Temas' header + (owner 2026-10-14): the song's theme is saved and
         // cleared from its menu; the panel's body is only the 9 slots.
-        const temasMenu = async (label) => {
+        // The menu's items are built when it opens, from the song as the
+        // console last drew it: right after a save the Song row may not have
+        // reached the console yet, and the menu still offers the old item. So
+        // open it until the item asked for is there (Esc closes a menu that
+        // lacks it; never with no menu open, where Esc ends the projection).
+        const temasMenu = async (label) => waitFor(async () => {
+            if (await js("Boolean(document.querySelector('.ctx-menu[role=menu]'))")) { await press("Escape"); await sleep(150); }
             await js("(() => { const b = document.querySelector('[data-dock-mods~=\"temas\"] .kx-panel-h button[title^=\"Temas:\"], .layer-temas .listhead button[title^=\"Temas:\"]'); if (b) b.click(); return Boolean(b); })()");
-            return waitFor(() => js(`(() => { const b = [...document.querySelectorAll(".kx-menu-item")].find((x) => x.textContent.startsWith(${JSON.stringify(label)})); if (b) b.click(); return Boolean(b); })()`), 4000);
-        };
+            await waitFor(() => js("Boolean(document.querySelector('.ctx-menu[role=menu] .kx-menu-item'))"), 1000);
+            return js(`(() => { const b = [...document.querySelectorAll(".kx-menu-item")].find((x) => x.textContent.startsWith(${JSON.stringify(label)})); if (b) b.click(); return Boolean(b); })()`);
+        }, 6000);
         await temasMenu("Salvar tema para a música");
         result.songThemeSaved = await waitFor(async () => Boolean(await songThemeId()), 4000);
         await temasMenu("Tirar tema da música");

@@ -464,7 +464,9 @@ const ACTION_LABEL = { update: "Atualizar agora", whatsnew: "Ver novidades", "se
 
 // The bell's list: newest first, each with what can be done about it.
 export function Notifications({ open, setOpen, notes, update, onAction, onDismiss, onClear }) {
-    const anchor = useAnchor(".topbar .tb-bell", 360, open === "notifs");
+    // The bell's own wrapper: since Rodada Q (S9) Ver sits in a .tb-bell too,
+    // and the first .tb-bell put the popover under Ver.
+    const anchor = useAnchor(".topbar .tb-notifs", 360, open === "notifs");
     const box = useFocusFirst(open === "notifs");
     if (open !== "notifs") return null;
     const when = (at) => new Date(at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
