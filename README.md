@@ -93,7 +93,10 @@ npm run desktop:smoke
 # 1. bump "version" in package.json (and commit), and write
 #    docs/release-notes/<version>.md: what changed, in pt-BR, for the operator
 #    (docs/release-notes/README.md). It becomes the release text, and KERYX
-#    shows it in the update popup and the bell.
+#    shows it in the update popup and the bell. Check it fits (1 200
+#    characters as shown) BEFORE the build: the smoke runs no tests, and a
+#    published note is never rewritten (0.2.21 shipped cut off)
+node --test electron/release-notes.test.cjs
 # 2. build from a clean copy with its own install (npm ci): electron-builder
 #    packs the main process's dependencies from ./node_modules, which a git
 #    worktree sharing the main folder's node_modules does not have
