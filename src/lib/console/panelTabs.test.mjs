@@ -25,10 +25,11 @@ test("a saved row is made safe: known ids, the list's order, never empty", () =>
     assert.deepEqual(normalizeRow("panel", []), DEFAULT_TABS.panel, "zero tabs is the defaults");
     assert.deepEqual(normalizeRow("panel", "junk"), DEFAULT_TABS.panel);
     assert.deepEqual(normalizeRow("lib", ["setlist", "zz"]), DEFAULT_TABS.lib, "only unknown ids: the defaults");
-    assert.deepEqual(normalizeTabs(undefined), DEFAULT_TABS, "a layout saved before the tabs existed");
-    assert.deepEqual(normalizeTabs({ lib: ["avisos", "letras"] }), { panel: DEFAULT_TABS.panel, lib: ["letras", "avisos"] });
-    // A list saved before Pedidos (Rodada Q) keeps it out until a message
-    // arrives: then the console shows it (showTab), in its place.
+    const rows = ({ panel, lib }) => ({ panel, lib });
+    assert.deepEqual(rows(normalizeTabs(undefined)), DEFAULT_TABS, "a layout saved before the tabs existed");
+    assert.deepEqual(rows(normalizeTabs({ lib: ["avisos", "letras"] })), { panel: DEFAULT_TABS.panel, lib: ["letras", "avisos"] });
+    // A row's own list stays as saved; the console shows a tab on purpose
+    // with showTab, in its place.
     assert.deepEqual(normalizeRow("panel", ["notas", "aviso", "timers"]), ["notas", "aviso", "timers"]);
     assert.deepEqual(showTab("panel", ["notas", "aviso", "timers", "historico"], "pedidos"), ["notas", "aviso", "timers", "pedidos", "historico"]);
 });
@@ -49,4 +50,19 @@ test("the tabs on screen, and the one in front", () => {
     assert.equal(activeTab("panel", ["notas", "historico"], "historico"), "historico");
     assert.equal(activeTab("panel", ["notas", "historico"], "aviso"), "notas", "a hidden tab hands over to the first");
     assert.deepEqual(showTab("lib", ["letras"], "avisos"), ["letras", "avisos"]);
+});
+
+test("a tab checked by default appears once on a list saved before it existed, and stays hidden once hidden", () => {
+    // Saved before Pedidos and Chat (no `seen`): both come, in their places.
+    const old = normalizeTabs({ panel: ["notas", "historico"], lib: ["letras"] });
+    assert.deepEqual(old.panel, ["notas", "pedidos", "chat", "historico"]);
+    assert.deepEqual(old.lib, ["letras"], "the Biblioteca had every tab already: nothing comes back");
+    assert.deepEqual(old.seen, { panel: PANEL_TABS.panel.map((t) => t.id), lib: PANEL_TABS.lib.map((t) => t.id) });
+    // The operator hides Chat afterwards: the save carries `seen`, so it stays out.
+    const hidden = { ...old, panel: toggleTab("panel", old.panel, "chat") };
+    assert.deepEqual(normalizeTabs(hidden).panel, ["notas", "pedidos", "historico"]);
+    // A tab off by default never comes by itself.
+    assert.ok(!normalizeTabs({ panel: ["notas"] }).panel.includes("ferramentas"));
+    // A broken seen is read as an old save.
+    assert.deepEqual(normalizeTabs({ panel: ["notas"], seen: { panel: "x" } }).panel, ["notas", "pedidos", "chat"]);
 });

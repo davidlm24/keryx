@@ -1113,7 +1113,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   in the list's order, at least one always, "Restaurar abas padrão" at the
   bottom (the Biblioteca's has "Nas letras" — Mostrar o artista, o tom, a
   duração — above it); saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
-  tested; "Restaurar disposição" resets it). The panel's tabs reuse what
+  tested; "Restaurar disposição" resets it). **A new tab checked by default
+  appears once on a computer whose list was saved before it existed** (owner
+  2026-10-24: after the update the Chat stayed hidden): `layout.tabs.seen`
+  keeps, per row, every tab that computer has met (`normalizeTabs`; a save
+  without it counts the tabs from before Pedidos and Chat), so a tab the
+  operator hides afterwards stays hidden. The panel's tabs reuse what
   exists, no projection logic of their own: **Notas** (the
   `ServiceItem.notes` of the item in the Prévia / on air, and the Escola
   bíblica teacher notes — these sit under the Prévia's screen when the

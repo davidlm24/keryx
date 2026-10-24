@@ -78,9 +78,11 @@ test("Camadas and No ar are modules in Ver (the Setlist never hides); the right 
 
 test("the tab rows are part of the layout; an old or broken save gets the defaults", () => {
     assert.deepEqual(DEFAULT_LAYOUT.tabs, DEFAULT_TABS);
-    assert.deepEqual(withStore({ libW: 300 }, () => loadLayout("x")).tabs, DEFAULT_TABS);
+    const rows = ({ panel, lib }) => ({ panel, lib });
+    assert.deepEqual(rows(withStore({ libW: 300 }, () => loadLayout("x")).tabs), DEFAULT_TABS);
+    // A list saved before Pedidos and Chat gets them once (normalizeTabs).
     const mine = withStore({ tabs: { panel: ["historico", "notas", "zz"], lib: [] } }, () => loadLayout("x"));
-    assert.deepEqual(mine.tabs, { panel: ["notas", "historico"], lib: DEFAULT_TABS.lib });
+    assert.deepEqual(rows(mine.tabs), { panel: ["notas", "pedidos", "chat", "historico"], lib: DEFAULT_TABS.lib });
 });
 
 test("the multiview is off by default; a saved one keeps its outputs, cleaned", () => {
