@@ -63,9 +63,29 @@ export function normalizeRow(row, saved) {
     return out.length ? out : [...DEFAULT_TABS[row]];
 }
 
+// The tabs a save from before `seen` already knew: every one that existed
+// before Pedidos and Chat (Rodada Q). Never add to it.
+const KNOWN_BEFORE_SEEN = {
+    panel: ["notas", "aviso", "timers", "ferramentas", "historico"],
+    lib: ["letras", "imagens", "videos", "avisos", "audios", "apresentacoes"],
+};
+
 // Every row of a saved `layout.tabs` (an old save has none: the defaults).
+// A tab that comes checked by default appears once on a computer whose list
+// was saved before it existed (owner 2026-10-24: the Chat stayed hidden after
+// the update); `seen` keeps, per row, every tab that computer has met, so a
+// tab the operator hides afterwards stays hidden.
 export function normalizeTabs(saved) {
-    return Object.fromEntries(Object.keys(PANEL_TABS).map((row) => [row, normalizeRow(row, saved?.[row])]));
+    const out = {};
+    for (const row of Object.keys(PANEL_TABS)) {
+        const list = saved?.[row];
+        if (!Array.isArray(list)) { out[row] = [...DEFAULT_TABS[row]]; continue; }
+        const seen = Array.isArray(saved?.seen?.[row]) ? saved.seen[row] : KNOWN_BEFORE_SEEN[row];
+        const fresh = DEFAULT_TABS[row].filter((id) => !seen.includes(id));
+        out[row] = normalizeRow(row, [...list, ...fresh]);
+    }
+    out.seen = Object.fromEntries(Object.keys(PANEL_TABS).map((row) => [row, ids(row)]));
+    return out;
 }
 
 // A tab checked or unchecked in the (+). The last one shown stays (the same
