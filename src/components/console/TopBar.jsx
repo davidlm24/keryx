@@ -102,7 +102,9 @@ export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLab
                     <IconBtn name="panels" className="tb-ver" title={verDot ? "Ver · módulos, densidade e disposição · pedidos novos no Painel" : "Ver · módulos, densidade e disposição"} on={open === "ver"} onClick={() => toggle("ver")} aria-haspopup="menu" aria-expanded={open === "ver"} />
                     {verDot && open !== "ver" && <i className="tb-bell-dot tb-new-dot" aria-hidden="true" />}
                 </span>
-                <span className="tb-bell">
+                {/* tb-notifs: the bell's own name, the Notificações popover's
+                    anchor (Ver's wrapper above is a .tb-bell too). */}
+                <span className="tb-bell tb-notifs">
                     <IconBtn name="bell" title={unread ? `Notificações · ${unread} ${unread === 1 ? "nova" : "novas"}` : "Notificações"} on={open === "notifs"} onClick={() => toggle("notifs")} aria-expanded={open === "notifs"} />
                     {unread > 0 && open !== "notifs" && <i className="tb-bell-dot" aria-hidden="true" />}
                 </span>
