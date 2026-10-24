@@ -457,7 +457,7 @@ test("setlist.add: a passage needs its verses; one that does not exist is 404", 
 
 test("the Equipe: only what the contract gives it, whatever reaches the console", async () => {
     const d = planConsole();
-    for (const [action, args] of [["next", {}], ["black", { on: true }], ["setlist.add", { kind: "song", id: "s1" }], ["sendMedia", { kind: "song", id: "s1" }], ["library", { tab: "media" }]]) {
+    for (const [action, args] of [["next", {}], ["black", { on: true }], ["setlist.add", { kind: "song", id: "s1" }], ["sendMedia", { kind: "song", id: "s1" }], ["library", { tab: "media" }], ["library", { tab: "media", kind: "image" }], ["library", { tab: "pieces" }]]) {
         assert.deepEqual(await asTeam(d, action, args), { ok: false, message: M.forbidden, status: 403, code: "forbidden" }, action);
     }
     assert.deepEqual(d.calls, [], "nothing ran");
@@ -465,6 +465,10 @@ test("the Equipe: only what the contract gives it, whatever reaches the console"
     assert.equal((await run(d, "chat.send", { from: "Ana", text: "Oi" })).status, 403);
     assert.equal((await run(d, "request.send", { from: "Ana", song: "Hino" })).status, 403);
     assert.equal((await asTeam(d, "library", { tab: "songs" })).ok, true);
+    // S15: the videos (and audios) to pick for a pedido, read only.
+    const vids = await asTeam(d, "library", { tab: "media", kind: "video" });
+    assert.deepEqual(vids.data.rows.map((r) => r.id), ["m1"]);
+    assert.deepEqual(d.calls, [], "still nothing ran");
 });
 
 test("state for the Equipe: what is on air and the Setlist to read, its own caps", async () => {
@@ -495,6 +499,19 @@ test("chat.send / request.send: a row of the culto, quietly; the same again with
     assert.deepEqual(d.made.at(-1), { id: "msg3", sender: "Lucas", side: "team", status: "open", sentAt: d.made.at(-1).sentAt, link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", kind: "pedido", text: "Depois da oferta", singer: "Ana Souza", song: "Hino", songId: "s1", serviceId: "svc" });
     await send("request.send", { from: "Lucas", song: "Outra", songId: "nope" });
     assert.equal(d.made.at(-1).songId, undefined);
+    // A video or an audio of the Mídia (S15): kept while the console has it
+    // as one; an image, one gone or one beside a song keeps only the name.
+    d.media = [...d.media, { id: "m3", type: "audio", title: "Playback" }];
+    await send("request.send", { from: "Júlia", song: "Vinheta", mediaId: "m1" });
+    assert.equal(d.made.at(-1).mediaId, "m1");
+    await send("request.send", { from: "Júlia", song: "Playback", mediaId: "m3" });
+    assert.equal(d.made.at(-1).mediaId, "m3");
+    for (const [song, extra] of [["Foto", { mediaId: "m2" }], ["Sumiu", { mediaId: "gone" }], ["Hino 2", { songId: "s1", mediaId: "m1" }]]) {
+        await send("request.send", { from: "Júlia", song, ...extra });
+        assert.equal(d.made.at(-1).song, song);
+        assert.equal(d.made.at(-1).mediaId, undefined, song);
+    }
+    assert.equal(d.made.at(-1).songId, "s1", "the song wins");
     // Only YouTube links.
     assert.deepEqual(await send("chat.send", { from: "Ana", text: "Olha", link: "https://evil.example/youtube.com/watch?v=dQw4w9WgXcQ" }), { ok: false, message: M.notYouTube, status: 400 });
     assert.equal((await send("chat.send", { from: "Ana", text: "Olha", link: "javascript:alert(1)" })).status, 400);
@@ -517,6 +534,9 @@ test("requests: a page back from the newest; songText: a song's parts with chord
     assert.deepEqual(older.data.rows.map((r) => r.id), ["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"]);
     assert.deepEqual(older.data.rows[1], { id: "m1", at: messages[1].sentAt, kind: "pedido", side: "team", from: "Ana", text: "t1", singer: "", song: "Hino", status: "done" });
     assert.equal((await asTeam(d, "requests", { kind: "pedido", limit: 5 })).data.total, 20);
+    // A pedido of a video or an audio says its kind while the Mídia has it (S15).
+    const vids = planConsole({ messages: [{ id: "v1", kind: "pedido", sender: "Júlia", song: "Vinheta", mediaId: "m1", status: "open", sentAt: messages[0].sentAt }, { id: "v2", kind: "pedido", sender: "Júlia", song: "Foto", mediaId: "m2", status: "open", sentAt: messages[1].sentAt }] });
+    assert.deepEqual((await asTeam(vids, "requests", {})).data.rows.map((r) => [r.mediaId, r.media]), [["m1", "video"], ["m2", undefined]]);
     // What the operator wrote on the console says so (S12/S14); the rest is the Equipe's.
     const op = planConsole({ messages: [{ id: "o1", kind: "chat", side: "operator", sender: "Operador", text: "Já mudei", status: "open", sentAt: messages[0].sentAt }, messages[1]] });
     assert.deepEqual((await asTeam(op, "requests", {})).data.rows.map((r) => r.side), ["operator", "team"]);

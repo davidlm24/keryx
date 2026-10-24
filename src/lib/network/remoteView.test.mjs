@@ -270,7 +270,7 @@ test("+ Setlist: songs, files and materials go; avisos never; a passage only wit
 // ---- The Equipe (Rodada Q PR4) ----
 import {
     roleOf, tabsFor, teamStrip, cleanName, youtubeId, youtubeUrl, youtubeCover, pedidoArgs, chatArgs, PEDIDO_LIMITS,
-    messageRows, teamSetlistRows, lyricParts, hasChords, songSub, hasUnseen, newestAt, requestsEvery, REQUESTS_CHAT_MS, REQUESTS_EVERY_MS,
+    messageRows, PICK_CHIPS, pedidoGlyph, teamSetlistRows, lyricParts, hasChords, songSub, hasUnseen, newestAt, requestsEvery, REQUESTS_CHAT_MS, REQUESTS_EVERY_MS,
 } from "./remoteView.js";
 import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" };
 
@@ -326,6 +326,23 @@ test("the pedido form against the contract's limits", () => {
     assert.equal(long.note.length, spec.note.max);
     assert.equal(cleanName("  Ana   Souza "), "Ana Souza");
     assert.equal(PEDIDO_LIMITS.text, PROTOCOL.limits.requestText);
+    // A video or an audio of the library (S15), never beside a song.
+    assert.deepEqual(pedidoArgs({ from: "Júlia", song: "Raridade · lyric video", mediaId: "m-1" }).args, { from: "Júlia", song: "Raridade · lyric video", mediaId: "m-1" });
+    assert.deepEqual(pedidoArgs({ from: "J", song: "x", songId: "s-1", mediaId: "m-1" }).args, { from: "J", song: "x", songId: "s-1" });
+    assert.equal(pedidoArgs({ from: "J", song: "x", mediaId: "bad id!" }).args.mediaId, undefined);
+});
+
+// S15 = A: Escolher da biblioteca's three tabs ask only what the Equipe
+// may read (the library's songs, the Mídia's videos and audios).
+test("the pedido sheet's tabs: Letras · Vídeos · Áudios", () => {
+    assert.deepEqual(PICK_CHIPS.map((c) => [c.key, c.label, c.icon]), [["songs", "Letras", "music"], ["video", "Vídeos", "film"], ["audio", "Áudios", "volume"]]);
+    const team = PROTOCOL.actions.library;
+    for (const c of PICK_CHIPS) {
+        const args = libraryArgs(c.key, "x", 0);
+        assert.ok(team.teamArgs.tab.includes(args.tab), c.key);
+        if (args.tab === "media") assert.ok(team.teamArgs.kind.includes(args.kind), c.key);
+    }
+    assert.deepEqual([{ media: "video" }, { media: "youtube" }, { media: "audio" }, { songId: "s" }, {}].map(pedidoGlyph), ["film", "youtube", "volume", "music", "music"]);
 });
 
 test("the chat composer: a text, or a link with a text of its own", () => {
@@ -350,6 +367,8 @@ test("messages: mine on the right, a pedido's status", () => {
     assert.equal(messageRows([{ id: "x", from: "A" }], "")[0].mine, false);
     assert.equal(rows[1].by, "Você pediu");
     assert.equal(rows[0].by, "Pedido de Marcos");
+    assert.equal(rows[1].icon, "music");
+    assert.equal(messageRows([{ id: "v", kind: "pedido", from: "J", song: "Raridade", mediaId: "m", media: "video" }])[0].icon, "film");
 });
 
 test("the operator's rows say so (S12/S14), never mine even with my name", () => {

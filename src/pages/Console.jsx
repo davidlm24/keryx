@@ -659,8 +659,9 @@ export default function Console() {
     // the order they came (several marked rows dragged together, Rodada O2),
     // the rows below renumbered once and one toast.
     // -> { added: titles, left, error? } (the controle remoto's setlist.add
-    // reads it; silent: no toast, the runner says it).
-    const addStageToSetlist = useCallback(async (given, index, { silent = false } = {}) => {
+    // reads it; silent: no toast, the runner says it). extra: fields every
+    // item made also gets (a pedido's who sings and note, Rodada Q S13/S15).
+    const addStageToSetlist = useCallback(async (given, index, { silent = false, extra = {} } = {}) => {
         const say = silent ? () => {} : c.say;
         const stages = (Array.isArray(given) ? given : [given]).filter(Boolean);
         const rows = stages.map((stage) => ({ stage, item: stageItem(stage) })).filter((r) => r.item);
@@ -679,7 +680,7 @@ export default function Console() {
                     type = "VIDEO";
                     contentId = row.id;
                 }
-                await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at + added.length, duration: stage.args?.duration || defaultDuration(type, getPrefs()) });
+                await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at + added.length, duration: stage.args?.duration || defaultDuration(type, getPrefs()), ...extra });
                 added.push(stage.title);
             }
             say(addedSay(added, left));
@@ -1272,7 +1273,7 @@ export default function Console() {
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
             items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend}
-            messages={messages} onAddSong={addSong} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} />
+            messages={messages} onAddSong={addSong} onAddMedia={(m, extra) => addStageToSetlist(stageFromMedia(m), undefined, { extra })} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" actions={<>

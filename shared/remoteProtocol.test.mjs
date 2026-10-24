@@ -111,7 +111,15 @@ test("the Equipe's actions only read or send its messages", () => {
         if (a.team !== undefined) assert.equal(a.team, true, `${name}: team is true or absent`);
         if (a.cap === "requests") assert.equal(a.team, true, `${name}: the chat is the Equipe's`);
     }
-    assert.deepEqual(actions["library"].teamArgs, { tab: ["songs"] });
+    // The Mídia only as videos and audios to pick for a pedido (S15).
+    assert.deepEqual(actions["library"].teamArgs, { tab: ["songs", "media"], kind: ["video", "audio"] });
+    assert.deepEqual(actions["library"].teamNeeds, [{ when: { tab: "media" }, give: ["kind"] }]);
+    for (const [name, a] of Object.entries(actions)) {
+        for (const need of a.teamNeeds || []) {
+            for (const [key, value] of Object.entries(need.when)) assert.ok(a.teamArgs?.[key]?.includes(value), `${name}.teamNeeds when ${key}`);
+            for (const key of need.give) assert.ok(a.teamArgs?.[key], `${name}.teamNeeds gives ${key} from teamArgs`);
+        }
+    }
     // setlist.add writes the plan, never the air: no op, so it works locked.
     assert.equal(actions["setlist.add"].kind, "T");
     assert.equal(actions["setlist.add"].cap, "plan");

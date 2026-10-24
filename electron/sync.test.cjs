@@ -764,7 +764,7 @@ function churchInABox(mediaDir) {
         files.set(name, bytes);
         return `keryx-media://${name}`;
     };
-    const ids = { service: crypto.randomUUID(), song: crypto.randomUUID(), cls: crypto.randomUUID() };
+    const ids = { service: crypto.randomUUID(), song: crypto.randomUUID(), cls: crypto.randomUUID(), video: crypto.randomUUID() };
     const rows = {
         AlertPreset: [{ message: "Carro ABC-1234 com o farol aceso" }],
         BackgroundPref: [{ source: file("BackgroundPref.source", ".jpg"), category: "Páscoa", dim_pct: 30 }],
@@ -793,7 +793,7 @@ function churchInABox(mediaDir) {
             files: [{ url: file("CommunicationVideo.files[].url", ".jpg"), duration: 5 }],
         }],
         Media: [
-            { title: "Abertura", type: "video", file_url: file("Media.file_url", ".mp4"), thumbnail_url: file("Media.thumbnail_url", ".jpg"), duration: 30 },
+            { id: ids.video, title: "Abertura", type: "video", file_url: file("Media.file_url", ".mp4"), thumbnail_url: file("Media.thumbnail_url", ".jpg"), duration: 30 },
             { title: "Avisos", type: "pdf", file_url: file("Media.file_url", ".pdf", "pdf"), pages: [{ url: file("Media.pages[].url", ".png"), w: 1920, h: 1080 }] },
             { title: "Hino", type: "audio", file_url: file("Media.file_url", ".mp3", "audio"), category: "other" },
             { title: "Fundo", type: "image", file_url: file("Media.file_url", ".jpg", "fundo"), category: "background" },
@@ -823,6 +823,8 @@ function churchInABox(mediaDir) {
             { serviceId: ids.service, kind: "pedido", sender: "Lucas", singer: "Ana", song: "Grande é o Senhor", songId: ids.song, text: "Depois da oferta", link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", status: "done", sentAt: "2026-10-25T22:05:00.000Z" },
             { serviceId: ids.service, kind: "chat", side: "operator", sender: "Operador", text: "Beleza, começo pela música 2.", status: "open", sentAt: "2026-10-25T21:53:00.000Z" },
             { serviceId: ids.service, kind: "pedido", side: "operator", sender: "Operador", singer: "Marcos", song: "Grande é o Senhor", songId: ids.song, status: "open", sentAt: "2026-10-25T22:09:00.000Z" },
+            // A pedido of a video of the Mídia (S15): its Media row's id, no file of its own.
+            { serviceId: ids.service, kind: "pedido", sender: "Júlia", singer: "Grupo de jovens", song: "Abertura", mediaId: ids.video, status: "open", sentAt: "2026-10-25T22:11:00.000Z" },
         ],
         ServiceTemplate: [{ name: "Domingo à noite", background: { kind: "video", value: file("ServiceTemplate.background", ".mp4") }, items: [{ type: "SECTION", title: "Louvor" }] }],
         Song: [
@@ -928,6 +930,7 @@ const NOT_A_FILE = {
     "User.media_transition": "a transition's name",
     "OutputPref.icon": "a design-system icon's name",
     "BibleEdition.file_name": "the name of the file an own Bible came from, shown in its row; the file is never copied",
+    "ServiceMessage.mediaId": "a Media row's id (a pedido of a video or an audio, Rodada Q S15); the Media row carries the file",
     "Media.video_codec": "the codec read from the video's bytes (src/lib/videoCodec.js)",
     "Media.video_chroma": "how the video's colour is sampled, read from its bytes (src/lib/videoCodec.js)",
 };

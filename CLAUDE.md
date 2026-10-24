@@ -1667,7 +1667,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   role="team"`). Both codes sign in on the same page and the code decides
   the role (its own cookie `keryx_team`; signing in with one clears the
   other's): `team` runs only the actions marked `team: true` (with
-  `teamArgs`: the library's songs only) — `state` (the reduced `teamState`),
+  `teamArgs`, the only values it may give, and `teamNeeds`, the args it
+  must also give: `library` only as the songs or, Rodada Q S15, the Mídia's
+  videos and audios — `tab: media` with `kind` video | audio, never without
+  a kind, never images, PDFs, avisos or the Escola) — `state` (the reduced `teamState`),
   `library`, `bibleFind`, `songText`, `requests`, `chat.send`,
   `request.send` — checked by `remoteCommand(body, role)` in lan.cjs (403
   `forbidden`) and again by the runner (`remoteRoleAllows`); the Controle
@@ -1696,12 +1699,25 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   card "<singer> canta <song>" with its note, every text drawn as plain
   text (it came from a phone). **Novo pedido** (S14 = A) on top of the
   Pedidos tab notes one with the phone's fields (Quem canta, O louvor typed
-  or picked from the library's matches under it, `songMatches`;
-  Observação), "Anotar pedido" · Cancelar; its card says "Anotado por você"
+  or picked from the library; Observação), "Anotar pedido" · Cancelar.
+  **O louvor is a song, a video or an audio** (owner 2026-10-24, S15 = A,
+  "um campo só, com abas Letras · Vídeos · Áudios"): under the field, while
+  it has the focus, a picker with those three tabs and Buscar (empty, what
+  O louvor says; `pickRows`, `PICK_TABS`), closed by a pick, Esc or a click
+  outside; images, PDFs, fonts and backgrounds never show
+  (`pedidoMediaKind`); typing by hand is still free text with no id. The
+  row keeps `ServiceMessage.mediaId` beside `songId` (never both; the
+  runner and `operatorPedido` drop one the Mídia does not have as a video
+  or an audio, keeping the typed name). Its card wears the file's glyph
+  (`mediaIcon`; a song the `music` one), a "vídeo" / "áudio" tag
+  (`pedidoMediaTag`) and "arquivo não encontrado" / "baixando…"
+  (`pedidoMediaWarn`); Pôr na prévia is `stageFromMedia` and Setlist the
+  Biblioteca's own add (`addStageToSetlist(…, { extra })`, who sings
+  kept). Its card says "Anotado por você"
   with an "operador" badge and a gold ring (`pedidoBy`), the same actions,
   and the Equipe sees it as "Anotado pelo operador". A card's actions are
   always on screen: Pôr na prévia and Setlist when the song is the console's
-  (`songOfPedido`: its songId, else the title folded) — **the Setlist item
+  (`mediaOfPedido` first, then `songOfPedido`: its songId, else the title folded) — **the Setlist item
   keeps who sings** (S13 = A, `pedidoItem`: `ServiceItem.requested_by`
   and the note as its `notes`; the Setlist and the planner rows wear a
   gold tag with the `user` glyph, `SingerTag` in kx.jsx, the name cut with
@@ -1796,7 +1812,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   "✓ Atendido"): the pedidos with "Pedir um louvor" at the foot, the chat
   with its composer (`chatArgs`: a YouTube link alone goes as "Vídeo do
   YouTube"); the "Pedido de louvor" sheet (Quem canta, O louvor typed or "Escolher da
-  biblioteca", the link, Observação; `pedidoArgs`, the contract's limits);
+  biblioteca" — Letras · Vídeos · Áudios, S15 = A, `PICK_CHIPS`, a video or
+  an audio sent as `mediaId` —, the link, Observação; `pedidoArgs`, the
+  contract's limits; each pedido wears its glyph, `pedidoGlyph` from the
+  `requests` row's `media`);
   the sender's name is asked once and kept (`keryx.remote.name`, ≤ 40).
   Músicas lists the library's songs; a song opens its `songText`
   (`lyricParts`: Cifra when it has chords, A+) with "Pedir este louvor".

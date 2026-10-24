@@ -35,6 +35,10 @@
       "type": "string",
       "description": "Pedido: a música da biblioteca (Song.id), quando escolhida de lá"
     },
+    "mediaId": {
+      "type": "string",
+      "description": "Pedido: um vídeo ou áudio da Mídia (Media.id), quando escolhido de lá (Rodada Q, S15); nunca junto com songId"
+    },
     "link": {
       "type": "string",
       "description": "Um link do YouTube, sempre reescrito pelo console (https://www.youtube.com/watch?v=<id>)"

@@ -105,8 +105,10 @@ function argValue(schema, value) {
 }
 
 // What a role may run (Rodada Q, the contract's notes.roles): the Equipe
-// only the actions marked team: true, with teamArgs' values; the Controle
-// everything but the Equipe's chat (cap requests). -> true | false.
+// only the actions marked team: true, with teamArgs' values and the args
+// teamNeeds asks for (the library's media only with kind video or audio,
+// S15); the Controle everything but the Equipe's chat (cap requests).
+// -> true | false.
 function roleAllows(action, args = {}, role = "control") {
     const spec = Object.hasOwn(PROTOCOL.actions, action) ? PROTOCOL.actions[action] : null;
     if (!spec) return false;
@@ -114,6 +116,10 @@ function roleAllows(action, args = {}, role = "control") {
     if (spec.team !== true) return false;
     for (const [key, values] of Object.entries(spec.teamArgs || {})) {
         if (args[key] !== undefined && !values.includes(args[key])) return false;
+    }
+    for (const need of spec.teamNeeds || []) {
+        const applies = Object.entries(need.when).every(([key, value]) => args[key] === value);
+        if (applies && need.give.some((key) => args[key] === undefined)) return false;
     }
     return true;
 }
