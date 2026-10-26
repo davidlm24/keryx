@@ -94,13 +94,30 @@ isso:
    verificação. Se ele mostrar um aviso sobre verificação de marca (nome e
    logo), pode seguir sem ela: é opcional.
 
-## 7. O que mandar de volta
+## 7. O que mandar de volta, e a chave
 
-O **ID do cliente** (já recebido em 26/10: uma linha que termina em
-`.apps.googleusercontent.com`) e a **chave secreta do cliente** (uma linha
-que começa com `GOCSPX-`).
+Mande só o **ID do cliente** (já recebido em 26/10: uma linha que termina em
+`.apps.googleusercontent.com`).
 
-Não mande a senha da conta nem nenhum código que o Google mostrar ao entrar.
+A **chave secreta do cliente** (uma linha que começa com `GOCSPX-`) **não se
+manda e não vai para o repositório** (decisão de 26/10): ela fica só no
+computador que gera o instalador, numa variável de ambiente, e o build a põe
+dentro do instalador. Nesse computador, uma vez, no PowerShell ou no Prompt
+de Comando:
+
+```
+setx KERYX_GOOGLE_CLIENT_SECRET "cole-a-chave-aqui"
+```
+
+Feche e abra o terminal (o `setx` vale para os terminais abertos depois).
+Sem ela, `npm run dist` e o `electron-builder` param com "Falta
+KERYX_GOOGLE_CLIENT_SECRET neste terminal" — para não sair um instalador em
+que "Entrar com Google" não funciona. Para um build de teste sem o Google,
+`KERYX_BUILD_WITHOUT_GOOGLE=1`. Para testar com `npm run desktop:dev`, a
+mesma variável no terminal basta.
+
+Não mande a senha da conta, a chave nem nenhum código que o Google mostrar ao
+entrar.
 
 ## O que o KERYX guarda, e onde
 
@@ -141,5 +158,5 @@ Não mande a senha da conta nem nenhum código que o Google mostrar ao entrar.
 | A conta desconecta sozinha depois de uma semana | Mesmo motivo: publique o app (passo 6). |
 | "redirect_uri_mismatch" | O cliente foi criado com outro tipo: crie um novo do tipo **App para computador** (passo 5). |
 | "Google Drive API has not been used in project…" | Falta ativar a API (passo 2). |
-| O KERYX diz "O KERYX ainda não está configurado no Google" | Falta a chave secreta do cliente dentro do KERYX (passo 5, item 4). |
+| O KERYX diz "O KERYX ainda não está configurado no Google" | O instalador foi gerado sem a chave secreta do cliente (passo 7): gere de novo com `KERYX_GOOGLE_CLIENT_SECRET` no terminal. |
 | A página do Google mostra as permissões com caixas de marcar | Deixe marcada a de "dados de configuração" do Drive: sem ela o KERYX não sincroniza e pede para entrar de novo. |

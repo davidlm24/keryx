@@ -1246,10 +1246,14 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      forgets it here first, then revokes it at Google. **Google's token
      endpoint requires the client secret even for a desktop client**
      (checked 26/10 with a fake code: "client_secret is missing"); Google
-     treats it as public for installed apps, it ships in the installer,
-     and `googleConfig.cjs` holds it only once the owner gives it
-     (`KERYX_GOOGLE_CLIENT_SECRET` for a test run); without it entering
-     says so before the browser opens.
+     treats it as public for installed apps and it ships in the installer,
+     but it is never in git (owner 26/10): the build PC's shell has
+     `KERYX_GOOGLE_CLIENT_SECRET`, electron-builder's `beforePack` writes it
+     into the gitignored `electron/googleSecret.json` that
+     `googleConfig.cjs` reads, `afterPack` removes it
+     (`scripts/google-secret.cjs`), and a build without the variable stops
+     (`KERYX_BUILD_WITHOUT_GOOGLE=1` for a test build). A dev run takes the
+     variable directly. A copy without it says so before the browser opens.
    - **The adapter** (`electron/syncStore/drive.cjs`): REST over `fetch`
      (Electron's `net.fetch` in main, the system's proxy; no `googleapis`
      package), every file in `appDataFolder` with the engine's name as its

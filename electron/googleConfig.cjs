@@ -6,12 +6,19 @@
 //
 // clientSecret: Google's token endpoint refuses a desktop client's exchange
 // without it ("client_secret is missing", checked 26/10 with a fake code).
-// It is the value Google shows beside the client ID, which the owner gives;
-// never made up. KERYX_GOOGLE_CLIENT_SECRET overrides it, for a test run.
+// It is the value Google shows beside the client ID, never made up, and it
+// stays out of git (owner 2026-10-26): the installer's build writes it into
+// googleSecret.json beside this file (scripts/google-secret.cjs, gitignored);
+// KERYX_GOOGLE_CLIENT_SECRET in the shell gives it to a dev run.
+
+let built = null;
+try {
+    built = require("./googleSecret.json").clientSecret || null;
+} catch { /* not in this build: dev, or a build without Google */ }
 
 module.exports = {
     clientId: "46840435137-8vhb7spsejvt28feoe1q0hvmusuesd8u.apps.googleusercontent.com",
-    clientSecret: process.env.KERYX_GOOGLE_CLIENT_SECRET || null,
+    clientSecret: process.env.KERYX_GOOGLE_CLIENT_SECRET || built,
     // Only the app's hidden folder on the church's Drive, and which account it is.
     scopes: ["https://www.googleapis.com/auth/drive.appdata", "openid", "email"],
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",

@@ -218,8 +218,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   settings.json `"google"`, the access token in memory; `invalid_grant` =
   `{ email, refused }`, the engine's state "auth" and the bell, no retry
   loop; Sair revokes), the client in `electron/googleConfig.cjs` (Google
-  requires the client secret even for a desktop client: never made up,
-  only the owner's); the adapter `electron/syncStore/drive.cjs` (REST over
+  requires the client secret even for a desktop client; it is **never in
+  git**: the builder's shell has `KERYX_GOOGLE_CLIENT_SECRET`, electron-builder's
+  beforePack writes the gitignored `electron/googleSecret.json` and afterPack
+  removes it, `scripts/google-secret.cjs`; no variable = the build stops,
+  `KERYX_BUILD_WITHOUT_GOOGLE=1` for a test build); the adapter `electron/syncStore/drive.cjs` (REST over
   fetch, `appDataFolder` only, one full listing then `changes.list`,
   multipart create, resumable media in 8 MB chunks, Range downloads,
   backoff with Retry-After; tested against

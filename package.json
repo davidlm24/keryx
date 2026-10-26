@@ -103,6 +103,8 @@
   "build": {
     "appId": "br.keryx.app",
     "productName": "KERYX",
+    "beforePack": "./scripts/google-secret-before.cjs",
+    "afterPack": "./scripts/google-secret-after.cjs",
     "artifactName": "KERYX-Setup-${version}.${ext}",
     "directories": {
       "output": "release",
