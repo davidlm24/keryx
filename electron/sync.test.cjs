@@ -12,7 +12,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createStore, PROFILE_ID } = require("./db/store.cjs");
 const { createSyncEngine, inspectStore, inspectFolder, mediaRefs, coalesce, addRange, endLine, STATE_KEY } = require("./sync.cjs");
-const { keysFor, createPairing, joinPairing, readPairing, updateRemoved, PAIRING_FILE } = require("./syncPairing.cjs");
+const { keysFor, createPairing, joinPairing, readPairing, updateRemoved, joinDrive, secretOf, removedOf, PAIRING_FILE } = require("./syncPairing.cjs");
 const { createFakeDrive, createFolderStore, changesName } = require("./syncStore/index.cjs");
 const schema = require("./db/schema.json");
 const { SYNC_ENTITIES, ON_EACH_COMPUTER, LOCAL_USER_FIELDS, syncRow } = require("./db/syncScope.cjs");
@@ -794,6 +794,168 @@ test("the code's file: written back when it goes missing, waited for while it ar
     assert.match(status.error, /chegando/);
     assert.equal(a.store.outbox().length, 1);
     assert.equal(drive.text(PAIRING_FILE), '{"v":1,"id":"igreja', "never written over");
+    a.close();
+});
+
+// Google Drive direto, no code (the owner's item 4): the account's key.
+const shareOf = (got) => ({ id: got.id, key: got.key, share: true });
+
+test("Drive without a code: the first computer makes the account's key, a second and a third read it and join", async () => {
+    const drive = createFakeDrive();
+    const first = await joinDrive(drive, { pc: "a" });
+    assert.equal(first.created, true);
+    assert.equal(first.key.length, 32);
+    const file = JSON.parse(drive.text(PAIRING_FILE));
+    assert.equal(file.v, 2);
+    assert.equal(file.id, first.id);
+    assert.equal(Buffer.from(file.key, "base64url").toString("hex"), first.key.toString("hex"), "the key is in the hidden folder");
+    assert.ok(secretOf(file).equals(first.key));
+
+    const a = computer(drive, { pairing: shareOf(first) });
+    a.store.call("Song", "create", [{ title: "Da primeira" }]);
+    assert.equal((await a.engine.pass()).state, "ok");
+
+    const second = await joinDrive(drive, { pc: "b" });
+    assert.equal(second.created, false);
+    assert.equal(second.id, first.id);
+    assert.ok(second.key.equals(first.key), "no code typed: the same key");
+    const b = computer(drive, { pairing: shareOf(second) });
+    b.store.call("Song", "create", [{ title: "Da segunda" }]);
+    const c = computer(drive, { pairing: shareOf(await joinDrive(drive, { pc: "c" })) });
+    await rounds([a, b, c], 2);
+    for (const pc of [a, b, c]) assert.deepEqual(titles(pc), ["Da primeira", "Da segunda"]);
+    assert.equal(drive.all(PAIRING_FILE).length, 1);
+    assert.ok(JSON.parse(drive.text(PAIRING_FILE)).key, "the passes keep the key in the file");
+
+    // A file gone missing is written back with the key, so a new computer still joins.
+    drive.drop(PAIRING_FILE);
+    assert.equal((await b.engine.pass()).state, "ok");
+    const again = await joinDrive(drive, { pc: "d" });
+    assert.equal(again.created, false);
+    assert.ok(again.key.equals(first.key));
+    for (const pc of [a, b, c]) pc.close();
+});
+
+test("Drive: two first computers at once end on one key, the first made", async () => {
+    const quick = createFakeDrive({ lag: 0 });
+    const one = await joinDrive(quick, { pc: "a" });
+    const two = await joinDrive(quick, { pc: "b" });
+    assert.equal(one.created, true);
+    assert.equal(two.created, false, "the listing shows the first one: the second takes it");
+    assert.ok(two.key.equals(one.key));
+    assert.equal(quick.all(PAIRING_FILE).length, 1);
+
+    // Neither listing shows the other's yet: both think they made it.
+    const later = createFakeDrive({ lag: 5 });
+    const x = await joinDrive(later, { pc: "a" });
+    const y = await joinDrive(later, { pc: "b" });
+    assert.ok(x.created && y.created);
+    assert.ok(!x.key.equals(y.key));
+    later.lag = 0;
+    for (let i = 0; i < 6; i++) await later.list("");
+    const a = computer(later, { pairing: shareOf(x) });
+    const b = computer(later, { pairing: shareOf(y) });
+    a.store.call("Song", "create", [{ title: "De A" }]);
+    b.store.call("Song", "create", [{ title: "De B" }]);
+    assert.equal((await a.engine.pass()).state, "ok", "the first made is the key");
+    const lost = await b.engine.pass();
+    assert.equal(lost.state, "mismatch");
+    assert.match(lost.error, /chave da sincronização mudou/);
+    // What syncControl does on that state: join again, with nothing typed.
+    const taken = await joinDrive(later, { pc: "b", mine: shareOf(y) });
+    assert.equal(taken.created, false);
+    assert.ok(taken.key.equals(x.key));
+    b.pair(shareOf(taken));
+    b.store.snapshot();
+    await rounds([a, b], 2);
+    for (const pc of [a, b]) assert.deepEqual(titles(pc), ["De A", "De B"]);
+    a.close();
+    b.close();
+});
+
+test("Drive: a damaged key file — healed with the same key by a computer that has it, replaced by a new one only when nobody does", async () => {
+    const drive = createFakeDrive();
+    const got = await joinDrive(drive, { pc: "a" });
+    const a = computer(drive, { pairing: shareOf(got) });
+    const b = computer(drive, { pairing: shareOf(got) });
+    a.store.call("Song", "create", [{ title: "Antes" }]);
+    await rounds([a, b], 2);
+
+    // Garbage in the object: A writes it back with the key it has; B never notices.
+    const obj = drive.all(PAIRING_FILE)[0];
+    drive.rewrite(obj.id, '{"v":2,"id":"igr');
+    assert.equal((await a.engine.pass()).state, "ok");
+    assert.ok(secretOf(JSON.parse(drive.text(PAIRING_FILE))).equals(got.key), "the same key, back");
+    assert.equal((await b.engine.pass()).state, "ok");
+
+    // A key that does not make its check (bytes flipped): written back too.
+    const bent = JSON.parse(drive.text(PAIRING_FILE));
+    bent.key = Buffer.alloc(32, 7).toString("base64url");
+    drive.rewrite(drive.all(PAIRING_FILE)[0].id, JSON.stringify(bent));
+    assert.equal((await joinDrive(drive, { pc: "x", mine: shareOf(got) })).key.equals(got.key), true, "a computer with the key keeps it");
+    assert.ok(secretOf(JSON.parse(drive.text(PAIRING_FILE))).equals(got.key));
+
+    // Not readable right now: a new computer waits, nothing written.
+    drive.failNext("read", 1, (name) => name === PAIRING_FILE);
+    assert.deepEqual(await joinDrive(drive, { pc: "n" }), { error: "busy" });
+    assert.ok(secretOf(JSON.parse(drive.text(PAIRING_FILE))).equals(got.key));
+    // Read, but a member's engine does not rewrite on a failed read either.
+    drive.failNext("read", 1, (name) => name === PAIRING_FILE);
+    assert.equal((await a.engine.pass()).state, "offline");
+
+    // Damaged with no computer around to heal it: a new one makes a new key,
+    // and the others take it (syncControl joins again on "mismatch").
+    drive.rewrite(drive.all(PAIRING_FILE)[0].id, "nada");
+    const fresh = await joinDrive(drive, { pc: "n" });
+    assert.equal(fresh.created, true);
+    assert.ok(!fresh.key.equals(got.key));
+    assert.equal((await a.engine.pass()).state, "mismatch");
+    const back = await joinDrive(drive, { pc: "a", mine: shareOf(got) });
+    assert.ok(back.key.equals(fresh.key), "a valid file wins over the key kept here");
+    a.close();
+    b.close();
+});
+
+test("Drive: Desconectar keeps the key in the file; the computer stops until it enters again", async () => {
+    const drive = createFakeDrive();
+    const got = await joinDrive(drive, { pc: "a" });
+    const a = computer(drive, { pairing: shareOf(got) });
+    const b = computer(drive, { pairing: shareOf(got) });
+    await rounds([a, b], 1);
+    const list = await updateRemoved(drive, shareOf(got), (cur, at) => [...cur, { pc: b.store.pcId, at: at.toISOString(), by: a.store.pcId }], { pc: a.store.pcId });
+    assert.deepEqual(list.map((r) => r.pc), [b.store.pcId]);
+    assert.ok(secretOf(JSON.parse(drive.text(PAIRING_FILE))).equals(got.key), "a new computer can still join");
+    b.store.call("Song", "create", [{ title: "Desconectado" }]);
+    const out = await b.engine.pass();
+    assert.equal(out.state, "removed");
+    assert.match(out.error, /desconectado.*Entre com a conta/);
+    assert.equal(b.store.outbox().length, 1, "its change waits");
+    // A computer's own pass keeps the list (and the key) as they are.
+    await a.engine.pass();
+    assert.equal(removedOf(JSON.parse(drive.text(PAIRING_FILE)), keysFor(got.key, got.id)).length, 1);
+    // Entering again (syncControl's googleSignIn) takes it off the list.
+    await updateRemoved(drive, shareOf(got), (cur) => cur.filter((r) => r.pc !== b.store.pcId), { pc: b.store.pcId });
+    await rounds([b, a], 2);
+    assert.ok(titles(a).includes("Desconectado"));
+    a.close();
+    b.close();
+});
+
+test("the folder keeps the church's code: its file never carries a key, and a damaged one is never written over", async () => {
+    const folder = tmp();
+    const shared = createFolderStore(folder);
+    const made = await createPairing(shared, { pc: "a" });
+    const a = computer(folder, { pairing: { id: made.id, key: made.key } });
+    await a.engine.pass();
+    const file = JSON.parse(fs.readFileSync(path.join(folder, "sync", PAIRING_FILE), "utf8"));
+    assert.equal(file.v, 1);
+    assert.equal(file.key, undefined);
+    fs.rmSync(path.join(folder, "sync", PAIRING_FILE));
+    assert.equal((await a.engine.pass()).state, "ok");
+    assert.equal(JSON.parse(fs.readFileSync(path.join(folder, "sync", PAIRING_FILE), "utf8")).key, undefined, "written back without one");
+    fs.writeFileSync(path.join(folder, "sync", PAIRING_FILE), '{"v":1,"id":"igr');
+    assert.equal((await a.engine.pass()).state, "offline");
+    assert.equal(fs.readFileSync(path.join(folder, "sync", PAIRING_FILE), "utf8"), '{"v":1,"id":"igr');
     a.close();
 });
 

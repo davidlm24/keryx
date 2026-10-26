@@ -1291,10 +1291,9 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      4); the ops `googleSignIn`, `googleStatus` (account, refused, the
      space used and total), `googleSignOut` and `useDrive { on }` over
      `keryx:sync`. Moving a computer that syncs to Drive sends everything
-     it has (`store.snapshot`, as joining does) and the engine writes the
-     church's code file there when it is missing; making, typing and
-     changing the code work on Drive as on the folder. Signed out, the
-     changes wait (the outbox keeps recording).
+     it has (`store.snapshot`, as joining does). Signed out, the changes
+     wait (the outbox keeps recording). (PR 2 also carried the church's
+     code onto Drive; the key PR, item 9, took it off.)
    - Tests: `googleAuth.test.cjs` (a fake token endpoint and a fake
      browser on the real listener), `syncStore/drive.test.cjs` against a
      fake Drive server (`electron/fixtures/fakeDriveServer.cjs`: multipart,
@@ -1303,6 +1302,90 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      `sync.test.cjs` on `fakeDrive` and the folder, and the whole move in
      `syncControl.test.cjs`. Only the owner signs in with the real account
      (the steps are in the PR and in `docs/google-drive-setup.md`).
+9. **No church code on Drive: the account is the key (2026-10-27, the
+   owner's item 4, a small security PR before PR 3's page):**
+   - **The key lives in the hidden folder.** On Drive, `keryx-sync.json`
+     is `{ v: 2, id, check, made, by, removed, key, mac }`: `key` is 32
+     random bytes (base64url), made by the first computer that enters with
+     the account (`joinDrive` in `syncPairing.cjs`: `putIfAbsent`, the
+     first made wins, so two first computers end on one key; the loser's
+     next pass sees "mismatch" and takes the winner's). Every other
+     computer that enters reads it: nothing typed. `check` (an HMAC of the
+     id with the key) proves the key whole. The lines, state and computer
+     objects keep their signatures with it: they catch a damaged or half
+     object, not someone with the account's password — **the Google
+     account is the access control**, as in Holyrics.
+   - **Kept here**: settings.json `sync.drive = { email, id, key,
+     joinedAt, accountNew }`, the key sealed with `sealWith` (DPAPI) like
+     the folder's. It is that account's: another account entered is
+     another join. **The folder keeps the church's code exactly as
+     before** (`sync.pairing`, its file never carries a key, a damaged one
+     is never written over) until PR 4 removes it. A computer that moves
+     from the folder to Drive keeps its folder pairing and gets the
+     account's key beside it — the two never share a key (the Drive key is
+     never derived from the code), and going back to the folder needs no
+     code typed. Moving sends everything here (`store.snapshot`), so
+     nothing written under the folder's key is lost on Drive. A Drive
+     `keryx-sync.json` without a key (PR 2's code file, never released) is
+     written over by the first computer that enters.
+   - **Damaged or missing**: a computer that has the key writes the file
+     back with the same key and the list it kept (missing: `putIfAbsent`;
+     damaged — not JSON, or a key that does not make its check: replaced
+     whole; a read that failed is only "offline", never a rewrite). A new
+     computer that finds it damaged and nobody to heal it makes a new key;
+     the others take it on their next pass (syncControl joins again on
+     "mismatch" by itself, and sends everything again).
+   - **Desconectar** (Dispositivos conectados; the ops `remove`/`restore`
+     over the same `removed` list, which keeps the key in the file): the
+     computer stops ("Este computador foi desconectado da sincronização.
+     Entre com a conta da igreja nele para voltar.") until someone enters
+     with the account on it again (`googleSignIn` takes it off the list;
+     the owner's G3 = A). Its passes never readmit it.
+   - **Ops for PR 3** (`keryx:sync`): `googleSignIn` (the browser, then
+     Drive, the account's key — joined, or made: `joined: { created, sent
+     }` — off the Desconectar list, everything sent; a join Drive fails
+     leaves the sign-in standing, `joinError`, and the passes join later),
+     `googleCancel` (the pending `googleSignIn` rejects with code
+     "canceled", which the IPC answer carries), `googleReopen` (the same
+     Google page again), `useDrive { on }` (the same join, no readmit; a
+     no-op when already joined), `remove`/`restore { pc }`. `create`,
+     `join`, `rotate` and `showCode` answer "Na conta Google não há código
+     da igreja" on Drive. The status adds `accountNew` (this computer
+     started the church's sync in an account with no KERYX, and no other
+     computer has shown up yet). A computer on Drive and entered whose key
+     will not open here, or that never joined (offline), joins by itself
+     on a pass (at most once a minute after a failure).
+   - **Threats, now and with the code**: someone with the church's Google
+     password (or a browser session signed in to it) can enter on any PC
+     and read and write everything, exactly as the code allowed whoever
+     knew it; the code added nothing once the account is shared, and the
+     account has Google's own protections (2-step, alerts). Someone with
+     one church PC (its Windows session) can use KERYX there, as before,
+     and now also read the key from settings.json through DPAPI — it
+     signs, it does not open the account (a stolen key without a Google
+     token reaches nothing; with the folder, a key plus the folder's copy
+     was enough). Desconectar is not a revocation: the desconectado PC
+     keeps its Google token, so whoever sits at it can enter again; to cut
+     a lost or stolen PC, remove KERYX's access in the Google account
+     (Segurança › Apps e serviços de terceiros: every PC then enters again) or change
+     the password. Before, "Trocar o código" cut it; there is no key
+     rotation on Drive (any PC with the token would read the new key).
+     On the network nothing changes: Drive is reached over HTTPS with the
+     account's token; the sign-in listener takes one request on
+     127.0.0.1 with the PKCE state; the LAN screens and the controle
+     remoto never see the key.
+   - Tests: `sync.test.cjs` on `fakeDrive` (the first computer makes the
+     key, a second and a third join; two first computers at once with a
+     lagging listing end on one; damaged — healed with the same key by a
+     member, replaced only when nobody has it, a failed read never
+     rewrites; Desconectar keeps the key and stops the computer until it
+     enters again; the folder's file never carries a key),
+     `syncControl.test.cjs` against the fake Drive server (folder → Drive
+     with the code kept, a second and third computer entering with no
+     code, Desconectar and back, signed out, back to the folder; a key
+     that will not open joins again by itself; Cancelar and Abrir de
+     novo), `googleAuth.test.cjs` (Abrir de novo opens the same page,
+     Cancelar ends the sign-in).
 
 ## 9. Project layout after the change
 
