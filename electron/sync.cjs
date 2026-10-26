@@ -1,84 +1,89 @@
-// Sync between the church's computers through a shared folder that Google
-// Drive para computador (or OneDrive, Dropbox) keeps in step
-// (docs/desktop-architecture.md §8b). No server: each computer writes its own
-// changes to its own folder and reads everyone else's.
+// Sync between the church's computers (docs/desktop-architecture.md §8b). No
+// server: each computer writes its own changes to a shared store and reads
+// everyone else's. The store is electron/syncStore/ — today the shared folder
+// Google Drive para computador keeps in step (`folder`), next Google Drive
+// itself — and it has Drive's rules: objects written whole and never
+// appended, names that are not unique, a listing that may lag a write.
 //
-//   <folder>/sync/<pc>/changes-000001.jsonl   one computer's outbox entries,
-//                                             one JSON object a line, only
-//                                             ever appended; a new file past
-//                                             FILE_LIMIT bytes
-//   <folder>/sync/<pc>/state.json             what that computer has read of
-//                                             everyone's files and the media
-//                                             its rows use, for the cleanup
-//   <folder>/sync/keryx-sync.json             the church's code file
-//                                             (syncPairing.cjs)
-//   <folder>/sync/media/<file>                the media files those rows use,
-//                                             by their uuid name, never
-//                                             overwritten; collected once no
-//                                             computer uses one (collect())
+//   changes/<pc>/<seq>.jsonl   one pass's outbox entries (up to `batch`), one
+//                              JSON object a line, each signed, and a last
+//                              line {"keryx":"end","lines":n} that says the
+//                              object is all there; a new object every
+//                              time, <seq> never used twice by its computer
+//   state/<pc>.json            what that computer has read of everyone's
+//                              changes and the media its rows use, for the
+//                              cleanup; replaced whole
+//   computers/<pc>.json        who that computer is; replaced whole
+//   keryx-sync.json            the church's code file (syncPairing.cjs)
+//   media/<file>               the media files those rows use, by their uuid
+//                              name, never overwritten; collected once no
+//                              computer uses one (collect())
 //
-// What this computer has read of each file (a byte offset past the last
-// whole line) is kept in its own database (_meta "sync.state", never
-// synced), so a restart goes on where it was. Entries are idempotent through
-// store.applyRemote (last edit wins per row), which is what makes the
-// awkward things a synced folder does harmless: a file read twice, Drive's
-// conflict copies ("changes-000003 (1).jsonl"), files arriving late or out of
-// order. A last line without its newline is still being written or
-// downloaded: it is left for the next pass, never skipped.
+// What this computer has read is kept in its own database (_meta
+// "sync.state", never synced), so a restart goes on where it was: per
+// computer, the numbers (<seq>) of the changes objects read to their end
+// line, as ranges (`seen[pc].done`), plus the ids of the extra objects read
+// when two share a name (`seen[pc].dup`); and, for an object read only part
+// of the way, how far (`part[id].at`, bytes past its last whole line). An
+// object without its end line is still arriving — a file Drive para
+// computador is still bringing down, or one a computer on an older KERYX
+// keeps appending to (0.2.21 and before: a changes file that only grew) — so
+// it is read as far as it goes and again when it grows; one with its end is
+// never read again. Two objects of one name (a conflict copy, a Drive upload
+// made twice) are each read. Entries are idempotent through store.applyRemote
+// (last edit wins per row), which is what makes reading twice, late or out of
+// order harmless. A last line without its newline is left for the next pass,
+// never skipped.
 //
 // Only computers with the church's sync code count (PCs verificados,
-// electron/syncPairing.cjs): the folder holds the code's file, every line and
-// every state.json is signed with the key the code makes, and what does not
-// verify is counted for its computer, never applied (nor counted by the
+// electron/syncPairing.cjs): the store holds the code's file, every line and
+// every state object is signed with the key the code makes, and what does
+// not verify is counted for its computer, never applied (nor counted by the
 // cleanup). Without a code nothing is read or written; with a code that is
-// no longer the folder's (it changed) neither, and the outbox waits; the
-// same for a computer another one took out ("Tirar": the code file's
-// removed list), whose folder the others skip until the code is typed on
-// it again.
+// no longer the store's (it changed) neither, and the outbox waits; the same
+// for a computer another one took out ("Tirar": the code file's removed
+// list), whose changes the others skip until the code is typed on it again.
 //
-// Pure Node over the store and a folder path, so it runs under node --test.
+// Pure Node over the store and a sync store, so it runs under node --test.
 
 const fs = require("node:fs");
 const path = require("node:path");
 const { isSynced, SYNC_ENTITIES } = require("./db/syncScope.cjs");
 const { keysFor, readPairing, writePairing, matches, pairingFile, removedOf } = require("./syncPairing.cjs");
+const { createFolderStore, changesName, parseChanges, PC_DIR } = require("./syncStore/index.cjs");
 
 const fsp = fs.promises;
 
-const SYNC_DIR = "sync";
-const MEDIA_DIR = "media";
-const MANIFEST = "state.json";
 const STATE_KEY = "sync.state";
-const FILE_LIMIT = 256 * 1024;
 const BATCH = 500;
 // Media named by rows that has not arrived yet, retried every pass.
 const MISSING_LIMIT = 2000;
-// <folder>/sync/<pc>/computer.json: { pc, name, version, bibles, at, sig } —
-// who the computer is (its Windows name, its KERYX version, the Bible
-// editions installed on it: their names only, never the text), signed like a
-// line, rewritten when any of them changes and twice a day (so "visto" stays
-// true without a write every pass).
-const COMPUTER_FILE = "computer.json";
+// computers/<pc>.json: { pc, name, version, bibles, at, sig } — who the
+// computer is (its Windows name, its KERYX version, the Bible editions
+// installed on it: their names only, never the text), signed like a line,
+// rewritten when any of them changes and twice a day (so "visto" stays true
+// without a write every pass).
 const COMPUTER_REFRESH_MS = 12 * 60 * 60 * 1000;
-// The cleanup of sync/media: how often it looks, how long a file must have
-// been unused by every computer before it goes, and how many collected
-// names a computer keeps announcing (so one that still uses one puts it back).
+// The cleanup of media/: how often it looks, how long a file must have been
+// unused by every computer before it goes, and how many collected names a
+// computer keeps announcing (so one that still uses one puts it back).
 const GC_EVERY_MS = 10 * 60 * 1000;
 const GC_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const COLLECTED_LIMIT = 500;
-
-// A computer's folder is its id; Drive may add " (1)" to a copy of it.
-const PC_DIR = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
-// The files this computer writes, and every name the services give copies of
-// them: "changes-000003 (1).jsonl", "changes-000003-PC.jsonl", Dropbox's
-// "changes-000003 (… conflicted copy …).jsonl".
-const OWN_FILE = /^changes-(\d+)\.jsonl$/;
-const ANY_FILE = /^changes-(\d+)(?!\d).*\.jsonl$/i;
+// The state object's format: 2 since the store (an older KERYX wrote byte
+// cursors by file name, which say nothing about objects).
+const STATE_V = 2;
 // keryx-media://<file> in a row; the app's own files (keryx-media://bundled/…)
 // ship with every copy and never travel.
 const MEDIA_REF = /keryx-media:\/\/([A-Za-z0-9][A-Za-z0-9._-]*)(?![A-Za-z0-9._/-])/g;
 
-const fileName = (n) => `changes-${String(n).padStart(6, "0")}.jsonl`;
+const endLine = (n) => `${JSON.stringify({ keryx: "end", lines: n })}\n`;
+const isEnd = (e) => Boolean(e && typeof e === "object" && e.keryx === "end");
+const computerName = (pc) => `computers/${pc}.json`;
+const stateName = (pc) => `state/${pc}.json`;
+const mediaName = (name) => `media/${name}`;
+// A local download on its way, kept to go on from after a cut.
+const tempOf = (name) => `.${name}.sync.partial`;
 
 function mediaRefs(row) {
     if (!row) return [];
@@ -98,64 +103,29 @@ async function sizeOf(file) {
     }
 }
 
-async function isDir(dir) {
-    try {
-        return (await fsp.stat(dir)).isDirectory();
-    } catch {
-        return false;
-    }
-}
+// -- Ranges of numbers ([[from, to], …], sorted, apart) ----------------------
 
-// Copies `from` to <dir>/<name> unless it is already there: through a hidden
-// temporary name, so neither the sync service nor the media server ever sees
-// half a file under the real one.
-async function copyNew(from, dir, name) {
-    const to = path.join(dir, name);
-    if ((await sizeOf(to)) >= 0) return false;
-    const tmp = path.join(dir, `.${name}.${process.pid}.partial`);
-    try {
-        await fsp.copyFile(from, tmp);
-        if ((await sizeOf(to)) >= 0) return false;
-        await fsp.rename(tmp, to);
-        return true;
-    } finally {
-        await fsp.rm(tmp, { force: true }).catch(() => {});
-    }
-}
-
-// Replaces <dir>/<name> whole: written aside, then renamed over it.
-async function writeWhole(dir, name, text) {
-    const tmp = path.join(dir, `.${name}.${process.pid}.partial`);
-    try {
-        await fsp.writeFile(tmp, text);
-        await fsp.rename(tmp, path.join(dir, name));
-    } finally {
-        await fsp.rm(tmp, { force: true }).catch(() => {});
-    }
-}
-
-// The computer whose folder a cursor key ("<pc dir>/<file>") points into.
-const ownerOf = (key) => (PC_DIR.exec(String(key).split("/")[0]) || [])[1]?.toLowerCase() || null;
-
-const emptyGc = () => ({ at: null, candidates: {}, marks: {}, collected: [] });
-
-// Appends whole lines and waits for the disk. A line a crash cut short is
-// closed first, so the new ones never join it (the reader skips it alone).
-async function appendLines(file, text) {
-    const fh = await fsp.open(file, "a+");
-    try {
-        const { size } = await fh.stat();
-        let prefix = "";
-        if (size > 0) {
-            const last = Buffer.alloc(1);
-            await fh.read(last, 0, 1, size - 1);
-            if (last[0] !== 0x0a) prefix = "\n";
+function addRange(ranges, n) {
+    const out = [];
+    let lo = n;
+    let hi = n;
+    for (const [a, b] of Array.isArray(ranges) ? ranges : []) {
+        if (b < lo - 1 || a > hi + 1) out.push([a, b]);
+        else {
+            lo = Math.min(lo, a);
+            hi = Math.max(hi, b);
         }
-        await fh.write(prefix + text);
-        await fh.sync();
-    } finally {
-        await fh.close();
     }
+    out.push([lo, hi]);
+    return out.sort((x, y) => x[0] - y[0]);
+}
+
+const inRanges = (ranges, n) => (Array.isArray(ranges) ? ranges : []).some(([a, b]) => n >= a && n <= b);
+const rangeWithin = ([a, b], ranges) => (Array.isArray(ranges) ? ranges : []).some(([x, y]) => a >= x && b <= y);
+function rangesOf(numbers) {
+    let out = [];
+    for (const n of numbers) out = addRange(out, n);
+    return out;
 }
 
 // One line per row and moment: two writes of the same row in the same
@@ -181,27 +151,42 @@ function coalesce(entries, pc) {
     return out;
 }
 
-const byNumber = (a, b) => Number(ANY_FILE.exec(a)[1]) - Number(ANY_FILE.exec(b)[1]) || (a < b ? -1 : a > b ? 1 : 0);
-
 const isEntry = (e, pc) => e && typeof e === "object" && !Array.isArray(e)
     && typeof e.entity === "string" && (e.op === "upsert" || e.op === "delete")
     && String(e.pc || "").toLowerCase() === pc;
 
-const syncDirOf = (folder) => path.join(path.resolve(String(folder)), SYNC_DIR);
-
-// The Bible editions a computer.json lists: short names ("NVI"), a few.
+// The Bible editions a computer object lists: short names ("NVI"), a few.
 const BIBLES_LIMIT = 20;
 const editionList = (v) => (Array.isArray(v)
     ? [...new Set(v.filter((x) => typeof x === "string" && /^[A-Za-z0-9]{1,12}$/.test(x)).map((x) => x.toUpperCase()))].sort().slice(0, BIBLES_LIMIT)
     : []);
 
-// A computer's computer.json: { name, version, bibles, at, verified }
-// (verified only with `keys`; without, the name is shown as the folder says
-// it), or null.
-async function readComputer(dir, keys = null) {
+// The computer an object's name belongs to (changes/, computers/, state/).
+const pcOfName = (name) => {
+    const m = /^(?:changes|computers|state)\/([^/.]+)/.exec(String(name));
+    return m && PC_DIR.test(m[1]) ? m[1].toLowerCase() : null;
+};
+
+// Objects by the computer they belong to.
+function byPc(list) {
+    const out = new Map();
+    for (const o of list) {
+        const pc = pcOfName(o.name);
+        if (!pc) continue;
+        if (!out.has(pc)) out.set(pc, []);
+        out.get(pc).push(o);
+    }
+    return out;
+}
+
+// A computer object: { name, version, bibles, at, verified } (verified only
+// with `keys`; without, the name is shown as the store says it), or null.
+async function readComputer(shared, obj, keys = null) {
     let text;
     try {
-        text = (await fsp.readFile(path.join(dir, COMPUTER_FILE), "utf8")).trim();
+        const bytes = await shared.read(obj.id);
+        if (!bytes) return null;
+        text = bytes.toString("utf8").trim();
     } catch {
         return null;
     }
@@ -218,29 +203,35 @@ async function readComputer(dir, keys = null) {
     return { name: str(info.name, 80), version: str(info.version, 40), bibles: editionList(info.bibles), at: str(info.at, 40), verified };
 }
 
-// What a folder holds, for choosing it and typing the code (before any pass
+// Of a computer's objects of one name (a copy may sit beside it): the
+// verified one, the newest by what it says.
+async function bestComputer(shared, objs, keys) {
+    let best = null;
+    for (const o of objs) {
+        const who = await readComputer(shared, o, keys);
+        if (!who) continue;
+        if (!best || (who.verified && !best.verified) || (Boolean(who.verified) === Boolean(best.verified) && String(who.at || "") > String(best.at || ""))) best = who;
+    }
+    return best;
+}
+
+// What a store holds, for choosing it and typing the code (before any pass
 // runs there): { exists, code: "missing" | "bad" | "ok", computers: [{ pc,
-// name, files, lastChange }] }. Reads only; the names are what the folder
+// name, files, lastChange }] }. Reads only; the names are what the store
 // says (nothing can be checked before the code is typed).
-async function inspectFolder(folder) {
-    const root = path.resolve(String(folder));
-    if (!(await isDir(root))) return { exists: false, code: "missing", computers: [] };
-    const syncDir = path.join(root, SYNC_DIR);
-    const code = (await readPairing(syncDir)).state;
+async function inspectStore(shared) {
+    if (!(await shared.available())) return { exists: false, code: "missing", computers: [] };
+    const code = (await readPairing(shared)).state;
+    const all = await shared.list("");
     const computers = new Map();
-    for (const d of await fsp.readdir(syncDir, { withFileTypes: true }).catch(() => [])) {
-        const m = d.isDirectory() && PC_DIR.exec(d.name);
-        if (!m) continue;
-        const pc = m[1].toLowerCase();
-        const seen = computers.get(pc) || { pc, name: null, files: 0, lastChange: 0 };
-        seen.name = seen.name || (await readComputer(path.join(syncDir, d.name)))?.name || null;
-        for (const name of await fsp.readdir(path.join(syncDir, d.name)).catch(() => [])) {
-            if (!ANY_FILE.test(name)) continue;
-            try {
-                const st = await fsp.stat(path.join(syncDir, d.name, name));
-                seen.files += 1;
-                seen.lastChange = Math.max(seen.lastChange, st.mtimeMs);
-            } catch { /* gone while we looked */ }
+    for (const [pc, objs] of byPc(all)) {
+        const seen = { pc, name: null, files: 0, lastChange: 0 };
+        const who = await bestComputer(shared, objs.filter((o) => o.name === computerName(pc)));
+        seen.name = who?.name || null;
+        for (const o of objs) {
+            if (!parseChanges(o.name)) continue;
+            seen.files += 1;
+            seen.lastChange = Math.max(seen.lastChange, o.modified || 0);
         }
         computers.set(pc, seen);
     }
@@ -251,17 +242,36 @@ async function inspectFolder(folder) {
     };
 }
 
-// getFolder() -> the folder chosen, or null (off). getPairing() -> { id, key }
+const inspectFolder = (folder) => inspectStore(createFolderStore(folder));
+
+const emptyGc = () => ({ at: null, candidates: {}, marks: {}, collected: [] });
+
+// The mark an older KERYX kept ({ "<pc dir>/<file>": bytes }) as one of
+// these: those files are the folder adapter's objects of those ids.
+function markFromCursors(cursors) {
+    const mark = {};
+    for (const [id, at] of Object.entries(cursors || {})) {
+        const pc = (PC_DIR.exec(id) || [])[1]?.toLowerCase();
+        const seq = Number((/\/changes-(\d+)/.exec(id) || [])[1]);
+        if (!pc || !Number.isFinite(seq)) continue;
+        (mark[pc] ||= { done: [], part: {} }).part[id] = [seq, Number(at) || 0];
+    }
+    return mark;
+}
+
+// getStore() -> the sync store (syncStore/), or null (off); or, instead,
+// getFolder() -> the shared folder chosen, or null. getPairing() -> { id, key }
 // (the code file's id and the key the code makes, syncPairing.cjs), or null
 // (no code typed on this computer yet). describe() -> { name, version,
 // bibles }: this computer as the others list it.
 function createSyncEngine({
-    store, mediaDir, getFolder, getPairing = () => null, describe = null, log = console.warn, fileLimit = FILE_LIMIT, batch = BATCH, now = () => new Date(), onStatus = null,
+    store, mediaDir, getStore = null, getFolder = null, getPairing = () => null, describe = null, log = console.warn, batch = BATCH, now = () => new Date(), onStatus = null,
     gcEveryMs = GC_EVERY_MS, gcGraceMs = GC_GRACE_MS,
 }) {
     const pc = String(store.pcId).toLowerCase();
-    // A complete line that is not JSON, by file: the file's size when it was
-    // seen. Skipped once the file stops changing (it was not still arriving).
+    // A complete line that is not JSON, by object: the object's size when it
+    // was seen. Skipped once the object stops changing (it was not still
+    // arriving).
     const unreadable = new Map();
     let status = { state: "off", folder: null, pc };
     // The media files rows here name and that have not arrived (keryx-media
@@ -275,7 +285,7 @@ function createSyncEngine({
     store.onChange((event) => {
         if (isSynced(event.entity)) refs = null;
     });
-    // The manifest last written, so an unchanged one is not written again.
+    // The state object last written, so an unchanged one is not written again.
     let published = "";
     let lastLogged = "";
     let applying = false;
@@ -285,6 +295,17 @@ function createSyncEngine({
     let debounce = null;
     let unsubscribe = null;
     let keys = null; // keysFor the pairing in use, made again when it changes
+    let folderStore = null;
+
+    // The store in use, or null (off).
+    function current() {
+        if (getStore) return getStore() || null;
+        const folder = getFolder ? getFolder() : null;
+        if (!folder) return null;
+        const root = path.resolve(String(folder));
+        if (!folderStore || folderStore.key !== root) folderStore = createFolderStore(root);
+        return folderStore;
+    }
 
     const setStatus = (next) => {
         status = { pc, ...next };
@@ -301,97 +322,109 @@ function createSyncEngine({
         if (message) log(`[keryx-sync] ${message}`);
     };
 
-    // Cursors and the writer's file number belong to one folder; another
-    // folder starts over (reading twice is harmless). The writer's state is
-    // also this computer's: a database brought from elsewhere drops it.
-    // Another code (it changed, or the computer joined again) reads every
-    // file again: lines skipped under the old key may verify now.
-    function loadState(folder, pairing) {
+    // What was read and the writer's number belong to one store; another
+    // starts over (reading twice is harmless). The writer's state is also
+    // this computer's: a database brought from elsewhere drops it. Another
+    // code (it changed, or the computer joined again) reads everything again:
+    // lines skipped under the old key may verify now. A state an older KERYX
+    // saved (byte cursors by file) is taken as it was: those files are the
+    // folder's objects of those ids.
+    function loadState(key, pairing) {
         const saved = store.getMeta(STATE_KEY);
-        if (!saved || saved.folder !== folder) return { folder, pairing, cursors: {}, peers: {}, out: null, missing: [], me: null, removed: [], gc: emptyGc() };
+        const fresh = { store: key, pairing, seen: {}, part: {}, peers: {}, out: null, missing: [], me: null, removed: [], gc: emptyGc() };
+        if (!saved || (saved.store ?? saved.folder) !== key) return fresh;
         const gc = saved.gc && typeof saved.gc === "object" ? saved.gc : {};
         const sameCode = saved.pairing === pairing;
+        const legacy = !saved.seen && saved.cursors && typeof saved.cursors === "object";
+        let part = sameCode && saved.part && typeof saved.part === "object" ? saved.part : {};
+        if (sameCode && legacy) {
+            part = {};
+            for (const [id, p] of Object.entries(markFromCursors(saved.cursors))) {
+                for (const [objId, [seq, at]] of Object.entries(p.part)) part[objId] = { pc: id, seq, at };
+            }
+        }
+        let out = saved.out && saved.out.pc === pc ? saved.out : null;
+        // An older KERYX's file number n: the objects from n + 1 on are this one's.
+        if (out && !out.first) out = { pc, n: Number(out.n) || 0, first: (Number(out.n) || 0) + 1 };
+        let marks = gc.marks && typeof gc.marks === "object" ? gc.marks : {};
+        if (legacy) marks = Object.fromEntries(Object.entries(marks).map(([at, m]) => [at, markFromCursors(m)]));
         return {
-            folder,
+            store: key,
             pairing,
-            cursors: sameCode && saved.cursors && typeof saved.cursors === "object" ? saved.cursors : {},
+            seen: sameCode && saved.seen && typeof saved.seen === "object" ? saved.seen : {},
+            part,
             peers: sameCode && saved.peers && typeof saved.peers === "object" ? saved.peers : {},
             me: sameCode && saved.me && saved.me.pc === pc ? saved.me : null,
             removed: sameCode && Array.isArray(saved.removed) ? saved.removed : [],
-            out: saved.out && saved.out.pc === pc ? saved.out : null,
+            out,
             missing: Array.isArray(saved.missing) ? saved.missing : [],
             gc: {
                 at: typeof gc.at === "string" ? gc.at : null,
                 candidates: gc.candidates && typeof gc.candidates === "object" ? gc.candidates : {},
-                marks: gc.marks && typeof gc.marks === "object" ? gc.marks : {},
+                marks,
                 collected: Array.isArray(gc.collected) ? gc.collected : [],
             },
         };
     }
     const saveState = (state) => store.setMeta(STATE_KEY, state);
+    const seenOf = (state, from) => {
+        const t = state.seen[from] || (state.seen[from] = { done: [], dup: {} });
+        if (!Array.isArray(t.done)) t.done = [];
+        if (!t.dup || typeof t.dup !== "object") t.dup = {};
+        return t;
+    };
 
-    // -- Out: this computer's outbox to its folder ------------------------------
+    // -- Out: this computer's outbox to the store ------------------------------
 
-    // The file to append `bytes` to. A number is never used twice: when the
-    // file this computer wrote is gone (its folder deleted), the next one
-    // starts, so no other computer's cursor points into a new file.
-    async function outFile(dir, state, bytes) {
-        let onDisk = 0;
-        for (const name of await fsp.readdir(dir).catch(() => [])) {
-            const m = OWN_FILE.exec(name);
-            if (m) onDisk = Math.max(onDisk, Number(m[1]));
-        }
-        const out = state.out;
-        let n = Math.max(out?.n || 0, onDisk, 1);
-        const size = await sizeOf(path.join(dir, fileName(n)));
-        if (size < 0 && out?.n === n && out.used) n += 1;
-        else if (size > 0 && size + bytes > fileLimit) n += 1;
-        return n;
-    }
-
-    // Copies the media a row names into sync/media; returns { file: size }
-    // for the files that are here, so a reader knows when one has arrived whole.
-    async function shipMedia(syncDir, row) {
+    // Copies the media a row names into media/; returns { file: size } for
+    // the files that are here, so a reader knows when one has arrived whole.
+    async function shipMedia(shared, media, row) {
         const sizes = {};
         for (const name of mediaRefs(row)) {
             const local = path.join(mediaDir, name);
             const size = await sizeOf(local);
             if (size < 0) continue;
-            await copyNew(local, path.join(syncDir, MEDIA_DIR), name);
+            if (!media.has(name)) {
+                const made = await shared.upload(mediaName(name), local);
+                media.set(name, made ? [made] : []);
+            }
             sizes[name] = size;
         }
         return Object.keys(sizes).length ? sizes : undefined;
     }
 
-    async function writeOut(syncDir, state) {
-        const dir = path.join(syncDir, pc);
+    // One new object per batch. Its number is kept before it is written, so
+    // it is never used twice (a crash after the write sends the same entries
+    // again under the next one, which nobody minds), and it is past every
+    // number of this computer the store shows (its database brought back
+    // from a backup).
+    async function writeOut(shared, state, own, media) {
         let sent = 0;
         for (;;) {
             const entries = store.outbox(0, batch);
             if (!entries.length) break;
-            await fsp.mkdir(dir, { recursive: true });
             const lines = coalesce(entries, pc);
             for (const line of lines) {
                 if (line.op !== "upsert") continue;
-                const media = await shipMedia(syncDir, line.row);
-                if (media) line.media = media;
+                const sizes = await shipMedia(shared, media, line.row);
+                if (sizes) line.media = sizes;
             }
-            const text = lines.map((line) => keys.sign(JSON.stringify(line)) + "\n").join("");
-            const n = await outFile(dir, state, Buffer.byteLength(text));
-            await appendLines(path.join(dir, fileName(n)), text);
-            state.out = { pc, n, used: true };
+            const text = lines.map((line) => keys.sign(JSON.stringify(line)) + "\n").join("") + endLine(lines.length);
+            const onStore = own.reduce((n, o) => Math.max(n, parseChanges(o.name)?.seq || 0), 0);
+            const seq = Math.max(state.out?.n || 0, onStore) + 1;
+            state.out = { pc, n: seq, first: state.out?.first || seq };
             saveState(state);
-            // Only what is on disk is forgotten; a crash before this line
-            // writes the same entries again, which nobody minds.
+            own.push(await shared.putNew(changesName(pc, seq), Buffer.from(text), { pc, seq: String(seq) }));
+            // Only what is in the store is forgotten.
             store.pruneOutbox(entries[entries.length - 1].seq);
             sent += lines.length;
         }
         return sent;
     }
 
-    // This computer's computer.json, when what it says changed, it is gone,
-    // or it is half a day old.
-    async function writeComputer(syncDir, state) {
+    // This computer's object, when what it says changed, it is gone, or it
+    // is half a day old.
+    async function writeComputer(shared, state) {
         if (!describe) return;
         let me;
         try {
@@ -402,26 +435,17 @@ function createSyncEngine({
         const name = String(me.name || "").slice(0, 80);
         const version = String(me.version || "").slice(0, 40);
         const bibles = editionList(me.bibles);
-        const dir = path.join(syncDir, pc);
-        const file = path.join(dir, COMPUTER_FILE);
         const last = state.me;
         const at = now();
         const fresh = last && last.name === name && last.version === version && String(last.bibles || []) === String(bibles)
             && at - Date.parse(last.at || 0) < COMPUTER_REFRESH_MS;
-        if (fresh && (await sizeOf(file)) > 0) return;
-        await fsp.mkdir(dir, { recursive: true });
+        if (fresh && (await shared.list(computerName(pc))).some((o) => o.name === computerName(pc))) return;
         const body = { pc, name, version, bibles, at: at.toISOString() };
-        const tmp = path.join(dir, `.${COMPUTER_FILE}.${process.pid}.partial`);
-        try {
-            await fsp.writeFile(tmp, keys.sign(JSON.stringify(body)) + "\n");
-            await fsp.rename(tmp, file);
-        } finally {
-            await fsp.rm(tmp, { force: true }).catch(() => {});
-        }
+        await shared.putWhole(computerName(pc), Buffer.from(keys.sign(JSON.stringify(body)) + "\n"));
         state.me = { pc, name, version, bibles, at: body.at };
     }
 
-    // -- In: everyone else's folders ------------------------------------------
+    // -- In: everyone else's changes -------------------------------------------
 
     function noteMissing(state, name, size) {
         const at = state.missing.findIndex((m) => m.name === name);
@@ -430,45 +454,61 @@ function createSyncEngine({
         if (state.missing.length > MISSING_LIMIT) state.missing.splice(0, state.missing.length - MISSING_LIMIT);
     }
 
-    // A file from sync/media into the media folder, when it is there whole
-    // (the size its row said). Returns true when the file is here now.
-    async function fetchFile(syncDir, name, expected) {
-        if ((await sizeOf(path.join(mediaDir, name))) >= 0) return true;
-        const from = path.join(syncDir, MEDIA_DIR, name);
-        const size = await sizeOf(from);
-        if (size < 0 || (expected != null && size !== expected)) return false;
+    // A file from media/ into the media folder, when it is there whole (the
+    // size its row said; of two objects of the name, one that has it).
+    // Through a hidden name, kept after a cut so the next try goes on from
+    // it. Returns true when the file is here now.
+    async function fetchFile(shared, media, name, expected) {
+        const local = path.join(mediaDir, name);
+        if ((await sizeOf(local)) >= 0) return true;
+        const objs = (media.get(name) || []).filter((o) => expected == null || o.size === expected);
+        if (!objs.length) return false;
         await fsp.mkdir(mediaDir, { recursive: true });
-        await copyNew(from, mediaDir, name);
-        return (await sizeOf(path.join(mediaDir, name))) >= 0;
+        const tmp = path.join(mediaDir, tempOf(name));
+        for (const o of objs) {
+            try {
+                await shared.download(o.id, tmp);
+            } catch {
+                continue; // cut or locked: retried, from where it stopped
+            }
+            if ((await sizeOf(tmp)) !== o.size) {
+                await fsp.rm(tmp, { force: true }).catch(() => {});
+                continue;
+            }
+            if ((await sizeOf(local)) < 0) await fsp.rename(tmp, local);
+            await fsp.rm(tmp, { force: true }).catch(() => {});
+            return true;
+        }
+        return false;
     }
 
-    async function fetchMedia(syncDir, state, entry) {
+    async function fetchMedia(shared, media, state, entry) {
         if (entry.op !== "upsert") return;
         for (const name of mediaRefs(entry.row)) {
             const expected = entry.media && Number.isFinite(entry.media[name]) ? entry.media[name] : null;
             let here = false;
             try {
-                here = await fetchFile(syncDir, name, expected);
+                here = await fetchFile(shared, media, name, expected);
             } catch { /* locked or offline: retried */ }
             if (!here) noteMissing(state, name, expected);
         }
     }
 
-    async function retryMissing(syncDir, state) {
+    async function retryMissing(shared, media, state) {
         const still = [];
         for (const m of state.missing) {
             let here = false;
             try {
-                here = await fetchFile(syncDir, m.name, m.size);
+                here = await fetchFile(shared, media, m.name, m.size);
             } catch { /* retried */ }
             if (!here) still.push(m);
         }
         state.missing = still;
     }
 
-    async function applyBatch(syncDir, state, entries, totals) {
+    async function applyBatch(shared, media, state, entries, totals) {
         if (!entries.length) return;
-        for (const entry of entries) await fetchMedia(syncDir, state, entry);
+        for (const entry of entries) await fetchMedia(shared, media, state, entry);
         applying = true;
         try {
             const r = store.applyRemote(entries);
@@ -480,33 +520,41 @@ function createSyncEngine({
         }
     }
 
-    // Reads one file from its cursor. Stops at a last line still without its
-    // newline, and at an unreadable line until the file has stopped growing
-    // or a later line shows the file went on.
-    async function readFile(syncDir, state, dir, name, key, from, totals) {
-        const file = path.join(dir, name);
-        let st;
-        try {
-            st = await fsp.stat(file);
-        } catch {
-            return null;
-        }
-        let offset = Number(state.cursors[key]) || 0;
-        if (st.size === offset) return st.mtimeMs;
+    // Reads one changes object from where it was left. Stops at a last line
+    // still without its newline, and at an unreadable line until the object
+    // has stopped growing or a later line shows it went on; at its end line
+    // it is done for good. `alone`: the only object of its name (else it is
+    // remembered by its id). -> false when it is gone.
+    async function readObject(shared, media, state, obj, from, alone, totals) {
+        const seq = parseChanges(obj.name).seq;
+        const seen = seenOf(state, from);
+        if (alone ? inRanges(seen.done, seq) : seen.dup[obj.id]) return true;
+        const part = state.part[obj.id];
+        let offset = part ? Number(part.at) || 0 : 0;
+        if (part && obj.size === offset) return true;
         // Shorter than what was read: replaced by another copy. Read it again.
-        if (st.size < offset) offset = 0;
+        if (obj.size < offset) offset = 0;
         let buf;
         try {
-            buf = await fsp.readFile(file);
+            buf = await shared.read(obj.id);
         } catch {
-            return st.mtimeMs; // locked by the sync service: next pass
+            return true; // locked by the sync service: next pass
         }
+        if (!buf) return false;
+        if (buf.length < offset) offset = 0;
         let pos = offset;
         let pending = [];
+        let ended = false;
         const flush = async () => {
-            await applyBatch(syncDir, state, pending, totals);
+            await applyBatch(shared, media, state, pending, totals);
             pending = [];
-            state.cursors[key] = pos;
+            if (ended) {
+                delete state.part[obj.id];
+                seen.done = addRange(seen.done, seq);
+                if (!alone) seen.dup[obj.id] = 1;
+            } else {
+                state.part[obj.id] = { pc: from, seq, at: pos };
+            }
             saveState(state);
         };
         while (pos < buf.length) {
@@ -519,13 +567,18 @@ function createSyncEngine({
                     entry = JSON.parse(text);
                 } catch {
                     const later = buf.indexOf(0x0a, nl + 1) >= 0;
-                    if (!later && unreadable.get(key) !== buf.length) {
-                        unreadable.set(key, buf.length);
+                    if (!later && unreadable.get(obj.id) !== buf.length) {
+                        unreadable.set(obj.id, buf.length);
                         break;
                     }
                     totals.bad += 1;
-                    logOnce(`linha ilegível ignorada em ${key}`);
+                    logOnce(`linha ilegível ignorada em ${obj.name}`);
                 }
+            }
+            pos = nl + 1;
+            if (isEnd(entry)) {
+                ended = true;
+                break;
             }
             if (isEntry(entry, from)) {
                 // Signed with this church's key, or not taken at all.
@@ -539,59 +592,56 @@ function createSyncEngine({
                     peer.rejected += 1;
                     peer.last = "rejected";
                     totals.rejected += 1;
-                    logOnce(`linhas sem a assinatura do código da igreja ignoradas em ${key}`);
+                    logOnce(`linhas sem a assinatura do código da igreja ignoradas em ${obj.name}`);
                 }
             }
-            pos = nl + 1;
             if (pending.length >= batch) await flush();
         }
         await flush();
-        return st.mtimeMs;
+        return true;
     }
 
-    async function readIn(syncDir, state) {
+    async function readIn(shared, media, state) {
         const totals = { applied: 0, skipped: 0, failed: 0, bad: 0, rejected: 0 };
-        const computers = new Map();
         const out = new Map(state.removed.map((r) => [r.pc, r]));
-        for (const d of await fsp.readdir(syncDir, { withFileTypes: true })) {
-            const m = d.isDirectory() && PC_DIR.exec(d.name);
-            if (!m) continue;
-            const from = m[1].toLowerCase();
+        const changes = byPc((await shared.list("changes/")).filter((o) => parseChanges(o.name)));
+        const who = byPc(await shared.list("computers/"));
+        const states = byPc(await shared.list("state/"));
+        const pcs = new Set([...changes.keys(), ...who.keys(), ...states.keys()]);
+        const computers = [];
+        for (const from of pcs) {
             if (from === pc) continue;
-            const dir = path.join(syncDir, d.name);
-            let names;
-            try {
-                names = (await fsp.readdir(dir)).filter((n) => ANY_FILE.test(n)).sort(byNumber);
-            } catch {
-                continue; // deleted while we looked
-            }
-            const seen = computers.get(from) || { pc: from, name: null, version: null, bibles: [], seen: null, signed: null, files: 0, lastChange: 0 };
-            const who = await readComputer(dir, keys);
-            if (who && (seen.signed === null || who.verified)) {
-                seen.signed = who.verified;
-                if (who.verified) Object.assign(seen, { name: who.name, version: who.version, bibles: who.bibles, seen: who.at });
+            const seen = { pc: from, name: null, version: null, bibles: [], seen: null, signed: null, files: 0, lastChange: 0 };
+            const info = await bestComputer(shared, (who.get(from) || []).filter((o) => o.name === computerName(from)), keys);
+            if (info) {
+                seen.signed = info.verified;
+                if (info.verified) Object.assign(seen, { name: info.name, version: info.version, bibles: info.bibles, seen: info.at });
             }
             // Taken out: listed, never read, until it types the code again.
             if (out.has(from)) {
                 seen.removed = { at: out.get(from).at, by: out.get(from).by };
-                computers.set(from, seen);
+                computers.push(seen);
                 continue;
             }
-            for (const name of names) {
-                const mtime = await readFile(syncDir, state, dir, name, `${d.name}/${name}`, from, totals);
-                if (mtime == null) continue;
+            // In order, the first made first among objects of one name.
+            const objs = (changes.get(from) || []).sort((a, b) => (parseChanges(a.name).seq - parseChanges(b.name).seq) || a.created - b.created);
+            const count = new Map();
+            for (const o of objs) count.set(o.name, (count.get(o.name) || 0) + 1);
+            for (const o of objs) {
+                if (!(await readObject(shared, media, state, o, from, count.get(o.name) === 1, totals))) continue;
                 seen.files += 1;
-                seen.lastChange = Math.max(seen.lastChange, mtime);
+                seen.lastChange = Math.max(seen.lastChange, o.modified || 0);
             }
-            computers.set(from, seen);
+            computers.push(seen);
         }
         // verified: the last line read from it carried this church's
         // signature (false: it writes without the code, or with an old one);
-        // with no line read yet, its computer.json says; null: nothing at all.
-        // name, version, bibles, seen: from its computer.json, only when signed.
+        // with no line read yet, its computer object says; null: nothing at
+        // all. name, version, bibles, seen: from its computer object, only
+        // when signed.
         return {
             totals,
-            computers: [...computers.values()].map(({ signed, ...c }) => {
+            computers: computers.map(({ signed, ...c }) => {
                 const peer = state.peers[c.pc];
                 return {
                     ...c,
@@ -603,22 +653,23 @@ function createSyncEngine({
         };
     }
 
-    // -- The cleanup of sync/media -------------------------------------------
+    // -- The cleanup of media/ ---------------------------------------------------
     //
-    // sync/media only grows as rows bring files; a video deleted on every
-    // computer would hold the Drive's space for ever. A file there goes only
-    // when it has been unused for gcGraceMs by every computer and every
-    // computer has read past the moment it became unused — which is when
-    // each of them had taken the deletes that freed it. Each computer says
-    // both in its own <pc>/state.json (written after it reads): `read`, its
-    // cursors, and `refs`, the media its rows use. A computer with a folder
-    // and no state.json (an older KERYX, or one not yet run) holds every
-    // file. Only the shared copy goes: the media folder of each computer is
-    // never touched. A computer that still uses a file someone collected (a
-    // row edited while it was away) copies it back from its own media
-    // folder: the names collected are announced in state.json (`collected`).
-    // state.json is signed like a line: only computers with the church's
-    // code count, and a computer taken out ("Tirar") holds nothing back.
+    // media/ only grows as rows bring files; a video deleted on every
+    // computer would hold the space for ever. A file there goes only when it
+    // has been unused for gcGraceMs by every computer and every computer has
+    // read past the moment it became unused — which is when each of them had
+    // taken the deletes that freed it. Each computer says both in its own
+    // state object (written after it reads): `read`, what it has read, and
+    // `refs`, the media its rows use. A computer that has written changes
+    // and no state object (one not yet run), or only an older KERYX's (whose
+    // byte cursors say nothing about objects), holds every file. Only the
+    // shared copy goes: the media folder of each computer is never touched.
+    // A computer that still uses a file someone collected (a row edited while
+    // it was away) puts it back from its own media folder: the names
+    // collected are announced in the state object (`collected`). The state
+    // object is signed like a line: only computers with the church's code
+    // count, and a computer taken out ("Tirar") holds nothing back.
 
     // The media every row here names (the church's content only).
     function liveRefs() {
@@ -635,89 +686,109 @@ function createSyncEngine({
         return names;
     }
 
-    async function publish(syncDir, state, names) {
-        const body = { pc, read: state.cursors, refs: [...names].sort(), collected: state.gc.collected };
+    const readOf = (state) => ({ seen: state.seen, part: state.part });
+
+    async function publish(shared, state, names) {
+        const body = { v: STATE_V, pc, read: readOf(state), refs: [...names].sort(), collected: state.gc.collected };
         const text = JSON.stringify(body);
-        const dir = path.join(syncDir, pc);
-        // Unchanged and still there (this computer's folder may be deleted).
-        if (text === published && (await sizeOf(path.join(dir, MANIFEST))) >= 0) return;
-        await fsp.mkdir(dir, { recursive: true });
-        await writeWhole(dir, MANIFEST, keys.sign(JSON.stringify({ ...body, at: now().toISOString() })));
+        // Unchanged and still there (someone may have deleted it).
+        if (text === published && (await shared.list(stateName(pc))).some((o) => o.name === stateName(pc))) return;
+        await shared.putWhole(stateName(pc), Buffer.from(keys.sign(JSON.stringify({ ...body, at: now().toISOString() }))));
         published = text;
     }
 
-    // The other computers that count: every folder in sync/ (Drive's " (1)"
-    // copies counted as theirs) and the newest signed state.json each wrote
-    // (null: none yet, which holds every file). A computer taken out, or one
-    // whose files never verified (no code, an old one), does not count.
-    async function readManifests(syncDir, state) {
+    // The other computers that count: every one with a state object or whose
+    // lines verified, and the newest signed state object each wrote (null:
+    // none yet, which holds every file). A computer taken out, or one whose
+    // lines never verified (no code, an old one), does not count. An older
+    // KERYX's state object keeps its refs and its collected names, and holds
+    // every file (its `read` cannot be compared with objects).
+    async function readManifests(shared, state) {
         const seen = new Map();
         const out = new Set(state.removed.map((r) => r.pc));
-        for (const d of await fsp.readdir(syncDir, { withFileTypes: true })) {
-            const m = d.isDirectory() && PC_DIR.exec(d.name);
-            if (!m) continue;
-            const from = m[1].toLowerCase();
+        const listed = byPc(await shared.list("state/"));
+        const pcs = new Set([...listed.keys(), ...Object.keys(state.peers)]);
+        for (const from of pcs) {
             if (from === pc || out.has(from)) continue;
-            let text = null;
-            try {
-                text = (await fsp.readFile(path.join(syncDir, d.name, MANIFEST), "utf8")).trim();
-            } catch { /* none yet */ }
-            let manifest = null;
-            if (text && keys.verify(text)) {
+            let best = null;
+            for (const o of (listed.get(from) || []).filter((x) => x.name === stateName(from))) {
+                let text = null;
                 try {
-                    manifest = JSON.parse(text);
-                } catch { /* not JSON: as none */ }
+                    text = (await shared.read(o.id))?.toString("utf8").trim() || null;
+                } catch { /* locked: as none */ }
+                let manifest = null;
+                if (text && keys.verify(text)) {
+                    try {
+                        manifest = JSON.parse(text);
+                    } catch { /* not JSON: as none */ }
+                }
+                if (!manifest || String(manifest.pc || "").toLowerCase() !== from) continue;
+                if (manifest.v !== STATE_V) manifest = { ...manifest, read: null };
+                if (!best || String(manifest.at || "") > String(best.at || "")) best = manifest;
             }
-            if (!manifest && state.peers[from]?.last !== "ok") continue;
-            const ok = manifest && String(manifest.pc || "").toLowerCase() === from ? manifest : null;
-            const before = seen.get(from) || null;
-            if (!before || (ok && String(ok.at || "") > String(before.at || ""))) seen.set(from, ok);
+            if (!best && state.peers[from]?.last !== "ok") continue;
+            seen.set(from, best);
         }
         return seen;
     }
 
-    // Every change file's size now: { "<pc dir>/<file>": bytes }.
-    async function changeSizes(syncDir) {
-        const sizes = {};
-        for (const d of await fsp.readdir(syncDir, { withFileTypes: true })) {
-            if (!d.isDirectory() || !PC_DIR.test(d.name)) continue;
-            const names = await fsp.readdir(path.join(syncDir, d.name)).catch(() => []);
-            for (const name of names) {
-                if (!ANY_FILE.test(name)) continue;
-                const size = await sizeOf(path.join(syncDir, d.name, name));
-                if (size >= 0) sizes[`${d.name}/${name}`] = size;
-            }
+    // What has been read now, as every computer must have read it before a
+    // file goes: for each computer, the numbers read to their end, and the
+    // objects read part of the way (how far). This computer's own objects
+    // are all there: from its first number on, whole; before it, the files
+    // an older KERYX appended to, by their size.
+    function markNow(state, own) {
+        const mark = {};
+        for (const [from, t] of Object.entries(state.seen)) mark[from] = { done: (t.done || []).map((r) => [...r]), part: {} };
+        for (const [id, p] of Object.entries(state.part)) (mark[p.pc] ||= { done: [], part: {} }).part[id] = [p.seq, p.at];
+        const first = state.out?.first || Infinity;
+        const mine = { done: [], part: {} };
+        const whole = [];
+        for (const o of own) {
+            const seq = parseChanges(o.name)?.seq;
+            if (!seq) continue;
+            if (seq >= first) whole.push(seq);
+            else mine.part[o.id] = [seq, o.size];
         }
-        return sizes;
+        mine.done = rangesOf(whole);
+        mark[pc] = mine;
+        return mark;
     }
 
-    // Whether `read` (a computer's cursors) covers what was in the files when
-    // the mark was taken, the computer's own files aside.
-    const readPast = (who, read, mark) => Boolean(read) && Object.entries(mark)
-        .every(([key, size]) => ownerOf(key) === who || (Number(read[key]) || 0) >= size);
+    // Whether `read` (a computer's) covers the mark, the computer's own
+    // objects aside.
+    function readPast(who, read, mark) {
+        if (!read || typeof read !== "object" || !read.seen || typeof read.seen !== "object") return false;
+        const part = read.part && typeof read.part === "object" ? read.part : {};
+        return Object.entries(mark).every(([owner, m]) => {
+            if (owner === who) return true;
+            const done = read.seen[owner]?.done || [];
+            return (m.done || []).every((r) => rangeWithin(r, done))
+                && Object.entries(m.part || {}).every(([id, [seq, size]]) => inRanges(done, seq) || (Number(part[id]?.at) || 0) >= size);
+        });
+    }
 
-    async function collect(syncDir, state, names) {
+    async function collect(shared, state, names, media, own) {
         const gc = state.gc;
         const at = now();
-        const manifests = await readManifests(syncDir, state);
-        const shared = path.join(syncDir, MEDIA_DIR);
+        const manifests = await readManifests(shared, state);
 
         // Put back what someone collected that a row here still uses.
-        const listed = new Set(await fsp.readdir(shared).catch(() => []));
         const announced = [...gc.collected, ...[...manifests.values()].flatMap((m) => (m && Array.isArray(m.collected) ? m.collected : []))];
         for (const c of announced) {
             const name = c && typeof c.name === "string" ? c.name : null;
-            if (!name || listed.has(name) || !names.has(name)) continue;
+            if (!name || media.has(name) || !names.has(name)) continue;
             const local = path.join(mediaDir, name);
             if ((await sizeOf(local)) < 0) continue;
             try {
-                if (await copyNew(local, shared, name)) listed.add(name);
+                const made = await shared.upload(mediaName(name), local);
+                if (made) media.set(name, [made]);
             } catch { /* next time */ }
         }
 
         const used = new Set(names);
         for (const m of manifests.values()) for (const name of (m && Array.isArray(m.refs) ? m.refs : [])) used.add(name);
-        const files = [...listed].filter((n) => !n.startsWith(".") && !n.endsWith(".partial"));
+        const files = [...media.keys()].filter((n) => (media.get(n) || []).length);
         const present = new Set(files);
         for (const name of Object.keys(gc.candidates)) {
             if (used.has(name) || !present.has(name)) delete gc.candidates[name];
@@ -727,22 +798,23 @@ function createSyncEngine({
             if (used.has(name) || gc.candidates[name]) continue;
             if (!mark) {
                 mark = at.toISOString();
-                gc.marks[mark] = await changeSizes(syncDir);
+                gc.marks[mark] = markNow(state, own);
             }
             gc.candidates[name] = { since: mark, mark };
         }
 
         let removed = 0;
-        const everyone = [[pc, state.cursors], ...[...manifests].map(([who, m]) => [who, m && m.read && typeof m.read === "object" ? m.read : null])];
+        const everyone = [[pc, readOf(state)], ...[...manifests].map(([who, m]) => [who, m && m.read && typeof m.read === "object" ? m.read : null])];
         for (const [name, c] of Object.entries(gc.candidates)) {
             if (at.getTime() - Date.parse(c.since) < gcGraceMs) continue;
             const marked = gc.marks[c.mark];
             if (!marked || !everyone.every(([who, read]) => readPast(who, read, marked))) continue;
             try {
-                await fsp.rm(path.join(shared, name), { force: true });
+                for (const o of media.get(name) || []) await shared.remove(o.id);
             } catch {
                 continue; // locked by the sync service: next time
             }
+            media.delete(name);
             delete gc.candidates[name];
             gc.collected.push({ name, at: at.toISOString() });
             removed += 1;
@@ -756,26 +828,38 @@ function createSyncEngine({
 
     const gcDue = (state) => !state.gc.at || now().getTime() - Date.parse(state.gc.at) >= gcEveryMs;
 
+    // media/ by name: the objects of each (a name may have two).
+    async function mediaIndex(shared) {
+        const media = new Map();
+        for (const o of await shared.list("media/")) {
+            const name = o.name.slice("media/".length);
+            if (!name || name.includes("/")) continue;
+            if (!media.has(name)) media.set(name, []);
+            media.get(name).push(o);
+        }
+        return media;
+    }
+
     // -- A pass ----------------------------------------------------------------
 
     async function once() {
-        let folder = null;
+        let shared = null;
         try {
-            folder = getFolder();
+            shared = current();
         } catch { /* settings unreadable: off */ }
-        if (!folder) {
+        if (!shared) {
             setStatus({ state: "off", folder: null });
             return;
         }
-        const root = path.resolve(String(folder));
+        const where = shared.where;
         const at = now().toISOString();
         let pairing = null;
         try {
             pairing = getPairing();
         } catch { /* unreadable: as if no code */ }
-        // A folder but no code: nothing is read or written (the outbox waits).
+        // A store but no code: nothing is read or written (the outbox waits).
         if (!pairing || !pairing.id || !pairing.key) {
-            setStatus({ state: "unpaired", folder: root, lastPass: at, error: null });
+            setStatus({ state: "unpaired", folder: where, lastPass: at, error: null });
             return;
         }
         if (!keys || keys.id !== pairing.id || keys.key !== pairing.key) {
@@ -784,57 +868,65 @@ function createSyncEngine({
         }
         // The folder itself is never made here: missing, it is a drive not
         // mounted or a sync service not running, not a place to start one.
-        if (!(await isDir(root))) {
-            setStatus({ ...status, state: "offline", folder: root, lastPass: at, error: "A pasta de sincronização não está disponível." });
-            logOnce(`pasta indisponível: ${root}`);
+        let up = false;
+        try {
+            up = await shared.available();
+        } catch { /* as not there */ }
+        if (!up) {
+            const why = shared.kind === "folder" ? "A pasta de sincronização não está disponível." : "O Google Drive não respondeu.";
+            setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: why });
+            logOnce(`indisponível: ${where}`);
             return;
         }
-        const syncDir = path.join(root, SYNC_DIR);
         try {
-            // The folder's code file: this code's, written back if it went
+            // The store's code file: this code's, written back if it went
             // missing (any computer with the code can), or another code's —
             // then this computer neither reads nor writes until the new code
             // is typed here.
-            const code = await readPairing(syncDir);
+            const code = await readPairing(shared);
             if (code.state === "bad") {
-                setStatus({ ...status, state: "offline", folder: root, lastPass: at, error: "O arquivo do código da igreja ainda está chegando pela pasta." });
+                setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: "O arquivo do código da igreja ainda está chegando pela pasta." });
                 return;
             }
             let state = null;
             if (code.state === "missing") {
-                state = loadState(root, pairing.id);
-                await writePairing(syncDir, pairingFile(keys, pc, now(), state.removed));
-                logOnce("arquivo do código refeito na pasta");
+                state = loadState(shared.key, pairing.id);
+                await writePairing(shared, pairingFile(keys, pc, now(), state.removed));
+                logOnce("arquivo do código refeito");
             } else if (!matches(code.file, keys)) {
-                setStatus({ ...status, state: "mismatch", folder: root, lastPass: at, error: "O código da igreja mudou nesta pasta. Digite o código novo para voltar a sincronizar." });
+                setStatus({ ...status, state: "mismatch", folder: where, lastPass: at, error: "O código da igreja mudou nesta pasta. Digite o código novo para voltar a sincronizar." });
                 logOnce("o código da pasta não é o deste computador");
                 return;
             }
-            state = state || loadState(root, pairing.id);
+            state = state || loadState(shared.key, pairing.id);
             if (code.state === "ok") state.removed = removedOf(code.file, keys) || [];
             const me = state.removed.find((r) => r.pc === pc);
             if (me) {
                 saveState(state);
-                setStatus({ ...status, state: "removed", folder: root, lastPass: at, removed: { at: me.at, by: me.by }, error: "Este computador foi tirado da sincronização. Digite o código da igreja para voltar." });
+                setStatus({ ...status, state: "removed", folder: where, lastPass: at, removed: { at: me.at, by: me.by }, error: "Este computador foi tirado da sincronização. Digite o código da igreja para voltar." });
                 logOnce("este computador foi tirado da sincronização");
                 return;
             }
-            await fsp.mkdir(path.join(syncDir, MEDIA_DIR), { recursive: true });
-            const sent = await writeOut(syncDir, state);
-            await writeComputer(syncDir, state);
-            const { totals, computers } = await readIn(syncDir, state);
-            await retryMissing(syncDir, state);
+            const own = (await shared.list(`changes/${pc}/`)).filter((o) => parseChanges(o.name)?.pc === pc);
+            const media = await mediaIndex(shared);
+            const sent = await writeOut(shared, state, own, media);
+            await writeComputer(shared, state);
+            const { totals, computers } = await readIn(shared, media, state);
+            await retryMissing(shared, media, state);
             // A file no row here names any more is not waited for.
             const names = liveRefs();
+            for (const m of state.missing) {
+                if (!names.has(m.name)) await fsp.rm(path.join(mediaDir, tempOf(m.name)), { force: true }).catch(() => {});
+            }
             state.missing = state.missing.filter((m) => names.has(m.name));
-            const collected = gcDue(state) ? await collect(syncDir, state, names) : 0;
+            const collected = gcDue(state) ? await collect(shared, state, names, media, own) : 0;
             saveState(state);
-            await publish(syncDir, state, names);
+            await publish(shared, state, names);
             missingNow = state.missing.map((m) => m.name);
             const { bad, rejected, ...received } = totals;
             setStatus({
                 state: "ok",
-                folder: root,
+                folder: where,
                 lastPass: at,
                 lastOk: at,
                 error: null,
@@ -849,7 +941,7 @@ function createSyncEngine({
             logOnce("");
         } catch (err) {
             const message = err && err.message ? err.message : String(err);
-            setStatus({ ...status, state: "error", folder: root, lastPass: at, error: `Não foi possível sincronizar: ${message}` });
+            setStatus({ ...status, state: "error", folder: where, lastPass: at, error: `Não foi possível sincronizar: ${message}` });
             logOnce(`erro: ${message}`);
         }
     }
@@ -881,9 +973,9 @@ function createSyncEngine({
         debounce.unref?.();
     }
 
-    // On a timer (others' changes arrive whenever the sync service brings
-    // them) and a moment after a local change to the church's content.
-    // Without a folder each pass ends at once.
+    // On a timer (others' changes arrive whenever they reach the store) and
+    // a moment after a local change to the church's content. Without a
+    // store each pass ends at once.
     function start({ intervalMs = 30000, debounce: wait = 3000 } = {}) {
         stop();
         debounceMs = wait;
@@ -907,7 +999,7 @@ function createSyncEngine({
     // sync off: then a file that is not here is simply not found).
     function missing() {
         try {
-            if (!getFolder()) return [];
+            if (!current()) return [];
         } catch {
             return [];
         }
@@ -917,4 +1009,4 @@ function createSyncEngine({
     return { pass, poke, start, stop, status: () => status, missing };
 }
 
-module.exports = { createSyncEngine, inspectFolder, syncDirOf, mediaRefs, coalesce, SYNC_DIR, MEDIA_DIR, MANIFEST, STATE_KEY, COMPUTER_FILE, fileName };
+module.exports = { createSyncEngine, inspectStore, inspectFolder, mediaRefs, coalesce, addRange, inRanges, endLine, STATE_KEY };

@@ -193,7 +193,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   in step, no server, no sign-in, last edit wins per row. Only computers
   with the church's code count (`shared/syncCode.mjs`: 8 symbols,
   `K7QM-2HXP`; every line signed, `electron/syncPairing.cjs`). The engine
-  is `electron/sync.cjs`, Configurações › Sincronização's main side
+  is `electron/sync.cjs`; **what it shares goes through the store seam
+  `electron/syncStore/`** (owner 2026-10-26, "Google Drive direto" PR 1 of
+  4: Drive spoken to directly will replace the folder; `index.cjs` is the
+  interface — list, read, putNew, putWhole, putIfAbsent, remove,
+  upload/download —, built for Drive's rules: objects never appended or
+  renamed, names not unique, a listing that lags). Adapters: `folder` (the
+  shared folder in its old layout, so 0.2.21 computers keep syncing through
+  it until PR 4) and `fakeDrive` (in memory, the tests' Drive; never `fs`
+  in a sync test that is not about the folder). Each pass writes ONE new
+  object per batch, `changes/<pc>/<seq>.jsonl`, ending in
+  `{"keryx":"end","lines":n}`; readers keep the `<seq>`s read to their end
+  as ranges (`sync.state.seen`), copies of one name by id, and only an
+  object without its end line by bytes (`part`: still arriving, or an older
+  KERYX's growing file). `state/<pc>.json` and `computers/<pc>.json` are
+  replaced whole. The Google sign-in and the Drive adapter are PR 2
+  (`docs/google-drive-setup.md`, the owner's steps); sessions never sign in
+  to Google. Configurações › Sincronização's main side
   `electron/syncControl.cjs` (`keryx:sync`; the key and code sealed with
   safeStorage), the section `settings/SyncSection.jsx` (pt-BR status in
   `src/lib/console/syncView.js`, one poll in `useSyncStatus`), the cloud
@@ -206,8 +222,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   ("Voltar todos", by default, or "Só este computador", which leaves).
   The outbox records only while syncing; what a newer version sends is
   parked (`_parked`) and a remote row never erases a column its sender
-  does not know. Tests use temp stores and a temp folder; only real Drive
-  folders confirm the rest (docs/checklist-pc-igreja.md, item 8).
+  does not know. Tests use temp stores and the fake Drive (a temp folder
+  for the folder adapter's own cases); only real Drive folders confirm the
+  rest (docs/checklist-pc-igreja.md, item 8).
   **What travels** (Rodada G7): every `SYNC_ENTITIES` row and every
   `keryx-media://` file any of its fields names. The whole-church test in
   `electron/sync.test.cjs` (`churchInABox`: a row of every synced entity,

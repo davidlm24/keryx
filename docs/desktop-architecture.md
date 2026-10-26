@@ -916,7 +916,7 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    the outbox (no echo). Returns `{ applied, skipped, failed }`; a change
    that fails is rolled back alone (a savepoint). What a newer version
    sends that this one cannot store is kept (PR 6).
-3. **The folder, main-process side (done):** `electron/sync.cjs`
+3. **The folder, main-process side (done; its format changed with the store seam, item 7):** `electron/sync.cjs`
    (`createSyncEngine`, pure Node, tested with three temp stores and one
    folder). The folder chosen holds:
 
@@ -1155,6 +1155,65 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    church PC copying every media file into Drive while it projects, a code
    typed on the second PC, edits in about 30 s, Tirar, leaving, and a
    restore for everyone.
+7. **The storage seam (2026-10-26, "Google Drive direto" PR 1 of 4):** the
+   owner chose to replace the shared folder with Google Drive spoken to
+   directly (as Holyrics: one church Google account on every computer, the
+   files in Drive's hidden `appDataFolder`, scope `drive.appdata`). Drive's
+   objects are immutable revisions, its names are not unique, it has no
+   append and no rename, and its listing lags a write; so the engine and the
+   pairing no longer touch `fs` for what they share: they speak to one
+   interface, `electron/syncStore/` (`index.cjs` describes it: `list`,
+   `read`, `putNew`, `putWhole`, `putIfAbsent` — first made wins,
+   `firstWins` in `rules.cjs` —, `remove`, `upload`/`download` that may
+   resume). Two adapters: **`folder`** (`folder.cjs`), the shared folder in
+   the layout of §3 above, so computers on 0.2.21 and earlier keep syncing
+   with the new ones through it until the folder mode goes (PR 4); and
+   **`fakeDrive`** (`fakeDrive.cjs`), in memory, holding the tests to
+   Drive's rules (no append, duplicate names, a listing that lags by N
+   calls or hides a name, failures and cut transfers on demand). The Drive
+   adapter itself, the Google sign-in and the new section are PRs 2 and 3
+   (`docs/google-drive-setup.md` is the owner's part).
+   - **The format**, in the store's names: `changes/<pc>/<seq>.jsonl` —
+     one new object per pass (a batch of up to 500 entries), the same
+     signed lines as before plus a last line `{"keryx":"end","lines":n}`
+     that says the object is all there; `<seq>` is kept in `sync.state`
+     before the object is written (`out.n`), never used twice, and past
+     every number of this computer the store lists (a database brought
+     back from a backup). `state/<pc>.json` and `computers/<pc>.json`
+     replaced whole; `keryx-sync.json`; `media/<file>`. The folder adapter
+     maps them to `sync/<pc>/changes-NNNNNN.jsonl`, `state.json`,
+     `computer.json`, `sync/keryx-sync.json` and `sync/media/`, so an
+     older KERYX reads a new computer's objects as change files (the end
+     line is no entry, which it skips) and a new computer reads an older
+     one's.
+   - **How a reader knows what is new**: no byte offsets for whole
+     objects. Per computer, `sync.state.seen[pc].done` holds the `<seq>`
+     of every object read to its end line, as ranges (`[[1, 40]]`), and
+     `seen[pc].dup` the ids of objects read when two shared a name (each
+     copy is read once: a conflict copy, an upload made twice). An object
+     without its end line yet — one Drive para computador is still
+     bringing down, or an older KERYX's change file, which only grows — is
+     read as far as its last whole line and remembered by its id with how
+     far (`part[id].at`), and read again when it grows. A database an
+     older KERYX left is taken as it was (its byte cursors become `part`,
+     its file number `out.n`), so nothing is read twice after the update.
+   - **The cleanup** keeps its rules; what changed is what "read past the
+     mark" means: the mark is what the marking computer has read
+     (`done` ranges and `part` sizes) plus its own objects, and a state
+     object (`v: 2`, `read: { seen, part }`) covers it when its ranges
+     hold the mark's and its `part` reached the mark's sizes. A state an
+     older KERYX wrote (byte cursors by file) keeps its `refs` and holds
+     every file, and an older KERYX cannot read a new one's `read` either,
+     so in a mixed church no shared media is collected until every
+     computer is on the new version (nothing is lost, the folder only
+     waits). The mark no longer counts what a computer taken out wrote after
+     it was taken out (nobody reads it, so it held the cleanup back for
+     good).
+   - Tests: `electron/sync.test.cjs` runs every case on `fakeDrive` (and
+     duplicate names, a lagging listing, failures, cut transfers), plus
+     the folder adapter with an older KERYX's growing file, a mixed church
+     and a database from 0.2.21; `syncControl.test.cjs` still runs on a
+     real temp folder.
 
 ## 9. Project layout after the change
 

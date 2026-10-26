@@ -2,7 +2,10 @@
 // code (shared/syncCode.mjs) turns into, so only computers that typed it
 // count.
 //
-//   <folder>/sync/keryx-sync.json   { v: 1, id, check, made, by, removed, mac }
+//   keryx-sync.json   { v: 1, id, check, made, by, removed, mac }
+//
+// kept in the sync's store (electron/syncStore/: the shared folder's
+// sync/keryx-sync.json, or an object of that name on Drive).
 //
 // - id: random, made with the code (and again when the code changes). It
 //   salts the key, so the same code in another folder is another key.
@@ -22,18 +25,17 @@
 // the old one after the code changed) is counted for that computer and never
 // applied.
 //
-// Only the file named keryx-sync.json counts. Two computers that made a code
-// at the same moment leave a conflict copy beside it; the one that lost sees
-// "outro código" and types the code of the file that stayed.
+// Only the object named keryx-sync.json counts, the first made when there
+// are several (Drive's names are not unique; the folder's conflict copies
+// have other names). Two computers that made a code at the same moment: the
+// one that lost sees "outro código" and types the code that stayed.
 //
-// Pure Node (crypto, fs), tested in sync.test.cjs.
+// Pure Node (crypto) over a store, tested in sync.test.cjs.
 
 const crypto = require("node:crypto");
-const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-
-const fsp = fs.promises;
+const { oldestOf } = require("./syncStore/rules.cjs");
 
 const PAIRING_FILE = "keryx-sync.json";
 const VERSION = 1;
@@ -120,13 +122,17 @@ const isPairingFile = (f) => f && typeof f === "object" && !Array.isArray(f)
     && typeof f.id === "string" && f.id.length >= 8 && f.id.length <= 100 && typeof f.check === "string";
 
 // -> { state: "missing" } | { state: "bad" } (half downloaded, or not ours)
-// | { state: "ok", file }.
-async function readPairing(syncDir) {
+// | { state: "ok", file }. A store that cannot be listed throws.
+async function readPairing(store) {
+    const first = oldestOf((await store.list(PAIRING_FILE)).filter((o) => o.name === PAIRING_FILE));
+    if (!first) return { state: "missing" };
     let text;
     try {
-        text = await fsp.readFile(path.join(syncDir, PAIRING_FILE), "utf8");
-    } catch (err) {
-        return { state: err && err.code === "ENOENT" ? "missing" : "bad" };
+        const bytes = await store.read(first.id);
+        if (!bytes) return { state: "missing" };
+        text = bytes.toString("utf8");
+    } catch {
+        return { state: "bad" }; // locked by the sync service
     }
     try {
         const file = JSON.parse(text);
@@ -138,27 +144,11 @@ async function readPairing(syncDir) {
 
 // Writes the code file. Without `replace`, only where there is none (false
 // when one is already there: another computer made a code first). With it
-// (the code changed), over the old one, through a temporary name.
-async function writePairing(syncDir, file, { replace = false } = {}) {
-    await fsp.mkdir(syncDir, { recursive: true });
-    const target = path.join(syncDir, PAIRING_FILE);
-    const text = JSON.stringify(file, null, 2) + "\n";
-    if (!replace) {
-        try {
-            await fsp.writeFile(target, text, { flag: "wx" });
-            return true;
-        } catch (err) {
-            if (err && err.code === "EEXIST") return false;
-            throw err;
-        }
-    }
-    const tmp = path.join(syncDir, `.${PAIRING_FILE}.${process.pid}.partial`);
-    try {
-        await fsp.writeFile(tmp, text);
-        await fsp.rename(tmp, target);
-    } finally {
-        await fsp.rm(tmp, { force: true }).catch(() => {});
-    }
+// (the code changed), over the old one, whole.
+async function writePairing(store, file, { replace = false } = {}) {
+    const bytes = Buffer.from(JSON.stringify(file, null, 2) + "\n");
+    if (!replace) return store.putIfAbsent(PAIRING_FILE, bytes);
+    await store.putWhole(PAIRING_FILE, bytes);
     return true;
 }
 
@@ -168,12 +158,12 @@ const matches = (file, keys) => Boolean(file && keys && file.id === keys.id && s
 // A new code for the folder: { code: "K7QM-2HXP", id, key }, or
 // { error: "exists" } when the folder already has one (and `replace` was not
 // asked: changing the code is asking).
-async function createPairing(syncDir, { pc, replace = false, now = new Date() } = {}) {
+async function createPairing(store, { pc, replace = false, now = new Date() } = {}) {
     const { makeCode, parseCode, formatCode } = await codeRules();
     const { code } = parseCode(makeCode());
     const id = crypto.randomUUID();
     const key = await deriveKey(code, id);
-    const written = await writePairing(syncDir, pairingFile(keysFor(key, id), pc, now), { replace });
+    const written = await writePairing(store, pairingFile(keysFor(key, id), pc, now), { replace });
     if (!written) return { error: "exists" };
     return { code: formatCode(code), id, key };
 }
@@ -182,11 +172,11 @@ async function createPairing(syncDir, { pc, replace = false, now = new Date() } 
 // folder's, else { error } — a parseCode error ("short", "check", …),
 // "nocode" (the folder has no code yet), "busy" (its file is still arriving)
 // or "wrong" (a valid code, but not this folder's).
-async function joinPairing(syncDir, typed) {
+async function joinPairing(store, typed) {
     const { parseCode, formatCode } = await codeRules();
     const parsed = parseCode(typed);
     if (parsed.error) return parsed;
-    const found = await readPairing(syncDir);
+    const found = await readPairing(store);
     if (found.state === "missing") return { error: "nocode" };
     if (found.state !== "ok") return { error: "busy" };
     const key = await deriveKey(parsed.code, found.file.id);
@@ -198,16 +188,16 @@ async function joinPairing(syncDir, typed) {
 // a computer that typed the code again taking itself off it): the folder's
 // code file must be this pairing's. -> the new list, or { error:
 // "nocode" | "busy" | "mismatch" }.
-async function updateRemoved(syncDir, pairing, change, { pc, now = new Date() } = {}) {
+async function updateRemoved(store, pairing, change, { pc, now = new Date() } = {}) {
     const keys = keysFor(pairing.key, pairing.id);
-    const found = await readPairing(syncDir);
+    const found = await readPairing(store);
     if (found.state === "missing") return { error: "nocode" };
     if (found.state !== "ok") return { error: "busy" };
     if (!matches(found.file, keys)) return { error: "mismatch" };
     const before = removedOf(found.file, keys) || [];
     const after = cleanRemoved(change(before.map((r) => ({ ...r })), now));
     if (JSON.stringify(after) === JSON.stringify(before) && found.file.mac === keys.fileMac(found.file)) return after;
-    await writePairing(syncDir, pairingFile(keys, found.file.by || pc, now, after, found.file.made), { replace: true });
+    await writePairing(store, pairingFile(keys, found.file.by || pc, now, after, found.file.made), { replace: true });
     return after;
 }
 
