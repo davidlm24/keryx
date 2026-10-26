@@ -45,6 +45,12 @@ const META_MS = 30 * 1000;
 // A transfer may take long; it fails when nothing moves for this long.
 const IDLE_MS = 2 * 60 * 1000;
 const FRESH_MS = 2000;
+// The slowest a chunk may go up (bytes a second) before it is cut and goes
+// on at the next pass: a church on a slow line still sends, an 8 MB chunk
+// at this pace gets about 8 minutes. fetch says nothing while a body goes,
+// so a chunk's time is its size at this pace, never less than IDLE_MS.
+const MIN_RATE = 16 * 1024;
+const chunkTimeout = (bytes, idleMs = IDLE_MS, minRate = MIN_RATE) => Math.max(idleMs, Math.ceil((bytes / minRate) * 1000));
 const RATE_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
 
 const fail = (message, code, status) => Object.assign(new Error(message), { code, status });
@@ -101,7 +107,7 @@ function idleSignal(ms) {
 function createDriveStore({
     auth, fetchImpl = fetch, key = "drive", where = "Google Drive", api = API, upload: uploadUrl = UPLOAD,
     sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = () => Date.now(), freshMs = FRESH_MS, chunk = CHUNK,
-    tries = TRIES, idleMs = IDLE_MS,
+    tries = TRIES, idleMs = IDLE_MS, minRate = MIN_RATE,
 }) {
     let index = null; // Map id -> meta
     let pageToken = null;
@@ -361,13 +367,7 @@ function createDriveStore({
                 const end = Math.min(total, from + chunk);
                 const buf = Buffer.alloc(end - from);
                 await fh.read(buf, 0, buf.length, from);
-                const idle = idleSignal(idleMs);
-                let res;
-                try {
-                    res = await call(session, { method: "PUT", headers: { "Content-Range": `bytes ${from}-${end - 1}/${total}` }, body: buf }, { signal: idle.signal, retry: false });
-                } finally {
-                    idle.done();
-                }
+                const res = await call(session, { method: "PUT", headers: { "Content-Range": `bytes ${from}-${end - 1}/${total}` }, body: buf }, { signal: AbortSignal.timeout(chunkTimeout(buf.length, idleMs, minRate)), retry: false });
                 if (res.status === 308) {
                     const at = rangeEnd(res.headers.get("range"));
                     await drain(res);
@@ -469,4 +469,4 @@ function createDriveStore({
     return api0;
 }
 
-module.exports = { createDriveStore, CHUNK };
+module.exports = { createDriveStore, chunkTimeout, CHUNK, MIN_RATE };

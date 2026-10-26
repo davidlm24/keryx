@@ -158,14 +158,102 @@ test("the access token is refreshed before it ends, once for many callers", asyn
     assert.equal(await a.accessToken(), "acesso-novo-2", "after a 401 the next call refreshes");
 });
 
-test("a state that is not this sign-in's: nothing is exchanged, the listener closes", async () => {
-    const { a, google, seen } = auth({ answer: () => ({ code: "codigo-bom", state: "outro-estado-qualquer-x" }) });
-    await assert.rejects(a.signIn(), { code: "state" });
-    assert.equal(google.calls.length, 0);
+test("a state that is not this sign-in's: a 404, nothing exchanged, and the listener keeps waiting for the real one", async () => {
+    const google = fakeGoogle();
+    const settings = memorySettings();
+    const strays = [];
+    let redirect = null;
+    const a = createGoogleAuth({
+        settings,
+        protect: protection(),
+        fetchImpl: google.fetch,
+        config: CONFIG,
+        log: () => {},
+        signInMs: 3000,
+        // The browser's favicon, a port scan, another program with a made-up
+        // state, a second copy of the answer: then Google's real answer.
+        openExternal: async (href) => {
+            const u = new URL(href);
+            redirect = u.searchParams.get("redirect_uri");
+            google.challenge = u.searchParams.get("code_challenge");
+            const state = u.searchParams.get("state");
+            setTimeout(async () => {
+                for (const path of ["/favicon.ico", "/", `/?code=codigo-bom&state=outro-estado-qualquer-x`, `/?error=access_denied&state=x`]) {
+                    strays.push((await fetch(`${redirect}${path}`)).status);
+                }
+                strays.push((await fetch(`${redirect}/?code=codigo-bom&state=${state}`)).status);
+            }, 5);
+        },
+    });
+    const st = await a.signIn();
+    assert.equal(st.signedIn, true);
+    for (let i = 0; i < 50 && strays.length < 5; i++) await new Promise((r) => setTimeout(r, 10)); // the browser reads its page
+    assert.deepEqual(strays, [404, 404, 404, 404, 200]);
+    assert.equal(google.calls.filter((c) => c.form.grant_type === "authorization_code").length, 1, "only the real answer is exchanged");
+    await closed(redirect);
+
+    // Only strays, ever: the sign-in ends at its timeout, with nothing exchanged.
+    const only = auth({ answer: () => ({ code: "codigo-bom", state: "outro-estado-qualquer-x" }), signInMs: 150 });
+    await assert.rejects(only.a.signIn(), { code: "timeout" });
     await new Promise((r) => setTimeout(r, 20));
-    assert.equal(seen.status, 400);
-    await closed(seen.redirect);
+    assert.equal(only.seen.status, 404);
+    assert.equal(only.google.calls.length, 0);
+    await closed(only.seen.redirect);
+});
+
+// A refresh held on its way to Google until release(), answered with `answer`
+// (else as the fake answers).
+function holding(google) {
+    const inner = google.fetch;
+    let held = null;
+    google.fetch = async (url, init) => {
+        const form = Object.fromEntries(new URLSearchParams(init.body));
+        if (held && form.grant_type === "refresh_token") {
+            const h = held;
+            held = null;
+            await h.wait;
+            if (h.answer) return { ok: false, status: h.answer.status, json: async () => h.answer.body };
+        }
+        return inner(url, init);
+    };
+    return (answer = null) => {
+        let release;
+        held = { wait: new Promise((r) => { release = r; }), answer };
+        return () => release();
+    };
+}
+
+test("a refresh on its way when Sair is clicked never brings the access token back", async () => {
+    const google = fakeGoogle();
+    const hold = holding(google);
+    const { a, advance } = auth({ google });
+    await a.signIn();
+    advance(2 * 3600 * 1000);
+    const release = hold();
+    const late = a.accessToken();
+    await new Promise((r) => setTimeout(r, 10));
+    await a.signOut();
+    release();
+    await assert.rejects(late, { code: "auth" }, "its answer is of the account that left");
+    await assert.rejects(a.accessToken(), { code: "auth" });
     assert.equal(a.status().signedIn, false);
+});
+
+test("a refresh refused on its way while someone signs in again does not undo the new sign-in", async () => {
+    const google = fakeGoogle();
+    const hold = holding(google);
+    const { a, settings, advance } = auth({ google });
+    await a.signIn();
+    advance(2 * 3600 * 1000);
+    const release = hold({ status: 400, body: { error: "invalid_grant" } });
+    const late = a.accessToken();
+    await new Promise((r) => setTimeout(r, 10));
+    await a.signIn();
+    release();
+    assert.equal(await late, "acesso-1", "the caller gets the new sign-in's token");
+    assert.equal(a.status().signedIn, true);
+    assert.equal(a.status().refused, false);
+    assert.match(settings.data.google.refresh, /^safe:/, "the new sign-in's token is kept");
 });
 
 test("the person never comes back: the sign-in gives up and the port closes", async () => {

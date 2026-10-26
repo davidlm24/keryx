@@ -8,7 +8,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { createDriveStore } = require("./drive.cjs");
+const { createDriveStore, chunkTimeout, MIN_RATE } = require("./drive.cjs");
 const { fakeDriveServer: fakeDrive } = require("../fixtures/fakeDriveServer.cjs");
 const { createStore } = require("../db/store.cjs");
 const { createSyncEngine } = require("../sync.cjs");
@@ -230,4 +230,25 @@ test("the sync engine on the Drive adapter: two computers, the code's file, chan
     assert.ok(fs.readFileSync(path.join(b.mediaDir, "foto.jpg")).equals(fs.readFileSync(path.join(a.mediaDir, "foto.jpg"))));
     assert.equal(srv.named("keryx-sync.json").length, 1);
     for (const pc of pcs) pc.store.close();
+});
+
+test("a chunk's time follows its size: a slow line still sends, a stuck one is cut", async (t) => {
+    // 8 MB at the slowest pace allowed: about 8 minutes, never less than the idle time.
+    assert.equal(chunkTimeout(8 * 1024 * 1024), Math.ceil((8 * 1024 * 1024 / MIN_RATE) * 1000));
+    assert.ok(chunkTimeout(8 * 1024 * 1024) >= 8 * 60 * 1000);
+    assert.equal(chunkTimeout(1024, 120000), 120000);
+
+    const srv = await fakeDrive();
+    t.after(() => srv.close());
+    const file = path.join(tmp(), "lento.mp4");
+    const bytes = crypto.randomBytes(512 * 1024);
+    fs.writeFileSync(file, bytes);
+    srv.slowUpload = 200;
+    // Each 256 KB chunk answered after 200 ms: longer than the idle time, inside its size's time.
+    const slow = adapter(srv, { chunk: 256 * 1024, store: { idleMs: 50, minRate: 256 * 1024 } }).store;
+    const made = await slow.upload("media/lento.mp4", file);
+    assert.ok(srv.files.get(made.id).bytes.equals(bytes));
+    // At a pace that would allow only the idle time, the same line is cut.
+    const strict = adapter(srv, { chunk: 256 * 1024, store: { idleMs: 50, minRate: 1024 * 1024 * 1024 } }).store;
+    await assert.rejects(strict.upload("media/lento2.mp4", file), { code: "offline" });
 });

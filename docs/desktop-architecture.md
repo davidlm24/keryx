@@ -1264,7 +1264,7 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      listing; a restart lists once). `putNew` is a multipart create,
      `putWhole` updates the oldest file of the name and removes the others,
      `putIfAbsent` is `firstWins`. Media goes up with the **resumable**
-     protocol in 8 MB chunks (a cut asks Drive what it has and goes on,
+     protocol in 8 MB chunks, each given the time its size takes at 16 KB/s (a cut asks Drive what it has and goes on,
      while the session lives in this run; an expired one starts over) and
      comes down by `Range` into the engine's `.partial`, tied by an `.id`
      file to the Drive file it came from. 429, 5xx and Drive's rate-limit

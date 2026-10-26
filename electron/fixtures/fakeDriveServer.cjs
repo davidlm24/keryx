@@ -19,6 +19,7 @@ function fakeDriveServer({ page = 2 } = {}) {
         files, requests, token: "acesso-1", page,
         cutUpload: null, // bytes of the next session PUT before the connection drops
         cutDownload: null, // bytes of the next media GET before it drops
+        slowUpload: 0, // ms each resumable chunk takes to be answered (a slow line)
         // The next `times` requests matching get this answer instead.
         fault(match, status, { headers = {}, body = { error: { code: status } }, times = 1 } = {}) { faults.push({ match, status, headers, body, times }); },
     };
@@ -179,7 +180,7 @@ function fakeDriveServer({ page = 2 } = {}) {
                 got += d.length;
                 if (cut != null && got >= cut) req.socket.destroy();
             });
-            req.on("end", answer);
+            req.on("end", () => setTimeout(answer, srv.slowUpload || 0));
             return undefined;
         }
         await readBody(req);

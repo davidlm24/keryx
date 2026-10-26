@@ -75,14 +75,19 @@ function page(res, ok) {
     res.end(`<!doctype html><meta charset="utf-8"><title>KERYX</title><body style="font:16px system-ui;margin:3em;color:#222"><p>${text}</p></body>`);
 }
 
-// A listener on 127.0.0.1 at a free port that takes one request: the
-// answer when `state` is this sign-in's. -> { port, result, cancel }.
+// A listener on 127.0.0.1 at a free port, until the ONE request that
+// carries this sign-in's `state`: the answer (a code, or Google's refusal).
+// Anything else — the browser's favicon, a port scan, another program — gets
+// a 404 and the listener keeps waiting, so it cannot end the sign-in. It
+// closes after that answer's page is sent, at the timeout or on cancel.
+// -> { port, result, cancel }.
 function listenOnce(state, ms) {
     return new Promise((resolve, reject) => {
         const server = http.createServer();
         let settle;
         const result = new Promise((res, rej) => { settle = { res, rej }; });
         let done = false;
+        let answered = false; // the matching request came: no second one
         let timer = null;
         const finish = (err, value) => {
             if (done) return;
@@ -94,17 +99,23 @@ function listenOnce(state, ms) {
             else settle.res(value);
         };
         server.on("request", (req, res) => {
-            if (done) {
+            if (done || answered) {
                 res.writeHead(410, { Connection: "close" }).end();
                 return;
             }
             const q = new URL(req.url || "/", "http://127.0.0.1").searchParams;
+            if (req.method !== "GET" || !sameText(q.get("state") || "", state)) {
+                res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", Connection: "close" }).end();
+                return;
+            }
+            answered = true;
             let err = null;
-            if (req.method !== "GET" || !sameText(q.get("state") || "", state)) err = fail("A resposta não era desta entrada. Tente de novo.", "state");
-            else if (q.get("error") === "access_denied") err = fail("A entrada foi cancelada na página do Google.", "denied");
+            if (q.get("error") === "access_denied") err = fail("A entrada foi cancelada na página do Google.", "denied");
             else if (q.get("error") || !q.get("code")) err = fail("O Google não autorizou a entrada. Tente de novo.", "denied");
+            const value = err ? null : { code: q.get("code"), scope: q.get("scope") || "" };
+            // Closed once the page has gone, so the browser shows it.
+            res.once("close", () => finish(err, value));
             page(res, !err);
-            finish(err, err ? null : { code: q.get("code"), scope: q.get("scope") || "" });
         });
         server.on("error", (err) => {
             if (!done) {
@@ -133,6 +144,16 @@ function createGoogleAuth({
     };
     let access = null; // { token, until }
     let refreshing = null;
+    // Bumped by every sign-in and Sair: a refresh still on its way from an
+    // earlier one is of an account no longer here, and its answer is dropped
+    // (it never brings an access token back after Sair, nor writes over a
+    // newer sign-in).
+    let gen = 0;
+    const newGeneration = () => {
+        gen += 1;
+        access = null;
+        refreshing = null;
+    };
     let flow = null; // the sign-in waiting for the browser: { cancel }
     const changed = () => {
         try {
@@ -231,6 +252,7 @@ function createGoogleAuth({
                 throw fail("Para sincronizar, deixe marcada a permissão dos dados do KERYX no Google Drive.", "scope");
             }
             const email = emailOf(idToken, config.clientId);
+            newGeneration();
             settings.set(KEY, { refresh: protect.seal(refresh), email, at: new Date(now()).toISOString() });
             access = { token, until: now() + (Number(expires) || 3600) * 1000 };
             return status();
@@ -241,11 +263,20 @@ function createGoogleAuth({
     }
 
     async function refresh() {
+        const mine = gen;
         const s = saved();
         if (!s.refresh) throw fail(s.refused ? ENTER_AGAIN : "Entre com a conta da igreja.", "auth");
         const kept = protect.open(s.refresh);
         if (!kept) throw fail(ENTER_AGAIN, "auth");
-        const r = await post(config.tokenUrl, { ...clientForm(), refresh_token: kept, grant_type: "refresh_token" });
+        let r;
+        try {
+            r = await post(config.tokenUrl, { ...clientForm(), refresh_token: kept, grant_type: "refresh_token" });
+        } catch (err) {
+            if (mine !== gen) return accessToken();
+            throw err;
+        }
+        // Sair, or another sign-in, while it was on its way: start from now.
+        if (mine !== gen) return accessToken();
         if (r.ok && r.body.access_token) {
             access = { token: r.body.access_token, until: now() + (Number(r.body.expires_in) || 3600) * 1000 };
             return access.token;
@@ -264,7 +295,10 @@ function createGoogleAuth({
     // The access token for a call to Google (one refresh at a time).
     async function accessToken() {
         if (access && access.until - EARLY_MS > now()) return access.token;
-        if (!refreshing) refreshing = refresh().finally(() => { refreshing = null; });
+        if (!refreshing) {
+            const p = refresh().finally(() => { if (refreshing === p) refreshing = null; });
+            refreshing = p;
+        }
         return refreshing;
     }
 
@@ -274,7 +308,7 @@ function createGoogleAuth({
         const s = saved();
         const kept = s.refresh ? protect.open(s.refresh) : null;
         settings.set(KEY, null);
-        access = null;
+        newGeneration();
         changed();
         let revoked = false;
         if (kept) {
