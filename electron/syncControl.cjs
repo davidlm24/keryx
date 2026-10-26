@@ -7,16 +7,24 @@
 // the code (safeStorage) and the bell come in as functions.
 //
 // This computer's settings.json keeps, under "sync":
-//   { folder, paused, pairing: { id, key, code, joinedAt } }
+//   { folder, store, paused, pairing: { id, key, code, joinedAt } }
 // key and code sealed by `protect` (Windows' own protection, DPAPI): the key
 // signs and checks the lines; the code is kept only so "Mostrar o código"
 // works when another computer joins later. Neither is ever in the folder.
+//
+// store: "drive" = Google Drive spoken to directly (Google Drive direto,
+// PR 2: the adapter syncStore/drive.cjs over the church's account,
+// googleAuth.cjs, which keeps its own "google" entry); anything else = the
+// folder. Until PR 3 makes Configurações' page for it, only the ops below
+// switch it (useDrive, googleSignIn, googleStatus, googleSignOut); the
+// folder mode stays until PR 4.
 
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { createSyncEngine, inspectFolder } = require("./sync.cjs");
+const { createSyncEngine, inspectFolder, inspectStore } = require("./sync.cjs");
 const { createFolderStore } = require("./syncStore/index.cjs");
+const { createDriveStore } = require("./syncStore/drive.cjs");
 const { createPairing, joinPairing, updateRemoved, codeRules } = require("./syncPairing.cjs");
 
 const KEY = "sync";
@@ -42,6 +50,9 @@ function sealWith(safeStorage) {
         }
     };
     return {
+        // Whether seal() really protects (googleAuth.cjs refuses to keep a
+        // Google token in the plain fallback).
+        safe: available,
         seal: (text) => (available()
             ? `safe:${safeStorage.encryptString(String(text)).toString("base64")}`
             : `plain:${Buffer.from(String(text)).toString("base64")}`),
@@ -71,12 +82,37 @@ async function joinMessage(result) {
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 
 // onStatus: told after every pass, too (main pushes the media still coming).
-function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = async () => null, openPath = null, describe = () => ({}), notify = null, dismiss = null, log = console.warn, now = () => new Date(), onStatus: told = null, engineOptions = {} }) {
+// google: googleAuth.cjs (null: no Drive here); driveOptions: what the Drive
+// adapter is made with besides it (fetchImpl, the tests' endpoints).
+function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = async () => null, openPath = null, describe = () => ({}), notify = null, dismiss = null, log = console.warn, now = () => new Date(), onStatus: told = null, engineOptions = {}, google = null, driveOptions = {} }) {
     const config = () => {
         const c = settings.get(KEY, null);
         return c && typeof c === "object" ? c : {};
     };
     const save = (next) => settings.set(KEY, next && Object.keys(next).length ? next : null);
+    const onDrive = () => config().store === "drive" && Boolean(google);
+
+    // The store in use, made again when the folder or the account changes
+    // (another account is another store: its reading starts over).
+    let folderStore = null;
+    let driveStore = null;
+    function drive() {
+        const email = String(google.email() || "").toLowerCase();
+        const key = `drive:${email}`;
+        if (!driveStore || driveStore.key !== key) {
+            driveStore = createDriveStore({ auth: google, key, where: email ? `Google Drive (${email})` : "Google Drive", ...driveOptions });
+        }
+        return driveStore;
+    }
+    function shared() {
+        const c = config();
+        if (c.paused) return null;
+        if (onDrive()) return drive();
+        if (!c.folder) return null;
+        const root = path.resolve(String(c.folder));
+        if (!folderStore || folderStore.key !== root) folderStore = createFolderStore(root);
+        return folderStore;
+    }
 
     // The pairing opened once (decrypting on every pass would cost nothing
     // much, but a key that no longer opens should say so once).
@@ -102,6 +138,10 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         let note = null;
         if (state.state === "mismatch") {
             note = { title: "Sincronização parada: o código da igreja mudou", body: "Outro computador trocou o código. Digite o código novo em Configurações › Sincronização; as mudanças deste computador esperam." };
+        } else if (state.state === "auth") {
+            note = { title: "Sincronização parada: entre de novo com a conta da igreja", body: `${state.error || "O Google não aceitou a entrada guardada."} As mudanças deste computador esperam.` };
+        } else if (state.state === "offline" && offlineSince && now() - offlineSince >= OFFLINE_BELL_MS && onDrive()) {
+            note = { title: "O Google Drive não está respondendo", body: "O KERYX guarda as mudanças e envia quando a internet voltar." };
         } else if (state.state === "offline" && offlineSince && now() - offlineSince >= OFFLINE_BELL_MS) {
             note = { title: "A pasta da sincronização não está disponível", body: `${state.folder || "A pasta"} não abre. O KERYX guarda as mudanças e envia quando ela voltar. O Google Drive (ou OneDrive, Dropbox) está aberto?` };
         }
@@ -165,13 +205,14 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
 
     // The outbox records only while this computer syncs (a folder and a code;
     // paused counts: the changes wait). Joining sends everything anyway.
-    const syncing = () => Boolean(config().folder && config().pairing);
+    // On Drive signed out, the changes wait too.
+    const syncing = () => Boolean((config().folder || onDrive()) && config().pairing);
     store.setRecording(syncing());
 
     const engine = createSyncEngine({
         store,
         mediaDir,
-        getFolder: () => (config().paused ? null : config().folder || null),
+        getStore: shared,
         getPairing: currentPairing,
         describe,
         log,
@@ -211,8 +252,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         if (who === me) throw fail("Para este computador, use Sair da sincronização.");
         const p = currentPairing();
         if (!p) throw fail("Este computador ainda não sincroniza.");
-        const folder = await folderOrFail();
-        const list = await updateRemoved(createFolderStore(folder), p, (cur, at) => {
+        const list = await updateRemoved(await sharedOrFail(), p, (cur, at) => {
             const rest = cur.filter((r) => r.pc !== who);
             return out ? [...rest, { pc: who, at: at.toISOString(), by: me }] : rest;
         }, { pc: me, now: now() });
@@ -232,6 +272,35 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         return folder;
     }
 
+    // The store the code is made, typed or changed in: Drive (signed in and
+    // answering) or the folder.
+    async function sharedOrFail() {
+        if (!onDrive()) return createFolderStore(await folderOrFail());
+        if (!google.status().signedIn) throw fail("Entre com a conta da igreja primeiro.");
+        const d = drive();
+        let up = false;
+        try {
+            up = await d.available();
+        } catch (err) {
+            throw fail(err.message);
+        }
+        if (!up) throw fail("O Google Drive não respondeu. Confira a internet.");
+        return d;
+    }
+
+    // Google's own part of the status: the account and its space.
+    async function googleStatus() {
+        if (!google) return { available: false };
+        const st = google.status();
+        let quota = null;
+        if (st.signedIn) {
+            try {
+                quota = await drive().about();
+            } catch { /* offline: the space shows next time */ }
+        }
+        return { available: true, ...st, quota: quota && { used: quota.used, total: quota.total } };
+    }
+
     function status() {
         const cur = config();
         let me = {};
@@ -240,6 +309,8 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         } catch { /* nameless */ }
         return {
             available: true,
+            store: onDrive() ? "drive" : "folder",
+            google: google ? google.status() : null,
             folder: cur.folder || null,
             paused: Boolean(cur.paused),
             paired: Boolean(cur.pairing),
@@ -265,7 +336,10 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             if (!folder) return { canceled: true, ...status() };
             const root = path.resolve(String(folder));
             const cur = config();
-            save(root === cur.folder ? cur : { folder: root, paused: false });
+            // Choosing a folder is the folder mode, Drive or not before.
+            const next = root === cur.folder ? { ...cur } : { folder: root, paused: false };
+            delete next.store;
+            save(next);
             if (root !== cur.folder) {
                 pairing = null;
                 pairingFrom = null;
@@ -281,22 +355,22 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             return null;
         },
         inspect: async () => {
+            if (onDrive()) return google.status().signedIn ? inspectStore(drive()) : null;
             const folder = config().folder;
             return folder ? inspectFolder(folder) : null;
         },
         create: async () => {
-            const folder = await folderOrFail();
-            const made = await createPairing(createFolderStore(folder), { pc: store.pcId, now: now() });
+            const made = await createPairing(await sharedOrFail(), { pc: store.pcId, now: now() });
             if (made.error) throw fail(await joinMessage(made), 409);
             return { code: made.code, ...(await paired(made)) };
         },
         join: async (_event, { code } = {}) => {
-            const folder = await folderOrFail();
-            const joined = await joinPairing(createFolderStore(folder), code);
+            const where = await sharedOrFail();
+            const joined = await joinPairing(where, code);
             if (joined.error) throw fail(await joinMessage(joined));
             // Typing the code brings back a computer that was taken out.
             const pc = String(store.pcId).toLowerCase();
-            await updateRemoved(createFolderStore(folder), joined, (list) => list.filter((r) => r.pc !== pc), { pc, now: now() }).catch(() => {});
+            await updateRemoved(where, joined, (list) => list.filter((r) => r.pc !== pc), { pc, now: now() }).catch(() => {});
             return paired(joined);
         },
         // Tirar (owner 2026-10-16): another computer stops until the code is
@@ -307,8 +381,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         // should stay type it, the one left out stops.
         rotate: async () => {
             if (!config().pairing) throw fail("Este computador ainda não sincroniza.");
-            const folder = await folderOrFail();
-            const made = await createPairing(createFolderStore(folder), { pc: store.pcId, replace: true, now: now() });
+            const made = await createPairing(await sharedOrFail(), { pc: store.pcId, replace: true, now: now() });
             return { code: made.code, ...(await paired(made)) };
         },
         showCode: async () => {
@@ -319,7 +392,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         },
         setPaused: async (_event, { paused } = {}) => {
             const cur = config();
-            if (!cur.folder) throw fail("Escolha a pasta primeiro.");
+            if (!cur.folder && !onDrive()) throw fail("Escolha a pasta primeiro.");
             save({ ...cur, paused: Boolean(paused) });
             if (!paused) engine.poke();
             else await engine.pass({ flush: true });
@@ -327,6 +400,57 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         },
         now: async () => {
             await engine.pass({ flush: true });
+            return status();
+        },
+        // Google Drive direto (PR 2; Configurações' page is PR 3). Entering
+        // opens the system's browser on Google's page and waits for it
+        // (googleAuth.cjs); it does not switch the store by itself.
+        googleSignIn: async () => {
+            if (!google) throw fail("O Google Drive não está disponível nesta versão.", 404);
+            try {
+                await google.signIn();
+            } catch (err) {
+                throw fail(err.message, err.code === "offline" ? 503 : 400);
+            }
+            engine.poke();
+            return { ...status(), google: await googleStatus() };
+        },
+        // The account, whether Google refused it, and the space used / total
+        // (about.get; null while offline).
+        googleStatus: async () => googleStatus(),
+        // Sair da conta: forgotten here, revoked at Google. On Drive the
+        // changes wait (the store stays chosen) until someone enters again.
+        googleSignOut: async () => {
+            if (!google) throw fail("O Google Drive não está disponível nesta versão.", 404);
+            const out = await google.signOut();
+            driveStore = null;
+            if (onDrive()) await engine.pass();
+            return { ...status(), revoked: out.revoked };
+        },
+        // The store: Drive ({ on: true }, signed in) or back to the folder.
+        // Moving a computer that syncs to Drive sends everything here (it
+        // merges there, as joining does: store.snapshot); the engine writes
+        // the church's code file to Drive when it is not there yet.
+        useDrive: async (_event, { on } = {}) => {
+            const cur = config();
+            if (!on) {
+                const next = { ...cur };
+                delete next.store;
+                save(next);
+                store.setRecording(syncing());
+                engine.poke();
+                return status();
+            }
+            if (!google) throw fail("O Google Drive não está disponível nesta versão.", 404);
+            if (!google.status().signedIn) throw fail("Entre com a conta da igreja primeiro.");
+            if (cur.store === "drive") return status();
+            save({ ...cur, store: "drive", paused: false });
+            if (cur.pairing) {
+                store.setRecording(true);
+                const sent = store.snapshot();
+                log(`[keryx-sync] agora pelo Google Drive; ${sent} registros a enviar`);
+                engine.pass({ flush: true }).catch(() => {});
+            }
             return status();
         },
         // Sair da sincronização: this computer stops; nothing is deleted

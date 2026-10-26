@@ -102,7 +102,11 @@ node --test electron/release-notes.test.cjs
 #    worktree sharing the main folder's node_modules does not have
 npm ci
 # 3. build WITHOUT publishing: release/ gets the installer, its .blockmap and
-#    latest.yml (with the notes, which the updater shows)
+#    latest.yml (with the notes, which the updater shows). The Google client
+#    secret comes from this shell, KERYX_GOOGLE_CLIENT_SECRET (set once on
+#    the build PC with setx, docs/google-drive-setup.md step 7; never in
+#    git): beforePack puts it in the app, afterPack removes the file, and
+#    without it the build stops (scripts/google-secret.cjs)
 npx vite build
 npx electron-builder --win --publish never -c.releaseInfo.releaseNotesFile=docs/release-notes/<version>.md
 # 4. upload them as one draft, with a token of the account that owns

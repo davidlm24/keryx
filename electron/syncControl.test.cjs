@@ -10,6 +10,7 @@ const path = require("node:path");
 const { createStore, PROFILE_ID } = require("./db/store.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const schema = require("./db/schema.json");
+const { fakeDriveServer } = require("./fixtures/fakeDriveServer.cjs");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-syncctl-"));
 
@@ -50,6 +51,8 @@ function computer(folder, name, opts = {}) {
         notify: (n) => bell.push(n),
         dismiss: (key) => bell.push({ dismissed: key }),
         log: () => {},
+        google: opts.google || null,
+        driveOptions: opts.driveOptions || {},
     });
     const call = (op, args) => control.ops[op](null, args);
     return { store, settings, control, call, bell, close: () => store.close() };
@@ -251,4 +254,81 @@ test("sealWith: the system's protection, or a marked plain fallback", () => {
     const safe = fakeProtection();
     assert.match(safe.seal("x"), /^safe:/);
     assert.equal(safe.open(safe.seal("x")), "x");
+});
+
+// The church's Google account, faked (googleAuth.cjs's surface): every
+// computer signs in to the same one, whose token the fake Drive takes.
+function fakeGoogle(srv) {
+    const g = { signed: false, refused: false };
+    const auth = () => Object.assign(new Error("Entre de novo com a conta da igreja."), { code: "auth" });
+    Object.assign(g, {
+        status: () => ({ signedIn: g.signed, email: g.signed || g.refused ? "igreja@example.com" : null, refused: g.refused, keyLost: false, signingIn: false, configured: true }),
+        email: () => (g.signed ? "igreja@example.com" : null),
+        signIn: async () => { g.signed = true; g.refused = false; return g.status(); },
+        signOut: async () => { g.signed = false; return { revoked: true, ...g.status() }; },
+        accessToken: async () => { if (!g.signed) throw auth(); return srv.token; },
+        invalidate() {},
+        refuse() { g.signed = false; g.refused = true; },
+    });
+    return g;
+}
+
+test("Google Drive direto: a computer moves from the folder to Drive with everything; another enters, types the code and gets it; signed out the changes wait", async (t) => {
+    const srv = await fakeDriveServer({ page: 50 });
+    t.after(() => srv.close());
+    const folder = tmp();
+    const driveOptions = { api: srv.api, upload: srv.upload, freshMs: 0 };
+    const ga = fakeGoogle(srv);
+    const gb = fakeGoogle(srv);
+    const a = computer(folder, "IGREJA-SOM", { google: ga, driveOptions });
+    const b = computer(tmp(), "NOTEBOOK-PASTOR", { google: gb, driveOptions });
+    a.store.call("Song", "create", [{ title: "Só no som" }]);
+    b.store.call("Song", "create", [{ title: "Só no notebook" }]);
+    await a.call("choose");
+    const made = await a.call("create");
+    await a.call("now");
+    assert.equal((await a.call("status")).store, "folder");
+
+    await assert.rejects(a.call("useDrive", { on: true }), /Entre com a conta da igreja/);
+    const entered = await a.call("googleSignIn");
+    assert.equal(entered.google.signedIn, true);
+    assert.deepEqual(entered.google.quota, { used: 524288, total: 16106127360 });
+    const moved = await a.call("useDrive", { on: true });
+    assert.equal(moved.store, "drive");
+    await a.call("now");
+    const st = await a.call("status");
+    assert.equal(st.engine.state, "ok", st.engine.error || "");
+    assert.equal(srv.named("keryx-sync.json").length, 1, "the church's code file went to Drive");
+    assert.ok([...srv.files.values()].some((f) => f.name.startsWith(`changes/${a.store.pcId.toLowerCase()}/`)));
+
+    // The other computer: the account, Drive, the code.
+    await b.call("googleSignIn");
+    await b.call("useDrive", { on: true });
+    assert.equal((await b.call("inspect")).code, "ok");
+    await b.call("join", { code: made.code });
+    await settle([a, b]);
+    assert.deepEqual(titles(a), ["Só no notebook", "Só no som"]);
+    assert.deepEqual(titles(b), ["Só no notebook", "Só no som"]);
+
+    // Signed out: the engine says so, the changes wait, and go once it enters.
+    const out = await b.call("googleSignOut");
+    assert.equal(out.revoked, true);
+    assert.equal(out.engine.state, "auth");
+    b.store.call("Song", "create", [{ title: "Enquanto fora" }]);
+    assert.ok(b.store.outbox().length > 0);
+    await b.call("googleSignIn");
+    await settle([b, a]);
+    assert.ok(titles(a).includes("Enquanto fora"));
+
+    // Google refusing the account here: the state, and the bell once.
+    ga.refuse();
+    const refused = await a.call("now");
+    assert.equal(refused.engine.state, "auth");
+    assert.match(refused.engine.error, /Entre de novo/);
+    assert.equal(a.bell.filter((n) => /entre de novo com a conta/.test(n.title || "")).length, 1);
+
+    // Back to the folder.
+    assert.equal((await a.call("useDrive", { on: false })).store, "folder");
+    a.close();
+    b.close();
 });

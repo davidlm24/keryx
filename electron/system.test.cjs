@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
-const { cachedSize, createSystem, loginItemArgs, syncQuestion } = require("./system.cjs");
+const { cachedSize, createSystem, loginItemArgs, syncQuestion, syncingFrom } = require("./system.cjs");
 
 // A system over a temp data folder, with settings in memory.
 function sys(initial = {}, extra = {}) {
@@ -199,4 +199,13 @@ test("desempenho: every window by its page, the GPU, and a report even when Chro
     assert.deepEqual(none.processes, []);
     assert.equal(none.gpu.active, null);
     bare.store.close();
+});
+
+test("syncingFrom: a computer that syncs through the folder or Google Drive is asked; not paired, or neither, is not", () => {
+    const engine = { computers: [{ pc: "a" }, { pc: "b", removed: { at: "x" } }] };
+    assert.deepEqual(syncingFrom({ folder: "G:/igreja", paired: true, engine }), { others: 1 });
+    assert.deepEqual(syncingFrom({ store: "drive", folder: null, paired: true, engine }), { others: 1 });
+    assert.equal(syncingFrom({ store: "drive", paired: false }), null);
+    assert.equal(syncingFrom({ store: "folder", folder: null, paired: true }), null);
+    assert.equal(syncingFrom(null), null);
 });

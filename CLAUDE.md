@@ -211,9 +211,32 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   as ranges (`sync.state.seen`), copies of one name by id, and only an
   object without its end line by bytes (`part`: still arriving, or an older
   KERYX's growing file). `state/<pc>.json` and `computers/<pc>.json` are
-  replaced whole. The Google sign-in and the Drive adapter are PR 2
-  (`docs/google-drive-setup.md`, the owner's steps); sessions never sign in
-  to Google. Configurações › Sincronização's main side
+  replaced whole. **PR 2 (no UI; Configurações' page is PR 3, after a
+  mockup):** the sign-in `electron/googleAuth.cjs` (code + PKCE S256, a
+  one-request listener on 127.0.0.1, the system's browser, never a KERYX
+  window; scopes `drive.appdata openid email`; the refresh token sealed in
+  settings.json `"google"`, the access token in memory; `invalid_grant` =
+  `{ email, refused }`, the engine's state "auth" and the bell, no retry
+  loop; Sair revokes), the client in `electron/googleConfig.cjs` (Google
+  requires the client secret even for a desktop client; it is **never in
+  git**: the builder's shell has `KERYX_GOOGLE_CLIENT_SECRET`, electron-builder's
+  beforePack writes the gitignored `electron/googleSecret.json` and afterPack
+  removes it, `scripts/google-secret.cjs`; no variable = the build stops,
+  `KERYX_BUILD_WITHOUT_GOOGLE=1` for a test build); the adapter `electron/syncStore/drive.cjs` (REST over
+  fetch, `appDataFolder` only, one full listing then `changes.list`,
+  multipart create, resumable media in 8 MB chunks, Range downloads,
+  backoff with Retry-After; tested against
+  `electron/fixtures/fakeDriveServer.cjs`); `sync.store = "drive"` and the
+  ops `googleSignIn`/`googleStatus`/`googleSignOut`/`useDrive` in
+  syncControl. **Compaction** (`compact` in sync.cjs, in `collect`):
+  every 14 days a computer's own confirmed objects older than 14 days that
+  every computer that counts has read (v2 state) become
+  `changes/<pc>/<lo>-<hi>.jsonl` (last line per row, every User line, the
+  end line with `range`; read back before the originals go); readers take
+  a range as read when all its numbers are (`parseChanges` → `{ seq, hi,
+  range }`: use `hi` where the highest number matters). Sessions never sign
+  in to Google (`docs/google-drive-setup.md`, the owner's steps).
+  Configurações › Sincronização's main side
   `electron/syncControl.cjs` (`keryx:sync`; the key and code sealed with
   safeStorage), the section `settings/SyncSection.jsx` (pt-BR status in
   `src/lib/console/syncView.js`, one poll in `useSyncStatus`), the cloud
@@ -227,8 +250,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   The outbox records only while syncing; what a newer version sends is
   parked (`_parked`) and a remote row never erases a column its sender
   does not know. Tests use temp stores and the fake Drive (a temp folder
-  for the folder adapter's own cases); only real Drive folders confirm the
-  rest (docs/checklist-pc-igreja.md, item 8).
+  for the folder adapter's own cases, the fake Drive server for the Drive
+  adapter's); only real Drive folders and the owner's real account confirm
+  the rest (docs/checklist-pc-igreja.md, item 8).
   **What travels** (Rodada G7): every `SYNC_ENTITIES` row and every
   `keryx-media://` file any of its fields names. The whole-church test in
   `electron/sync.test.cjs` (`churchInABox`: a row of every synced entity,

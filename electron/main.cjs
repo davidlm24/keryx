@@ -23,6 +23,7 @@ const { startWatchdog } = require("./watchdog.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const { createGoogleAuth } = require("./googleAuth.cjs");
 const { installedVersions } = require("./bible.cjs");
 const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
 const windowState = require("./windowState.cjs");
@@ -741,11 +742,25 @@ app.whenReady().then(async () => {
         }
         return bibles.list;
     };
+    // Google Drive direto (PR 2): the church's account, entered in the
+    // system's browser; Chromium's network stack (the system's proxy).
+    const protect = sealWith(safeStorage);
+    const googleFetch = (url, init) => net.fetch(url, init);
+    const google = createGoogleAuth({
+        settings,
+        protect,
+        openExternal: (url) => shell.openExternal(url),
+        fetchImpl: googleFetch,
+        log: (m) => logger.warn(m),
+        onChange: () => { if (sync) sync.poke(); },
+    });
     sync = createSyncControl({
         store,
         mediaDir,
         settings,
-        protect: sealWith(safeStorage),
+        protect,
+        google,
+        driveOptions: { fetchImpl: googleFetch },
         chooseFolder: async (event) => {
             const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender) || undefined, {
                 title: "Pasta da sincronização",

@@ -31,3 +31,6 @@ dist-ssr
 
 # Installer output
 release
+
+# The Google client secret the installer build writes (scripts/google-secret.cjs); never committed
+electron/googleSecret.json

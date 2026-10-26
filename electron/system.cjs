@@ -66,6 +66,13 @@ const AFTER_IMPORT_KEY = "syncAfterImport";
 // answer means: "all" (the restored rows win on every computer; what was
 // made after stays), "leave" (only this computer goes back, and it leaves
 // the sync), null (cancel).
+// Whether this computer syncs, from syncControl's status: through the folder
+// or Google Drive, with the church's code -> { others }, else null.
+function syncingFrom(st) {
+    if (!st || !(st.folder || st.store === "drive") || !st.paired) return null;
+    return { others: (st.engine?.computers || []).filter((c) => !c.removed).length };
+}
+
 function syncQuestion(kind, { day = "", others = 0 } = {}) {
     const many = others > 0 ? `mais ${others} ${others === 1 ? "computador" : "computadores"}` : "outros computadores";
     const q = kind === "restore"
@@ -112,8 +119,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         try {
             st = syncInfo ? syncInfo() : null;
         } catch { /* no sync */ }
-        if (!st || !st.folder || !st.paired) return null;
-        return { others: (st.engine?.computers || []).filter((c) => !c.removed).length };
+        return syncingFrom(st);
     };
     // The question for a computer that syncs: false when cancelled, else
     // true with the answer kept for the next launch.
@@ -565,4 +571,4 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
 // The arguments for app.setLoginItemSettings.
 const loginItemArgs = (on, exe) => ({ openAtLogin: Boolean(on), path: exe });
 
-module.exports = { createSystem, cachedSize, loginItemArgs, syncQuestion, AFTER_IMPORT_KEY };
+module.exports = { createSystem, cachedSize, loginItemArgs, syncQuestion, syncingFrom, AFTER_IMPORT_KEY };
