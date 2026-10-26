@@ -75,6 +75,12 @@ function createFakeDrive({ lag = 0, key = "drive:fake" } = {}) {
         return out.sort((a, b) => b.created - a.created);
     }
 
+    async function stat(id) {
+        check("stat", nameOf(id));
+        const o = objects.get(id);
+        return live(o) ? { size: o.bytes.length, created: o.created, modified: o.modified } : null;
+    }
+
     async function read(id) {
         check("read", nameOf(id));
         const o = objects.get(id);
@@ -149,7 +155,7 @@ function createFakeDrive({ lag = 0, key = "drive:fake" } = {}) {
         return !fake.offline;
     }
 
-    const api = { kind: "drive", where: "Google Drive (teste)", key, available, list, read, putNew, putWhole, putIfAbsent, remove, upload, download };
+    const api = { kind: "drive", where: "Google Drive (teste)", key, available, list, stat, read, putNew, putWhole, putIfAbsent, remove, upload, download };
 
     // For the tests: what is there, by name, whatever the listing says.
     Object.assign(fake, api, {

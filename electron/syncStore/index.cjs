@@ -30,9 +30,13 @@
 //                              another key starts the reading over
 //   available()                -> Promise<bool>: reachable now (the folder
 //                              is there; Drive answers)
-//   list(prefix)               -> Promise<[{ id, name, size, created,
+//   list(prefix, { quick })    -> Promise<[{ id, name, size, created,
 //                              modified, props }]>, every object whose name
-//                              starts with prefix (created/modified in ms)
+//                              starts with prefix (created/modified in ms);
+//                              with quick, an adapter for which they cost a
+//                              call per object (the folder) may leave size,
+//                              created and modified null
+//   stat(id)                   -> Promise<{ size, created, modified } | null>
 //   read(id)                   -> Promise<Buffer | null>: the whole object,
 //                              null when it is gone
 //   putNew(name, bytes, props) -> Promise<object>: a new object, never over

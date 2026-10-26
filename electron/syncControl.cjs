@@ -200,7 +200,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         store.setRecording(true);
         const sent = store.snapshot();
         log(`[keryx-sync] código ${cur.pairing ? "novo" : "aceito"}; ${sent} registros a enviar`);
-        engine.pass().catch(() => {});
+        engine.pass({ flush: true }).catch(() => {});
         return status();
     }
 
@@ -217,7 +217,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             return out ? [...rest, { pc: who, at: at.toISOString(), by: me }] : rest;
         }, { pc: me, now: now() });
         if (list.error) throw fail(await joinMessage(list));
-        await engine.pass();
+        await engine.pass({ flush: true });
         return status();
     }
 
@@ -322,11 +322,11 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             if (!cur.folder) throw fail("Escolha a pasta primeiro.");
             save({ ...cur, paused: Boolean(paused) });
             if (!paused) engine.poke();
-            else await engine.pass();
+            else await engine.pass({ flush: true });
             return status();
         },
         now: async () => {
-            await engine.pass();
+            await engine.pass({ flush: true });
             return status();
         },
         // Sair da sincronização: this computer stops; nothing is deleted
@@ -337,7 +337,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             pairingFrom = null;
             store.setRecording(false);
             store.pruneOutbox(Number.MAX_SAFE_INTEGER);
-            await engine.pass();
+            await engine.pass({ flush: true });
             if (dismiss) dismiss(BELL);
             belled = null;
             return status();

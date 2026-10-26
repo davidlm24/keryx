@@ -201,9 +201,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   renamed, names not unique, a listing that lags). Adapters: `folder` (the
   shared folder in its old layout, so 0.2.21 computers keep syncing through
   it until PR 4) and `fakeDrive` (in memory, the tests' Drive; never `fs`
-  in a sync test that is not about the folder). Each pass writes ONE new
-  object per batch, `changes/<pc>/<seq>.jsonl`, ending in
-  `{"keryx":"end","lines":n}`; readers keep the `<seq>`s read to their end
+  in a sync test that is not about the folder). A burst of edits (20 s,
+  `writeWaitMs`; `pass({ flush: true })` for Sincronizar agora) becomes ONE
+  new object, `changes/<pc>/<seq>.jsonl`, ending in
+  `{"keryx":"end","lines":n}` (the count is checked); a number is pruned
+  from the outbox only once confirmed whole (`out.whole`), and one never
+  confirmed is removed and sent again; listings never stat what was read
+  (`list(…, { quick })`, `stat(id)`); readers keep the `<seq>`s read to their end
   as ranges (`sync.state.seen`), copies of one name by id, and only an
   object without its end line by bytes (`part`: still arriving, or an older
   KERYX's growing file). `state/<pc>.json` and `computers/<pc>.json` are

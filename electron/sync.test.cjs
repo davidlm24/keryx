@@ -42,6 +42,8 @@ function computer(where, opts = {}) {
         ...(onFolder ? { getFolder: pick } : { getStore: pick }),
         getPairing: () => pairing,
         log: () => {},
+        // The outbox goes at every pass here; the wait for a burst has its own test.
+        writeWaitMs: 0,
         ...opts.engine,
     });
     return { dir, file, mediaDir, store, engine, pair: (p) => { pairing = p; }, close: () => store.close() };
@@ -558,6 +560,7 @@ test("a pass runs at a time; local changes ask for one; remote ones do not echo"
         getStore: () => { started += 1; return drive; },
         getPairing: () => CHURCH,
         log: () => {},
+        writeWaitMs: 0,
         onStatus: () => { passes += 1; },
     });
     const finished = async (n) => {
@@ -1194,6 +1197,87 @@ test("media transfers that are cut go on from where they stopped", async () => {
     b.close();
 });
 
+test("an object this computer never finished writing never holds the cleanup back; it goes again under a new number", async () => {
+    const drive = createFakeDrive();
+    const a = computer(drive, GC_NOW);
+    const b = computer(drive, GC_NOW);
+    fs.writeFileSync(path.join(a.mediaDir, "x.jpg"), "x");
+    const row = a.store.call("Media", "create", [{ title: "X", type: "image", file_url: "keryx-media://x.jpg" }]);
+    await rounds([a, b]);
+    await tick();
+    a.store.call("Media", "delete", [row.id]);
+    // KERYX closed while it wrote the delete: the number kept, half an object there.
+    const st = meta(a);
+    const n = st.out.n + 1;
+    a.store.setMeta(STATE_KEY, { ...st, out: { ...st.out, n } });
+    const half = drive.put(changesName(a.store.pcId, n), '{"seq":7,"entity":"Media","id":"');
+    await b.engine.pass();
+    // Even while it cannot be removed (locked), it is not counted as whole.
+    drive.failNext("remove", 1, (name) => name === half.name);
+    assert.equal((await a.engine.pass()).sent, 1, "the delete goes again");
+    assert.ok(drive.bytesOf(half.id), "still there (locked)");
+    await rounds([b, a]);
+    assert.ok(!shared(drive, "x.jpg"), "collected all the same");
+    assert.equal(drive.bytesOf(half.id), null, "removed at the next pass");
+    assert.deepEqual(objectsOf(drive, a).map((o) => o.name).slice(-1), [changesName(a.store.pcId, n + 1)]);
+    assert.ok(!titles(b).length && !b.store.call("Media", "list", []).length, "the delete reached B");
+    a.close();
+    b.close();
+});
+
+test("an end line that does not match the lines before it: what is there is taken, the object is not done", async () => {
+    const drive = createFakeDrive();
+    const b = computer(drive);
+    const fake = fakePc(drive);
+    const short = fake.put(1, fake.line(fake.entry("A")) + fake.line(fake.entry("B")) + endLine(3));
+    await b.engine.pass();
+    assert.deepEqual(titles(b), ["A", "B"]);
+    assert.deepEqual(meta(b).seen[fake.id]?.done || [], [], "not read to its end");
+    assert.ok(meta(b).part[short.id], "read again at the next pass");
+    await b.engine.pass();
+    assert.deepEqual(meta(b).seen[fake.id]?.done || [], []);
+    b.close();
+});
+
+test("a copy read part of the way is still read when the whole one it sat beside goes", async () => {
+    const drive = createFakeDrive();
+    const b = computer(drive);
+    const fake = fakePc(drive);
+    const x = fake.line(fake.entry("X"));
+    const open = fake.put(1, x);
+    const whole = fake.put(1, x + endLine(1));
+    await b.engine.pass();
+    assert.deepEqual(titles(b), ["X"]);
+    await drive.remove(whole.id);
+    // The copy still grows (a folder's file): what it gets is read.
+    drive.rewrite(open.id, x + fake.line(fake.entry("Z")));
+    await b.engine.pass();
+    assert.deepEqual(titles(b), ["X", "Z"]);
+    b.close();
+});
+
+test("a burst of edits is one object: the outbox waits for the rest, unless a batch is full or the pass is asked to flush", async () => {
+    const drive = createFakeDrive();
+    let clock = Date.parse("2026-10-26T19:00:00.000Z");
+    const now = () => new Date(clock);
+    const a = computer(drive, { engine: { now, writeWaitMs: 20000, batch: 3 } });
+    a.store.call("Song", "create", [{ title: "Um" }]);
+    assert.equal((await a.engine.pass()).sent, 0);
+    clock += 5000;
+    a.store.call("Song", "create", [{ title: "Dois" }]);
+    assert.equal((await a.engine.pass()).sent, 0, "the first change has waited 5 s");
+    assert.equal(objectsOf(drive, a).length, 0);
+    clock += 16000;
+    assert.equal((await a.engine.pass()).sent, 2);
+    assert.equal(objectsOf(drive, a).length, 1, "both in one object");
+
+    for (const t of ["Três", "Quatro", "Cinco"]) a.store.call("Song", "create", [{ title: t }]);
+    assert.equal((await a.engine.pass()).sent, 3, "a full batch goes at once");
+    a.store.call("Song", "create", [{ title: "Agora" }]);
+    assert.equal((await a.engine.pass({ flush: true })).sent, 1, "Sincronizar agora sends at once");
+    a.close();
+});
+
 // -- The shared folder (the `folder` adapter, until Drive is spoken to) -------
 
 const folderPc = (folder, keys = signed) => {
@@ -1287,6 +1371,34 @@ test("folder: a database an older KERYX left goes on where it was", async () => 
     assert.deepEqual(titles(a), ["Daqui", "Nova"]);
     assert.ok(fs.existsSync(path.join(folder, "sync", a.store.pcId, "changes-000004.jsonl")), "the next number after the old file's");
     a.close();
+});
+
+test("folder: a pass does not stat what it has read to its end, nor the media", async () => {
+    const folder = tmp();
+    const a = computer(folder);
+    const b = computer(folder);
+    for (let i = 0; i < 30; i++) {
+        fs.writeFileSync(path.join(a.mediaDir, `f${i}.jpg`), `f${i}`);
+        a.store.call("Media", "create", [{ title: `F${i}`, type: "image", file_url: `keryx-media://f${i}.jpg` }]);
+        await a.engine.pass();
+    }
+    assert.equal(fs.readdirSync(path.join(folder, "sync", a.store.pcId)).filter((n) => n.startsWith("changes-")).length, 30);
+    await b.engine.pass();
+    assert.equal(b.store.call("Media", "list", []).length, 30);
+    const real = fs.promises.stat;
+    let stats = 0;
+    fs.promises.stat = (file, ...rest) => {
+        if (String(file).startsWith(path.resolve(folder))) stats += 1;
+        return real(file, ...rest);
+    };
+    try {
+        assert.equal((await b.engine.pass()).state, "ok");
+    } finally {
+        fs.promises.stat = real;
+    }
+    assert.ok(stats < 10, `${stats} stats for 30 objects and 30 files`);
+    a.close();
+    b.close();
 });
 
 test("folder: not there, nothing made; media, the code's file and what it holds are where they always were", async () => {

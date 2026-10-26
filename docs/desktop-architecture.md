@@ -1174,12 +1174,20 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    adapter itself, the Google sign-in and the new section are PRs 2 and 3
    (`docs/google-drive-setup.md` is the owner's part).
    - **The format**, in the store's names: `changes/<pc>/<seq>.jsonl` —
-     one new object per pass (a batch of up to 500 entries), the same
-     signed lines as before plus a last line `{"keryx":"end","lines":n}`
-     that says the object is all there; `<seq>` is kept in `sync.state`
-     before the object is written (`out.n`), never used twice, and past
-     every number of this computer the store lists (a database brought
-     back from a backup). `state/<pc>.json` and `computers/<pc>.json`
+     one new object per burst of edits (a batch of up to 500 entries), the
+     same signed lines as before plus a last line
+     `{"keryx":"end","lines":n}` that says the object is all there (a
+     reader checks the count); `<seq>` is kept in `sync.state` before
+     the object is written (`out.n`), never used twice, and past every
+     number of this computer the store lists (a database brought back from
+     a backup); once the write returns it is confirmed (`out.whole`, as
+     ranges) and only then is the outbox pruned. A number kept and never
+     confirmed (KERYX closed mid-write, Drive locked the file) is removed
+     at the next pass and its entries go again; it never counts as whole.
+     **A burst is one object**: the outbox waits until its first entry has
+     waited 20 s (`writeWaitMs`), or a batch is full, or the pass is asked
+     to flush (Sincronizar agora, a join, leaving: `pass({ flush: true })`);
+     a pass comes by itself when the wait is over. `state/<pc>.json` and `computers/<pc>.json`
      replaced whole; `keryx-sync.json`; `media/<file>`. The folder adapter
      maps them to `sync/<pc>/changes-NNNNNN.jsonl`, `state.json`,
      `computer.json`, `sync/keryx-sync.json` and `sync/media/`, so an
@@ -1194,7 +1202,11 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      without its end line yet — one Drive para computador is still
      bringing down, or an older KERYX's change file, which only grows — is
      read as far as its last whole line and remembered by its id with how
-     far (`part[id].at`), and read again when it grows. A database an
+     far (`part[id].at`), and read again when it grows. **Listing costs
+     no stat per object** (`list(prefix, { quick: true })`: the folder
+     returns names only): a reader asks `stat(id)` only for an object it
+     has not read to its end, one per computer for "escreveu há", and a
+     media file's size only when it fetches it. A database an
      older KERYX left is taken as it was (its byte cursors become `part`,
      its file number `out.n`), so nothing is read twice after the update.
    - **The cleanup** keeps its rules; what changed is what "read past the

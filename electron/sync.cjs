@@ -56,6 +56,9 @@ const fsp = fs.promises;
 
 const STATE_KEY = "sync.state";
 const BATCH = 500;
+// How long the first change of a burst waits for the rest before they go,
+// as one object (a pass comes 3 s after each change).
+const WRITE_WAIT_MS = 20 * 1000;
 // Media named by rows that has not arrived yet, retried every pass.
 const MISSING_LIMIT = 2000;
 // computers/<pc>.json: { pc, name, version, bibles, at, sig } — who the
@@ -79,6 +82,8 @@ const MEDIA_REF = /keryx-media:\/\/([A-Za-z0-9][A-Za-z0-9._-]*)(?![A-Za-z0-9._/-
 
 const endLine = (n) => `${JSON.stringify({ keryx: "end", lines: n })}\n`;
 const isEnd = (e) => Boolean(e && typeof e === "object" && e.keryx === "end");
+// The lines an object holds before its end line (at `end`), blank ones aside.
+const linesBefore = (buf, end) => buf.toString("utf8", 0, end).split("\n").filter((l) => l.trim()).length;
 const computerName = (pc) => `computers/${pc}.json`;
 const stateName = (pc) => `state/${pc}.json`;
 const mediaName = (name) => `media/${name}`;
@@ -266,7 +271,7 @@ function markFromCursors(cursors) {
 // bibles }: this computer as the others list it.
 function createSyncEngine({
     store, mediaDir, getStore = null, getFolder = null, getPairing = () => null, describe = null, log = console.warn, batch = BATCH, now = () => new Date(), onStatus = null,
-    gcEveryMs = GC_EVERY_MS, gcGraceMs = GC_GRACE_MS,
+    gcEveryMs = GC_EVERY_MS, gcGraceMs = GC_GRACE_MS, writeWaitMs = WRITE_WAIT_MS,
 }) {
     const pc = String(store.pcId).toLowerCase();
     // A complete line that is not JSON, by object: the object's size when it
@@ -296,6 +301,11 @@ function createSyncEngine({
     let unsubscribe = null;
     let keys = null; // keysFor the pairing in use, made again when it changes
     let folderStore = null;
+    // When the outbox was first seen waiting (this run), and the pass that
+    // comes when the wait is over.
+    let pendingSince = null;
+    let waitTimer = null;
+    let flushAsked = false;
 
     // The store in use, or null (off).
     function current() {
@@ -397,8 +407,37 @@ function createSyncEngine({
     // it is never used twice (a crash after the write sends the same entries
     // again under the next one, which nobody minds), and it is past every
     // number of this computer the store shows (its database brought back
-    // from a backup).
-    async function writeOut(shared, state, own, media) {
+    // from a backup). A burst of edits is one object: the outbox waits until
+    // its first entry has waited writeWaitMs, or a batch is full, or the
+    // pass is asked to flush (Sincronizar agora, a join); a pass then comes
+    // by itself when the wait is over.
+    async function writeOut(shared, state, own, media, flush) {
+        // This computer's objects that were reserved and never confirmed
+        // whole (KERYX closed mid-write, or Drive locked the file): never
+        // finished, they would hold every computer's cleanup back for good.
+        // Their entries are still in the outbox (it is pruned only after the
+        // confirmation), so they go again under a new number.
+        const whole = state.out?.whole || [];
+        for (let i = own.length - 1; i >= 0; i--) {
+            const seq = parseChanges(own[i].name)?.seq || 0;
+            if (!state.out?.first || seq < state.out.first || seq > state.out.n || inRanges(whole, seq)) continue;
+            try {
+                await shared.remove(own[i].id);
+                own.splice(i, 1);
+            } catch { /* locked: next pass */ }
+        }
+        const waiting = store.outbox(0, batch);
+        if (!waiting.length) {
+            pendingSince = null;
+            return 0;
+        }
+        const t = now().getTime();
+        if (pendingSince === null) pendingSince = t;
+        const left = writeWaitMs - (t - pendingSince);
+        if (!flush && waiting.length < batch && left > 0) {
+            passLater(left);
+            return 0;
+        }
         let sent = 0;
         for (;;) {
             const entries = store.outbox(0, batch);
@@ -412,14 +451,24 @@ function createSyncEngine({
             const text = lines.map((line) => keys.sign(JSON.stringify(line)) + "\n").join("") + endLine(lines.length);
             const onStore = own.reduce((n, o) => Math.max(n, parseChanges(o.name)?.seq || 0), 0);
             const seq = Math.max(state.out?.n || 0, onStore) + 1;
-            state.out = { pc, n: seq, first: state.out?.first || seq };
+            state.out = { pc, n: seq, first: state.out?.first || seq, whole: state.out?.whole || [] };
             saveState(state);
             own.push(await shared.putNew(changesName(pc, seq), Buffer.from(text), { pc, seq: String(seq) }));
-            // Only what is in the store is forgotten.
+            state.out.whole = addRange(state.out.whole, seq);
+            saveState(state);
+            // Only what is in the store, whole, is forgotten.
             store.pruneOutbox(entries[entries.length - 1].seq);
             sent += lines.length;
         }
+        pendingSince = null;
         return sent;
+    }
+
+    function passLater(ms) {
+        if (!timer) return; // not started (a test, or a pass asked by hand)
+        clearTimeout(waitTimer);
+        waitTimer = setTimeout(() => { pass(); }, Math.max(0, ms) + 50);
+        waitTimer.unref?.();
     }
 
     // This computer's object, when what it says changed, it is gone, or it
@@ -461,7 +510,15 @@ function createSyncEngine({
     async function fetchFile(shared, media, name, expected) {
         const local = path.join(mediaDir, name);
         if ((await sizeOf(local)) >= 0) return true;
-        const objs = (media.get(name) || []).filter((o) => expected == null || o.size === expected);
+        const objs = [];
+        for (const o of media.get(name) || []) {
+            if (o.size == null) {
+                const st = await shared.stat(o.id).catch(() => null);
+                if (!st) continue;
+                o.size = st.size;
+            }
+            if (expected == null || o.size === expected) objs.push(o);
+        }
         if (!objs.length) return false;
         await fsp.mkdir(mediaDir, { recursive: true });
         const tmp = path.join(mediaDir, tempOf(name));
@@ -523,13 +580,27 @@ function createSyncEngine({
     // Reads one changes object from where it was left. Stops at a last line
     // still without its newline, and at an unreadable line until the object
     // has stopped growing or a later line shows it went on; at its end line
-    // it is done for good. `alone`: the only object of its name (else it is
-    // remembered by its id). -> false when it is gone.
+    // it is done for good, when it holds the lines it says (else it is read
+    // again from there at the next pass). `alone`: the only object of its
+    // name (else it is remembered by its id; one read part of the way stays
+    // read by its id, even if a copy of it was read whole and went). Its
+    // size is asked only here, for an object not read whole. -> false when
+    // it is gone.
     async function readObject(shared, media, state, obj, from, alone, totals) {
         const seq = parseChanges(obj.name).seq;
         const seen = seenOf(state, from);
-        if (alone ? inRanges(seen.done, seq) : seen.dup[obj.id]) return true;
         const part = state.part[obj.id];
+        if (alone ? inRanges(seen.done, seq) && !part : seen.dup[obj.id]) return true;
+        if (obj.size == null) {
+            let st;
+            try {
+                st = await shared.stat(obj.id);
+            } catch {
+                return true; // locked: next pass
+            }
+            if (!st) return false;
+            Object.assign(obj, st);
+        }
         let offset = part ? Number(part.at) || 0 : 0;
         if (part && obj.size === offset) return true;
         // Shorter than what was read: replaced by another copy. Read it again.
@@ -560,6 +631,7 @@ function createSyncEngine({
         while (pos < buf.length) {
             const nl = buf.indexOf(0x0a, pos);
             if (nl < 0) break;
+            const start = pos;
             const text = buf.toString("utf8", pos, nl).trim();
             let entry = null;
             if (text) {
@@ -577,7 +649,12 @@ function createSyncEngine({
             }
             pos = nl + 1;
             if (isEnd(entry)) {
-                ended = true;
+                if (linesBefore(buf, start) === entry.lines) ended = true;
+                else {
+                    // Lines missing (a copy cut short and closed): not done.
+                    pos = start;
+                    logOnce(`objeto incompleto em ${obj.name}: lido de novo na próxima passada`);
+                }
                 break;
             }
             if (isEntry(entry, from)) {
@@ -604,7 +681,10 @@ function createSyncEngine({
     async function readIn(shared, media, state) {
         const totals = { applied: 0, skipped: 0, failed: 0, bad: 0, rejected: 0 };
         const out = new Map(state.removed.map((r) => [r.pc, r]));
-        const changes = byPc((await shared.list("changes/")).filter((o) => parseChanges(o.name)));
+        const listed = (await shared.list("changes/", { quick: true })).filter((o) => parseChanges(o.name));
+        const changes = byPc(listed);
+        // Every changes object there now (a mark's objects that went are not waited for).
+        const present = new Set(listed.map((o) => o.id));
         const who = byPc(await shared.list("computers/"));
         const states = byPc(await shared.list("state/"));
         const pcs = new Set([...changes.keys(), ...who.keys(), ...states.keys()]);
@@ -628,9 +708,16 @@ function createSyncEngine({
             const count = new Map();
             for (const o of objs) count.set(o.name, (count.get(o.name) || 0) + 1);
             for (const o of objs) {
+                present.add(o.id);
                 if (!(await readObject(shared, media, state, o, from, count.get(o.name) === 1, totals))) continue;
                 seen.files += 1;
                 seen.lastChange = Math.max(seen.lastChange, o.modified || 0);
+            }
+            // When it last wrote: its newest object (one stat, not one an object).
+            const newest = objs[objs.length - 1];
+            if (newest && newest.modified == null) {
+                const st = await shared.stat(newest.id).catch(() => null);
+                if (st) seen.lastChange = Math.max(seen.lastChange, st.modified || 0);
             }
             computers.push(seen);
         }
@@ -641,6 +728,7 @@ function createSyncEngine({
         // when signed.
         return {
             totals,
+            present,
             computers: computers.map(({ signed, ...c }) => {
                 const peer = state.peers[c.pc];
                 return {
@@ -734,21 +822,29 @@ function createSyncEngine({
 
     // What has been read now, as every computer must have read it before a
     // file goes: for each computer, the numbers read to their end, and the
-    // objects read part of the way (how far). This computer's own objects
-    // are all there: from its first number on, whole; before it, the files
-    // an older KERYX appended to, by their size.
-    function markNow(state, own) {
+    // objects read part of the way (how far, while they are there). This
+    // computer's own objects: those confirmed whole (`out.whole`), and the
+    // files an older KERYX appended to before it (by their size); one never
+    // confirmed is not counted (it is removed, its entries go again).
+    async function markNow(state, own, there, shared) {
         const mark = {};
         for (const [from, t] of Object.entries(state.seen)) mark[from] = { done: (t.done || []).map((r) => [...r]), part: {} };
-        for (const [id, p] of Object.entries(state.part)) (mark[p.pc] ||= { done: [], part: {} }).part[id] = [p.seq, p.at];
+        for (const [id, p] of Object.entries(state.part)) {
+            if (there.has(id)) (mark[p.pc] ||= { done: [], part: {} }).part[id] = [p.seq, p.at];
+        }
         const first = state.out?.first || Infinity;
+        const confirmed = state.out?.whole || [];
         const mine = { done: [], part: {} };
         const whole = [];
         for (const o of own) {
             const seq = parseChanges(o.name)?.seq;
             if (!seq) continue;
-            if (seq >= first) whole.push(seq);
-            else mine.part[o.id] = [seq, o.size];
+            if (seq >= first) {
+                if (inRanges(confirmed, seq)) whole.push(seq);
+                continue;
+            }
+            const size = o.size ?? (await shared.stat(o.id).catch(() => null))?.size;
+            if (size != null) mine.part[o.id] = [seq, size];
         }
         mine.done = rangesOf(whole);
         mark[pc] = mine;
@@ -756,19 +852,22 @@ function createSyncEngine({
     }
 
     // Whether `read` (a computer's) covers the mark, the computer's own
-    // objects aside.
-    function readPast(who, read, mark) {
+    // objects aside. An object read part of the way that is no longer there
+    // (`there`: the changes objects listed now) is not waited for: nobody
+    // can read it any more, and what it held went again under another number
+    // (this computer's, never confirmed) or was its writer's alone to hold.
+    function readPast(who, read, mark, there) {
         if (!read || typeof read !== "object" || !read.seen || typeof read.seen !== "object") return false;
         const part = read.part && typeof read.part === "object" ? read.part : {};
         return Object.entries(mark).every(([owner, m]) => {
             if (owner === who) return true;
             const done = read.seen[owner]?.done || [];
             return (m.done || []).every((r) => rangeWithin(r, done))
-                && Object.entries(m.part || {}).every(([id, [seq, size]]) => inRanges(done, seq) || (Number(part[id]?.at) || 0) >= size);
+                && Object.entries(m.part || {}).every(([id, [seq, size]]) => !there.has(id) || inRanges(done, seq) || (Number(part[id]?.at) || 0) >= size);
         });
     }
 
-    async function collect(shared, state, names, media, own) {
+    async function collect(shared, state, names, media, own, there) {
         const gc = state.gc;
         const at = now();
         const manifests = await readManifests(shared, state);
@@ -798,7 +897,7 @@ function createSyncEngine({
             if (used.has(name) || gc.candidates[name]) continue;
             if (!mark) {
                 mark = at.toISOString();
-                gc.marks[mark] = markNow(state, own);
+                gc.marks[mark] = await markNow(state, own, there, shared);
             }
             gc.candidates[name] = { since: mark, mark };
         }
@@ -808,7 +907,7 @@ function createSyncEngine({
         for (const [name, c] of Object.entries(gc.candidates)) {
             if (at.getTime() - Date.parse(c.since) < gcGraceMs) continue;
             const marked = gc.marks[c.mark];
-            if (!marked || !everyone.every(([who, read]) => readPast(who, read, marked))) continue;
+            if (!marked || !everyone.every(([who, read]) => readPast(who, read, marked, there))) continue;
             try {
                 for (const o of media.get(name) || []) await shared.remove(o.id);
             } catch {
@@ -831,7 +930,7 @@ function createSyncEngine({
     // media/ by name: the objects of each (a name may have two).
     async function mediaIndex(shared) {
         const media = new Map();
-        for (const o of await shared.list("media/")) {
+        for (const o of await shared.list("media/", { quick: true })) {
             const name = o.name.slice("media/".length);
             if (!name || name.includes("/")) continue;
             if (!media.has(name)) media.set(name, []);
@@ -842,7 +941,7 @@ function createSyncEngine({
 
     // -- A pass ----------------------------------------------------------------
 
-    async function once() {
+    async function once(flush) {
         let shared = null;
         try {
             shared = current();
@@ -907,11 +1006,12 @@ function createSyncEngine({
                 logOnce("este computador foi tirado da sincronização");
                 return;
             }
-            const own = (await shared.list(`changes/${pc}/`)).filter((o) => parseChanges(o.name)?.pc === pc);
+            const own = (await shared.list(`changes/${pc}/`, { quick: true })).filter((o) => parseChanges(o.name)?.pc === pc);
             const media = await mediaIndex(shared);
-            const sent = await writeOut(shared, state, own, media);
+            const sent = await writeOut(shared, state, own, media, flush);
             await writeComputer(shared, state);
-            const { totals, computers } = await readIn(shared, media, state);
+            const { totals, computers, present } = await readIn(shared, media, state);
+            for (const o of own) present.add(o.id);
             await retryMissing(shared, media, state);
             // A file no row here names any more is not waited for.
             const names = liveRefs();
@@ -919,7 +1019,7 @@ function createSyncEngine({
                 if (!names.has(m.name)) await fsp.rm(path.join(mediaDir, tempOf(m.name)), { force: true }).catch(() => {});
             }
             state.missing = state.missing.filter((m) => names.has(m.name));
-            const collected = gcDue(state) ? await collect(shared, state, names, media, own) : 0;
+            const collected = gcDue(state) ? await collect(shared, state, names, media, own, present) : 0;
             saveState(state);
             await publish(shared, state, names);
             missingNow = state.missing.map((m) => m.name);
@@ -947,7 +1047,10 @@ function createSyncEngine({
     }
 
     // One pass at a time; asked for while one runs, another follows it.
-    function pass() {
+    // { flush: true }: the outbox goes now, without waiting for the rest of
+    // a burst (Sincronizar agora, a join, leaving).
+    function pass({ flush = false } = {}) {
+        flushAsked = flushAsked || flush;
         if (running) {
             again = true;
             return running;
@@ -956,7 +1059,9 @@ function createSyncEngine({
             try {
                 do {
                     again = false;
-                    await once();
+                    const flushNow = flushAsked;
+                    flushAsked = false;
+                    await once(flushNow);
                 } while (again);
             } finally {
                 running = null;
@@ -990,6 +1095,7 @@ function createSyncEngine({
     function stop() {
         clearInterval(timer);
         clearTimeout(debounce);
+        clearTimeout(waitTimer);
         timer = null;
         if (unsubscribe) unsubscribe();
         unsubscribe = null;

@@ -61,11 +61,18 @@ function createFolderStore(folder) {
     }
 
     // Every object whose name starts with prefix: only the folders and files
-    // the prefix can name are looked at.
-    async function list(prefix = "") {
+    // the prefix can name are looked at. `quick`: names only (size,
+    // created and modified null), no stat per file — a folder Drive para
+    // computador keeps holds thousands of them, and the engine stats only
+    // the ones it has not read to their end (stat()).
+    async function list(prefix = "", { quick = false } = {}) {
         const p = String(prefix);
         const out = [];
         const add = async (id, name) => {
+            if (quick) {
+                out.push({ id, name, size: null, created: null, modified: null, props: {} });
+                return;
+            }
             const st = await statOf(full(id));
             if (st && st.isFile()) out.push(describeStat(id, name, st));
         };
@@ -93,6 +100,12 @@ function createFolderStore(folder) {
             }
         }
         return out;
+    }
+
+    // { size, created, modified } of one object, or null when it is gone.
+    async function stat(id) {
+        const st = await statOf(full(id));
+        return st && st.isFile() ? { size: st.size, created: st.birthtimeMs || st.mtimeMs, modified: st.mtimeMs } : null;
     }
 
     async function read(id) {
@@ -186,7 +199,7 @@ function createFolderStore(folder) {
         return Boolean(st && st.isDirectory());
     }
 
-    return { kind: "folder", where: root, key: root, available, list, read, putNew, putWhole, putIfAbsent, remove, upload, download };
+    return { kind: "folder", where: root, key: root, available, list, stat, read, putNew, putWhole, putIfAbsent, remove, upload, download };
 }
 
 module.exports = { createFolderStore, SYNC_DIR, MEDIA_DIR, PAIRING_FILE, COMPUTER_FILE, STATE_FILE };
