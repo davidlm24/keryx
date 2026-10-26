@@ -1435,3 +1435,213 @@ test("folder: not there, nothing made; media, the code's file and what it holds 
     a.close();
     b.close();
 });
+
+// -- Compaction --------------------------------------------------------------
+
+const DAY = 24 * 60 * 60 * 1000;
+// A clock the test moves: the computers' own; the objects keep the time
+// they were really made, so 15 days on they are old.
+function clock() {
+    const c = { ahead: 0, now: () => new Date(Date.now() + c.ahead) };
+    return c;
+}
+const onClock = (c, extra = {}) => ({ engine: { now: c.now, ...extra } });
+const namesOf = (drive, pc) => objectsOf(drive, pc).map((o) => o.name).sort();
+const endOf = (text) => JSON.parse(text.trim().split("\n").pop());
+
+// A's history: five passes, a song edited three times, another made and
+// deleted, the profile changed twice.
+async function history(a, b) {
+    const one = a.store.call("Song", "create", [{ title: "Primeira" }]);
+    await rounds([a, b], 1);
+    for (const t of ["Segunda", "Terceira"]) {
+        await tick();
+        a.store.call("Song", "update", [one.id, { title: t }]);
+        await rounds([a, b], 1);
+    }
+    await tick();
+    a.store.call("User", "update", [PROFILE_ID, { church_name: "Igreja Gerar" }]);
+    const gone = a.store.call("Song", "create", [{ title: "Sai" }]);
+    await rounds([a, b], 1);
+    await tick();
+    a.store.call("Song", "delete", [gone.id]);
+    a.store.call("User", "update", [PROFILE_ID, { church_name: "Igreja Gerar Vida" }]);
+    await rounds([a, b], 2);
+    return one;
+}
+
+test("compaction: old objects every computer has read become one, the last line per row and every profile line; a newcomer gets the same", async () => {
+    const drive = createFakeDrive();
+    const time = clock();
+    const a = computer(drive, onClock(time));
+    const b = computer(drive, onClock(time));
+    await history(a, b);
+    const before = objectsOf(drive, a);
+    assert.equal(before.length, 5);
+    const lines = before.reduce((n, o) => n + endOf(drive.bytesOf(o.id).toString()).lines, 0);
+
+    // Not yet two weeks old: nothing moves.
+    time.ahead = 13 * DAY;
+    await rounds([b, a], 1);
+    assert.equal(objectsOf(drive, a).length, 5);
+
+    time.ahead = 15 * DAY;
+    await b.engine.pass();
+    const st = await a.engine.pass();
+    assert.equal(st.compactedObjects, 5);
+    const after = objectsOf(drive, a);
+    assert.deepEqual(after.map((o) => o.name), [changesName(a.store.pcId, 1, 5)]);
+    const text = drive.bytesOf(after[0].id).toString();
+    const end = endOf(text);
+    assert.deepEqual(end.range, [1, 5]);
+    assert.ok(end.lines < lines, `${end.lines} lines, from ${lines}`);
+    const body = text.trim().split("\n").slice(0, -1);
+    const entries = body.map((l) => JSON.parse(l));
+    assert.equal(end.lines, body.length);
+    assert.equal(entries.filter((e) => e.entity === "User").length, 2, "every profile line stays");
+    const songLines = entries.filter((e) => e.entity === "Song");
+    assert.equal(songLines.length, 2, "one line per song");
+    assert.ok(songLines.some((e) => e.op === "delete"), "a delete stays a delete");
+    assert.equal(songLines.find((e) => e.op === "upsert").row.title, "Terceira", "the last edit");
+    for (const l of body) assert.ok(signed.verify(l), "as they were signed");
+
+    // B had read them all: it reads nothing again.
+    const again = await b.engine.pass();
+    assert.equal(again.received.applied + again.received.skipped, 0);
+    // A newcomer gets what B has; A's next number is past the range.
+    const c = computer(drive, onClock(time));
+    await rounds([c], 1);
+    assert.deepEqual(songs(c), songs(b));
+    assert.equal(c.store.call("User", "get", [PROFILE_ID]).church_name, "Igreja Gerar Vida");
+    await tick();
+    a.store.call("Song", "create", [{ title: "Depois" }]);
+    await a.engine.pass();
+    assert.deepEqual(namesOf(drive, a), [changesName(a.store.pcId, 1, 5), changesName(a.store.pcId, 6)].sort());
+    await rounds([b, c], 1);
+    assert.deepEqual(titles(c), ["Depois", "Terceira"]);
+
+    // Two weeks later only the newly old ones join, in an object of their own.
+    for (let i = 0; i < 2; i++) {
+        await tick();
+        a.store.call("Song", "create", [{ title: `Mais ${i}` }]);
+        await rounds([a, b, c], 1);
+    }
+    time.ahead = 30 * DAY;
+    await rounds([b, c], 1);
+    await a.engine.pass();
+    assert.deepEqual(namesOf(drive, a), [changesName(a.store.pcId, 1, 5), changesName(a.store.pcId, 6, 8)].sort());
+    for (const pc of [a, b, c]) pc.close();
+});
+
+test("compaction waits for every computer that counts: one with no state, or one that has not read them all", async () => {
+    const drive = createFakeDrive();
+    const time = clock();
+    const a = computer(drive, onClock(time));
+    const b = computer(drive, onClock(time));
+    await history(a, b);
+    // A computer whose lines verify and that never said what it read.
+    const quiet = fakePc(drive);
+    quiet.put(1, quiet.body(quiet.entry("Dela")));
+    await rounds([a, b], 1);
+    time.ahead = 15 * DAY;
+    await rounds([b, a], 1);
+    assert.equal(objectsOf(drive, a).length, 5, "the quiet computer holds them");
+
+    // Y has read X's objects 1 and 2, not 3: X joins those only.
+    const d = createFakeDrive();
+    const t2 = clock();
+    const x = computer(d, onClock(t2));
+    const y = computer(d, onClock(t2));
+    x.store.call("Song", "create", [{ title: "Um" }]);
+    await rounds([x, y], 1);
+    await tick();
+    x.store.call("Song", "create", [{ title: "Dois" }]);
+    await rounds([x, y], 1);
+    await tick();
+    x.store.call("Song", "create", [{ title: "Três" }]);
+    await x.engine.pass();
+    t2.ahead = 15 * DAY;
+    await x.engine.pass();
+    assert.deepEqual(namesOf(d, x), [changesName(x.store.pcId, 1, 2), changesName(x.store.pcId, 3)].sort());
+    await y.engine.pass();
+    assert.deepEqual(titles(y), ["Dois", "Três", "Um"]);
+    for (const pc of [a, b, x, y]) pc.close();
+});
+
+test("compaction stops before a number the listing does not show, and one cut short is finished by the next", async () => {
+    const drive = createFakeDrive();
+    const time = clock();
+    const a = computer(drive, onClock(time, { gcEveryMs: 0 }));
+    const b = computer(drive, onClock(time, { gcEveryMs: 0 }));
+    await history(a, b);
+    time.ahead = 15 * DAY;
+    await b.engine.pass();
+    // Object 3 not listed yet (a lagging listing): the run is 1 and 2.
+    drive.hide(changesName(a.store.pcId, 3));
+    await a.engine.pass();
+    drive.reveal();
+    assert.deepEqual(namesOf(drive, a), [changesName(a.store.pcId, 1, 2), ...[3, 4, 5].map((n) => changesName(a.store.pcId, n))].sort());
+
+    // Two weeks on, the removal fails after the new object is whole.
+    time.ahead = 30 * DAY;
+    await b.engine.pass();
+    drive.failNext("remove", 3, (name) => /\/00000[345]\.jsonl$/.test(name));
+    await a.engine.pass();
+    const names = objectsOf(drive, a).map((o) => o.name);
+    assert.ok(names.includes(changesName(a.store.pcId, 3, 5)) && names.includes(changesName(a.store.pcId, 3)), names.join(" "));
+    const c = computer(drive, onClock(time));
+    await rounds([c], 1);
+    assert.deepEqual(songs(c), songs(b), "both there: read twice, the same rows");
+    await a.engine.pass();
+    assert.deepEqual(namesOf(drive, a), [changesName(a.store.pcId, 1, 2), changesName(a.store.pcId, 3, 5)].sort());
+    for (const pc of [a, b, c]) pc.close();
+});
+
+test("folder: a compacted object is changes-<lo>-<hi>.jsonl beside the others, read back under its name", async () => {
+    const folder = tmp();
+    const time = clock();
+    const a = computer(folder, onClock(time));
+    const b = computer(folder, onClock(time));
+    await history(a, b);
+    time.ahead = 15 * DAY;
+    await b.engine.pass();
+    await a.engine.pass();
+    const dir = path.join(folder, "sync", a.store.pcId);
+    assert.deepEqual(fs.readdirSync(dir).filter((n) => n.startsWith("changes-")), ["changes-000001-000005.jsonl"]);
+    const listed = await createFolderStore(folder).list(`changes/${a.store.pcId}/`);
+    assert.deepEqual(listed.map((o) => o.name), [changesName(a.store.pcId, 1, 5)]);
+    const c = computer(folder, onClock(time));
+    await rounds([c], 1);
+    assert.deepEqual(songs(c), songs(b));
+    for (const pc of [a, b, c]) pc.close();
+});
+
+test("compaction over a number never written (a failed write) still lets the media cleanup go on", async () => {
+    const drive = createFakeDrive();
+    const time = clock();
+    const opts = onClock(time, { gcGraceMs: 0, gcEveryMs: 0 });
+    const a = computer(drive, opts);
+    const b = computer(drive, opts);
+    fs.writeFileSync(path.join(a.mediaDir, "velho.mp4"), "video");
+    const media = a.store.call("Media", "create", [{ title: "Velho", type: "video", file_url: "keryx-media://velho.mp4" }]);
+    await rounds([a, b], 1);
+    await tick();
+    a.store.call("Song", "create", [{ title: "Um" }]);
+    drive.failNext("putNew", 1, (name) => name.startsWith("changes/"));
+    assert.equal((await a.engine.pass()).state, "error");
+    await rounds([a, b], 1);
+    await tick();
+    a.store.call("Song", "create", [{ title: "Dois" }]);
+    await rounds([a, b], 2);
+    assert.deepEqual(namesOf(drive, a), [1, 3, 4].map((n) => changesName(a.store.pcId, n)).sort(), "number 2 was never written");
+    time.ahead = 15 * DAY;
+    await rounds([b, a], 1);
+    assert.deepEqual(namesOf(drive, a), [changesName(a.store.pcId, 1, 4)]);
+    await tick();
+    a.store.call("Media", "delete", [media.id]);
+    await rounds([a, b, a, b], 2);
+    assert.equal(inDrive(drive, "velho.mp4").length, 0, "B read the joined object once and the file went");
+    assert.deepEqual(titles(b), ["Dois", "Um"]);
+    a.close();
+    b.close();
+});

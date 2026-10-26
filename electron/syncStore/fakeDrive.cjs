@@ -26,8 +26,10 @@ const fsp = fs.promises;
 function createFakeDrive({ lag = 0, key = "drive:fake" } = {}) {
     const objects = new Map(); // id -> { id, name, bytes, props, created, modified, shownAt, goneAt }
     let listCalls = 0;
-    let clock = 1_000_000;
-    const tick = () => ++clock;
+    // Times as Drive gives them (ms, rising): the engine's compaction
+    // compares them with its own clock.
+    let clock = Date.now();
+    const tick = () => (clock = Math.max(clock + 1, Date.now()));
     const hidden = [];
     const failing = []; // { op, left, match }
     const cuts = new Map(); // "upload" | "download" -> bytes before the cut

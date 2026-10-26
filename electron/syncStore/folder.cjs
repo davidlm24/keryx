@@ -29,8 +29,11 @@ const MEDIA_DIR = "media";
 const PAIRING_FILE = "keryx-sync.json";
 const COMPUTER_FILE = "computer.json";
 const STATE_FILE = "state.json";
-// "changes-000003.jsonl" and every name the services give copies of it.
+// "changes-000003.jsonl" and every name the services give copies of it;
+// "changes-000001-000040.jsonl", what compaction made of 1 to 40 (an older
+// KERYX reads it once as a copy of 1: the same entries again, harmless).
 const ANY_CHANGES = /^changes-(\d+)(?!\d).*\.jsonl$/i;
+const ANY_RANGE = /^changes-(\d+)-(\d+)(?!\d).*\.jsonl$/i;
 
 async function statOf(file) {
     try {
@@ -53,8 +56,8 @@ function createFolderStore(folder) {
         if (s === PAIRING_FILE) return PAIRING_FILE;
         let m = /^media\/([^/]+)$/.exec(s);
         if (m) return `${MEDIA_DIR}/${m[1]}`;
-        m = /^changes\/([0-9a-f-]{36})\/(\d+)\.jsonl$/.exec(s);
-        if (m) return `${m[1]}/changes-${m[2]}.jsonl`;
+        m = /^changes\/([0-9a-f-]{36})\/(\d+)(?:-(\d+))?\.jsonl$/.exec(s);
+        if (m) return `${m[1]}/changes-${m[2]}${m[3] ? `-${m[3]}` : ""}.jsonl`;
         m = /^(computers|state)\/([0-9a-f-]{36})\.json$/.exec(s);
         if (m) return `${m[2]}/${m[1] === "computers" ? COMPUTER_FILE : STATE_FILE}`;
         throw new Error(`nome fora da sincronização: ${s}`);
@@ -92,8 +95,10 @@ function createFolderStore(folder) {
             const pc = m[1].toLowerCase();
             for (const n of await fsp.readdir(path.join(syncDir, d.name)).catch(() => [])) {
                 let name = null;
+                const r = ANY_RANGE.exec(n);
                 const c = ANY_CHANGES.exec(n);
-                if (c) name = changesName(pc, Number(c[1]));
+                if (r && Number(r[2]) >= Number(r[1])) name = changesName(pc, Number(r[1]), Number(r[2]));
+                else if (c) name = changesName(pc, Number(c[1]));
                 else if (n === COMPUTER_FILE) name = `computers/${pc}.json`;
                 else if (n === STATE_FILE) name = `state/${pc}.json`;
                 if (name && name.startsWith(p)) await add(`${d.name}/${n}`, name);

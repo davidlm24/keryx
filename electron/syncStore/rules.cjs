@@ -5,12 +5,19 @@
 // computador may add " (1)" to a copy of it).
 const PC_DIR = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
-// The changes object's name for a computer and a number, and back.
-const changesName = (pc, seq) => `changes/${String(pc).toLowerCase()}/${String(seq).padStart(6, "0")}.jsonl`;
-const CHANGES = /^changes\/([0-9a-f-]{36})\/(\d+)\.jsonl$/;
+// The changes object's name for a computer and a number, and back; with
+// `hi`, the object compaction made of the numbers seq..hi (sync.cjs),
+// "changes/<pc>/000001-000040.jsonl". parseChanges -> { pc, seq, hi, range }
+// (hi = seq for a single one).
+const pad = (n) => String(n).padStart(6, "0");
+const changesName = (pc, seq, hi = null) => `changes/${String(pc).toLowerCase()}/${pad(seq)}${hi != null ? `-${pad(hi)}` : ""}.jsonl`;
+const CHANGES = /^changes\/([0-9a-f-]{36})\/(\d+)(?:-(\d+))?\.jsonl$/;
 function parseChanges(name) {
     const m = CHANGES.exec(String(name));
-    return m ? { pc: m[1], seq: Number(m[2]) } : null;
+    if (!m) return null;
+    const seq = Number(m[2]);
+    const hi = m[3] != null ? Number(m[3]) : seq;
+    return hi >= seq ? { pc: m[1], seq, hi, range: m[3] != null } : null;
 }
 
 // The object of a name that counts when there are several: the first made.

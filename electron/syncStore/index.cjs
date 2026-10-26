@@ -59,12 +59,14 @@
 //                              same object)
 //
 // Adapters: `folder` (folder.cjs), the shared folder Google Drive para
-// computador keeps in step, until Drive is spoken to directly (then it
-// goes); `fakeDrive` (fakeDrive.cjs), in memory, enforcing the rules above,
-// for the tests.
+// computador keeps in step, until PR 4 of "Google Drive direto" (then it
+// goes); `drive` (drive.cjs), Google Drive's REST API in the account's
+// appDataFolder (PR 2); `fakeDrive` (fakeDrive.cjs), in memory, enforcing
+// the rules above, for the tests.
 
 const { createFolderStore } = require("./folder.cjs");
+const { createDriveStore } = require("./drive.cjs");
 const { createFakeDrive } = require("./fakeDrive.cjs");
 const rules = require("./rules.cjs");
 
-module.exports = { createFolderStore, createFakeDrive, ...rules };
+module.exports = { createFolderStore, createDriveStore, createFakeDrive, ...rules };

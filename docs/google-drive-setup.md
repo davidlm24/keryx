@@ -71,9 +71,14 @@ O Google chama essa parte de **Google Auth Platform** (em telas antigas,
 2. Tipo de aplicativo: **App para computador** (em inglês, "Desktop app").
 3. Nome: `KERYX para Windows`. Clique em **Criar**.
 4. Aparece o **ID do cliente** (termina em `.apps.googleusercontent.com`) e
-   uma "chave secreta do cliente". **Copie o ID do cliente.** Para um app de
-   computador o Google trata o cliente como público: o ID vai dentro do
-   KERYX e não é segredo. A chave secreta não precisa ser enviada.
+   uma "chave secreta do cliente". **Copie os dois.** Para um app de
+   computador o Google trata o cliente como público: o ID e a chave vão
+   dentro do KERYX (qualquer um que abra o instalador consegue lê-los) e não
+   dão acesso a conta nenhuma — quem decide é a entrada de cada pessoa. Mesmo
+   assim, **o Google exige a chave na troca do código** para esse tipo de
+   cliente (conferido em 26/10: sem ela, ele responde "client_secret is
+   missing"). Se a chave não aparecer mais, em **Clientes** › `KERYX para
+   Windows` › **Adicionar chave secreta** gera outra.
 
 ## 6. Publicar o app ("Em produção") — importante
 
@@ -91,14 +96,28 @@ isso:
 
 ## 7. O que mandar de volta
 
-Só o **ID do cliente**, por exemplo:
+O **ID do cliente** (já recebido em 26/10: uma linha que termina em
+`.apps.googleusercontent.com`) e a **chave secreta do cliente** (uma linha
+que começa com `GOCSPX-`).
 
-```
-123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com
-```
+Não mande a senha da conta nem nenhum código que o Google mostrar ao entrar.
 
-Não mande a senha da conta, a chave secreta do cliente nem nenhum código que
-o Google mostrar ao entrar.
+## O que o KERYX guarda, e onde
+
+- **Neste computador** (settings.json, na pasta de dados do KERYX): a
+  entrada da conta (o "refresh token" do Google), **selada pela proteção do
+  Windows** — só esta conta do Windows, neste computador, consegue abri-la;
+  e o e-mail da conta, para mostrar qual está conectada. A senha nunca passa
+  pelo KERYX: ela é digitada só na página do Google, no navegador.
+- **No Google Drive da igreja**, na pasta oculta do app: as mudanças de cada
+  computador (assinadas com o código da igreja), o que cada um já leu e os
+  arquivos de mídia. Nenhum outro app nem pessoa vê essa pasta pelo Drive.
+- **Sair da conta** no KERYX apaga a entrada deste computador e avisa o
+  Google para cancelá-la.
+- Se o Google recusar a entrada guardada (a senha da conta mudou, alguém
+  removeu o acesso em <https://myaccount.google.com/permissions>), o KERYX
+  para de sincronizar, diz "Entre de novo com a conta da igreja" e guarda as
+  mudanças até alguém entrar de novo.
 
 ## O que esperar na primeira entrada
 
@@ -122,3 +141,5 @@ o Google mostrar ao entrar.
 | A conta desconecta sozinha depois de uma semana | Mesmo motivo: publique o app (passo 6). |
 | "redirect_uri_mismatch" | O cliente foi criado com outro tipo: crie um novo do tipo **App para computador** (passo 5). |
 | "Google Drive API has not been used in project…" | Falta ativar a API (passo 2). |
+| O KERYX diz "O KERYX ainda não está configurado no Google" | Falta a chave secreta do cliente dentro do KERYX (passo 5, item 4). |
+| A página do Google mostra as permissões com caixas de marcar | Deixe marcada a de "dados de configuração" do Drive: sem ela o KERYX não sincroniza e pede para entrar de novo. |

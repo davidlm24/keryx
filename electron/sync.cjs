@@ -76,11 +76,17 @@ const COLLECTED_LIMIT = 500;
 // The state object's format: 2 since the store (an older KERYX wrote byte
 // cursors by file name, which say nothing about objects).
 const STATE_V = 2;
+// Compaction (compact()): this computer's changes objects older than this
+// become one, at most this often, so a year of passes is not thousands of
+// objects on Drive.
+const COMPACT_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+const COMPACT_EVERY_MS = 14 * 24 * 60 * 60 * 1000;
 // keryx-media://<file> in a row; the app's own files (keryx-media://bundled/…)
 // ship with every copy and never travel.
 const MEDIA_REF = /keryx-media:\/\/([A-Za-z0-9][A-Za-z0-9._-]*)(?![A-Za-z0-9._/-])/g;
 
-const endLine = (n) => `${JSON.stringify({ keryx: "end", lines: n })}\n`;
+// The end line; a compacted object's also says which numbers it holds.
+const endLine = (n, range = null) => `${JSON.stringify(range ? { keryx: "end", lines: n, range } : { keryx: "end", lines: n })}\n`;
 const isEnd = (e) => Boolean(e && typeof e === "object" && e.keryx === "end");
 // The lines an object holds before its end line (at `end`), blank ones aside.
 const linesBefore = (buf, end) => buf.toString("utf8", 0, end).split("\n").filter((l) => l.trim()).length;
@@ -110,10 +116,11 @@ async function sizeOf(file) {
 
 // -- Ranges of numbers ([[from, to], …], sorted, apart) ----------------------
 
-function addRange(ranges, n) {
+// n, or the numbers n..to.
+function addRange(ranges, n, to = n) {
     const out = [];
     let lo = n;
-    let hi = n;
+    let hi = to;
     for (const [a, b] of Array.isArray(ranges) ? ranges : []) {
         if (b < lo - 1 || a > hi + 1) out.push([a, b]);
         else {
@@ -127,11 +134,6 @@ function addRange(ranges, n) {
 
 const inRanges = (ranges, n) => (Array.isArray(ranges) ? ranges : []).some(([a, b]) => n >= a && n <= b);
 const rangeWithin = ([a, b], ranges) => (Array.isArray(ranges) ? ranges : []).some(([x, y]) => a >= x && b <= y);
-function rangesOf(numbers) {
-    let out = [];
-    for (const n of numbers) out = addRange(out, n);
-    return out;
-}
 
 // One line per row and moment: two writes of the same row in the same
 // millisecond (a create and its first update) have the same date, and the
@@ -272,6 +274,7 @@ function markFromCursors(cursors) {
 function createSyncEngine({
     store, mediaDir, getStore = null, getFolder = null, getPairing = () => null, describe = null, log = console.warn, batch = BATCH, now = () => new Date(), onStatus = null,
     gcEveryMs = GC_EVERY_MS, gcGraceMs = GC_GRACE_MS, writeWaitMs = WRITE_WAIT_MS,
+    compactAgeMs = COMPACT_AGE_MS, compactEveryMs = COMPACT_EVERY_MS,
 }) {
     const pc = String(store.pcId).toLowerCase();
     // A complete line that is not JSON, by object: the object's size when it
@@ -306,6 +309,8 @@ function createSyncEngine({
     let pendingSince = null;
     let waitTimer = null;
     let flushAsked = false;
+    // Changes objects that compaction joined in this pass.
+    let compacted = 0;
 
     // The store in use, or null (off).
     function current() {
@@ -419,8 +424,9 @@ function createSyncEngine({
         // confirmation), so they go again under a new number.
         const whole = state.out?.whole || [];
         for (let i = own.length - 1; i >= 0; i--) {
-            const seq = parseChanges(own[i].name)?.seq || 0;
-            if (!state.out?.first || seq < state.out.first || seq > state.out.n || inRanges(whole, seq)) continue;
+            const p = parseChanges(own[i].name);
+            const seq = p?.seq || 0;
+            if (!p || p.range || !state.out?.first || seq < state.out.first || seq > state.out.n || inRanges(whole, seq)) continue;
             try {
                 await shared.remove(own[i].id);
                 own.splice(i, 1);
@@ -449,9 +455,9 @@ function createSyncEngine({
                 if (sizes) line.media = sizes;
             }
             const text = lines.map((line) => keys.sign(JSON.stringify(line)) + "\n").join("") + endLine(lines.length);
-            const onStore = own.reduce((n, o) => Math.max(n, parseChanges(o.name)?.seq || 0), 0);
+            const onStore = own.reduce((n, o) => Math.max(n, parseChanges(o.name)?.hi || 0), 0);
             const seq = Math.max(state.out?.n || 0, onStore) + 1;
-            state.out = { pc, n: seq, first: state.out?.first || seq, whole: state.out?.whole || [] };
+            state.out = { ...state.out, pc, n: seq, first: state.out?.first || seq, whole: state.out?.whole || [] };
             saveState(state);
             own.push(await shared.putNew(changesName(pc, seq), Buffer.from(text), { pc, seq: String(seq) }));
             state.out.whole = addRange(state.out.whole, seq);
@@ -586,11 +592,13 @@ function createSyncEngine({
     // read by its id, even if a copy of it was read whole and went). Its
     // size is asked only here, for an object not read whole. -> false when
     // it is gone.
+    // A compacted object (seq..hi) counts as read when all its numbers are;
+    // else it is read once, and then they all are.
     async function readObject(shared, media, state, obj, from, alone, totals) {
-        const seq = parseChanges(obj.name).seq;
+        const { seq, hi } = parseChanges(obj.name);
         const seen = seenOf(state, from);
         const part = state.part[obj.id];
-        if (alone ? inRanges(seen.done, seq) && !part : seen.dup[obj.id]) return true;
+        if (alone ? rangeWithin([seq, hi], seen.done) && !part : seen.dup[obj.id]) return true;
         if (obj.size == null) {
             let st;
             try {
@@ -621,7 +629,7 @@ function createSyncEngine({
             pending = [];
             if (ended) {
                 delete state.part[obj.id];
-                seen.done = addRange(seen.done, seq);
+                seen.done = addRange(seen.done, seq, hi);
                 if (!alone) seen.dup[obj.id] = 1;
             } else {
                 state.part[obj.id] = { pc: from, seq, at: pos };
@@ -835,18 +843,21 @@ function createSyncEngine({
         const first = state.out?.first || Infinity;
         const confirmed = state.out?.whole || [];
         const mine = { done: [], part: {} };
-        const whole = [];
         for (const o of own) {
-            const seq = parseChanges(o.name)?.seq;
-            if (!seq) continue;
-            if (seq >= first) {
-                if (inRanges(confirmed, seq)) whole.push(seq);
+            const p = parseChanges(o.name);
+            if (!p?.seq) continue;
+            // A compacted object holds only confirmed numbers.
+            if (p.range) {
+                mine.done = addRange(mine.done, p.seq, p.hi);
+                continue;
+            }
+            if (p.seq >= first) {
+                if (inRanges(confirmed, p.seq)) mine.done = addRange(mine.done, p.seq);
                 continue;
             }
             const size = o.size ?? (await shared.stat(o.id).catch(() => null))?.size;
-            if (size != null) mine.part[o.id] = [seq, size];
+            if (size != null) mine.part[o.id] = [p.seq, size];
         }
-        mine.done = rangesOf(whole);
         mark[pc] = mine;
         return mark;
     }
@@ -865,6 +876,139 @@ function createSyncEngine({
             return (m.done || []).every((r) => rangeWithin(r, done))
                 && Object.entries(m.part || {}).every(([id, [seq, size]]) => !there.has(id) || inRanges(done, seq) || (Number(part[id]?.at) || 0) >= size);
         });
+    }
+
+    // -- Compaction of this computer's old changes objects ----------------------
+    //
+    // A pass with changes is one new object (Drive's rules), so a busy year
+    // would leave thousands. Every compactEveryMs, the run of this computer's
+    // own objects, confirmed whole and older than compactAgeMs, that every
+    // computer that counts has read (its v2 state's `read` covers each of
+    // their numbers; one with no state, or an older KERYX's, holds them all)
+    // becomes one object, changes/<pc>/<lo>-<hi>.jsonl: the last line per
+    // row (by its date; a delete stays a delete) and every User line (the
+    // profile merges field by field), as they were signed, ending in
+    // {"keryx":"end","lines":n,"range":[lo,hi]}. It is read back to check it
+    // is whole, and only then are the objects it replaces removed; a
+    // compaction cut short leaves both, and the next one removes the
+    // leftovers. Readers take it as read when they have read all its
+    // numbers, else read it once (entries are idempotent). A run stops before
+    // a confirmed number the listing does not show (lagging), and before an
+    // earlier compacted object, so no number is claimed without its lines.
+    // -> how many objects went.
+    async function compact(shared, state, own, manifests, there) {
+        const out = state.out;
+        if (!out?.first || !(out.whole || []).length) return 0;
+        const parsed = (o) => parseChanges(o.name);
+        const ranges = own.filter((o) => parsed(o)?.range);
+        const drop = async (o) => {
+            await shared.remove(o.id);
+            there.delete(o.id);
+            own.splice(own.indexOf(o), 1);
+        };
+        // What a compaction cut short left behind.
+        for (const o of own.filter((x) => !parsed(x)?.range)) {
+            const seq = parsed(o)?.seq;
+            if (seq >= out.first && ranges.some((r) => seq >= parsed(r).seq && seq <= parsed(r).hi)) await drop(o).catch(() => {});
+        }
+        const t = now().getTime();
+        if (out.compactAt && t - Date.parse(out.compactAt) < compactEveryMs) return 0;
+        const singles = own
+            .filter((o) => { const p = parsed(o); return p && !p.range && p.seq >= out.first && inRanges(out.whole, p.seq); })
+            .sort((a, b) => (parsed(a).seq - parsed(b).seq) || ((a.created || 0) - (b.created || 0)));
+        if (singles.length < 2) return 0;
+        // The old ones: the numbers rise with the time, so the last old one
+        // is found by halves (a few stats where the listing has no dates).
+        const createdOf = async (o) => {
+            if (o.created == null) {
+                const st = await shared.stat(o.id).catch(() => null);
+                if (!st) return Infinity;
+                Object.assign(o, st);
+            }
+            return o.created;
+        };
+        const cutoff = t - compactAgeMs;
+        let lo = 0;
+        let hi = singles.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if ((await createdOf(singles[mid])) <= cutoff) lo = mid + 1;
+            else hi = mid;
+        }
+        const readers = [...manifests.values()];
+        if (readers.some((m) => !m || !m.read || typeof m.read !== "object" || !m.read.seen)) return 0;
+        const listed = new Set(singles.map((o) => parsed(o).seq));
+        const firstSeq = parsed(singles[0]).seq;
+        let run = [];
+        for (const o of singles.slice(0, lo)) {
+            const seq = parsed(o).seq;
+            if (!readers.every((m) => inRanges(m.read.seen[pc]?.done, seq))) break;
+            if (ranges.some((r) => parsed(r).seq > firstSeq && parsed(r).seq <= seq)) break;
+            const prev = run.length ? parsed(run[run.length - 1]).seq : seq;
+            let gap = false;
+            for (let s = prev + 1; s < seq; s++) if (inRanges(out.whole, s) && !listed.has(s)) gap = true;
+            if (gap) break;
+            run.push(o);
+        }
+        if (run.length < 2) return 0;
+        const kept = [];
+        const last = new Map();
+        for (const o of run) {
+            const buf = await shared.read(o.id).catch(() => null);
+            if (!buf) return 0;
+            let count = 0;
+            let ended = false;
+            for (const raw of buf.toString("utf8").split("\n")) {
+                const text = raw.trim();
+                if (!text) continue;
+                let e;
+                try {
+                    e = JSON.parse(text);
+                } catch {
+                    return 0;
+                }
+                if (isEnd(e)) {
+                    ended = e.lines === count;
+                    break;
+                }
+                count += 1;
+                if (!isEntry(e, pc)) continue;
+                if (e.entity === "User") {
+                    kept.push(text);
+                    continue;
+                }
+                const key = `${e.entity}\u0000${e.id}`;
+                const was = last.get(key);
+                if (was && String(e.at) < String(was.at)) continue;
+                if (was) kept[was.i] = null;
+                last.set(key, { i: kept.length, at: e.at });
+                kept.push(text);
+            }
+            if (!ended) return 0;
+        }
+        const lines = kept.filter(Boolean);
+        const loSeq = parsed(run[0]).seq;
+        const hiSeq = parsed(run[run.length - 1]).seq;
+        const bytes = Buffer.from(lines.map((l) => `${l}\n`).join("") + endLine(lines.length, [loSeq, hiSeq]));
+        const made = await shared.putNew(changesName(pc, loSeq, hiSeq), bytes, { pc, seq: String(loSeq), hi: String(hiSeq) });
+        const back = await shared.read(made.id).catch(() => null);
+        if (!back || !back.equals(bytes)) {
+            await shared.remove(made.id).catch(() => {});
+            return 0;
+        }
+        own.push(made);
+        there.add(made.id);
+        state.out = { ...state.out, compactAt: now().toISOString() };
+        saveState(state);
+        let gone = 0;
+        for (const o of run) {
+            try {
+                await drop(o);
+                gone += 1;
+            } catch { /* the next compaction removes it */ }
+        }
+        logOnce(`${gone} objetos de mudanças juntados em ${made.name}`);
+        return gone;
     }
 
     async function collect(shared, state, names, media, own, there) {
@@ -921,6 +1065,11 @@ function createSyncEngine({
         if (gc.collected.length > COLLECTED_LIMIT) gc.collected.splice(0, gc.collected.length - COLLECTED_LIMIT);
         const inUse = new Set(Object.values(gc.candidates).map((c) => c.mark));
         for (const key of Object.keys(gc.marks)) if (!inUse.has(key)) delete gc.marks[key];
+        try {
+            compacted += await compact(shared, state, own, manifests, there);
+        } catch (err) {
+            logOnce(`junção das mudanças antigas adiada: ${err && err.message}`);
+        }
         gc.at = at.toISOString();
         return removed;
     }
@@ -970,7 +1119,15 @@ function createSyncEngine({
         let up = false;
         try {
             up = await shared.available();
-        } catch { /* as not there */ }
+        } catch (err) {
+            // Drive: the sign-in is gone or refused (googleAuth.cjs). Said
+            // as it is; nothing is asked of Google until someone enters.
+            if (err && (err.code === "auth" || err.code === "config")) {
+                setStatus({ ...status, state: "auth", folder: where, lastPass: at, error: err.message });
+                logOnce(`entrada no Google: ${err.message}`);
+                return;
+            }
+        }
         if (!up) {
             const why = shared.kind === "folder" ? "A pasta de sincronização não está disponível." : "O Google Drive não respondeu.";
             setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: why });
@@ -1019,6 +1176,7 @@ function createSyncEngine({
                 if (!names.has(m.name)) await fsp.rm(path.join(mediaDir, tempOf(m.name)), { force: true }).catch(() => {});
             }
             state.missing = state.missing.filter((m) => names.has(m.name));
+            compacted = 0;
             const collected = gcDue(state) ? await collect(shared, state, names, media, own, present) : 0;
             saveState(state);
             await publish(shared, state, names);
@@ -1036,11 +1194,20 @@ function createSyncEngine({
                 rejected,
                 missingMedia: state.missing.length,
                 collectedMedia: collected,
+                compactedObjects: compacted,
                 computers,
             });
             logOnce("");
         } catch (err) {
             const message = err && err.message ? err.message : String(err);
+            // Drive gone mid-pass (the internet, the sign-in): the states a
+            // pass would have said at its start; what is not done waits.
+            const code = err && err.code;
+            if (code === "offline" || code === "auth" || code === "config") {
+                setStatus({ ...status, state: code === "offline" ? "offline" : "auth", folder: where, lastPass: at, error: message });
+                logOnce(`indisponível: ${message}`);
+                return;
+            }
             setStatus({ ...status, state: "error", folder: where, lastPass: at, error: `Não foi possível sincronizar: ${message}` });
             logOnce(`erro: ${message}`);
         }

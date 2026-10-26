@@ -1226,6 +1226,79 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      the folder adapter with an older KERYX's growing file, a mixed church
      and a database from 0.2.21; `syncControl.test.cjs` still runs on a
      real temp folder.
+8. **Google Drive spoken to directly (2026-10-26, "Google Drive direto"
+   PR 2 of 4; no UI yet, PR 3 makes Configurações' page after a mockup):**
+   - **The sign-in** (`electron/googleAuth.cjs`, the client in
+     `electron/googleConfig.cjs`): Google's installed-app flow, an
+     authorization code with PKCE (S256), the answer coming back to a
+     listener on `127.0.0.1` at a free port that takes ONE request (its
+     `state` must match, else nothing is exchanged) and closes, or gives up
+     after 5 minutes; the page opens in the system's browser
+     (`shell.openExternal`), never a KERYX window. Scopes `drive.appdata`
+     (only the app's hidden folder), `openid` and `email` (which account).
+     The refresh token is sealed with Windows' protection (`sealWith`;
+     refused when only the plain fallback exists) in settings.json under
+     `"google"`; the access token stays in memory, refreshed a minute
+     before it ends, one refresh at a time. A refresh Google answers with
+     `invalid_grant` forgets the token and leaves `{ email, refused }`:
+     the engine's state "auth" ("Entre de novo com a conta da igreja") and
+     the bell, with no call to Google until someone enters again. Sair
+     forgets it here first, then revokes it at Google. **Google's token
+     endpoint requires the client secret even for a desktop client**
+     (checked 26/10 with a fake code: "client_secret is missing"); Google
+     treats it as public for installed apps, it ships in the installer,
+     and `googleConfig.cjs` holds it only once the owner gives it
+     (`KERYX_GOOGLE_CLIENT_SECRET` for a test run); without it entering
+     says so before the browser opens.
+   - **The adapter** (`electron/syncStore/drive.cjs`): REST over `fetch`
+     (Electron's `net.fetch` in main, the system's proxy; no `googleapis`
+     package), every file in `appDataFolder` with the engine's name as its
+     Drive name and `props` as appProperties. One full listing (paged) when
+     it first lists, then **`changes.list`** from the page token kept in
+     memory, at most once every 2 s, so a pass costs one call to know
+     what is new (a token Drive no longer takes starts over with a full
+     listing; a restart lists once). `putNew` is a multipart create,
+     `putWhole` updates the oldest file of the name and removes the others,
+     `putIfAbsent` is `firstWins`. Media goes up with the **resumable**
+     protocol in 8 MB chunks (a cut asks Drive what it has and goes on,
+     while the session lives in this run; an expired one starts over) and
+     comes down by `Range` into the engine's `.partial`, tied by an `.id`
+     file to the Drive file it came from. 429, 5xx and Drive's rate-limit
+     403s are tried again (Retry-After, else 1, 2, 4… s, at most 32, five
+     tries); a 401 refreshes the token once; no answer is "offline" (the
+     same state as the folder's, "O Google Drive não respondeu."), a full
+     account "quota" in words. `about()` gives the account and its space.
+   - **Compaction** (in the engine's `collect`, every 10 min): every 14
+     days, this computer's own objects confirmed whole and older than 14
+     days, that every computer that counts has read (its v2 state covers
+     each of their numbers; one with no state, or an older KERYX's, holds
+     them), become one object `changes/<pc>/<lo>-<hi>.jsonl`: the last line
+     per row by its date (a delete stays a delete), every `User` line, as
+     they were signed, ending in `{"keryx":"end","lines":n,"range":[lo,hi]}`.
+     It is read back before the objects it replaces go; one cut short is
+     finished by the next. A run stops before a confirmed number the
+     listing does not show and before an earlier compacted object.
+     Readers take a range as read when all its numbers are, else read it
+     once and add them all; marks count it whole. The folder adapter
+     writes it as `changes-<lo>-<hi>.jsonl` (an older KERYX would read it
+     as a copy of `lo`, harmless; it never compacts while one counts).
+   - **Wiring** (`syncControl.cjs`): `sync.store = "drive"` in
+     settings.json chooses Drive (the folder stays the default until PR
+     4); the ops `googleSignIn`, `googleStatus` (account, refused, the
+     space used and total), `googleSignOut` and `useDrive { on }` over
+     `keryx:sync`. Moving a computer that syncs to Drive sends everything
+     it has (`store.snapshot`, as joining does) and the engine writes the
+     church's code file there when it is missing; making, typing and
+     changing the code work on Drive as on the folder. Signed out, the
+     changes wait (the outbox keeps recording).
+   - Tests: `googleAuth.test.cjs` (a fake token endpoint and a fake
+     browser on the real listener), `syncStore/drive.test.cjs` against a
+     fake Drive server (`electron/fixtures/fakeDriveServer.cjs`: multipart,
+     resumable with a cut, Range downloads, 429/5xx, the changes feed paged,
+     duplicates, and two engines syncing through it), compaction in
+     `sync.test.cjs` on `fakeDrive` and the folder, and the whole move in
+     `syncControl.test.cjs`. Only the owner signs in with the real account
+     (the steps are in the PR and in `docs/google-drive-setup.md`).
 
 ## 9. Project layout after the change
 
