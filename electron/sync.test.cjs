@@ -1552,11 +1552,13 @@ test("compaction waits for every computer that counts: one with no state, or one
     const t2 = clock();
     const x = computer(d, onClock(t2));
     const y = computer(d, onClock(t2));
+    // In this order (rounds() shuffles): X writes, then Y reads it.
+    const xy = async () => { await x.engine.pass(); await y.engine.pass(); };
     x.store.call("Song", "create", [{ title: "Um" }]);
-    await rounds([x, y], 1);
+    await xy();
     await tick();
     x.store.call("Song", "create", [{ title: "Dois" }]);
-    await rounds([x, y], 1);
+    await xy();
     await tick();
     x.store.call("Song", "create", [{ title: "Três" }]);
     await x.engine.pass();
