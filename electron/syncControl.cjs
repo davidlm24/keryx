@@ -1,6 +1,7 @@
 // Configurações › Sincronização, main-process side (docs/desktop-architecture.md
 // §8b, PR 5): the folder, the church's code, on/off, the status and leaving,
-// over the engine (sync.cjs) and the pairing (syncPairing.cjs). Reached from
+// over the engine (sync.cjs) and the pairing (syncPairing.cjs), through the
+// folder adapter of the sync store (syncStore/folder.cjs). Reached from
 // the console through `keryx:sync` (data-ipc.cjs); pure enough to test
 // without Electron: the native folder picker, the system's protection for
 // the code (safeStorage) and the bell come in as functions.
@@ -14,7 +15,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { createSyncEngine, inspectFolder, syncDirOf } = require("./sync.cjs");
+const { createSyncEngine, inspectFolder } = require("./sync.cjs");
+const { createFolderStore } = require("./syncStore/index.cjs");
 const { createPairing, joinPairing, updateRemoved, codeRules } = require("./syncPairing.cjs");
 
 const KEY = "sync";
@@ -198,7 +200,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         store.setRecording(true);
         const sent = store.snapshot();
         log(`[keryx-sync] código ${cur.pairing ? "novo" : "aceito"}; ${sent} registros a enviar`);
-        engine.pass().catch(() => {});
+        engine.pass({ flush: true }).catch(() => {});
         return status();
     }
 
@@ -210,12 +212,12 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         const p = currentPairing();
         if (!p) throw fail("Este computador ainda não sincroniza.");
         const folder = await folderOrFail();
-        const list = await updateRemoved(syncDirOf(folder), p, (cur, at) => {
+        const list = await updateRemoved(createFolderStore(folder), p, (cur, at) => {
             const rest = cur.filter((r) => r.pc !== who);
             return out ? [...rest, { pc: who, at: at.toISOString(), by: me }] : rest;
         }, { pc: me, now: now() });
         if (list.error) throw fail(await joinMessage(list));
-        await engine.pass();
+        await engine.pass({ flush: true });
         return status();
     }
 
@@ -284,17 +286,17 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         },
         create: async () => {
             const folder = await folderOrFail();
-            const made = await createPairing(syncDirOf(folder), { pc: store.pcId, now: now() });
+            const made = await createPairing(createFolderStore(folder), { pc: store.pcId, now: now() });
             if (made.error) throw fail(await joinMessage(made), 409);
             return { code: made.code, ...(await paired(made)) };
         },
         join: async (_event, { code } = {}) => {
             const folder = await folderOrFail();
-            const joined = await joinPairing(syncDirOf(folder), code);
+            const joined = await joinPairing(createFolderStore(folder), code);
             if (joined.error) throw fail(await joinMessage(joined));
             // Typing the code brings back a computer that was taken out.
             const pc = String(store.pcId).toLowerCase();
-            await updateRemoved(syncDirOf(folder), joined, (list) => list.filter((r) => r.pc !== pc), { pc, now: now() }).catch(() => {});
+            await updateRemoved(createFolderStore(folder), joined, (list) => list.filter((r) => r.pc !== pc), { pc, now: now() }).catch(() => {});
             return paired(joined);
         },
         // Tirar (owner 2026-10-16): another computer stops until the code is
@@ -306,7 +308,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         rotate: async () => {
             if (!config().pairing) throw fail("Este computador ainda não sincroniza.");
             const folder = await folderOrFail();
-            const made = await createPairing(syncDirOf(folder), { pc: store.pcId, replace: true, now: now() });
+            const made = await createPairing(createFolderStore(folder), { pc: store.pcId, replace: true, now: now() });
             return { code: made.code, ...(await paired(made)) };
         },
         showCode: async () => {
@@ -320,11 +322,11 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             if (!cur.folder) throw fail("Escolha a pasta primeiro.");
             save({ ...cur, paused: Boolean(paused) });
             if (!paused) engine.poke();
-            else await engine.pass();
+            else await engine.pass({ flush: true });
             return status();
         },
         now: async () => {
-            await engine.pass();
+            await engine.pass({ flush: true });
             return status();
         },
         // Sair da sincronização: this computer stops; nothing is deleted
@@ -335,7 +337,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             pairingFrom = null;
             store.setRecording(false);
             store.pruneOutbox(Number.MAX_SAFE_INTEGER);
-            await engine.pass();
+            await engine.pass({ flush: true });
             if (dismiss) dismiss(BELL);
             belled = null;
             return status();
