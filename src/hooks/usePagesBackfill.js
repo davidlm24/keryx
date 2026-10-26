@@ -4,6 +4,7 @@ import { needsPages, pagesWait, pdfFailure } from "@/lib/presentation";
 import { madeHere, restoreMadeHere, subscribeMadeHere } from "@/lib/mediaImport";
 import { savePages } from "@/lib/pdfPagesCapture";
 import { useSyncStatusSelect } from "@/hooks/useSyncStatus";
+import { syncsHere } from "@/lib/console/syncView";
 
 const PAUSE_MS = 300;
 
@@ -61,7 +62,7 @@ export function retryPages(id) {
 export function usePagesBackfill(rows) {
     const [tick, setTick] = useState(0);
     const [busy, setBusy] = useState(false);
-    const syncs = useSyncStatusSelect((st) => (st ? Boolean(st.folder && st.paired) : null));
+    const syncs = useSyncStatusSelect((st) => (st ? syncsHere(st) : null));
     useEffect(() => {
         restoreMadeHere();
         const bump = () => setTick((n) => n + 1);

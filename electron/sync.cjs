@@ -311,6 +311,9 @@ function createSyncEngine({
     let flushAsked = false;
     // Changes objects that compaction joined in this pass.
     let compacted = 0;
+    // The media file coming down now ({ name, size, tmp }), for the cloud's
+    // "Chegando · 64 %": how far it got is the hidden file's size.
+    let arriving = null;
 
     // The store in use, or null (off).
     function current() {
@@ -529,10 +532,13 @@ function createSyncEngine({
         await fsp.mkdir(mediaDir, { recursive: true });
         const tmp = path.join(mediaDir, tempOf(name));
         for (const o of objs) {
+            arriving = { name, size: o.size, tmp };
             try {
                 await shared.download(o.id, tmp);
             } catch {
                 continue; // cut or locked: retried, from where it stopped
+            } finally {
+                arriving = null;
             }
             if ((await sizeOf(tmp)) !== o.size) {
                 await fsp.rm(tmp, { force: true }).catch(() => {});
@@ -1279,7 +1285,18 @@ function createSyncEngine({
         return [...missingNow];
     }
 
-    return { pass, poke, start, stop, status: () => status, missing };
+    // -> { name, size, got } while a media file comes down, else null.
+    function coming() {
+        const a = arriving;
+        if (!a) return null;
+        let got = 0;
+        try {
+            got = fs.statSync(a.tmp).size;
+        } catch { /* not started */ }
+        return { name: a.name, size: a.size, got };
+    }
+
+    return { pass, poke, start, stop, status: () => status, missing, arriving: coming };
 }
 
 module.exports = { createSyncEngine, inspectStore, inspectFolder, mediaRefs, coalesce, addRange, inRanges, endLine, STATE_KEY };

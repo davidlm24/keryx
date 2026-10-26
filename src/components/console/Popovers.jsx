@@ -120,7 +120,7 @@ export function Shortcuts({ open, setOpen }) {
 // A top-bar popover sits under the button that opened it, right edges
 // aligned, and never leaves the window (a fixed offset drifted off on
 // narrow windows and whenever the bar's buttons moved).
-function useAnchor(selector, width, active) {
+export function useAnchor(selector, width, active) {
     const [box, setBox] = useState(null);
     useLayoutEffect(() => {
         if (!active) return undefined;

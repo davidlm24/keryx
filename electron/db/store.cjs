@@ -839,6 +839,8 @@ function createStore({ file, schema, log = console.warn }) {
         applyRemote,
         replayParked,
         parkedCount: () => Number(prepare(`SELECT COUNT(*) AS n FROM ${quote(PARKED)}`).get().n),
+        // The changes still waiting to go (Sincronização's "7 mudanças esperando").
+        outboxCount: () => Number(prepare(`SELECT COUNT(*) AS n FROM ${quote(OUTBOX)}`).get().n),
         setRecording: (on) => { recording = Boolean(on); },
         isRecording: () => recording,
         pcId,

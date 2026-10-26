@@ -1,44 +1,36 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { keryx } from "@/api/keryxClient";
+import React, { useState } from "react";
+import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
 import { useConfirm } from "../ConfirmDialog";
 import { useLibrary } from "../useConsoleData";
-import { FormRow, CfgKey, CfgGroup, Switch, useBridge, formatWhen, desktopOnly } from "./parts";
+import { FormRow, CfgKey, CfgGroup, useBridge, desktopOnly } from "./parts";
 import { useSyncStatus, setSyncStatus } from "@/hooks/useSyncStatus";
 import { useLiveNow } from "@/hooks/useLiveState";
-import { usePrefs, updateUser } from "@/hooks/useUser";
-import { syncStep, syncState, computerRows, sinceLine, ago, syncSummary, SYNC_GOES, SYNC_STAYS, SYNC_TRAVEL_SUMMARY, SYNC_MIRROR_HINT, SYNC_SHARED_HINT } from "@/lib/console/syncView";
-import { parseCode, codeMessage } from "@shared/syncCode.mjs";
-import { duplicateSongs, keepPairs, mergePlan } from "@shared/syncDuplicates.mjs";
+import { signInWithGoogle, cancelGoogleSignIn, reopenGoogleSignIn, useGoogleQuota } from "@/hooks/useGoogleSync";
+import { googlePage, driveProgress, quotaView, deviceRows, pageProblems, OFFLINE_TEXT, QUOTA_WARN_TEXT, GOOGLE_GOES, GOOGLE_STAYS, GOOGLE_TRAVEL_SUMMARY } from "@/lib/console/syncView";
+import SyncFolderSteps from "./SyncFolderSteps";
+import SyncDuplicates from "./SyncDuplicates";
 
-// Configurações › Sincronização (docs/desktop-architecture.md §8b; the
-// owner's picks of 2026-10-16): the church's content kept the same on every
-// computer through a folder Google Drive para computador (or OneDrive,
-// Dropbox) keeps in step. This computer's folder and code; the main process
-// does the work (electron/syncControl.cjs, keryx:sync). Three steps: choose
-// the folder, make or type the church's code, then the status.
+// Configurações › Sincronização (Google Drive direto, PR 3; the owner's
+// mockup "Sincronização · conta Google", 2026-10-26, marks G1–G5 = A): the
+// computers of the church stay the same through the church's Google
+// account, in a hidden folder only KERYX reads (electron/googleAuth.cjs,
+// syncStore/drive.cjs; the main side is electron/syncControl.cjs over
+// keryx:sync). Five pages, by googlePage (syncView.js): Entrar com Google,
+// Termine a entrada no navegador, the account (with its problems on top),
+// the folder of before under its banner (G4), and the browser preview's
+// "only on the computer".
 export default function SyncSection({ c }) {
     const sync = useBridge("sync");
     const st = useSyncStatus();
-    // Its "há 12 s" count by the second on the section's own clock (the
-    // console around it re-renders only on real changes).
-    useLiveNow(1000, Boolean(st?.folder));
+    // "há 40 s" counts by the second on the section's own clock.
+    useLiveNow(1000, Boolean(st));
+    const { songs } = useLibrary();
     const [busy, setBusy] = useState("");
-    const [made, setMade] = useState(null);
-    const [inspect, setInspect] = useState(null);
-    const step = syncStep(st);
-    const unpaired = step === "code" && st?.engine?.state !== "mismatch" && st?.engine?.state !== "removed" && !st?.keyLost;
+    const page = googlePage(st);
+    const quota = useGoogleQuota(page === "on" && Boolean(st?.google?.signedIn));
 
-    // What the folder holds (a code or not, the computers in it) while this
-    // computer has none yet.
-    useEffect(() => {
-        if (!sync || !unpaired) return undefined;
-        let live = true;
-        sync.call("inspect").then((res) => { if (live && res?.data) setInspect(res.data); }).catch(() => {});
-        return () => { live = false; };
-    }, [sync, unpaired, st?.folder]);
-
-    if (!sync) return <Empty icon="cloud" title="Sincronização">{desktopOnly}</Empty>;
+    if (!sync || page === "unavailable") return <Empty icon="cloud" title="Sincronização">{desktopOnly}</Empty>;
 
     // One action at a time; its answer is the new status.
     const run = async (op, args, label) => {
@@ -51,7 +43,6 @@ export default function SyncSection({ c }) {
             }
             const data = res?.data || null;
             if (data && "available" in data) setSyncStatus(data);
-            if (data?.inspect) setInspect(data.inspect);
             return data;
         } catch (err) {
             c.say(`${label || "Sincronização"}: ${err?.message || "não foi possível."}`);
@@ -60,182 +51,125 @@ export default function SyncSection({ c }) {
             setBusy("");
         }
     };
+    const enter = () => signInWithGoogle({ say: c.say, songsHere: songs.length, status: st });
 
-    const props = { c, st, sync, busy, run, setMade };
-    let body;
-    if (step === "unavailable") body = <FolderStep {...props} preview />;
-    else if (step === "folder") body = <FolderStep {...props} />;
-    else if (step === "code") body = <CodeStep {...props} inspect={inspect} />;
-    else body = <OnStep {...props} />;
-    return (
-        <>
-            {made && <MadeCode made={made} c={c} onDone={() => setMade(null)} />}
-            {body}
-        </>
-    );
+    if (page === "signing") return <Signing c={c} />;
+    if (page === "none") return <NoAccount onEnter={enter} />;
+    if (page === "folder") {
+        return (
+            <>
+                <Migration st={st} onEnter={enter} />
+                <SyncFolderSteps c={c} st={st} sync={sync} busy={busy} run={run} />
+            </>
+        );
+    }
+    return <Account c={c} st={st} quota={quota} busy={busy} run={run} onEnter={enter} />;
 }
 
-// The code just made (here, or changed): big, once, with Copiar.
-function MadeCode({ made, c, onDone }) {
-    const copy = () => navigator.clipboard?.writeText(made.code).then(() => c.say("Código copiado."), () => c.say("Selecione o código e copie com Ctrl+C."));
+const GoogleBtn = ({ onEnter, small }) => (
+    <Btn kind="brand" small={small} onClick={onEnter}>Entrar com Google</Btn>
+);
+
+// O que vai e o que fica, the Google page's two lines (board 1).
+function TravelLines() {
     return (
-        <div className="cfg-sync-made" role="status">
-            <span className="kx-meta">{made.changed ? "O código novo da igreja" : "O código da igreja"}</span>
-            <span className="cfg-sync-bigcode" aria-label={`Código ${made.code.split("").join(" ")}`}>{made.code}</span>
-            <span className="kx-meta">{made.changed
-                ? "Digite este código nos computadores que devem continuar sincronizando. Ele fica guardado aqui: Mostrar, em Código da igreja."
-                : "Anote ou copie: os outros computadores pedem este código. Ele fica guardado aqui: Mostrar, em Código da igreja."}</span>
-            <div className="cfg-sync-acts"><Btn onClick={copy}>Copiar</Btn><Btn kind="outline" onClick={onDone}>Pronto</Btn></div>
+        <div className="cfg-sync-lines">
+            <span>{GOOGLE_GOES}</span>
+            <span>{GOOGLE_STAYS}</span>
         </div>
     );
 }
 
-// O que vai e o que fica (Rodada G7): the two short lists and the hints
-// about the folder, before choosing it and while syncing.
-function Travel({ grouped }) {
-    const rows = (
+// Board 1 · Sem conta.
+function NoAccount({ onEnter }) {
+    return (
         <>
-            <div className="kx-row">
-                <div className="kx-row-main">
-                    <div className="kx-row-title">Vai para o outro computador</div>
-                    <div className="kx-row-meta">{SYNC_GOES}</div>
+            <p className="cfg-sync-intro">Os computadores da igreja ficam iguais pela conta Google da igreja: músicas, cultos, temas e mídia vão e vêm sozinhos.</p>
+            <CfgKey k="Entrar com Google" className="cfg-sync-hero">
+                <span className="cfg-sync-hero-i" aria-hidden="true"><Icon name="cloud" size={28} /></span>
+                <div className="cfg-sync-hero-b">
+                    <span className="cfg-sync-hero-t">Entre com a conta Google da igreja</span>
+                    <span className="cfg-sync-hero-d">O navegador abre para você entrar. O KERYX guarda tudo numa pasta oculta só dele no Drive dessa conta e não vê os outros arquivos.</span>
+                    <span className="kx-meta">Use a mesma conta em todos os computadores da igreja. Se este computador já tem músicas, elas se juntam às da conta: nada é apagado.</span>
                 </div>
-            </div>
-            <div className="kx-row">
-                <div className="kx-row-main">
-                    <div className="kx-row-title">Fica em cada computador</div>
-                    <div className="kx-row-meta">{SYNC_STAYS}</div>
-                </div>
-            </div>
-            <div className="cfg-note">
-                <span><b>Dica:</b> {SYNC_MIRROR_HINT}<br />{SYNC_SHARED_HINT}</span>
+                <GoogleBtn onEnter={onEnter} />
+            </CfgKey>
+            <div className="cfg-sync-travel">
+                <CfgKey k="O que vai e o que fica" className="listhead"><span className="kx-section">O que vai e o que fica</span></CfgKey>
+                <TravelLines />
             </div>
         </>
     );
-    // Before the folder is chosen it is a plain list under a sub-title; while
-    // syncing it is a group, closed (Rodada H1).
-    if (grouped) return <CfgGroup id="sync.travel" k="O que vai e o que fica" defaultOpen={false} summary={SYNC_TRAVEL_SUMMARY}><div className="cfg-sync-travel">{rows}</div></CfgGroup>;
-    return (
-        <div className="cfg-sync-travel">
-            <CfgKey k="O que vai e o que fica" className="listhead"><span className="kx-section">O que vai e o que fica</span></CfgKey>
-            {rows}
-        </div>
-    );
 }
 
-function FolderStep({ busy, run, preview }) {
+// Board 2 · the browser is open on Google's page. googleAuth gives up by
+// itself after 5 minutes; the page then goes back to board 1.
+function Signing({ c }) {
     return (
         <>
-            <p className="cfg-sync-intro">Deixe as músicas, os cultos, os avisos, os temas e as mídias iguais em todos os computadores da igreja, por uma pasta do <b>Google Drive para computador</b>, do OneDrive ou do Dropbox. Sem conta no KERYX e sem internet no culto: cada computador trabalha sozinho e acerta com os outros quando a pasta sincroniza.</p>
-            <div className="frm">
-                <FormRow k="Pasta">
-                    <Btn kind="outline" disabled={preview || Boolean(busy)} onClick={() => run("choose", undefined, "Pasta")}>{busy === "choose" ? "Escolhendo…" : "Escolher a pasta…"}</Btn>
-                    <span className="kx-meta">{preview ? "na prévia do navegador não há pasta: a sincronização funciona no KERYX do computador" : "a mesma pasta em todos os computadores, por exemplo G:\\Meu Drive\\KERYX"}</span>
-                </FormRow>
+            <div className="cfg-sync-hero is-col" role="status">
+                <span className="cfg-sync-hero-t"><i className="cfg-sync-spin" aria-hidden="true" />Termine a entrada no navegador</span>
+                <span className="cfg-sync-hero-d">O navegador abriu a página do Google. Escolha a conta da igreja e permita o acesso à pasta do KERYX. Depois, volte aqui.</span>
+                <span className="kx-meta">O navegador não abriu? <button type="button" className="cfg-sync-link kx-t" onClick={() => reopenGoogleSignIn(c.say)}>Abrir de novo</button></span>
+                <div><Btn kind="outline" onClick={cancelGoogleSignIn}>Cancelar</Btn></div>
             </div>
-            <Travel />
+            <p className="kx-meta cfg-sync-foot">Se ninguém terminar em 5 minutos, o KERYX desiste sozinho e volta para &ldquo;Entrar com Google&rdquo;.</p>
         </>
     );
 }
 
-// A folder and no code here yet, or a code that no longer opens the folder:
-// make the church's code (the folder has none) or type it.
-function CodeStep({ c, st, busy, run, setMade, inspect }) {
-    const confirm = useConfirm();
-    const [typed, setTyped] = useState("");
-    const e = st.engine || {};
-    const checked = parseCode(typed);
-    const hint = typed ? (checked.error ? codeMessage(checked) : "Código completo. Agora Entrar.") : "";
-    const pcs = inspect?.computers?.length || 0;
-    const removedBy = e.state === "removed" && e.removed ? computerRows(st).find((r) => r.pc === e.removed.by)?.name : null;
-    let why = null;
-    if (e.state === "removed") why = <span className="kx-warn">Este computador foi tirado da sincronização{removedBy ? ` por ${removedBy}` : ""}{e.removed?.at ? `, ${ago(e.removed.at)}` : ""}. Digite o código da igreja para voltar; as mudanças daqui esperam.</span>;
-    else if (e.state === "mismatch") why = <span className="kx-warn">O código da igreja mudou nesta pasta. Digite o código novo; as mudanças daqui esperam.</span>;
-    else if (st.keyLost) why = <span className="kx-warn">A chave guardada não abre neste computador (as configurações vieram de outro). Digite o código da igreja de novo.</span>;
-    const canType = !(inspect && inspect.code === "missing" && !why);
-
-    const join = async () => {
-        if (checked.error) { c.say(codeMessage(checked)); return; }
-        const done = await run("join", { code: typed }, "Código");
-        if (done) { setTyped(""); c.say("Código certo: este computador está sincronizando."); }
-    };
-    const create = async () => {
-        const done = await run("create", undefined, "Código");
-        if (done?.code) setMade({ code: done.code });
-    };
-    const cancel = async () => {
-        if (st.paired && !(await confirm({ title: "Sair da sincronização?", text: "Este computador para de enviar e receber mudanças. Nada é apagado aqui nem na pasta.", ok: "Sair" }))) return;
-        run("leave", undefined, "Sincronização");
-    };
-
+// Board 5 · a computer that synced by the folder (G4 = A): the banner on top,
+// the folder's rows under it until someone enters here.
+function Migration({ st, onEnter }) {
     return (
-        <div className="frm">
-            <FormRow k="Pasta">
-                <span className="kx-content cfg-path" title={st.folder}>{st.folder}</span>
-                <Btn disabled={Boolean(busy)} onClick={() => run("choose", undefined, "Pasta")}>Trocar…</Btn>
-                <Btn disabled={Boolean(busy)} onClick={cancel}>Cancelar</Btn>
-            </FormRow>
-            {why && <FormRow k="">{why}</FormRow>}
-            {!why && inspect?.code === "missing" && (
-                <FormRow k="Código da igreja">
-                    <span className="kx-content">Esta pasta ainda não tem a sincronização.</span>
-                    <Btn kind="outline" disabled={Boolean(busy)} onClick={create}>{busy === "create" ? "Criando…" : "Criar o código da igreja"}</Btn>
-                    <span className="kx-meta">o primeiro computador cria; os outros digitam</span>
-                </FormRow>
-            )}
-            {!why && inspect?.code === "bad" && (
-                <FormRow k="">
-                    <span className="kx-warn">O arquivo do código ainda está chegando pela pasta.</span>
-                    <Btn disabled={Boolean(busy)} onClick={() => run("choose", undefined, "Pasta")}>Tentar de novo</Btn>
-                </FormRow>
-            )}
-            {canType && (
-                <FormRow k="Código da igreja">
-                    {!why && inspect?.code === "ok" && <span className="kx-content cfg-sync-full">Esta pasta já é da igreja{pcs ? ` · ${pcs} ${pcs === 1 ? "computador" : "computadores"}` : ""}.</span>}
-                    <input className={`cfg-sync-codein ${typed && checked.error ? "is-err" : typed ? "is-ok" : ""}`} value={typed} onChange={(ev) => setTyped(ev.target.value)} onKeyDown={(ev) => { if (ev.key === "Enter") join(); }}
-                        placeholder="XXXX-XXXX" aria-label="Código da igreja" autoComplete="off" spellCheck={false} maxLength={14} />
-                    <Btn kind="outline" disabled={Boolean(busy) || !typed} onClick={join}>{busy === "join" ? "Conferindo…" : "Entrar"}</Btn>
-                    <span className={typed && checked.error && checked.error !== "short" ? "kx-warn" : "kx-meta"} aria-live="polite">{hint || "o código tem 8 letras e números; veja em Mostrar num computador que já sincroniza"}</span>
-                </FormRow>
-            )}
-        </div>
+        <CfgKey k="Conta Google" className="cfg-sync-banner">
+            <span className="cfg-sync-banner-t">A sincronização agora é pela conta Google</span>
+            <span>Este computador sincronizava pela pasta <b>{st.folder}</b> (Google Drive para computador). O KERYX agora entra direto na conta Google da igreja e não precisa mais desse programa nem da pasta.</span>
+            <ol className="cfg-sync-steps">
+                <li>Entre com a <b>mesma conta</b> que tem a pasta, em cada computador da igreja.</li>
+                <li>Cada um junta o que tem: <b>nada é apagado</b>, e as músicas que existem nos dois lados viram uma só.</li>
+                <li>Depois que todos tiverem entrado, a pasta antiga pode ser apagada (o KERYX não lê mais).</li>
+            </ol>
+            <div className="cfg-sync-acts is-center">
+                <GoogleBtn onEnter={onEnter} />
+                <span className="kx-meta">Até entrar, este computador continua sincronizando pela pasta.</span>
+            </div>
+        </CfgKey>
     );
 }
 
-const TONE = { ok: "is-ok", wait: "is-wait", off: "is-off" };
+const DOT = { ok: "is-ok", wait: "is-wait", need: "is-need", off: "is-off" };
+const KEPT = "keryx.sync.accountOk";
+const keptEmail = () => { try { return localStorage.getItem(KEPT) || ""; } catch { return ""; } };
 
-function OnStep({ c, st, busy, run, setMade }) {
+// Board 3 · Conectado, with board 4's problems at the top of its first group.
+function Account({ c, st, quota, busy, run, onEnter }) {
     const confirm = useConfirm();
-    const [shown, setShown] = useState(null);
-    const state = syncState(st);
-    const e = st.engine || {};
-    const rows = computerRows(st);
+    const [kept, setKept] = useState(keptEmail);
+    const prog = driveProgress(st);
+    const space = quotaView(quota);
+    const problems = pageProblems(st, quota, kept);
+    const email = st.google?.email || "";
     const any = Boolean(busy);
+    const offline = st.engine?.state === "offline";
 
-    const showCode = async () => {
-        if (shown) { setShown(null); return; }
-        const r = await run("showCode", undefined, "Código");
-        if (r?.code) setShown(r.code);
+    const keepAccount = () => {
+        try { localStorage.setItem(KEPT, email); } catch { /* private window */ }
+        setKept(email);
     };
-    const copy = (code) => navigator.clipboard?.writeText(code).then(() => c.say("Código copiado."), () => c.say("Selecione o código e copie com Ctrl+C."));
-    const rotate = async () => {
-        if (!(await confirm({ title: "Trocar o código da igreja?", text: "Os outros computadores param de sincronizar até alguém digitar o código novo neles. Use para cortar de vez um computador que não deve mais sincronizar.", ok: "Trocar o código", danger: true }))) return;
-        const r = await run("rotate", undefined, "Código");
-        if (r?.code) { setShown(null); setMade({ code: r.code, changed: true }); }
+    const switchAccount = async () => {
+        const out = await run("googleSignOut", undefined, "Trocar de conta");
+        if (out) onEnter();
     };
-    const changeFolder = async () => {
-        if (!(await confirm({ title: "Usar outra pasta?", text: "Este computador deixa a pasta atual e vai pedir o código da igreja na nova. Nada é apagado.", ok: "Escolher a pasta" }))) return;
-        run("choose", undefined, "Pasta");
+    const signOut = async () => {
+        if (!(await confirm({ title: "Sair da conta?", text: "Este computador para de sincronizar até alguém entrar de novo com a conta da igreja. Nada é apagado aqui nem na conta.", ok: "Sair da conta" }))) return;
+        const r = await run("googleSignOut", undefined, "Sair da conta");
+        if (r) c.say("Este computador saiu da conta da igreja.");
     };
-    const leave = async () => {
-        if (!(await confirm({ title: "Sair da sincronização?", text: "Este computador para de enviar e receber mudanças. Nada é apagado aqui nem na pasta, e os outros continuam com o que ele já mandou.", ok: "Sair" }))) return;
-        const r = await run("leave", undefined, "Sincronização");
-        if (r) c.say("Este computador saiu da sincronização.");
-    };
-    const takeOut = async (row) => {
-        if (!(await confirm({ title: `Tirar ${row.name} da sincronização?`, text: "Ele para de enviar e receber mudanças até alguém digitar o código da igreja nele. O que ele já mandou continua. Para cortar de vez, use Trocar o código.", ok: "Tirar" }))) return;
-        const r = await run("remove", { pc: row.pc }, "Tirar");
-        if (r) c.say(`${row.name} foi tirado da sincronização.`);
+    const disconnect = async (row) => {
+        if (!(await confirm({ title: `Desconectar ${row.name}?`, text: "Ele para de sincronizar até alguém entrar de novo nele com a conta da igreja. O que ele já mandou continua, e nada é apagado nele.", ok: "Desconectar" }))) return;
+        const r = await run("remove", { pc: row.pc }, "Desconectar");
+        if (r) c.say(`${row.name} foi desconectado.`);
     };
     const letBack = async (row) => {
         const r = await run("restore", { pc: row.pc }, "Deixar voltar");
@@ -244,159 +178,79 @@ function OnStep({ c, st, busy, run, setMade }) {
 
     return (
         <>
-            <CfgGroup id="sync.andamento" k="Andamento" fold={false}>
-            <div className="frm">
-                <FormRow k="Sincronizar">
-                    <Switch on={!st.paused} disabled={any} label="Sincronizar" onChange={(on) => run("setPaused", { paused: !on }, "Sincronizar")} />
-                    <span className={st.paused ? "kx-warn" : "kx-meta"}>{st.paused ? "pausada · as mudanças deste computador esperam e vão quando ligar de novo" : "ligado · desligado, as mudanças deste computador esperam e vão depois"}</span>
-                </FormRow>
-                <FormRow k="Pasta">
-                    <span className="kx-content cfg-path" title={st.folder}>{st.folder}</span>
-                    <Btn disabled={any} onClick={() => run("open", undefined, "Abrir pasta")}>Abrir</Btn>
-                    <Btn disabled={any} onClick={changeFolder}>Trocar…</Btn>
-                </FormRow>
-                <FormRow k="Estado">
-                    <i className={`cfg-sync-dot ${TONE[state.tone]}`} aria-hidden="true" />
-                    <span className={state.tone === "wait" ? "kx-warn" : "kx-content"}>{state.label}</span>
-                    {state.detail && <span className="kx-meta">· {state.detail}</span>}
-                    <Btn disabled={any || st.paused} onClick={() => run("now", undefined, "Sincronizar agora")}>{busy === "now" ? "Sincronizando…" : e.state === "offline" ? "Tentar agora" : "Sincronizar agora"}</Btn>
-                </FormRow>
-                <FormRow k="Desde que abriu">
-                    <span className="kx-meta">{sinceLine(st)}{e.rejected ? ` · ${e.rejected} ignoradas de computadores sem o código` : ""}</span>
-                </FormRow>
-                <FormRow k="Mídias">
-                    <span className="kx-meta">{e.state === "ok" ? (e.missingMedia ? `${e.missingMedia} ainda chegando pela pasta · as outras aqui` : "todas aqui") : "—"}{st.since?.collected ? ` · ${st.since.collected} sem uso há 7 dias ${st.since.collected === 1 ? "saiu" : "saíram"} da pasta (continuam em cada computador)` : ""}</span>
-                </FormRow>
-                <FormRow k="Computadores">
-                    <div className="cfg-sync-pcs">
-                        {rows.map((row) => (
-                            <div key={row.pc} className={`cfg-sync-pc ${row.tone === "wait" ? "is-bad" : ""}`}>
-                                <i className={`cfg-sync-dot ${TONE[row.tone]}`} aria-hidden="true" />
-                                <span className="cfg-sync-pc-t"><b>{row.name}</b> <span className="kx-meta">{row.detail}</span></span>
-                                {row.tag && <span className={`cfg-sync-tag ${row.tag === "verificado" || row.tag === "este" ? "is-ok" : row.tag === "sem o código" ? "is-warn" : ""}`}>{row.tag}</span>}
-                                {!row.self && !row.removed && <Btn small disabled={any} onClick={() => takeOut(row)}>Tirar…</Btn>}
-                                {row.removed && <Btn small disabled={any} onClick={() => letBack(row)}>Deixar voltar</Btn>}
-                            </div>
-                        ))}
-                        {rows.length === 1 && <span className="kx-meta">nenhum outro computador nesta pasta ainda: escolha a mesma pasta em outro computador e digite o código da igreja</span>}
+            <CfgGroup id="sync.conta" k="Conta Google" fold={false}>
+                {problems.includes("auth") && (
+                    <div className="cfg-sync-box is-warn" role="alert">
+                        <span className="cfg-sync-box-t">Entre de novo com a conta da igreja</span>
+                        <span>O Google não aceita mais a entrada deste computador (a senha mudou ou o acesso foi tirado em myaccount.google.com). As mudanças daqui esperam e vão quando entrar.</span>
+                        <div><GoogleBtn onEnter={onEnter} /></div>
                     </div>
-                </FormRow>
-                <FormRow k="Sair">
-                    <Btn kind="outline" disabled={any} onClick={leave}>Sair da sincronização…</Btn>
-                    <span className="kx-meta">este computador para; os outros continuam e nada é apagado</span>
-                </FormRow>
-            </div>
-            </CfgGroup>
-            <Travel grouped />
-            <CfgGroup id="sync.codigo" k="Código da igreja" defaultOpen={false} summary={syncSummary(st)}>
+                )}
+                {problems.includes("removed") && (
+                    <div className="cfg-sync-box" role="alert">
+                        <span className="cfg-sync-box-t">Este computador foi desconectado da sincronização</span>
+                        <span>Alguém o desconectou em outro computador. Nada foi apagado aqui. Para voltar a sincronizar, entre de novo com a conta da igreja.</span>
+                        <div><GoogleBtn onEnter={onEnter} /></div>
+                    </div>
+                )}
+                {problems.includes("account") && (
+                    <div className="cfg-sync-box is-row" role="status">
+                        <span className="cfg-sync-box-s"><b>{email} ainda não tem nada do KERYX.</b> <span className="kx-meta">Se os outros computadores usam outra conta, saia e entre com ela.</span></span>
+                        <Btn kind="outline" disabled={any} onClick={switchAccount}>Trocar de conta</Btn>
+                        <Btn kind="brand" disabled={any} onClick={keepAccount}>É esta mesmo</Btn>
+                    </div>
+                )}
                 <div className="frm">
-                    <FormRow k="Código">
-                        <span className="kx-content cfg-path cfg-sync-codeshown">{shown || "••••-••••"}</span>
-                        {st.canShowCode && <Btn disabled={any} onClick={showCode}>{shown ? "Esconder" : "Mostrar"}</Btn>}
-                        {shown && <Btn disabled={any} onClick={() => copy(shown)}>Copiar</Btn>}
-                        <Btn kind="outline" disabled={any} onClick={rotate}>{busy === "rotate" ? "Trocando…" : "Trocar o código…"}</Btn>
+                    <FormRow k="Conta">
+                        <span className="cfg-sync-avatar" aria-hidden="true">{(email[0] || "?").toUpperCase()}</span>
+                        <span className="kx-content">{email || "—"}</span>
+                        <span className="kx-meta">· conta Google da igreja</span>
+                    </FormRow>
+                    <FormRow k="Andamento">
+                        <i className={`cfg-sync-dot ${DOT[prog.tone]}`} aria-hidden="true" />
+                        <span className={prog.tone === "ok" ? "kx-content" : "kx-warn"}>{prog.label}</span>
+                        {prog.detail && <span className="kx-meta">· {prog.detail}</span>}
+                        <Btn kind="outline" className="cfg-sync-end" disabled={any || prog.tone === "need"} onClick={() => run("now", undefined, offline ? "Tentar agora" : "Sincronizar agora")}>
+                            {busy === "now" ? "Sincronizando…" : offline ? "Tentar agora" : "Sincronizar agora"}
+                        </Btn>
+                        {offline && <span className="kx-meta cfg-sync-full">{OFFLINE_TEXT}</span>}
+                    </FormRow>
+                    <FormRow k="Espaço da conta">
+                        <div className="cfg-sync-space">
+                            <span className={`cfg-sync-bar ${space?.warn ? "is-warn" : ""}`} role="img" aria-label={space ? space.line : "O espaço aparece quando o Google responder"}>
+                                <i className="is-mine" style={{ width: `${space?.minePct || 0}%` }} />
+                                <i className="is-other" style={{ width: `${space?.otherPct || 0}%` }} />
+                            </span>
+                            {space?.warn && <span className="cfg-sync-space-warn">{space.warnLine}</span>}
+                            <span className="kx-meta">{space ? space.line : "o espaço aparece quando o Google responder"}</span>
+                            {space?.warn && <span className="kx-meta">{QUOTA_WARN_TEXT}</span>}
+                        </div>
                     </FormRow>
                 </div>
             </CfgGroup>
-            <Duplicates c={c} confirm={confirm} />
+            <CfgGroup id="sync.dispositivos" k="Dispositivos conectados" fold={false}>
+                <div className="cfg-sync-devs">
+                    {deviceRows(st).map((row) => (
+                        <div key={row.pc} className={`cfg-sync-dev ${row.stale || row.removed ? "is-dim" : ""}`}>
+                            <Icon name="monitor" className="cfg-sync-dev-i" />
+                            <span className="cfg-sync-dev-t">
+                                <b>{row.name}</b>
+                                <span className={row.stale ? "kx-warn" : "kx-meta"}>{row.meta}</span>
+                            </span>
+                            {!row.self && !row.removed && <Btn kind="outline" small disabled={any} onClick={() => disconnect(row)}>Desconectar…</Btn>}
+                            {row.removed && <Btn small disabled={any} onClick={() => letBack(row)}>Deixar voltar</Btn>}
+                        </div>
+                    ))}
+                </div>
+            </CfgGroup>
+            <CfgGroup id="sync.travel" k="O que vai e o que fica" defaultOpen={false} summary={GOOGLE_TRAVEL_SUMMARY}>
+                <TravelLines />
+            </CfgGroup>
+            <SyncDuplicates c={c} confirm={confirm} />
+            <CfgKey k="Sair da conta" className="cfg-sync-out">
+                <span className="kx-meta">Sair tira a conta deste computador: ele para de sincronizar. Nada é apagado aqui nem na conta.</span>
+                <Btn kind="outline" disabled={any} onClick={signOut}>Sair da conta…</Btn>
+            </CfgKey>
         </>
-    );
-}
-
-// Músicas repetidas (shared/syncDuplicates.mjs): the same title and lyrics in
-// different songs, each computer having had its own. Juntar em uma keeps
-// the newest and points the setlists at it; Manter as duas keeps them, on
-// every computer (User.song_duplicates_kept, a church field).
-function Duplicates({ c, confirm }) {
-    const { songs } = useLibrary();
-    const prefs = usePrefs();
-    const groups = useMemo(() => duplicateSongs(songs, prefs.song_duplicates_kept), [songs, prefs.song_duplicates_kept]);
-    const [open, setOpen] = useState(false);
-    const [uses, setUses] = useState({});
-    const [busy, setBusy] = useState("");
-    const n = groups.length;
-
-    // How many setlist items use each song, for the list.
-    useEffect(() => {
-        if (!open || !n) return undefined;
-        let live = true;
-        keryx.entities.ServiceItem.filter({ type: "SONG" }).then((items) => {
-            if (!live) return;
-            const count = {};
-            for (const it of items || []) if (it.contentId) count[it.contentId] = (count[it.contentId] || 0) + 1;
-            setUses(count);
-        }).catch(() => {});
-        return () => { live = false; };
-    }, [open, n]);
-
-    const merge = async (g) => {
-        const [keep, ...rest] = g.songs;
-        const others = rest.length;
-        if (!(await confirm({
-            title: `Juntar "${g.title}" em uma?`,
-            text: `Fica a editada por último (${formatWhen(keep.updated_date)}). As setlists e os modelos de culto passam a usar ela, e ${others === 1 ? "a outra cópia é excluída" : `as outras ${others} cópias são excluídas`}.`,
-            ok: "Juntar",
-            danger: true,
-        }))) return;
-        setBusy(g.key);
-        try {
-            const [serviceItems, templates, history] = await Promise.all([
-                keryx.entities.ServiceItem.filter({ type: "SONG" }),
-                keryx.entities.ServiceTemplate.list(),
-                keryx.entities.SongHistory.list(),
-            ]);
-            const plan = mergePlan(g, { serviceItems, templates, history });
-            for (const u of plan.items) await keryx.entities.ServiceItem.update(u.id, u.patch);
-            for (const u of plan.templates) await keryx.entities.ServiceTemplate.update(u.id, u.patch);
-            for (const u of plan.history) await keryx.entities.SongHistory.update(u.id, u.patch);
-            for (const id of plan.remove) await keryx.entities.Song.delete(id);
-            c.say(`"${g.title}": ficou uma.`);
-        } catch (err) {
-            c.say(`Juntar: ${err?.message || "não foi possível."}`);
-        } finally {
-            setBusy("");
-        }
-    };
-    const keepBoth = async (g) => {
-        setBusy(g.key);
-        try {
-            await updateUser({ song_duplicates_kept: [...new Set([...(prefs.song_duplicates_kept || []), ...keepPairs(g.songs)])] });
-            c.say(g.songs.length === 2 ? "As duas ficam." : "Todas ficam.");
-        } finally {
-            setBusy("");
-        }
-    };
-
-    const line = n ? `${n} ${n === 1 ? "parece repetida" : "parecem repetidas"}` : "nenhuma";
-    return (
-        <CfgGroup id="sync.repetidas" k="Músicas repetidas" defaultOpen={n > 0} summary={line}>
-          <div className="frm">
-            <FormRow k="">
-                <span className="kx-meta">{n ? `${line} · mesmo título e mesma letra` : "nenhuma repetida · mesmo título e mesma letra"}</span>
-                {n > 0 && <Btn on={open} onClick={() => setOpen((o) => !o)}>{open ? "Fechar a lista" : "Ver…"}</Btn>}
-            </FormRow>
-            {open && n > 0 && (
-                <FormRow k="">
-                    <div className="cfg-sync-dups">
-                        {groups.map((g) => (
-                            <div key={g.key} className="cfg-sync-dup">
-                                <span className="cfg-sync-dup-t">{g.title}</span>
-                                {g.songs.map((s, i) => (
-                                    <span key={s.id} className="cfg-sync-dup-v">
-                                        <span>{i === 0 ? "a mais recente" : "cópia"}{s.artist ? ` · ${s.artist}` : ""}{uses[s.id] ? ` · em ${uses[s.id]} ${uses[s.id] === 1 ? "item de setlist" : "itens de setlist"}` : ""}</span>
-                                        <span className="kx-meta">{s.updated_date ? formatWhen(s.updated_date) : ""}</span>
-                                    </span>
-                                ))}
-                                <div className="cfg-sync-acts">
-                                    <Btn kind="outline" small disabled={Boolean(busy)} onClick={() => merge(g)}>{busy === g.key ? "Juntando…" : "Juntar em uma"}</Btn>
-                                    <Btn small disabled={Boolean(busy)} onClick={() => keepBoth(g)}>{g.songs.length === 2 ? "Manter as duas" : "Manter todas"}</Btn>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </FormRow>
-            )}
-          </div>
-        </CfgGroup>
     );
 }

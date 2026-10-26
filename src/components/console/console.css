@@ -63,6 +63,22 @@
 .console .topbar .tb-sync-dot { position: absolute; right: 4px; bottom: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--fg-3); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
 .console .topbar .tb-sync-dot.is-ok { background: var(--ok); }
 .console .topbar .tb-sync-dot.is-wait { background: var(--warn); }
+.console .topbar .tb-sync-dot.is-need { background: var(--danger); }
+/* The cloud's summary (SyncPop.jsx, board 6 of the Drive direto mockup). */
+.console .sync-pop { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); }
+.console .sync-pop-h { display: flex; align-items: center; gap: var(--space-2); }
+.console .sync-pop-t { font-size: var(--fs-content-lg); font-weight: 600; color: var(--fg-1); }
+.console .sync-pop-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--fg-3); }
+.console .sync-pop-dot.is-ok { background: var(--ok); }
+.console .sync-pop-dot.is-wait { background: var(--warn); }
+.console .sync-pop-dot.is-need { background: var(--danger); }
+.console .sync-pop-text { margin: 0; color: var(--fg-2); font-size: var(--fs-ui); line-height: 1.5; }
+.console .sync-pop-rows { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 6px var(--space-2); margin: 0; font-size: var(--fs-ui); }
+.console .sync-pop-rows dt { color: var(--fg-2); }
+.console .sync-pop-rows dd { margin: 0; color: var(--fg-1); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .sync-pop-bar { display: block; height: 4px; border-radius: var(--radius-round); background: var(--bg-3); overflow: hidden; }
+.console .sync-pop-bar > i { display: block; height: 100%; background: var(--brand); }
+.console .sync-pop-f { display: flex; align-items: center; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--line-soft); }
 .console .topbar .kx-seg > button { white-space: nowrap; }
 /* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
 .console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
@@ -1171,6 +1187,54 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-sync-dup-t { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); }
 .console .cfg .cfg-sync-dup-v { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-ui); color: var(--fg-2); }
 .console .cfg .cfg-sync-dup .cfg-sync-acts { margin-top: var(--space-1); }
+/* Google Drive direto, PR 3 (the mockup "Sincronização · conta Google"):
+   Entrar com Google's card, the browser's wait, the banner of a computer
+   that synced by the folder, board 4's boxes, the account's space and the
+   connected computers. */
+.console .cfg .cfg-sync-dot.is-need { background: var(--danger); }
+.console .cfg .cfg-sync-hero { display: flex; align-items: center; gap: var(--space-4); max-width: 760px; margin: var(--space-2) var(--space-3); padding: var(--space-4) var(--space-4); border-radius: var(--radius-panel); background: var(--bg-2); }
+.console .cfg .cfg-sync-hero.is-col { flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.console .cfg .cfg-sync-hero-i { width: 56px; height: 56px; flex: none; display: grid; place-items: center; border-radius: var(--radius-panel); background: var(--bg-3); color: var(--brand); }
+.console .cfg .cfg-sync-hero-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.console .cfg .cfg-sync-hero-t { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-content-lg); font-weight: 600; color: var(--fg-1); }
+.console .cfg .cfg-sync-hero-d { color: var(--fg-2); font-size: var(--fs-ui); line-height: 1.55; }
+.console .cfg .cfg-sync-hero .kx-meta { line-height: 1.55; }
+.console .cfg .cfg-sync-foot { margin: 0 var(--space-3); }
+.console .cfg .cfg-sync-link { padding: 0; border: 0; background: none; color: var(--brand); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.console .cfg .cfg-sync-spin { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid var(--line-strong); border-top-color: var(--brand); animation: cfg-sync-spin 900ms linear infinite; }
+@keyframes cfg-sync-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .console .cfg .cfg-sync-spin { animation: none; } }
+.console .cfg .cfg-sync-lines { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-3) var(--space-2); color: var(--fg-2); font-size: var(--fs-ui); line-height: 1.5; max-width: 760px; }
+.console .cfg .cfg-sync-banner { display: flex; flex-direction: column; gap: var(--space-2); max-width: 820px; margin: var(--space-2) var(--space-3) var(--space-3); padding: var(--space-4); border-radius: var(--radius-panel); background: var(--warn-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent); color: var(--fg-1); font-size: var(--fs-ui); line-height: 1.55; }
+.console .cfg .cfg-sync-banner-t { font-size: var(--fs-content-lg); font-weight: 600; }
+.console .cfg .cfg-sync-banner b { font-weight: 600; }
+.console .cfg .cfg-sync-steps { margin: 0; padding-left: var(--space-4); list-style: decimal; display: flex; flex-direction: column; gap: 2px; color: var(--fg-2); }
+.console .cfg .cfg-sync-acts.is-center { align-items: center; gap: var(--space-3); }
+.console .cfg .cfg-sync-box { display: flex; flex-direction: column; gap: var(--space-1); margin: var(--space-1) var(--space-3) var(--space-2); padding: var(--space-3); border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-ui); line-height: 1.5; }
+.console .cfg .cfg-sync-box > div { margin-top: var(--space-1); }
+.console .cfg .cfg-sync-box.is-warn { background: var(--warn-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent); color: var(--fg-1); }
+.console .cfg .cfg-sync-box.is-warn .cfg-sync-box-t { color: var(--warn-fg); }
+.console .cfg .cfg-sync-box.is-row { flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.console .cfg .cfg-sync-box-t { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); }
+.console .cfg .cfg-sync-box-s { flex: 1 1 280px; min-width: 0; color: var(--fg-1); }
+.console .cfg .cfg-sync-box-s b { font-weight: 600; }
+.console .cfg .cfg-sync-avatar { width: 24px; height: 24px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--bg-4); color: var(--fg-1); font-size: var(--fs-meta); font-weight: 600; }
+.console .cfg .cfg-sync-end { margin-left: auto; }
+.console .cfg .cfg-sync-space { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; max-width: 640px; min-width: 0; }
+.console .cfg .cfg-sync-bar { display: flex; height: 8px; border-radius: var(--radius-round); background: var(--bg-3); overflow: hidden; }
+.console .cfg .cfg-sync-bar > i.is-mine { background: var(--brand); }
+.console .cfg .cfg-sync-bar > i.is-other { background: var(--fg-3); }
+.console .cfg .cfg-sync-bar.is-warn > i.is-other { background: var(--danger); }
+.console .cfg .cfg-sync-space-warn { color: var(--danger-fg); font-size: var(--fs-ui); font-weight: 500; }
+.console .cfg .cfg-sync-devs { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--space-1) var(--space-2); max-width: 820px; }
+.console .cfg .cfg-sync-dev { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: var(--space-1) var(--space-3); border-radius: var(--radius-control); background: var(--bg-2); }
+.console .cfg .cfg-sync-dev.is-dim .cfg-sync-dev-t b, .console .cfg .cfg-sync-dev.is-dim .cfg-sync-dev-i { opacity: .7; }
+.console .cfg .cfg-sync-dev-i { flex: none; color: var(--fg-2); }
+.console .cfg .cfg-sync-dev-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: var(--fs-ui); }
+.console .cfg .cfg-sync-dev-t b { font-weight: 500; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .cfg .cfg-sync-dev-t > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .cfg .cfg-sync-out { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; max-width: 820px; margin: var(--space-3) var(--space-3) var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--line-soft); }
+.console .cfg .cfg-sync-out > .kx-meta { flex: 1 1 260px; min-width: 0; }
 .console .cfg .cfg-about { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-3) var(--space-2); }
 .console .cfg .cfg-about .kx-mark { width: 52px; height: 52px; flex: none; }
 .console .cfg .cfg-about .kx-mark::after { font-size: 24px; }
@@ -2250,6 +2314,18 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
   .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
   .console .topbar .tb-bell-dot { background: Highlight; }
+  /* The sync's dot in the bar, its summary and Configurações' rows (Drive
+     direto, PR 3): em dia a system highlight, esperando the text colour,
+     precisa de você a link-coloured ring that cannot be missed, no account
+     grey; the space bar and a file's progress keep their parts. */
+  .console :is(.topbar .tb-sync-dot, .sync-pop-dot, .cfg .cfg-sync-dot).is-ok { background: Highlight; }
+  .console :is(.topbar .tb-sync-dot, .sync-pop-dot, .cfg .cfg-sync-dot).is-wait { background: CanvasText; }
+  .console :is(.topbar .tb-sync-dot, .sync-pop-dot, .cfg .cfg-sync-dot).is-need { background: Canvas; outline: 2px solid LinkText; }
+  .console :is(.topbar .tb-sync-dot, .sync-pop-dot, .cfg .cfg-sync-dot):not(.is-ok, .is-wait, .is-need) { background: GrayText; }
+  .console :is(.cfg .cfg-sync-bar, .sync-pop-bar) { outline: 1px solid CanvasText; }
+  .console :is(.cfg .cfg-sync-bar > i.is-mine, .sync-pop-bar > i) { background: Highlight; }
+  .console .cfg .cfg-sync-bar > i.is-other { background: CanvasText; }
+  .console .cfg :is(.cfg-sync-hero, .cfg-sync-banner, .cfg-sync-box, .cfg-sync-dev) { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .ver-new-dot { background: LinkText; }
   /* The Setlist automática's countdown and its stop (Rodada N2). */
   .console .rund-cd { outline: 1px solid CanvasText; outline-offset: -1px; }
