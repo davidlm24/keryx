@@ -246,6 +246,10 @@ export function driveProgress(st, nowMs = Date.now()) {
         case "offline": return { tone: "wait", label: "Sem internet", detail: `${waiting ? `${changes(waiting)} esperando · ` : ""}tenta de novo sozinho` };
         case "removed": return { tone: "need", label: "Desconectado", detail: "entre de novo com a conta da igreja para voltar" };
         case "error": return { tone: "wait", label: "Não sincronizou", detail: e.error || "" };
+        // Entered, but not yet joined with the account's key (Drive did not
+        // answer the join, or the key changed there): the passes try again.
+        case "unpaired":
+        case "mismatch": return { tone: "wait", label: "Juntando com a conta", detail: "tenta de novo sozinho" };
         default: return { tone: "wait", label: "Começando…", detail: "" };
     }
 }

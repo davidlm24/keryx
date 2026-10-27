@@ -5,8 +5,8 @@ import { joinNote } from "@/lib/console/syncView";
 // Entering with the church's Google account (Google Drive direto, PR 3), the
 // same from Configurações › Sincronização and from the top bar's cloud: the
 // system's browser opens on Google's page (electron/googleAuth.cjs) and the
-// call waits for it (up to 5 minutes); then this computer moves to Drive,
-// merging what it has (G1 = A: nothing is deleted). The page shows
+// call waits for it (up to 5 minutes); then this computer moves to Drive with
+// the account's key, merging what it has (G1 = A: nothing is deleted). The page shows
 // "Termine a entrada no navegador" from the status' google.signingIn, which
 // is set here at once so the click is answered before the next poll.
 
@@ -47,17 +47,12 @@ export async function signInWithGoogle({ say, songsHere = 0, status = null } = {
         await refreshSyncStatus();
         return null;
     }
-    let st = res?.data || null;
-    if (st?.store !== "drive") {
-        const moved = await sync.call("useDrive", { on: true }).catch((err) => ({ error: { message: err?.message } }));
-        if (moved?.error) {
-            say?.(`Sincronização: ${moved.error.message || "não foi possível usar a conta."}`);
-            await refreshSyncStatus();
-            return null;
-        }
-        st = moved?.data || st;
-    }
+    // googleSignIn moves this computer to Drive and joins it with the
+    // account's key (made there when the account has none). A join Drive did
+    // not answer leaves the sign-in standing: the passes join it later.
+    const st = res?.data || null;
     if (st) setSyncStatus(st);
+    if (st?.joinError) say?.(`Entrou com a conta. A sincronização começa quando o Google Drive responder (${st.joinError}).`);
     store.set(JOIN_KEY, { at: new Date().toISOString(), before: songsHere });
     return st;
 }

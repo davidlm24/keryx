@@ -154,9 +154,11 @@ test("driveProgress: em dia, sem internet, parada, desconectado", () => {
     assert.deepEqual(driveProgress(drive, NOW), { tone: "ok", label: "Em dia", detail: "última passagem há 40 s · 12 mudanças enviadas desde que o KERYX abriu" });
     assert.deepEqual(driveProgress({ ...drive, waiting: 7, engine: { state: "offline" } }, NOW), { tone: "wait", label: "Sem internet", detail: "7 mudanças esperando · tenta de novo sozinho" });
     assert.equal(driveProgress({ ...drive, google: { refused: true } }, NOW).tone, "need");
+    // Entered, the join with the account's key still to come (Drive did not answer).
+    assert.equal(driveProgress({ ...drive, paired: false, engine: { state: "unpaired" } }, NOW).label, "Juntando com a conta");
     assert.equal(driveProgress({ ...drive, engine: { state: "auth" } }, NOW).label, "Parada");
     assert.equal(driveProgress({ ...drive, engine: { state: "removed" } }, NOW).label, "Desconectado");
-    assert.equal(driveProgress({ ...drive, engine: { state: "unpaired" } }, NOW).label, "Começando…");
+    assert.equal(driveProgress({ ...drive, engine: { state: "off" } }, NOW).label, "Começando…");
 });
 
 test("deviceRows: this one first, a computer long gone holds the cleanup", () => {
