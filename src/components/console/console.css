@@ -1265,6 +1265,13 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-url { display: flex; align-items: center; gap: var(--space-1); }
 .console .cfg .cfg-url code { font: inherit; font-size: var(--fs-ui); color: var(--fg-2); user-select: text; }
 .console .cfg .cfg-url code.is-main { font-size: var(--fs-content-lg); color: var(--fg-1); }
+/* KERYX no celular (PhonesBlock, owner 2026-10-27): the Controle's and the
+   Equipe's cards side by side, stacked when the page is narrow. */
+.console .cfg .cfg-doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+.console .cfg .cfg-door { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--bg-1); }
+.console .cfg .cfg-door-h { display: flex; align-items: center; gap: var(--space-2); color: var(--fg-1); }
+.console .cfg .cfg-door-t { flex: 1 1 auto; font-weight: 600; }
+.console .cfg .cfg-door .frm { grid-template-columns: 84px 1fr; padding: 0; }
 .console .cfg .cfg-logo { width: 40px; height: 40px; object-fit: contain; border-radius: var(--radius-control); background: var(--bg-2); }
 .console .cfg .cfg-path { font-size: var(--fs-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; user-select: text; }
 .console .cfg .cfg-restore { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 560px; }

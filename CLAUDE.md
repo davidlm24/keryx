@@ -1752,10 +1752,25 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **The Equipe** (Rodada Q, PR1; S6 = A, S8 = A): a third code beside the
   screens' PIN and the controle remoto's (`network.team` in the electron
   settings, the same shape as `network.remote`, off by default, never equal
-  to the remote's; Configurações › Telas na rede › Equipe, `RemoteBlock
-  role="team"`). Both codes sign in on the same page and the code decides
+  to the remote's). Both codes sign in on the same page and the code decides
   the role (its own cookie `keryx_team`; signing in with one clears the
-  other's): `team` runs only the actions marked `team: true` (with
+  other's). **KERYX no celular** (owner 2026-10-27, marks: that name, "A ·
+  uma tela", main switch + one per code): Configurações › Telas na rede has
+  ONE group for both (`PhonesBlock.jsx`, `rede.celular`; `phonesSummary`):
+  the switch "Celulares" (`network.phones.enabled`, `setPhones`; never set =
+  on, so the doors decide as before; shown on only while a door is open; on
+  with none open opens both; off signs every phone out and keeps each
+  door's code, key and switch; opening a door turns it on), one address and
+  QR, then the Controle's and the Equipe's cards side by side, each with its
+  switch, code (Mostrar / Trocar) and Conectados. A door is open only under
+  the main switch (`doorOn` in lan.cjs). The phone's sign-in
+  (`codePage`, no script) shows Controle | Equipe — only the open doors,
+  nothing chosen at first unless `?role=` or the `keryx_side` cookie (the
+  side entered by last: a preference, never a permission) — then "Código do
+  controle" / "Código da equipe"; the form posts `role` and the server
+  checks the code against THAT side alone (the other's code there is a
+  wrong code and counts toward the same lockout); no `role` = either code,
+  as before. `team` runs only the actions marked `team: true` (with
   `teamArgs`, the only values it may give, and `teamNeeds`, the args it
   must also give: `library` only as the songs or, Rodada Q S15, the Mídia's
   videos and audios — `tab: media` with `kind` video | audio, never without

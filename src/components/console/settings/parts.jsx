@@ -56,8 +56,8 @@ export function usePoll(fn, ms) {
 }
 
 // An on/off switch (design system: kx-switch; .sw2 is its old name), a real button.
-export function Switch({ on, onChange, label, disabled }) {
-    return <button type="button" className={`sw2 kx-switch kx-t ${on ? "is-on" : ""}`} role="switch" aria-checked={Boolean(on)} aria-label={label} title={label} disabled={disabled} onClick={() => onChange(!on)} />;
+export function Switch({ on, onChange, label, disabled, small = false }) {
+    return <button type="button" className={`sw2 kx-switch kx-t ${small ? "kx-switch-sm" : ""} ${on ? "is-on" : ""}`} role="switch" aria-checked={Boolean(on)} aria-label={label} title={label} disabled={disabled} onClick={() => onChange(!on)} />;
 }
 
 // The search's jump (SettingsView): `pending` is the label it is looking for

@@ -636,6 +636,87 @@ test("equipe: off by default; its code signs in as the team, which never touches
     assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 401);
 });
 
+// -- KERYX no celular (owner 2026-10-27): one page, the phone picks a side ----
+
+const postCode = (f, body, headers = {}) => fetch(`${f.base}/lan/remote-code`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", ...headers }, body });
+
+test("celular: the side chosen only narrows; each code is checked against its own side", async (t) => {
+    const f = await started(TEAM, { onRemote: async () => ({ ok: true }) });
+    t.after(() => f.lan.stop());
+    // The Controle's code typed under Equipe (and the Equipe's under
+    // Controle) is a wrong code: no cookie, and it counts as a miss.
+    for (const body of ["role=team&code=246813", "role=control&code=975310"]) {
+        const res = await postCode(f, body);
+        assert.equal(res.status, 401, body);
+        assert.equal(res.headers.get("set-cookie"), null, body);
+        assert.match(await res.text(), /Código incorreto/);
+    }
+    // Each code on its own side: that role's cookie, the other's cleared, the side remembered.
+    const team = await postCode(f, "role=team&code=975310");
+    assert.equal(team.status, 303);
+    assert.match(team.headers.get("set-cookie"), /keryx_team=[0-9a-f]{64}.*keryx_remote=; .*keryx_side=team; /);
+    const control = await postCode(f, "role=control&code=246813");
+    assert.equal(control.status, 303);
+    assert.match(control.headers.get("set-cookie"), /keryx_remote=[0-9a-f]{64}.*keryx_team=; .*keryx_side=control; /);
+    const cookie = control.headers.get("set-cookie").split(";")[0];
+    assert.equal((await send(f, { v: 2, action: "next" }, { cookie })).status, 200);
+    // A made-up side is no side: the code decides, as on a page of before.
+    assert.equal((await postCode(f, "role=admin&code=975310")).status, 303);
+    assert.equal((await postCode(f, "code=246813")).status, 303);
+    // The side cookie never signs in: alone it is no phone.
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: "keryx_side=control" })).status, 401);
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: "keryx_side=team" })).status, 401);
+});
+
+test("celular: wrong codes on either side share the lockout", async (t) => {
+    const f = await started(TEAM, { onRemote: async () => ({ ok: true }) });
+    t.after(() => f.lan.stop());
+    for (let i = 0; i < 5; i++) assert.equal((await postCode(f, i % 2 ? "role=team&code=246813" : "role=control&code=975310")).status, 401);
+    const locked = await postCode(f, "role=control&code=246813");
+    assert.equal(locked.status, 429, "the right code waits the minute too");
+    assert.match(await locked.text(), /Muitas tentativas/);
+});
+
+test("celular: the page offers only the open doors and starts on the side asked", async (t) => {
+    const f = await started(TEAM, { onRemote: async () => ({ ok: true }) });
+    t.after(() => f.lan.stop());
+    const html = async (path, headers = {}) => (await page(f.base, path, headers)).text();
+    const both = await html("/lan/remote-code");
+    assert.match(both, /Como você vai usar\?/);
+    assert.match(both, /value="control" id="r-control" required>/);
+    assert.match(both, /value="team" id="r-team">/);
+    assert.doesNotMatch(both, /id="r-\w+" checked/, "nothing chosen at first");
+    assert.doesNotMatch(both, /autofocus/, "no field to type in yet");
+    assert.match(await html("/lan/remote-code?role=team"), /id="r-team" checked/);
+    assert.match(await html("/lan/remote-code", { cookie: "keryx_side=team" }), /id="r-team" checked/, "the side entered by last");
+    assert.doesNotMatch(await html("/lan/remote-code?role=<b>"), /<b>|id="r-\w+" checked/);
+    // One door open: only that side, already chosen.
+    f.cfg.team = { ...f.cfg.team, enabled: false };
+    const one = await html("/lan/remote-code?role=team");
+    assert.doesNotMatch(one, /r-team|Como você vai usar/);
+    assert.match(one, /id="r-control" checked required/);
+    assert.match(one, /autofocus/);
+});
+
+test("celular: the main switch closes both doors and keeps their cookies' keys", async (t) => {
+    const f = await started(TEAM, { onRemote: async () => ({ ok: true }) });
+    t.after(() => f.lan.stop());
+    const control = await remoteSignedIn(f);
+    const team = await teamSignedIn(f);
+    f.cfg.phones = { enabled: false };
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: control })).status, 404);
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: team })).status, 404);
+    assert.equal((await page(f.base, "/lan/remote-code")).status, 404);
+    assert.equal((await postCode(f, "role=control&code=246813")).status, 404);
+    // Back on: the same cookies work again (Desligar is not Trocar o código).
+    f.cfg.phones = { enabled: true };
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: control })).status, 200);
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: team })).status, 200);
+    // Never set = on (a church from before the switch).
+    delete f.cfg.phones;
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: team })).status, 200);
+});
+
 test("equipe: with the screens' PIN it reads only its page's data, and hears its messages", async (t) => {
     const f = await started({ ...TEAM, pin: "4321" }, { onRemote: async () => ({ ok: true }), heartbeatMs: 100 });
     t.after(() => f.lan.stop());
