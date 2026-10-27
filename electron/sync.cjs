@@ -1239,7 +1239,8 @@ function createSyncEngine({
         return { name: a.name, size: a.size, got };
     }
 
-    return { pass, poke, start, stop, status: () => status, missing, arriving: coming };
+    // `busy`: a pass is running now (the cloud's dot pulses).
+    return { pass, poke, start, stop, status: () => ({ ...status, busy: Boolean(running) }), missing, arriving: coming };
 }
 
 module.exports = { createSyncEngine, mediaRefs, coalesce, addRange, inRanges, endLine, STATE_KEY };

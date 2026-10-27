@@ -231,7 +231,10 @@ export function cloudView(st, nowMs = Date.now()) {
         ["Chegando", coming],
         ["Computadores", `${others.length + 1}${late ? ` · ${late.name} sem sincronizar` : ""}`],
     ];
-    return { tone: prog.tone, label: prog.label, when: e.lastOk || e.lastPass ? ago(e.lastOk || e.lastPass, nowMs) : "", text: e.state === "error" ? prog.detail : "", act: e.state === "error" ? "retry" : "now", rows };
+    // busy: a pass runs or a file comes down now, so the cloud's dot pulses
+    // (owner 2026-10-27; the status is polled, so a quick pass may slip by).
+    const busy = Boolean(e.busy) || pct != null;
+    return { tone: prog.tone, label: prog.label, when: e.lastOk || e.lastPass ? ago(e.lastOk || e.lastPass, nowMs) : "", text: e.state === "error" ? prog.detail : "", act: e.state === "error" ? "retry" : "now", rows, busy };
 }
 
 // The cloud's dot (G5 = A: always in the bar, grey with no account): green

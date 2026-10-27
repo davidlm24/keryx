@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { EventEmitter } = require("node:events");
-const { createYouTube, youtubeId, oembedState, downloadArgs, parseLine, track, progressOf, errorMessage, downloadedFields } = require("./youtube.cjs");
+const { createYouTube, youtubeNote, youtubeId, oembedState, downloadArgs, parseLine, track, progressOf, errorMessage, downloadedFields } = require("./youtube.cjs");
 const { importMedia } = require("./mediaImport.cjs");
 
 test("youtubeId: every link form, nothing else", () => {
@@ -202,4 +202,25 @@ test("check: oEmbed 200 / 401 / 404 / offline", async (t) => {
     assert.equal((await yt.ops.check({ url: "https://youtu.be/aBcDeFgHiJk" })).state, "missing");
     assert.equal((await yt.ops.check({ url: "https://youtu.be/aBcDeFgHiJk" })).state, "offline");
     await assert.rejects(yt.ops.check({ url: "nope" }), /não parece um link/);
+});
+
+test("the bell on a download that ended: done opens the file in the Mídia, failed says why", async (t) => {
+    assert.deepEqual(youtubeNote({ id: "m1", phase: "done" }, "Louvor (Ao Vivo)"),
+        { key: "youtube:m1", action: "media:m1", kind: "youtube", title: "Baixado para a Mídia: Louvor (Ao Vivo)", body: "" });
+    assert.deepEqual(youtubeNote({ id: "m1", phase: "failed", message: "O vídeo é privado." }, ""),
+        { key: "youtube:m1", action: "media:m1", kind: "warn", title: "Não deu para baixar o vídeo do YouTube", body: "O vídeo é privado." });
+    assert.equal(youtubeNote({ id: "m1", phase: "canceled" }, "x"), null);
+    assert.equal(youtubeNote({ id: "m1", phase: "downloading" }, "x"), null);
+    // Through the engine: one note when it ends, by the row's new title.
+    const env = setup(t);
+    const events = [];
+    const notes = [];
+    const yt = createYouTube({
+        ...env, importMedia, emit: (e) => events.push(e), notify: (n) => notes.push(n),
+        spawn: fakeSpawn([], { lines: ["INFO 11|312|Louvor (Ao Vivo)", "KX 11 11 NA", "FILE $FILE"] }),
+        execFile: execOk([]),
+    });
+    yt.ops.download({ id: "m1", url: "https://youtu.be/aBcDeFgHiJk" });
+    await until(events, "done");
+    assert.deepEqual(notes.map((n) => [n.kind, n.title]), [["youtube", "Baixado para a Mídia: Louvor (Ao Vivo)"]]);
 });

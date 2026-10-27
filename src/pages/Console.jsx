@@ -798,6 +798,13 @@ export default function Console() {
         if (action === "update") updateNow();
         else if (action === "whatsnew") openWhatsNew();
         else if (action.startsWith("settings:")) openSettings(action.slice("settings:".length));
+        // A pedido (painel:pedidos): its tab, when the Painel is on screen.
+        else if (action.startsWith("painel:")) {
+            if (pedidosReachable) focusTeamTab(action.slice("painel:".length));
+            else c.say("Os pedidos ficam no Painel: abra-o em Ver › Painel.");
+        }
+        // A YouTube download (media:<id>): the Mídia, on that file.
+        else if (action.startsWith("media:")) openMedia(`select:${action.slice("media:".length)}`);
     };
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {}).then(refreshOutputs);
     // Closed here on purpose: forgotten, so it is not reported as a problem.
@@ -1064,9 +1071,10 @@ export default function Console() {
     };
     const panelVisible = env === "culto" && onScreen("abas") && !layout.folded?.abas;
     const pedidosReachable = onScreen("abas");
+    const focusTeamTab = (id) => { setOpen(null); setEnvState("culto"); showPanelTabs([id]); setPanelTab(id); };
     const { unread: teamUnread } = usePedidos({ c, messages, open: { pedidos: panelVisible && panelTabNow === "pedidos", chat: panelVisible && panelTabNow === "chat" },
-        reachable: pedidosReachable, show: showPanelTabs,
-        focus: (id) => { setOpen(null); setEnvState("culto"); showPanelTabs([id]); setPanelTab(id); } });
+        reachable: pedidosReachable, show: showPanelTabs, focus: focusTeamTab,
+        bell: (note) => upd.call("notificationAdd", note).catch(() => {}) });
     const pedidosUnread = teamUnread.pedidos || teamUnread.chat;
     // A YouTube link the player refused on air (live.refused): say why, offer the download.
     useYouTubeRefused({ c, media: data.media, askText });

@@ -64,6 +64,11 @@
 .console .topbar .tb-sync-dot.is-ok { background: var(--ok); }
 .console .topbar .tb-sync-dot.is-wait { background: var(--warn); }
 .console .topbar .tb-sync-dot.is-need { background: var(--danger); }
+/* Syncing now (a pass, a file coming down): a ring of the dot's colour
+   widens and fades (owner 2026-10-27); still with reduced motion. */
+.console .topbar .tb-sync-dot.is-busy::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: inherit; animation: tb-sync-pulse 1.2s var(--ease-out) infinite; }
+@keyframes tb-sync-pulse { from { transform: scale(1); opacity: .8; } to { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .console .topbar .tb-sync-dot.is-busy::after { display: none; } }
 /* The cloud's summary (SyncPop.jsx, board 6 of the Drive direto mockup). */
 .console .sync-pop { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); }
 .console .sync-pop-h { display: flex; align-items: center; gap: var(--space-2); }
@@ -1639,6 +1644,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .notifs .note > .kx-i { margin-top: 1px; color: var(--fg-3); }
 .console .notifs .note.is-warn > .kx-i { color: var(--warn); }
 .console .notifs .note.is-update > .kx-i { color: var(--ok); }
+.console .notifs .note.is-pedido > .kx-i { color: var(--brand); }
 .console .notifs .note.is-new { background: var(--bg-3); }
 .console .notifs .note-b { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .console .notifs .note-t { color: var(--fg-1); font-size: var(--fs-content); font-weight: 500; }

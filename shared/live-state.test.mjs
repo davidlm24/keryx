@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
     applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, playbackGain, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, FOLLOW_SOURCES,
-    activitySteps, revealStep, revealOf,
+    activitySteps, revealStep, revealOf, stackOrder,
 } from "./live-state.mjs";
 
 const T0 = 1_000_000;
@@ -352,6 +352,21 @@ test("layer order: the operator stacks the look layers", () => {
     assert.throws(() => applyOp(s, "layers.order", { order: ["logo", "content"] }, T0), LiveError);
     assert.throws(() => applyOp(s, "layers.order", { order: ["logo", "logo", "content", "background"] }, T0), LiveError);
     assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0).layerOrder, s.layerOrder, "survives a restart");
+});
+
+test("layer order: the Fundo always stays under everything", () => {
+    // Above Texto principal its box covered a video that played on, sound only.
+    let s = applyOp(emptyState(T0), "layers.order", { order: ["logo", "background", "overlays", "content"] }, T0);
+    assert.deepEqual(s.layerOrder, ["logo", "overlays", "content", "background"]);
+    s = applyOp(s, "layers.order", { order: ["background", "content", "logo", "overlays"] }, T0);
+    assert.deepEqual(s.layerOrder, ["content", "logo", "overlays", "background"]);
+    // A state saved before the rule comes back with the Fundo last.
+    const old = { ...JSON.parse(JSON.stringify(s)), layerOrder: ["logo", "overlays", "background", "content"] };
+    assert.deepEqual(restoreState(old, T0).layerOrder, ["logo", "overlays", "content", "background"]);
+    // What a renderer stacks by: the same, and the default for anything else.
+    assert.deepEqual(stackOrder(["background", "logo", "content", "overlays"]), ["logo", "content", "overlays", "background"]);
+    assert.deepEqual(stackOrder(undefined), ["logo", "overlays", "content", "background"]);
+    assert.deepEqual(stackOrder(["logo"]), ["logo", "overlays", "content", "background"]);
 });
 
 test("Travar telas: nothing new goes on while locked, anything can come off", () => {

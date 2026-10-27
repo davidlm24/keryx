@@ -1,6 +1,16 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createNotifications, KEEP } = require("./notifications.cjs");
+const { createNotifications, consoleNote, KEEP } = require("./notifications.cjs");
+
+test("the console adds only its own kinds and actions, the text short", () => {
+    assert.deepEqual(consoleNote({ key: "pedido:r1", kind: "pedido", title: "  Pedido de Ana:\n Santo ", body: "Quem canta: Ana", action: "painel:pedidos" }),
+        { key: "console:pedido:r1", kind: "pedido", title: "Pedido de Ana: Santo", body: "Quem canta: Ana", action: "painel:pedidos" });
+    assert.equal(consoleNote({ kind: "update", title: "Atualize", action: "update" }), null, "main's kinds stay main's");
+    assert.equal(consoleNote({ kind: "pedido", title: "  " }), null);
+    assert.equal(consoleNote({ kind: "pedido", title: "x", action: "update" }).action, null);
+    assert.equal(consoleNote({ kind: "pedido", title: "x".repeat(500) }).title.length, 120);
+    assert.equal(consoleNote(null), null);
+});
 
 function memorySettings(initial = {}) {
     const store = { ...initial };

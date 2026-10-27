@@ -17,8 +17,8 @@ import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { songRow, mmss, mediaIcon, copyingRows } from "@/lib/console/libraryRows";
 import CodecMark from "@/components/console/CodecMark";
 import { mediaFromYouTube } from "@/lib/mediaImport";
-import { isYouTubeRow } from "@/lib/youtubeLinks";
-import { downloadToMedia } from "@/hooks/useYouTubeJobs";
+import { isYouTubeRow, jobMeta, jobFraction } from "@/lib/youtubeLinks";
+import { downloadToMedia, useYouTubeJobs } from "@/hooks/useYouTubeJobs";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles, importSummary } from "@/lib/mediaImport";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
@@ -148,6 +148,9 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
 
     // The playbacks the sync has not brought yet (a song row says "baixando").
     const pending = usePendingMedia();
+    // Baixar para a Mídia: each row shows its own download (2026-10-27: only
+    // the Mídia did, and whoever did not look there thought it had failed).
+    const ytJobs = useYouTubeJobs();
     // The files this window is copying into the Mídia (a row each, Rodada H).
     const copying = useCopyingFiles();
 
@@ -318,13 +321,16 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         c.say(`Salvo em Vídeos: "${row.title}" · arraste para a setlist, ou dois cliques tocam.`);
                     } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
                 };
-                const mediaRow = (m) => (
+                const mediaRow = (m) => {
+                    const job = ytJobs.get(m.id);
+                    const jobLine = jobMeta(job);
+                    return (
                     <Row
                         key={m.id}
                         icon={mediaIcon(m)}
                         title={m.title}
-                        meta={m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : <>{[MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}
-                        metaClass={m.missing && !m.syncing ? "kx-warn" : ""}
+                        meta={jobLine ? jobLine : m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : <>{[MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}
+                        metaClass={job?.phase === "failed" || (!jobLine && m.missing && !m.syncing) ? "kx-warn" : ""}
                         state={`${m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)} ${marked(m.id)}`}
                         lead={mark}
                         onClick={rowClick(m.id, () => onPrepare(stageFromMedia(m)))}
@@ -342,8 +348,9 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         {...rowProps(m)}
                         item
                         actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label={`${m.title}: pôr na prévia para as telas de vídeo`}><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
-                    >{m.type === "pdf" && <PagesBar id={m.id} />}</Row>
-                );
+                    >{m.type === "pdf" && <PagesBar id={m.id} />}{jobFraction(job) != null && <RowBar value={jobFraction(job)} />}</Row>
+                    );
+                };
                 return (
                     <>
                         {tab === "videos" && <>

@@ -63,4 +63,19 @@ function createNotifications({ settings, now = () => new Date(), onChange = () =
     };
 }
 
-module.exports = { createNotifications, KEEP };
+// What the console may add itself (a pedido of the Equipe, owner
+// 2026-10-27: the toast goes, the bell keeps it): its own kinds and actions
+// only, the text short and on one line, its key apart from main's.
+// -> the note to add, or null.
+const CONSOLE_KINDS = ["pedido"];
+const CONSOLE_ACTIONS = ["painel:pedidos", "painel:chat"];
+function consoleNote(n) {
+    if (!n || !CONSOLE_KINDS.includes(n.kind)) return null;
+    const text = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+    const title = text(n.title, 120);
+    if (!title) return null;
+    const key = text(n.key, 80);
+    return { key: key ? `console:${key}` : undefined, kind: n.kind, title, body: text(n.body, 300), action: CONSOLE_ACTIONS.includes(n.action) ? n.action : null };
+}
+
+module.exports = { createNotifications, consoleNote, KEEP };
