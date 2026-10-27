@@ -65,3 +65,42 @@ test("equipe: off by default; its own code and key, never the remote's code; eac
     assert.equal(n.saved.network.team.enabled, false);
     assert.equal(n.saved.network.remote.enabled, true);
 });
+
+test("KERYX no celular: the main switch over the two doors; off keeps each door's code and choice", async () => {
+    const n = net({ network: { secret: "s" } });
+    assert.deepEqual(n.info().phones, { enabled: false }, "off by default: no door open");
+    // On with no door open opens both, with codes never equal.
+    await n.ops.setPhones(null, true);
+    const { remote, team, phones } = n.saved.network;
+    assert.deepEqual(phones, { enabled: true });
+    assert.equal(remote.enabled, true);
+    assert.equal(team.enabled, true);
+    assert.notEqual(remote.code, team.code);
+    assert.deepEqual(n.info().phones, { enabled: true });
+    assert.ok(!JSON.stringify(n.info()).includes(remote.code) && !JSON.stringify(n.info()).includes(team.code), "info() never carries a code");
+    // Off: both doors closed by the switch, their codes, keys and switches kept.
+    await n.ops.setTeam(null, false);
+    await n.ops.setPhones(null, false);
+    assert.deepEqual(n.info().phones, { enabled: false });
+    assert.equal(n.saved.network.remote.code, remote.code);
+    assert.equal(n.saved.network.remote.secret, remote.secret);
+    assert.equal(n.saved.network.remote.enabled, true);
+    assert.equal(n.saved.network.team.enabled, false);
+    // On again: only the door that was open (the Equipe stays off).
+    await n.ops.setPhones(null, true);
+    assert.equal(n.saved.network.team.enabled, false);
+    assert.deepEqual(n.info().phones, { enabled: true });
+    // Opening a door turns the main switch on.
+    await n.ops.setPhones(null, false);
+    await n.ops.setTeam(null, true);
+    assert.deepEqual(n.saved.network.phones, { enabled: true });
+    // Every door closed: the switch reads off.
+    await n.ops.setTeam(null, false);
+    await n.ops.setRemote(null, false);
+    assert.deepEqual(n.info().phones, { enabled: false });
+});
+
+test("KERYX no celular: a church from before the switch keeps its open doors", () => {
+    const n = net({ network: { secret: "s", team: { enabled: true, code: "975310", secret: "t" } } });
+    assert.deepEqual(n.info().phones, { enabled: true });
+});

@@ -37,6 +37,13 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
     const team = () => config().team || {};
     const saveTeam = (patch) => save({ team: { ...team(), ...patch } });
     const codeOtherThan = (other) => { let code; do code = newRemoteCode(); while (code === other); return code; };
+    const openRemote = () => saveRemote({ enabled: true, code: remote().code || codeOtherThan(team().code), secret: remote().secret || newRemoteSecret() });
+    const openTeam = () => saveTeam({ enabled: true, code: team().code || codeOtherThan(remote().code), secret: team().secret || newRemoteSecret() });
+    // "KERYX no celular" (owner 2026-10-27): one main switch ("network".phones)
+    // over the two doors, each keeping its own. Never set = on, so a church
+    // from before keeps its doors; shown on only while a door is open.
+    const phonesOn = () => config().phones?.enabled !== false && Boolean(remote().enabled || team().enabled);
+    const savePhones = (enabled) => save({ phones: { enabled } });
     let lastError = "";
 
     async function start() {
@@ -61,6 +68,7 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             running,
             port: boundPort || port,
             hasPin: Boolean(pin),
+            phones: { enabled: phonesOn() },
             // Never the code itself (revealRemoteCode, on demand).
             remote: { enabled: Boolean(remote().enabled), hasCode: Boolean(remote().code) },
             team: { enabled: Boolean(team().enabled), hasCode: Boolean(team().code) },
@@ -89,11 +97,20 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
                 }
                 return info();
             },
+            // The main switch: off signs every phone out and keeps each door's
+            // choice and code; on opens both doors when neither was open.
+            setPhones: async (_event, enabled) => {
+                savePhones(Boolean(enabled));
+                if (enabled && !remote().enabled && !team().enabled) { openRemote(); openTeam(); }
+                if (!enabled) { lan.dropRemotes("control"); lan.dropRemotes("team"); }
+                logger.info(`[keryx-lan] KERYX no celular ${enabled ? "ligado" : "desligado"}`);
+                return info();
+            },
             // Controle remoto: on (a code and a key are made the first time),
             // off, a new code, Desconectar todos (a new key) — each signs the
-            // phones out but turning it on.
+            // phones out but turning it on. On turns the main switch on too.
             setRemote: async (_event, enabled) => {
-                if (enabled) saveRemote({ enabled: true, code: remote().code || codeOtherThan(team().code), secret: remote().secret || newRemoteSecret() });
+                if (enabled) { openRemote(); savePhones(true); }
                 else { saveRemote({ enabled: false }); lan.dropRemotes("control"); }
                 logger.info(`[keryx-lan] controle remoto ${enabled ? "ligado" : "desligado"}`);
                 return info();
@@ -104,7 +121,7 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             // The Equipe (Rodada Q): the same four, on its own code and key;
             // changing one never signs the other's phones out.
             setTeam: async (_event, enabled) => {
-                if (enabled) saveTeam({ enabled: true, code: team().code || codeOtherThan(remote().code), secret: team().secret || newRemoteSecret() });
+                if (enabled) { openTeam(); savePhones(true); }
                 else { saveTeam({ enabled: false }); lan.dropRemotes("team"); }
                 logger.info(`[keryx-lan] equipe ${enabled ? "ligada" : "desligada"}`);
                 return info();

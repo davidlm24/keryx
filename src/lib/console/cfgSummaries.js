@@ -26,9 +26,13 @@ export function enderecosSummary(info) {
     if (!info?.running) return "Desligado";
     return `${count((info.urls || []).length, "endereço", "endereços")} · ${count((info.screens || []).length, "tela", "telas")}`;
 }
-export function remoteSummary(remote, phones = 0) {
-    if (!remote?.enabled) return "Desligado";
-    return phones ? `Ligado · ${count(phones, "celular conectado", "celulares conectados")}` : "Ligado · nenhum celular agora";
+// KERYX no celular: the main switch, which doors are open, the phones now.
+export function phonesSummary(info, phones = 0) {
+    if (!info?.phones?.enabled) return "Desligado";
+    const control = Boolean(info.remote?.enabled);
+    const team = Boolean(info.team?.enabled);
+    const doors = control && team ? "Controle e Equipe" : control ? "só o Controle" : "só a Equipe";
+    return `Ligado · ${doors} · ${phones ? count(phones, "celular conectado", "celulares conectados") : "nenhum celular agora"}`;
 }
 export function connectedSummary(clients, running) {
     const n = (clients || []).length;

@@ -24,6 +24,9 @@
 //     the contract marks team: true (chat, song requests, lyrics, the
 //     Bíblia and the Setlist to read), checked here, never only hidden on
 //     the phone; it never changes the air or the setlist
+//   - both are doors of "KERYX no celular" (owner 2026-10-27): one main
+//     switch over the two; the phone picks Controle or Equipe and its code
+//     is checked against that side only (doorOn, codePage)
 //   - every event stream gets a heartbeat ("hb", every 10 s) and is dropped
 //     when it stops reading (MAX_BACKLOG)
 //
@@ -76,6 +79,16 @@ const remoteToken = ({ code, secret }) => crypto.createHmac("sha256", secret).up
 // knows only that code is the role "team".
 const TEAM_COOKIE = "keryx_team";
 const teamToken = ({ code, secret }) => crypto.createHmac("sha256", secret).update(`keryx-team:${code}`).digest("hex");
+// The side a phone entered by last (Controle or Equipe): it only picks where
+// the sign-in page starts, never what the phone may do.
+const SIDE_COOKIE = "keryx_side";
+// A door ("remote" = the Controle, "team" = the Equipe) is open with its own
+// switch, a code and a key, under the main switch of "KERYX no celular"
+// (network.phones, owner 2026-10-27; never set = on, as before it existed).
+const doorOn = (config, key) => {
+    const door = config[key];
+    return config.phones?.enabled !== false && Boolean(door && door.enabled && door.code && door.secret);
+};
 // How long the console has to answer (the Bíblia reads chapters: longer).
 const remoteTimeout = (action) => (PROTOCOL.limits.slowActions.includes(action) ? PROTOCOL.limits.slowTimeoutMs : PROTOCOL.limits.timeoutMs);
 // A read is the phone keeping up (state every few seconds): never logged.
@@ -291,20 +304,47 @@ function lanAddresses(interfaces = os.networkInterfaces()) {
 // The two pages the server writes itself (PIN, not available), in the design
 // system's colours (docs/design-system/tokens.css: bg-0, bg-1/2, line-strong,
 // fg-1/2, brand + on-brand for the one action, warn-fg for the error).
-const page = (title, body) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>${title}</title><style>
+const page = (title, body, css = "") => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>${title}</title><style>
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0d0d0c;color:#f4f1ea;font:16px system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}
 main{width:min(100%,360px);text-align:center;background:#171715;border-radius:14px;padding:28px 24px;box-shadow:0 0 0 1px #35342f}h1{font-size:22px;margin:0 0 8px;font-weight:600;letter-spacing:.02em}p{color:#bbb6ac;margin:0 0 20px;line-height:1.45}
 input{width:100%;box-sizing:border-box;padding:14px;font-size:28px;text-align:center;letter-spacing:.4em;border-radius:8px;border:0;box-shadow:inset 0 0 0 1px #4a4840;background:#20201d;color:inherit;outline:none}input:focus{box-shadow:inset 0 0 0 2px #c19959}
 button{width:100%;margin-top:12px;padding:14px;font-size:17px;border:0;border-radius:8px;background:#c19959;color:#20180c;font-weight:600;cursor:pointer}button:hover{background:#d0a968}button:active{background:#a47d43}
-.err{color:#ffc24d;background:#f5a5241a;border-radius:8px;padding:10px 12px;margin:14px 0 0}</style></head><body><main>${body}</main></body></html>`;
+.err{color:#ffc24d;background:#f5a5241a;border-radius:8px;padding:10px 12px;margin:14px 0 0}${css}</style></head><body><main>${body}</main></body></html>`;
 
 const pinPage = (next, error) => page("KERYX", `<h1>KERYX</h1><p>Digite o PIN desta tela</p>
 <form method="post" action="/lan/pin"><input type="hidden" name="next" value="${next.replace(/[&"<>]/g, "")}">
 <input name="pin" inputmode="numeric" autocomplete="off" autofocus aria-label="PIN"><button type="submit">Entrar</button></form>${error ? `<p class="err">${error}</p>` : ""}`);
 
-const codePage = (error) => page("KERYX", `<h1>KERYX no celular</h1><p>Digite o código do controle remoto ou da equipe (Configurações › Telas na rede, no computador do KERYX)</p>
+// The phone's sign-in, "KERYX no celular" (owner 2026-10-27, A · uma tela):
+// Controle | Equipe over the code field, only the doors that are on, and the
+// code is checked against the side chosen alone (handleRemoteCode). The
+// choice only narrows: the role still comes from the code. No script: the
+// radios come first, and CSS shows the field, its label and the line under
+// the switch for the one checked (nothing checked = no field yet).
+const DOORS = [
+    { role: "control", name: "Controle", what: "Muda o que está no ar: slides, Tela preta, Logo e a setlist.", code: "Código do controle" },
+    { role: "team", name: "Equipe", what: "Pedidos, chat e letras. Só lê: nunca mexe no ar.", code: "Código da equipe" },
+];
+const DOOR_ROLES = new Set(DOORS.map((d) => d.role));
+const doorCss = (doors) => `.r{position:absolute;width:1px;height:1px;margin:0;padding:0;opacity:0}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;margin:0 0 12px;border-radius:10px;background:#20201d;box-shadow:inset 0 0 0 1px #35342f}
+.seg label{display:block;padding:11px 0;border-radius:7px;color:#bbb6ac;cursor:pointer}
+.what,.code,.code .l{display:none}.what{margin:0 0 16px}.code>label{display:block;text-align:left;font-size:14px;color:#bbb6ac;margin:0 0 6px}
+${doors.map(({ role }) => `#r-${role}:checked~.seg [for=r-${role}]{background:#2f2e2a;color:#f4f1ea;font-weight:600;box-shadow:inset 0 0 0 1px #c19959}
+#r-${role}:focus-visible~.seg [for=r-${role}]{outline:2px solid #c19959;outline-offset:2px}
+#r-${role}:checked~.w-${role},#r-${role}:checked~.code{display:block}#r-${role}:checked~.code .l-${role}{display:inline}`).join("\n")}`;
+// on: { control, team } (which doors are on); role: the side to start on.
+const codePage = ({ on = {}, role = null, error = "" } = {}) => {
+    const doors = DOORS.filter((d) => on[d.role]);
+    const start = doors.length === 1 ? doors[0].role : doors.some((d) => d.role === role) ? role : null;
+    return page("KERYX", `<h1>KERYX no celular</h1>${doors.length > 1 ? "<p>Como você vai usar?</p>" : ""}
 <form method="post" action="/lan/remote-code">
-<input name="code" inputmode="numeric" autocomplete="off" autofocus aria-label="Código"><button type="submit">Entrar</button></form>${error ? `<p class="err">${error}</p>` : ""}`);
+${doors.map((d, i) => `<input class="r" type="radio" name="role" value="${d.role}" id="r-${d.role}"${d.role === start ? " checked" : ""}${i ? "" : " required"}>`).join("")}
+<div class="seg">${doors.map((d) => `<label for="r-${d.role}">${d.name}</label>`).join("")}</div>
+${doors.map((d) => `<p class="what w-${d.role}">${d.what}</p>`).join("")}
+<div class="code"><label for="code">${doors.map((d) => `<span class="l l-${d.role}">${d.code}</span>`).join("")}</label>
+<input id="code" name="code" inputmode="numeric" autocomplete="off"${start ? " autofocus" : ""}><button type="submit">Entrar</button></div></form>${error ? `<p class="err">${error}</p>` : ""}`, doorCss(doors));
+};
 
 const notFoundPage = page("KERYX", `<h1>Página não disponível</h1><p>Esta tela só mostra as saídas do KERYX. Os painéis de controle ficam no computador do operador.</p><button onclick="location.href='/'">Voltar ao início</button>`);
 
@@ -356,10 +396,10 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     };
     // The controle remoto's own sign-in: on, with a code, and the cookie
     // that code made (a new code or Desconectar todos signs every phone out).
-    const remoteOn = () => { const r = getConfig().remote; return Boolean(r && r.enabled && r.code && r.secret); };
+    const remoteOn = () => doorOn(getConfig(), "remote");
     const isRemote = (req) => remoteOn() && safeEqual(parseCookies(req.headers.cookie)[REMOTE_COOKIE] || "", remoteToken(getConfig().remote));
     // The Equipe's (Rodada Q): the same, with its own code, key and cookie.
-    const teamOn = () => { const r = getConfig().team; return Boolean(r && r.enabled && r.code && r.secret); };
+    const teamOn = () => doorOn(getConfig(), "team");
     const isTeam = (req) => teamOn() && safeEqual(parseCookies(req.headers.cookie)[TEAM_COOKIE] || "", teamToken(getConfig().team));
     const phonesOn = () => remoteOn() || teamOn();
     // The phone's role: the Controle's code wins (signing in with one code
@@ -381,25 +421,32 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
 
     async function handleRemoteCode(req, res) {
         if (!phonesOn()) return html(res, 404, notFoundPage);
-        if (req.method === "GET") return html(res, 200, codePage(""));
+        const on = { control: remoteOn(), team: teamOn() };
+        const side = (value) => (DOOR_ROLES.has(value) ? value : null);
+        // The side to start on: ?role= (a link that switches), else the one
+        // this phone entered by last (a preference, never a permission).
+        const cookies = parseCookies(req.headers.cookie);
+        if (req.method === "GET") return html(res, 200, codePage({ on, role: side(new URL(req.url, "http://x").searchParams.get("role")) || side(cookies[SIDE_COOKIE]) }));
         if (req.method !== "POST") return res.writeHead(405).end();
         const key = `remote:${req.socket.remoteAddress}`;
-        if (tooMany(key)) return html(res, 429, codePage("Muitas tentativas. Aguarde um minuto."));
         const form = new URLSearchParams(await readBody(req, 2048));
+        // The side the phone chose: its code is checked against that one
+        // alone, so the other's code typed there is a wrong code. No side (a
+        // page of before) = either, as before. The role is still the code's.
+        const chosen = side(form.get("role"));
+        if (tooMany(key)) return html(res, 429, codePage({ on, role: chosen, error: "Muitas tentativas. Aguarde um minuto." }));
         const { remote, team } = getConfig();
         const given = form.get("code") || "";
-        // The code decides the role; the other role's cookie goes.
+        // Signing in with one code clears the other's cookie.
         const cookie = (name, value) => `${name}=${value}; Path=/; Max-Age=${value ? 31536000 : 0}; HttpOnly; SameSite=Strict`;
-        if (remoteOn() && safeEqual(given, remote.code)) {
+        const enter = (role, name, token, other) => {
             attempts.delete(key);
-            return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": [cookie(REMOTE_COOKIE, remoteToken(remote)), cookie(TEAM_COOKIE, "")] }).end();
-        }
-        if (teamOn() && safeEqual(given, team.code)) {
-            attempts.delete(key);
-            return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": [cookie(TEAM_COOKIE, teamToken(team)), cookie(REMOTE_COOKIE, "")] }).end();
-        }
+            return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": [cookie(name, token), cookie(other, ""), cookie(SIDE_COOKIE, role)] }).end();
+        };
+        if (chosen !== "team" && on.control && safeEqual(given, remote.code)) return enter("control", REMOTE_COOKIE, remoteToken(remote), TEAM_COOKIE);
+        if (chosen !== "control" && on.team && safeEqual(given, team.code)) return enter("team", TEAM_COOKIE, teamToken(team), REMOTE_COOKIE);
         missed(key);
-        return html(res, 401, codePage("Código incorreto."));
+        return html(res, 401, codePage({ on, role: chosen, error: "Código incorreto." }));
     }
 
     // A command from the phone: the custom header and the same origin (no
@@ -649,7 +696,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         },
         running: () => Boolean(server && server.listening),
         port: () => (server && server.listening ? server.address().port : null),
-        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen, role }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle remoto") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
+        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen, role }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
         // Desconectar todos: the phones' event streams close now (their
         // cookie stops working with the new key the caller saves). role:
         // only the Controle's ("control") or only the Equipe's ("team").
@@ -657,4 +704,4 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     };
 }
 
-module.exports = { createLanServer, lanAddresses, NETWORK_SCREENS, authToken, safeNext, remoteCommand, roleAllows, teamToken, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, remoteToken, REMOTE_PATH, REMOTE_ACTIONS };
+module.exports = { createLanServer, lanAddresses, NETWORK_SCREENS, authToken, safeNext, remoteCommand, roleAllows, teamToken, doorOn, codePage, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, remoteToken, REMOTE_PATH, REMOTE_ACTIONS };
