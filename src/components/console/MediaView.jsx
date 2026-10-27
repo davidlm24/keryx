@@ -28,6 +28,9 @@ import { usePrefs } from "@/hooks/useUser";
 import { mediaCategoryOf, managedMediaCategories, mediaCategoriesInUse, FALLBACK_CATEGORY } from "@/lib/console/mediaCategories";
 import FilterChips from "./library/FilterChips";
 import { MediaCategories } from "./library/FundoCategories";
+import { useYouTubeJobs, downloadToMedia, cancelDownload } from "@/hooks/useYouTubeJobs";
+import { isYouTubeRow, stateOfCheck, jobMeta, jobFraction, jobActive, linkNote } from "@/lib/youtubeLinks";
+import { getYouTubeId } from "@/utils/youtube";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
@@ -66,6 +69,12 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const confirm = useConfirm();
     const [uploads, setUploads] = useState(null); // { names, at, failed }
     const fileRef = useRef(null);
+    // Baixar para a Mídia (owner 2026-10-27): the downloads main runs, by row.
+    const jobs = useYouTubeJobs();
+    const download = (m) => downloadToMedia(m, { askText, say: c.say });
+    const openYouTube = (m) => window.open(m.source_url || m.file_url, "_blank", "noopener");
+    // A YouTube row's line: the download, else what the check or the player found.
+    const ytLine = (m) => jobMeta(jobs.get(m.id)) || linkNote(m);
     const locateRef = useRef(null);
     const locating = useRef(null);
     const ql = q.trim().toLowerCase();
@@ -154,15 +163,21 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         if (intent === "upload") fileRef.current?.click();
         else if (intent === "youtube") addLink();
     });
+    // The link is checked in the dialog (may it play outside YouTube?), which
+    // offers Adicionar o link and/or Baixar para a Mídia (owner 2026-10-27).
     const addLink = async () => {
-        const url = ((await askText?.({ title: "Link do YouTube", placeholder: "https://youtube.com/watch?v=…", ok: "Adicionar" })) || "").trim();
-        if (!url) return;
-        if (!/youtu\.?be/.test(url)) { c.say("Isso não parece um link do YouTube."); return; }
+        const answer = await askText?.({ kind: "youtube" });
+        if (!answer?.url) return;
         try {
-            const row = await mediaFromYouTube(url, { category: into });
+            const title = answer.check?.title || undefined;
+            const row = await mediaFromYouTube(answer.url, { category: into, title, state: stateOfCheck(answer.check) });
             ms.set([row.id]);
-            setRenaming(row.id);
-            c.say('Link adicionado como "Vídeo do YouTube" · dê um nome.');
+            if (answer.action === "download") { await download(row); return; }
+            if (title) c.say(`Link adicionado: "${row.title}".`);
+            else {
+                setRenaming(row.id);
+                c.say('Link adicionado como "Vídeo do YouTube" · dê um nome.');
+            }
         } catch (err) { fail(err); }
     };
     const rename = (m, title) => {
@@ -197,6 +212,9 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         !m.missing && !m.syncing && m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => c.setPrev(stageFromMedia(m, { toVideo: true })) },
         menuItem("renomear", { onSelect: () => { ms.set([m.id]); setRenaming(m.id); } }),
         m.missing && !m.syncing && { label: "Localizar…", icon: "folder", onSelect: () => locate(m) },
+        isYouTubeRow(m) && !jobActive(jobs.get(m.id)) && menuItem("baixarParaMidia", { onSelect: () => download(m) }),
+        isYouTubeRow(m) && jobActive(jobs.get(m.id)) && { label: "Cancelar o download", icon: "x", onSelect: () => cancelDownload(m) },
+        (isYouTubeRow(m) || m.source_url) && menuItem("abrirNoYouTube", { onSelect: () => openYouTube(m) }),
         !m.missing && menuItem("exportar", { onSelect: () => exportRows([m]) }),
         menuItem("excluir", { kbd: keyHint("delete"), onSelect: () => remove([m]) }),
         !m.missing && !m.syncing && menuItem("enviarAoAr", { air: true, onSelect: () => send(m) }),
@@ -328,9 +346,11 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                         {ms.picking && <RowMark />}
                                         {(m.duration > 0 || isYouTube(m)) && <span className="mv-n">{isYouTube(m) ? "link" : mmss(m.duration)}</span>}
                                         {m.type === "pdf" && <PagesBar id={m.id} />}
+                                        {jobFraction(jobs.get(m.id)) !== null && <RowBar value={jobFraction(jobs.get(m.id))} />}
                                     </button>
                                     {renaming === m.id ? renameField(m) : <span className="mv-title" onDoubleClick={() => setRenaming(m.id)}>{m.title}</span>}
                                     {isDoc(m) && !m.missing && <span className="kx-meta mv-sub"><PagesMeta row={m} /></span>}
+                                    {isYouTube(m) && ytLine(m) && <span className={`kx-meta mv-sub ${linkNote(m) && !jobs.get(m.id) || jobs.get(m.id)?.phase === "failed" ? "kx-warn" : ""}`}>{ytLine(m)}</span>}
                                     {m.type === "video" && <CodecMark row={m} />}
                                     {m.missing && !m.syncing && <Btn small kind="outline" onClick={() => locate(m)}>Localizar…</Btn>}
                                 </div>
@@ -353,7 +373,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             <span className="kx-glyph"><Icon name={mediaIcon(m)} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title" title={m.title}>{m.title}</div>}
-                                <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], mediaCategoryOf(m), bytes(m.size)].filter(Boolean).join(" · ")} /> : <>{[isYouTube(m) ? "YouTube" : KIND[m.type], mediaCategoryOf(m), bytes(m.size)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}</div>
+                                <div className={`kx-row-meta ${(m.missing && !m.syncing) || (isYouTube(m) && ((linkNote(m) && !jobs.get(m.id)) || jobs.get(m.id)?.phase === "failed")) ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], mediaCategoryOf(m), bytes(m.size)].filter(Boolean).join(" · ")} /> : <>{[isYouTube(m) ? "YouTube" : KIND[m.type], mediaCategoryOf(m), bytes(m.size), isYouTube(m) ? ytLine(m) || "link" : m.source_url ? "baixado do YouTube" : ""].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}</div>
                             </div>
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>
                             <span className="kx-row-acts">
@@ -363,6 +383,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                 </>}
                             </span>
                             {m.type === "pdf" && <PagesBar id={m.id} />}
+                            {jobFraction(jobs.get(m.id)) !== null && <RowBar value={jobFraction(jobs.get(m.id))} />}
                         </div>
                     ))}
                 </div>
@@ -370,7 +391,8 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
             </div>
             <MediaDetail picked={picked} categories={allCats} kind={(m) => (isYouTube(m) ? "YouTube" : KIND[m.type] || m.type)} length={mmss} size={bytes}
                 onPrev={(m) => c.setPrev(stageFromMedia(m))} onSend={send} onRename={(m) => { ms.set([m.id]); setRenaming(m.id); }} onLocate={locate}
-                onCategory={recategorise} onExport={exportRows} onRemove={remove} onPlay={sequence} onClear={ms.clear} onAll={ms.all} total={shown.length} />
+                onCategory={recategorise} onExport={exportRows} onRemove={remove} onPlay={sequence} onClear={ms.clear} onAll={ms.all} total={shown.length}
+                job={picked.length === 1 ? jobs.get(picked[0].id) : null} onDownload={download} onCancelDownload={cancelDownload} onOpenYouTube={openYouTube} />
         </div>
         </>
     );
@@ -380,7 +402,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
 // B3-2 = C): the file chosen — its picture, what it is, its length and size,
 // its category, and what can be done with it —; with several marked, how
 // many and what can be done with them all; with none, where to start.
-function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onRename, onLocate, onCategory, onExport, onRemove, onPlay, onClear, onAll, total }) {
+function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onRename, onLocate, onCategory, onExport, onRemove, onPlay, onClear, onAll, total, job, onDownload, onCancelDownload, onOpenYouTube }) {
     const catSelect = (value, rows) => (
         <select className="pl-pick" value={value} onChange={(e) => e.target.value && onCategory(e.target.value, rows)} aria-label="Categoria">
             {!value && <option value="">Mudar para…</option>}
@@ -407,8 +429,10 @@ function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, o
     }
     const m = picked[0];
     const ok = !m.missing && !m.syncing;
-    const yt = m.type === "video" && /youtu/.test(m.file_url || "");
-    const still = m.missing ? null : (m.type === "image" || m.type === "gif") ? tileUrl(m) : (m.type === "video" || m.type === "pdf") && m.thumbnail_url && !m.posterSyncing ? m.thumbnail_url : null;
+    const yt = isYouTubeRow(m);
+    const ytId = yt ? getYouTubeId(m.file_url) : null;
+    const still = m.missing ? null : yt ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : (m.type === "image" || m.type === "gif") ? tileUrl(m) : (m.type === "video" || m.type === "pdf") && m.thumbnail_url && !m.posterSyncing ? m.thumbnail_url : null;
+    const busy = jobActive(job);
     return (
         <aside className="mv-side" aria-label="Arquivo escolhido">
             <div className="mv-side-screen">
@@ -422,9 +446,14 @@ function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, o
                 {m.duration > 0 && <><span className="k">Duração</span><span>{length(m.duration)}</span></>}
                 {size(m.size) && <><span className="k">Tamanho</span><span>{size(m.size)}</span></>}
                 {(m.type === "pdf" || m.type === "powerpoint") && !m.missing && <><span className="k">Páginas</span><span><PagesMeta row={m} /></span></>}
+                {yt && <><span className="k">Link</span><span className={(linkNote(m) && !job) || job?.phase === "failed" ? "kx-warn" : ""}>{jobMeta(job) || linkNote(m) || "toca pela internet"}</span></>}
+                {m.source_url && !yt && <><span className="k">Origem</span><span>baixado do YouTube</span></>}
                 <span className="k">Categoria</span>{catSelect(mediaCategoryOf(m), [m])}
             </div>
             <div className="mv-side-acts">
+                {yt && !busy && <Btn small kind="brand" onClick={() => onDownload(m)} title="Vira um vídeo do computador: toca sem internet">Baixar para a Mídia</Btn>}
+                {yt && busy && <Btn small onClick={() => onCancelDownload(m)}><Icon name="x" />Cancelar o download</Btn>}
+                {(yt || m.source_url) && <Btn small onClick={() => onOpenYouTube(m)}><Icon name="youtube" />Abrir no YouTube</Btn>}
                 {ok && <Btn small onClick={() => onPrev(m)} title="Pôr na Prévia do console">Pôr na prévia</Btn>}
                 {ok && <Btn small onClick={() => onSend(m)} title={sendTip(false)}>{SEND_LABEL}</Btn>}
                 {m.missing && !m.syncing && <Btn small kind="outline" onClick={() => onLocate(m)}><Icon name="folder" />Localizar…</Btn>}

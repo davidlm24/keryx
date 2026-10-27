@@ -1955,6 +1955,35 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   codes meant for other devices come from the network info's `urls`
   (Configurações › Telas na rede), never `window.location.origin` (that is
   127.0.0.1 on desktop). `keryx.isNetworkScreen` is true in such a browser.
+- **YouTube links** (owner 2026-10-27, mockup "YouTube · checar o link e
+  baixar para a Mídia", Y1–Y5): "Este vídeo não está disponível" on the
+  projector is the VIDEO refusing embeds (its owner, or gone), never the
+  Referer: an IFrame API page on http://127.0.0.1 plays. **Link do YouTube…**
+  is `YouTubeDialog.jsx` (asked through PromptDialog, `ask.kind`
+  "youtube"/"youtube-terms"): it checks the link with YouTube's oEmbed (main,
+  `electron/youtube.cjs` `check`: 200 ok, 401/403 blocked, 400/404 missing;
+  `Media.youtube_state`) and offers Adicionar o link and/or **Baixar para a
+  Mídia**. A refusal on air (the player's `onError`, `LiveVideo onRefused`;
+  the iframe stays hidden until it plays, so YouTube's error page never
+  reaches a screen) takes the item off with `media.clear`/`video.clear`/
+  `media.advance` `{ refused: code, url }` → `live.refused` (Y4 = A); the
+  console says why with Baixar para a Mídia (`useYouTubeRefused`, a plain
+  toast), the pill turns amber (`refusedNow`), the row and its Setlist items
+  say "não toca pelo YouTube". **The download** is yt-dlp + ffmpeg **shipped in
+  the installer** (Y2 = B: `scripts/youtube-tools.cjs` pins both by SHA-256
+  into the gitignored `vendor/youtube`, `npm run youtube:tools`; the
+  build's `scripts/before-pack.cjs` fetches them or stops, unless
+  `KERYX_BUILD_WITHOUT_YOUTUBE=1`; packed as `resources/youtube`), H.264 +
+  AAC up to 1080p (Y3 = A), run from a copy in `<data>/youtube` that updates
+  itself (`-U`) weekly and on Configurações › Telas e saídas › Som e YouTube ›
+  Atualizar agora, with KERYX itself in Node mode (`ELECTRON_RUN_AS_NODE`) as
+  the JavaScript runtime yt-dlp needs. Main copies the file in (`importMedia`)
+  and makes THE SAME Media row the file (Y1 = A; `source_url` keeps the link),
+  so the Setlist plays the file. Progress reaches every window
+  (`keryx:youtube`, `useYouTubeJobs`). Downloading goes against YouTube's
+  Terms of Service unless the owner allows it: the church ticks once that it
+  only downloads what it may use (Y5 = A, `User.youtube_download_ok`).
+  ffmpeg is GPL v3, shipped as its own program with its licence (SOURCE.txt).
 - **Media URLs:** the store keeps `keryx-media://<file>`; pages get
   `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
   form into the database by other means, and keep checks like
@@ -2037,6 +2066,7 @@ KERYX_SMOKE=1 npm run desktop:dev   # same checks + the renderer adapter end to 
 npm run dist           # Windows installer in release/ (unsigned)
 npm run db:schema      # after editing base44/entities/*.jsonc
 npm run ds:tokens      # after editing docs/design-system/tokens.json (writes tokens.css; --format tidies the json)
+npm run youtube:tools  # yt-dlp + ffmpeg (pinned) into vendor/youtube, for Baixar para a Mídia under desktop:dev and the preview
 npm run db:import      # one-off Base44 -> local import; needs the user's token
 npm run dev            # dev only: the console in a plain browser on sample data (the side-panel preview)
 ```

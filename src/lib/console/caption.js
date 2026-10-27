@@ -17,6 +17,14 @@ export const captionParts = (doc) => {
     return { title: "nada", pos: "" };
 };
 
+// The Programa's pill right after an output took a refused YouTube link off
+// (live.refused, owner 2026-10-27, mockup board 5): amber "YouTube recusou o
+// vídeo" while nothing is on the screens and nothing has changed since.
+export function refusedNow(doc) {
+    if (!doc?.refused || doc.refused.at !== doc.updatedAt) return null;
+    return mainLayer(doc) === "none" && !doc.video ? "YouTube recusou o vídeo" : null;
+}
+
 // Whether what is on air is what the player plays (owner's pick A, Rodada
 // F1): a video-channel clip, a video, YouTube link or audio file on the
 // projector, or a sound with nothing on the screens. The player names it,

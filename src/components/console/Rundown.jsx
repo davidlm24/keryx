@@ -19,6 +19,8 @@ import useRowStep from "./useRowStep";
 import { menuItem } from "@/lib/console/menuLabels";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { END_ACTIONS, END_LABEL, END_ICON, END_TIP, endChoice, NO_DURATION } from "@/lib/console/autoplay";
+import { isYouTubeRow, linkNote } from "@/lib/youtubeLinks";
+import { downloadToMedia } from "@/hooks/useYouTubeJobs";
 
 // Setlist automática (owner 2026-10-20, Rodada N2): "Avançar sozinho" in the
 // Setlist's header, the culto's switch (Service.autoplay; it syncs with the
@@ -84,7 +86,10 @@ export const plannedTimes = (service, items) => plan(service, items).rows.map((r
 // autoplay (the Setlist automática, Rodada N2): { on, pending, cancel,
 // endsAlone(item) } — the mark on the row on air, the countdown on the next
 // one, and each item's "Ao terminar" in its menu.
-export default function Rundown({ service, items, loaded = true, airItemId, airNow = true, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true, autoplay = null, picking, setPicking }) {
+export default function Rundown({ service, items, loaded = true, airItemId, airNow = true, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true, autoplay = null, picking, setPicking, media = [], askText = null }) {
+    // A YouTube link the player refused (or the check found blocked) says so
+    // on its row, with Baixar para a Mídia in its menu (owner 2026-10-27).
+    const mediaById = useMemo(() => new Map((media || []).map((m) => [m.id, m])), [media]);
     const menu = useContextMenu();
     const ask = useConfirm();
     // "Tirar da setlist…" (owner 2026-10-16, 0.2.18): asks, then the item
@@ -198,13 +203,16 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                 // The item on air says what it does at its end; the next one counts down.
                 const end = autoplay?.on && it.id === airItemId && airNow ? endChoice(it) : null;
                 const chip = autoplay?.pending?.nextId === it.id ? <NextChip pending={autoplay.pending} onCancel={autoplay.cancel} /> : null;
+                const linked = it.contentId ? mediaById.get(it.contentId) : null;
+                const ytWarn = linkNote(linked) ? "não toca pelo YouTube · Baixar para a Mídia" : "";
                 return (
                     <Row
                         key={it.id}
                         className={chip ? "has-cd" : ""}
                         icon={typeIcon(it.type)}
                         title={it.title || typeLabel(it.type)}
-                        meta={[last && "último", typeLabel(it.type), it.notes].filter(Boolean).join(" · ")}
+                        meta={ytWarn || [last && "último", typeLabel(it.type), it.notes].filter(Boolean).join(" · ")}
+                        metaClass={ytWarn ? "kx-warn" : ""}
                         state={`${state} ${ms.has(it.id) ? "is-marked" : ""}`}
                         lead={ms.picking ? <RowMark /> : null}
                         onClick={(e) => { if (!ms.click(it.id, e)) onPrepare(it, i); }}
@@ -216,6 +224,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                             menuItem("porNaPrevia", { onSelect: () => onPrepare(it, i) }),
                             onPlan && menuItem("editarNoPlanejador", { onSelect: () => onPlan(it) }),
                             menuItem("enviarAoAr", { air: true, onSelect: () => onGo(it, i) }),
+                            isYouTubeRow(linked) && menuItem("baixarParaMidia", { onSelect: () => downloadToMedia(linked, { askText, say: onSay }) }),
                             ...endItems(it),
                             "sep",
                             menuItem("tirar", { label: "Tirar da setlist…", onSelect: () => askTakeOut(it) }),

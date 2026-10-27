@@ -74,6 +74,7 @@ import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialo
 import { Menu, FirstSteps, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew, TabsMenu } from "@/components/console/Popovers";
 import TabsPanel, { TabsPlus } from "@/components/console/TabsPanel";
 import { usePedidos } from "@/components/console/usePedidos";
+import { useYouTubeRefused } from "@/components/console/useYouTubeRefused";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
@@ -1067,6 +1068,8 @@ export default function Console() {
         reachable: pedidosReachable, show: showPanelTabs,
         focus: (id) => { setOpen(null); setEnvState("culto"); showPanelTabs([id]); setPanelTab(id); } });
     const pedidosUnread = teamUnread.pedidos || teamUnread.chat;
+    // A YouTube link the player refused on air (live.refused): say why, offer the download.
+    useYouTubeRefused({ c, media: data.media, askText });
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });
     // Ver's and Configurações' module switches: the culto's tray on this
@@ -1239,7 +1242,7 @@ export default function Console() {
         // the header's tooltip (with no items too), and Planejar o culto's.
         <Panel title="Setlist" className={`setlist-panel ${coverCls}`} tip={service?.title} count={!service ? "nenhum culto" : setPlan.count ? `${setPlan.count} ${setPlan.count === 1 ? "item" : "itens"} · ${total(setPlan.seconds)}` : null}
             actions={<>{coverTag}<SelectManyBtn on={setlistPicking} onToggle={setSetlistPicking} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
+            <Rundown service={service} items={items} media={data.media} askText={askText} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
             <SetlistFooter autoplay={{ on: Boolean(service?.autoplay), onChange: setAutoplay }} prev={stepNb.prev} next={stepNb.next} onStep={stepSetlist} />
         </Panel>
@@ -1303,7 +1306,7 @@ export default function Console() {
             <IconBtn name="media" small title="Abrir a Biblioteca de mídia" aria-label="Abrir a Biblioteca de mídia" onClick={() => openMedia()} />
             <TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />
         </>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
+            <Library c={c} data={data} askText={askText} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
                 onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
                 dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} picking={libPicking} setPicking={setLibPicking} />
         </Panel>

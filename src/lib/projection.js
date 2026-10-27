@@ -29,7 +29,7 @@ export const projection = {
     // The main projector's media layer: { kind, url, title }, or a list.
     showMedia: op("media.show"),
     showPlaylist: (items, index = 0) => keryx.live.call("media.playlist", { items, index }),
-    advanceMedia: (fromIndex, { fade } = {}) => keryx.live.call("media.advance", { fromIndex, ...(fade ? { fade } : {}) }),
+    advanceMedia: (fromIndex, { fade, ...rest } = {}) => keryx.live.call("media.advance", { fromIndex, ...(fade ? { fade } : {}), ...rest }),
     clearMedia: op("media.clear"),
 
     // The audio channel: music or a playback track on the KERYX computer,

@@ -52,7 +52,7 @@ export default function VideoProjection() {
         <>
             <div style={box}>
                 {video.title && <div className="net-vtitle">{video.title}</div>}
-                <LiveVideo item={video} meter="video" className="w-full h-screen" onEnded={() => { if (keryx.isDesktop) projection.clearVideo({ ended: true }).catch(() => {}); }} />
+                <LiveVideo item={video} meter="video" className="w-full h-screen" onEnded={() => { if (keryx.isDesktop) projection.clearVideo({ ended: true }).catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
                 <AlertLayer alert={alertOf(live, prefs.pref, "/VideoProjection")} />
             </div>
             {fading}

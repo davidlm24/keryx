@@ -8,7 +8,7 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { getDragStage, getDragStages, clearDragStage } from "@/lib/console/dragStage";
-import { captionParts, airInPlayer } from "@/lib/console/caption";
+import { captionParts, airInPlayer, refusedNow } from "@/lib/console/caption";
 import { OUTPUT_VIEWS } from "@/lib/network/views";
 import { prefState, prefVars, outputsNotShowing, alertOf } from "@/lib/outputPrefs";
 import { useOutputPref, useOutputPrefRows } from "@/hooks/useOutputPref";
@@ -97,9 +97,11 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
     const { title, pos } = captionParts(cur);
     const inPlayer = airInPlayer(cur);
     const idle = title === "nada" && !inPlayer;
-    const shown = idle ? "Nada no ar" : title;
-    const tone = projectorDown ? "warn" : locked ? "rh" : idle ? "idle" : "air";
-    const said = inPlayer ? "no ar, no player" : idle ? "nada no ar" : title;
+    // An output just took a refused YouTube link off (live.refused): amber.
+    const refused = refusedNow(cur);
+    const shown = refused || (idle ? "Nada no ar" : title);
+    const tone = projectorDown || refused ? "warn" : locked ? "rh" : idle ? "idle" : "air";
+    const said = refused ? refused.toLowerCase() : inPlayer ? "no ar, no player" : idle ? "nada no ar" : title;
     return (
         <div className={`prog-pill kx-pill is-${tone}`} role="group" aria-label="Programa">
             <span className={`kx-prog-cap prog-cap is-${tone}`} aria-label={`Programa · ${said}${locked ? " · travado" : ""}`}>

@@ -28,6 +28,10 @@ export const MENU_LABELS = {
     // Files and links (they ask for a file or a link before acting)
     doComputador: { label: "Do computador…", icon: "folder" },
     youtube: { label: "Link do YouTube…", icon: "youtube" },
+    // A YouTube link of the Mídia becomes a file (owner 2026-10-27; it acts
+    // at once, the Terms question only before the very first download).
+    baixarParaMidia: { label: "Baixar para a Mídia", icon: "download" },
+    abrirNoYouTube: { label: "Abrir no YouTube", icon: "youtube" },
     // The KERYX package (src/lib/keryxPackage.js): Exportar… asks how (the
     // export dialog); Abrir… asks for the file.
     exportar: { label: "Exportar…", icon: "save" },

@@ -17,6 +17,8 @@ import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { songRow, mmss, mediaIcon, copyingRows } from "@/lib/console/libraryRows";
 import CodecMark from "@/components/console/CodecMark";
 import { mediaFromYouTube } from "@/lib/mediaImport";
+import { isYouTubeRow } from "@/lib/youtubeLinks";
+import { downloadToMedia } from "@/hooks/useYouTubeJobs";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles, importSummary } from "@/lib/mediaImport";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
@@ -134,7 +136,7 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // (the header's (+) › Mostrar o artista / o tom / a duração) — and its
 // flags as badges that the hover buttons replace.
 const NONE = [];
-export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {}, picking, setPicking }) {
+export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {}, picking, setPicking, askText = null }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -331,6 +333,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromMedia(m)) }),
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
                             onOpenMedia && { label: "Abrir a Mídia", icon: "media", onSelect: () => onOpenMedia() },
+                            isYouTubeRow(m) && menuItem("baixarParaMidia", { onSelect: () => downloadToMedia(m, { askText, say: c.say }) }),
                             menuItem("exportar", { onSelect: () => exportRows([m]) }),
                             menuItem("excluir", { onSelect: () => removeRows([m]) }),
                             onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromMedia(m)) }),

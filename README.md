@@ -39,7 +39,8 @@ npm run desktop:dev       # the desktop app, hot reload
 | `npm run lint` / `npm run lint:fix` | ESLint, errors only; warnings are advisory |
 | `npm test` | unit tests (`node --test`): store query semantics, schema drift, live state, outputs, network server, Bible install and search, console helpers (setlist, avisos, EBD, reports, keys) |
 | `npm run desktop:smoke` (`KERYX_SMOKE_FULLSCREEN=1` also opens a real fullscreen output on your primary display for a moment) | build, open the app on a throwaway data folder, run the in-app checks (console, outputs, network screens), exit (0 = OK). `KERYX_SMOKE=1 npm run desktop:dev` runs the same checks plus the renderer adapter end to end |
-| `npm run dist` | the Windows installer, `release/KERYX-Setup-<version>.exe` (unsigned; `dist:dir` builds just the unpacked app) |
+| `npm run dist` | the Windows installer, `release/KERYX-Setup-<version>.exe` (unsigned; `dist:dir` builds just the unpacked app). Its beforePack also fetches yt-dlp and ffmpeg, pinned by SHA-256, for Baixar para a Mídia (~130 MB, `vendor/youtube`, never committed); without internet it stops, unless `KERYX_BUILD_WITHOUT_YOUTUBE=1` |
+| `npm run youtube:tools` | the same tools into `vendor/youtube` for `desktop:dev` and the preview (`scripts/youtube-tools.cjs`) |
 | `npm run db:schema` | regenerate `electron/db/schema.json` after changing `base44/entities/*.jsonc` |
 | `npm run db:import` | one-off import of the Base44 data into the local database (see below) |
 

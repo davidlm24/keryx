@@ -944,6 +944,12 @@
         "thumbnail_url": {
           "type": "text"
         },
+        "source_url": {
+          "type": "text"
+        },
+        "youtube_state": {
+          "type": "text"
+        },
         "video_codec": {
           "type": "text"
         },
@@ -2059,6 +2065,9 @@
           "type": "text"
         },
         "youtube_hide_title": {
+          "type": "boolean"
+        },
+        "youtube_download_ok": {
           "type": "boolean"
         },
         "media_transition": {

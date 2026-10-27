@@ -60,6 +60,12 @@ export function getPrefs() {
     return effective(user);
 }
 
+// The User row as this window has it, outside React (null before the first read).
+export function getUser() {
+    start();
+    return user;
+}
+
 // Writes fields on the profile. The change shows at once (every window
 // gets it from the realtime); a failed write puts the old values back and
 // rejects, for the caller to say so.

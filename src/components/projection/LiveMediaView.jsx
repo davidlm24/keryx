@@ -33,6 +33,15 @@ export default function LiveMediaView({ media, fadeOut = null }) {
             : projection.clearMedia({ fade: media.kind === "youtube" ? 0 : clearFade(prefs), ended: true });
         done.catch((err) => console.error("[keryx] mídia:", err));
     };
+    // A YouTube link the player refused (owner 2026-10-27, Y4 = A): it
+    // leaves the screens at once, marked (`refused`), so the console says
+    // why and offers to download it; a list skips it.
+    const refuse = (code) => {
+        if (!keryx.isDesktop || keryx.isNetworkScreen || fadeOut || media.kind !== "youtube") return;
+        const mark = { refused: code, url: media.url };
+        const done = inPlaylist ? projection.advanceMedia(index, mark) : projection.clearMedia(mark);
+        done.catch((err) => console.error("[keryx] mídia:", err));
+    };
 
     // Images in a playlist stay up for a few seconds, counted from when the
     // item went up (the same moment on every screen).
@@ -55,7 +64,7 @@ export default function LiveMediaView({ media, fadeOut = null }) {
             <div className="min-h-screen bg-black flex items-center justify-center relative">
                 {counter}
                 {/* Ends -> the playlist moves on, a single video leaves the screen. */}
-                <LiveVideo item={media} onEnded={advance} meter={fadeOut ? null : "media"} fadeOut={fadeOut} className="w-full h-screen" />
+                <LiveVideo item={media} onEnded={advance} onRefused={refuse} meter={fadeOut ? null : "media"} fadeOut={fadeOut} className="w-full h-screen" />
             </div>
         );
     }

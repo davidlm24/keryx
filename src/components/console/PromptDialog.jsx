@@ -1,13 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Btn, Field } from "./kx";
 import { useDialogFocus } from "./useDialogFocus";
+import { YouTubeLinkDialog, YouTubeTermsDialog } from "./YouTubeDialog";
 
 // One question with a text field, asked by the panels' + menus (a section's
 // name, a free text, an aviso rápido; Console.jsx askText). Enter answers
 // (Ctrl+Enter in a multiline one), Cancelar, the scrim or Esc (the console's
 // key order: it closes before anything else) answer null. Windows order:
 // the action, then Cancelar (audit C-74, as ConfirmDialog).
+// The YouTube questions ride the same slot (ask.kind): their Esc, scrim and
+// focus are this dialog's in the console and in /Janela (YouTubeDialog.jsx).
 export default function PromptDialog({ ask, onAnswer }) {
+    if (ask?.kind === "youtube") return <YouTubeLinkDialog ask={ask} onAnswer={onAnswer} />;
+    if (ask?.kind === "youtube-terms") return <YouTubeTermsDialog onAnswer={onAnswer} />;
+    return <TextPrompt ask={ask} onAnswer={onAnswer} />;
+}
+
+function TextPrompt({ ask, onAnswer }) {
     const [value, setValue] = useState("");
     const ref = useRef(null);
     // Tab stays here; the focus goes back to the opener after a keyboard open (C-12).

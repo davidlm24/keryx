@@ -180,6 +180,10 @@
       "type": "boolean",
       "description": "Telas: esconder a faixa de titulo e canal que o YouTube poe sobre o video (o player fica mais alto que a tela e as faixas ficam fora dela). Nulo = sim"
     },
+    "youtube_download_ok": {
+      "type": "boolean",
+      "description": "A igreja marcou, no primeiro Baixar para a Midia, que so baixa videos do YouTube que tem permissao de usar (os Termos do YouTube nao permitem baixar sem autorizacao). Nulo = ainda nao"
+    },
     "media_transition": {
       "type": "string",
       "enum": ["cut", "fade", "mix"],
