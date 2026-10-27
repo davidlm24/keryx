@@ -144,20 +144,78 @@ export function applyRule(state, rule) {
 // a still with no aviso on air).
 export const noticeOnly = (rule) => Boolean(rule?.kinds?.length) && rule.kinds.every((k) => k === "notice");
 
+// The rule with a shortcut's kinds (the Editor's atalhos, the Saídas popover
+// and the Multiview's quadrants, owner 2026-10-27, S1/S2 = A): what goes over
+// everything and Sem item da lista stay as they were.
+export function ruleWithShortcut(rule, id) {
+    const s = RULE_SHORTCUTS.find((x) => x.id === id);
+    return s ? { ...rule, kinds: [...s.kinds] } : rule;
+}
+// The rule receiving `kind` too (the Prévia's "Mostrar … também", P1 = A).
+export function ruleWithKind(rule, kind) {
+    if (!RULE_KIND_IDS.includes(kind) || rule.kinds.includes(kind)) return rule;
+    return { ...rule, kinds: RULE_KIND_IDS.filter((id) => id === kind || rule.kinds.includes(id)) };
+}
+
+// What a screen shows instead of what its rule leaves out.
+export const RULE_INSTEAD = { wall: "o papel de parede", black: "a tela preta", logo: "o logo" };
+
+// Whether an output that normally shows `kind` (its page's own rule) leaves
+// it out by its rule: the one test behind every warning, so a Vídeo screen
+// without lyrics by design never warns. Palco, Pastor and Transmissão draw
+// their own thing: never.
+export const leavesOut = (page, rule, kind) => PREF_OUTPUTS.includes(page) && Boolean(kind) && defaultRule(page).kinds.includes(kind) && !(rule?.kinds || []).includes(kind);
+
+// The rule kinds of what fills the screens now (the text, a picture or
+// video, the video channel, a tool, an aviso); none under Tela preta or the
+// Logo, which every screen shows.
+export function airKinds(live) {
+    if (!live || live.screen === "black" || live.screen === "logo") return [];
+    const out = [];
+    for (const layer of ["content", "media", "video", "tool", "communication"]) {
+        const k = ruleKindOf(layer, live[layer]);
+        if (k && !out.includes(k)) out.push(k);
+    }
+    return out;
+}
+
+// What of the air an output leaves out by its rule, or null:
+// { kind, label, instead } (the Multiview's quadrant, P3 = A).
+export function leftOutNow(page, rule, live) {
+    const kind = airKinds(live).find((k) => leavesOut(page, rule, k));
+    return kind ? { kind, label: ruleKind(kind).label, instead: RULE_INSTEAD[rule.empty] || RULE_INSTEAD.wall } : null;
+}
+
+// Every output that leaves out what is on air now, by its rule (the
+// Programa's "em 1 de 2 telas", P2 = A). `rows` are the OutputPref rows.
+// -> [{ page, name, kind, receives }]: the kind's name and the rule's.
+export function outputsLeavingAir(live, rows = []) {
+    return PREF_OUTPUTS.flatMap((page) => {
+        const row = rows.find((r) => r?.screen_path === page) || null;
+        const rule = ruleOf(normalizePref(row), page);
+        const hit = leftOutNow(page, rule, live);
+        return hit ? [{ page, name: outputLook(page, row).name, kind: hit.label, receives: ruleLabel(rule) }] : [];
+    });
+}
+
+// The kinds on air a change of rule takes off a screen now (S3 = A: the
+// toast says so, with Desfazer), by their names.
+export function ruleDrops(before, after, live) {
+    return airKinds(live).filter((k) => before.kinds.includes(k) && !after.kinds.includes(k)).map((k) => ruleKind(k).label);
+}
+
 // The outputs that normally show what is prepared and, by their rule, will
-// not (the Prévia says so before it goes on air). `rows` are the OutputPref
-// rows. -> [{ page, name, kind, instead }]: the output's name, the kind's name
-// and what the screen shows instead.
+// not (the Prévia says so before it goes on air, with the fix: P1 = A).
+// `rows` are the OutputPref rows. -> [{ page, name, kind, kindId, instead }]:
+// the output's name, the kind's name and id and what the screen shows instead.
 export function outputsNotShowing(stage, rows = []) {
     const kind = stageRuleKind(stage);
     if (!kind) return [];
-    const INSTEAD = { wall: "o papel de parede", black: "a tela preta", logo: "o logo" };
     return PREF_OUTPUTS.flatMap((page) => {
-        if (!defaultRule(page).kinds.includes(kind)) return [];
         const row = rows.find((r) => r?.screen_path === page) || null;
         const rule = ruleOf(normalizePref(row), page);
-        if (rule.kinds.includes(kind)) return [];
-        return [{ page, name: outputLook(page, row).name, kind: ruleKind(kind).label, instead: INSTEAD[rule.empty] }];
+        if (!leavesOut(page, rule, kind)) return [];
+        return [{ page, name: outputLook(page, row).name, kind: ruleKind(kind).label, kindId: kind, instead: RULE_INSTEAD[rule.empty] }];
     });
 }
 

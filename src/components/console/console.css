@@ -263,13 +263,25 @@
 .console .mx-st { flex: none; color: var(--fg-2); white-space: nowrap; }
 .console .mx-lbl.is-idle .mx-st { color: var(--fg-3); }
 .console .mx-lbl.is-warn .mx-st { color: var(--warn-fg); }
-.console .mx-rule { flex: none; padding: 0 var(--space-1); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-2); white-space: nowrap; }
+/* The quadrant's rule is a button to its menu (owner 2026-10-27, S2 = A). */
+.console .mx-rule { flex: none; display: inline-flex; align-items: center; gap: 2px; height: 20px; padding: 0 var(--space-1); border: 0; border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-2); font: inherit; white-space: nowrap; }
+.console button.mx-rule:hover { background: var(--bg-4); color: var(--fg-1); }
 @container (max-width: 260px) { .console .mx-rule { display: none; } }
-/* The Prévia says which outputs will not show what is prepared (Rodada H2: O que esta tela recebe). */
-.console .kx-prev-warn { position: absolute; left: var(--space-1); right: var(--space-1); bottom: var(--space-1); z-index: var(--z-badge); display: flex; flex-direction: column; gap: 2px; padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); background: color-mix(in srgb, var(--bg-0) 86%, transparent); color: var(--fg-2); font: 500 var(--fs-meta)/1.35 var(--font-sans); pointer-events: none; }
-.console .kx-prev-warn span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A quadrant whose rule leaves out what is on air says so on its image (P3 = A). */
+.console .mx-left { position: absolute; left: var(--space-1); top: var(--space-1); z-index: var(--z-badge); display: inline-flex; align-items: center; gap: var(--space-1); max-width: calc(100% - 2 * var(--space-1)); padding: 2px var(--space-2); border-radius: var(--radius-control); background: color-mix(in srgb, var(--bg-0) 82%, var(--warn)); box-shadow: inset 0 0 0 1px var(--warn); color: var(--warn-fg); font: 500 var(--fs-meta)/1.3 var(--font-sans); }
+.console .mx-left > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .mx-left .kx-i { flex: none; }
+/* The Prévia says which outputs will not show what is prepared (Rodada H2: O
+   que esta tela recebe), as an amber band with the fix (owner 2026-10-27,
+   P1 = A: one click adds the kind to that output's rule, with Desfazer). */
+.console .kx-prev-warn { position: absolute; left: var(--space-1); right: var(--space-1); bottom: var(--space-1); z-index: var(--z-badge); display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); background: color-mix(in srgb, var(--bg-0) 82%, var(--warn)); box-shadow: inset 0 0 0 1px var(--warn); color: var(--fg-1); font: 500 var(--fs-meta)/1.35 var(--font-sans); pointer-events: none; }
+.console .kx-prev-warn .kx-prev-warn-l { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.console .kx-prev-warn .kx-prev-warn-t { flex: 1 1 auto; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 .console .kx-prev-warn b { color: var(--warn-fg); font-weight: 600; }
-.console .kx-prev-warn .kx-i { display: inline-block; vertical-align: -2px; margin-right: var(--space-1); color: var(--warn-fg); }
+.console .kx-prev-warn .kx-i { flex: none; color: var(--warn-fg); }
+.console .kx-prev-fix { flex: none; height: 20px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: var(--warn); color: var(--bg-0); font: 600 var(--fs-meta)/1 var(--font-sans); white-space: nowrap; pointer-events: auto; cursor: pointer; }
+.console .kx-prev-fix:hover { filter: brightness(1.08); }
+@container prev-screen (max-width: 380px) { .console .kx-prev-fix .kx-prev-fix-k { display: none; } }
 @container (max-width: 200px) { .console .mx-st { display: none; } }
 /* Views that take the grid (planner, media, reports, Escola) stack their
    panels one gutter apart. The tabs panel (.bb-side) scrolls inside itself. */
@@ -1137,6 +1149,20 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .frm .cfg-subrows { grid-column: 1 / -1; display: grid; align-items: center; gap: var(--space-1) var(--space-3); margin: 0 0 0 calc(140px + var(--space-3)); padding: var(--space-1) var(--space-3); background: var(--bg-2); border-radius: var(--radius-control); grid-template-columns: 180px 1fr; }
 .console .nv-scroll.cfg .frm .cfg-disc, .console .nv-scroll.cfg .frm .cfg-subrows { margin-left: 0; }
 @media (prefers-reduced-motion: reduce) { .console .cfg .frm .cfg-disc .kx-i { transition: none; } }
+/* A few rare rows folded under one line that says what is chosen (CfgDisc,
+   parts.jsx; owner 2026-10-27, T2/T3): full width in a .frm, its body laid
+   out in the same columns when it is a .frm itself. */
+.console .cfg .cfg-fold { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.console .cfg .cfg-fold-t { display: flex; align-items: center; gap: var(--space-1); min-height: var(--control-sm); min-width: 0; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: inherit; font-size: var(--fs-ui); text-align: left; cursor: pointer; }
+.console .cfg .cfg-fold-t:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .cfg .cfg-fold-t .kx-i { flex: none; transform: rotate(-90deg); transition: transform var(--dur-fold) var(--ease-fold); }
+.console .cfg .cfg-fold-t[aria-expanded="true"] .kx-i { transform: none; }
+.console .cfg .cfg-fold-n { flex: none; }
+.console .cfg .cfg-fold-s { flex: 1 1 auto; min-width: 0; margin-left: var(--space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; color: var(--fg-3); font-size: var(--fs-meta); }
+.console .cfg .cfg-fold-b { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.console .cfg .frm .cfg-fold-b.frm { display: grid; padding: 0; }
+.console .cfg .cfg-fold-b[hidden], .console .cfg .frm .cfg-fold-b.frm[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .console .cfg .cfg-fold-t .kx-i { transition: none; } }
 .console .listhead + .cfg-group, .console .cfg-group + .listhead { margin-top: var(--space-3); }
 /* A panel with a title (Culto, Música, Tema, a section of Configurações)
    whose first area is a static group: the group's title would repeat it
@@ -1234,6 +1260,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .pop-outs .kx-out.has-sw .sw2 { margin-top: 0; }
 .console .pop-outs .kx-out-front { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .console .pop-outs .kx-out-front:hover { text-decoration: underline; text-underline-offset: 2px; }
+/* What the row's output receives: a button to the four shortcuts (owner 2026-10-27, S1 = A). */
+.console .pop-outs .kx-out-recv { display: inline-flex; align-items: center; gap: var(--space-1); height: 20px; margin-top: var(--space-1); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-2); font: 500 var(--fs-meta)/1 var(--font-sans); white-space: nowrap; }
+.console .pop-outs .kx-out-recv b { color: var(--fg-1); font-weight: 600; }
+.console .pop-outs .kx-out-recv:hover { background: var(--bg-4); color: var(--fg-1); }
 .console .cfg .diagram { display: flex; gap: var(--space-3); align-items: flex-end; padding: var(--space-3); flex-wrap: wrap; }
 .console .cfg .dmon { display: flex; flex-direction: column; gap: var(--space-1); align-items: center; }
 .console .cfg .dmon .box { border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: var(--fs-meta); color: var(--fg-2); text-align: center; padding: 4px; }
@@ -2304,6 +2334,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .tabrow-close .kx-tc-x { opacity: 1; }
   /* The amber mark of a video that may not play keeps an edge. */
   .console .codec-mark { outline: 1px solid CanvasText; outline-offset: -1px; }
+  /* An output that will not show what is prepared or on air (P1, P3), its
+     fix, and the buttons of what an output receives (S1, S2) keep an edge. */
+  .console :is(.kx-prev-warn, .mx-left) { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .console :is(.kx-prev-fix, .kx-out-recv, button.mx-rule) { border: 1px solid ButtonText; }
   /* Buscar marcas: the recording chosen is the Prévia's dashed ring, the
      note that asks for Espaço and the chips keep an edge. */
   .console .sync-marks .sm-row.is-prev { outline: 2px dashed LinkText; outline-offset: -2px; }

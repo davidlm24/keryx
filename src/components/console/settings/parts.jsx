@@ -191,6 +191,33 @@ export function CfgGroup({ id, k, title = k, summary = "", actions = null, defau
     );
 }
 
+// A few rare rows folded under one line that says what is chosen, inside a
+// group (owner 2026-10-27, T2/T3 = A: the Editor da tela's "Escolher por
+// tipo", "Nome e ícone" and the Aviso rápido's look). Starts as
+// `defaultOpen` on every mount (not kept: the rows it holds are rare). The
+// body stays mounted, only hidden, so a search jump to a row inside opens it
+// and the smoke still reaches its fields. `bodyClass` "frm" lays FormRows out
+// in the group's own columns.
+export function CfgDisc({ k, title = k, summary = "", defaultOpen = false, bodyClass = "", children }) {
+    const [open, setOpen] = useState(defaultOpen);
+    const pending = useContext(CfgFlash)?.pending;
+    const body = useRef(null);
+    const bodyId = useId();
+    useLayoutEffect(() => {
+        if (open || !pending || !body.current) return;
+        if ([...body.current.querySelectorAll("[data-cfg-k]")].some((n) => n.getAttribute("data-cfg-k") === pending)) setOpen(true);
+    }, [pending, open]);
+    return (
+        <div className={`cfg-fold ${open ? "is-open" : ""}`}>
+            <CfgKey k={k} as="button" type="button" className="cfg-fold-t kx-t" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen((o) => !o)}>
+                <Icon name="chevron-down" size={12} /><span className="cfg-fold-n">{title}</span>
+                {!open && summary ? <span className="cfg-fold-s">{summary}</span> : null}
+            </CfgKey>
+            <div id={bodyId} ref={body} className={`cfg-fold-b ${bodyClass}`} hidden={!open}>{children}</div>
+        </div>
+    );
+}
+
 export const formatBytes = (n) => {
     if (!n && n !== 0) return "";
     if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;

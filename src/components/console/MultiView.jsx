@@ -4,7 +4,7 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
-import { prefState, prefVars, pastorOptions, ruleOf, ruleLabel, ruleSummary } from "@/lib/outputPrefs";
+import { prefState, prefVars, pastorOptions, ruleOf, ruleLabel, ruleSummary, leftOutNow } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
 import { useDesign } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
@@ -19,7 +19,7 @@ import "@/components/screen/output-prefs.css";
 // a renderer view; an output with a layout, Ajustes › Layout, is drawn by
 // LayoutRenderer like its page). Its label says which output and where it
 // is on screen.
-function Tile({ page, index, live, now, logoUrl, items, motion, look, status, onPick, church }) {
+function Tile({ page, index, live, now, logoUrl, items, motion, look, status, onPick, onRule, church }) {
     const { pref, theme } = useOutputPref(page);
     const layout = useDesign(pref);
     const own = !pref.content && SCREEN_PAGES.some((p) => p.key === page) ? page : null;
@@ -28,6 +28,9 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
     // What this output receives (O que esta tela recebe): the quadrant says
     // it; the Palco and the Pastor draw their own design.
     const rule = own ? null : ruleOf(pref, page);
+    // What is on air that this output leaves out by its rule: the quadrant
+    // says why it shows the papel de parede (owner 2026-10-27, P3 = A).
+    const left = rule ? leftOutNow(page, rule, live) : null;
     const upcoming = useMemo(() => (layout ? nextItems(items, live?.session || null, 10) : []), [layout, items, live?.session]);
     let body;
     if (layout && (own || doc)) body = <LayoutRenderer layout={layout} live={live} screenState={own ? undefined : doc} nowMs={now} logoUrl={logoUrl} upcoming={upcoming} hasService={items.length > 0} church={church} scale={own ? pref.scale : 1} embed />;
@@ -40,11 +43,15 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
     return (
         <div className={`mx-tile ${vars ? "kp-out" : ""}`} style={vars || undefined} data-page={page}>
             {body}
+            {left && <div className="mx-left" role="status" title={`${look.name} não recebe ${left.label} · mostra ${left.instead}`}><Icon name="warn" size={12} /><span>Não recebe {left.label} · {left.instead.replace(/^(o|a) /, "")}</span></div>}
             <div className={`mx-lbl ${status.state ? `is-${status.state}` : ""}`}>
                 <button type="button" className="mx-pick kx-t" onClick={(e) => onPick(e, index)} title="Escolher a saída deste quadro" aria-label={`Quadro ${index + 1}: ${look.name} · escolher a saída`}>
                     <Icon name={look.icon} size={13} /><span className="mx-name">{look.name}</span>
                 </button>
-                {rule && <span className="mx-rule" title={`${look.name} recebe: ${ruleSummary(rule)}`}>{ruleLabel(rule)}</span>}
+                {/* What it receives, changed right here (S2 = A). */}
+                {rule && (onRule
+                    ? <button type="button" className="mx-rule kx-t" aria-haspopup="menu" title={`${look.name} recebe: ${ruleSummary(rule)} · clique para mudar`} onClick={(e) => onRule(e, page, look.name)}>{ruleLabel(rule)}<Icon name="chevron-down" size={10} /></button>
+                    : <span className="mx-rule" title={`${look.name} recebe: ${ruleSummary(rule)}`}>{ruleLabel(rule)}</span>)}
                 <span className="mx-st">{status.text}</span>
             </div>
         </div>
@@ -56,7 +63,7 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
 // a right-click menu like it. `rows` are the output health rows (Saídas).
 // Its clocks tick on its own clock (useLiveNow), never the console's; a
 // given `now` is a still frame.
-export default function MultiView({ live, now: givenNow, logoUrl, tiles, rows = [], items = [], state, className = "", onPick, dropProps, children, still = false }) {
+export default function MultiView({ live, now: givenNow, logoUrl, tiles, rows = [], items = [], state, className = "", onPick, onRule = null, dropProps, children, still = false }) {
     const ownNow = useLiveNow(1000, givenNow === undefined);
     const now = givenNow ?? ownNow;
     const looks = useRailViews();
@@ -67,7 +74,7 @@ export default function MultiView({ live, now: givenNow, logoUrl, tiles, rows = 
             <div className="kx-mon-screen mx-grid" role="group" aria-label="Multiview: quatro saídas com o que está no ar">
                 {tiles.map((page, i) => (
                     <Tile key={page} page={page} index={i} live={live} now={now} logoUrl={logoUrl} items={items} motion={!still && i === moving}
-                        look={looks.find((l) => l.key === page) || { name: page, icon: "monitor" }} status={tileStatus(page, rows)} onPick={onPick} church={church} />
+                        look={looks.find((l) => l.key === page) || { name: page, icon: "monitor" }} status={tileStatus(page, rows)} onPick={onPick} onRule={onRule} church={church} />
                 ))}
                 {children}
             </div>

@@ -1,18 +1,19 @@
 import React from "react";
 import Icon from "../../Icon";
 import { Btn } from "../../kx";
-import { CfgGroup, FormRow, Switch, desktopOnly } from "../parts";
+import { CfgDisc, CfgGroup, FormRow, Switch, desktopOnly } from "../parts";
 import { useDisplays, useNetworkInfo } from "../useDisplays";
 import { ICON_CHOICES, outputMeta } from "@/lib/outputPrefs";
-import { destinoSummary } from "@/lib/console/ajustesSummaries";
+import { destinoSummary, nomeIconeSummary } from "@/lib/console/ajustesSummaries";
 
 // The icons' names, for screen readers and the tooltip.
 const ICON_NAMES = { projector: "Projetor", tv: "TV", monitor: "Monitor", tablet: "Tablet", film: "Filme", megaphone: "Megafone", book: "Livro", image: "Imagem", text: "Texto", star: "Estrela", layers: "Camadas", external: "Janela" };
 
 // Destino (Editor da tela › Ajustes, Rodada H2): where this screen is and what
-// it is called — the name and icon, the monitor it opens on, "Abrir ao
-// iniciar" (moved here from Telas e saídas' card) and its address on the
-// network. The first area of the page: open, never folds.
+// it is called — the monitor it opens on, "Abrir ao iniciar" (moved here from
+// Telas e saídas' card), its address on the network and, folded at the end
+// (owner 2026-10-27, T3 = A), the name and icon. The first area of the page:
+// open, never folds.
 export default function DestinoBlock({ ctx }) {
     const { path, label, pref, save, c } = ctx;
     const meta = outputMeta(path);
@@ -30,20 +31,6 @@ export default function DestinoBlock({ ctx }) {
         <CfgGroup id="editor.destino" k="Destino" fold={false}
             summary={destinoSummary({ name: label, assignment: o?.assignment, number, network: !placeable })}>
             <div className="frm cfg-outprefs-form">
-                <FormRow k="Nome">
-                    <input key={pref.name} className="fg-input" defaultValue={pref.name} placeholder={meta.name} maxLength={40}
-                        onBlur={(e) => { const v = e.target.value.trim(); if (v !== pref.name) save({ name: v }); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} aria-label={`Nome da saída ${meta.name}`} />
-                    <span className="kx-meta">no console e nas telas na rede; vazio volta ao nome padrão</span>
-                </FormRow>
-                <FormRow k="Ícone">
-                    <div className="cfg-icons" role="radiogroup" aria-label={`Ícone de ${label}`}>
-                        <button type="button" className={`kx-t ${!pref.icon ? "is-on" : ""}`} role="radio" aria-checked={!pref.icon} title="Padrão" onClick={() => save({ icon: "" })}><Icon name={meta.icon} /><span className="kx-meta">Padrão</span></button>
-                        {ICON_CHOICES.map((ic) => (
-                            <button type="button" key={ic} role="radio" aria-checked={pref.icon === ic} className={`kx-t ${pref.icon === ic ? "is-on" : ""}`} aria-label={`Ícone: ${ICON_NAMES[ic] || ic}`} title={ICON_NAMES[ic] || ic} onClick={() => save({ icon: ic })}><Icon name={ic} /></button>
-                        ))}
-                    </div>
-                </FormRow>
                 {placeable && (
                     <FormRow k="Tela">
                         {!displays && <span className="kx-meta">{desktopOnly}</span>}
@@ -75,6 +62,23 @@ export default function DestinoBlock({ ctx }) {
                         </>
                         : <span className="kx-meta">{info?.enabled === false || !info?.running ? "Ligue as telas na rede em Configurações › Telas na rede para abrir esta página num tablet ou numa TV." : "Este computador não está ligado a nenhuma rede local."}</span>}
                 </FormRow>
+                {/* Named once, rarely touched (T3 = A): folded at the end. */}
+                <CfgDisc k="Nome e ícone" bodyClass="frm" summary={nomeIconeSummary({ name: label, icon: pref.icon })}>
+                    <FormRow k="Nome">
+                        <input key={pref.name} className="fg-input" defaultValue={pref.name} placeholder={meta.name} maxLength={40}
+                            onBlur={(e) => { const v = e.target.value.trim(); if (v !== pref.name) save({ name: v }); }}
+                            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} aria-label={`Nome da saída ${meta.name}`} />
+                        <span className="kx-meta">no console e nas telas na rede; vazio volta ao nome padrão</span>
+                    </FormRow>
+                    <FormRow k="Ícone">
+                        <div className="cfg-icons" role="radiogroup" aria-label={`Ícone de ${label}`}>
+                            <button type="button" className={`kx-t ${!pref.icon ? "is-on" : ""}`} role="radio" aria-checked={!pref.icon} title="Padrão" onClick={() => save({ icon: "" })}><Icon name={meta.icon} /><span className="kx-meta">Padrão</span></button>
+                            {ICON_CHOICES.map((ic) => (
+                                <button type="button" key={ic} role="radio" aria-checked={pref.icon === ic} className={`kx-t ${pref.icon === ic ? "is-on" : ""}`} aria-label={`Ícone: ${ICON_NAMES[ic] || ic}`} title={ICON_NAMES[ic] || ic} onClick={() => save({ icon: ic })}><Icon name={ic} /></button>
+                            ))}
+                        </div>
+                    </FormRow>
+                </CfgDisc>
             </div>
         </CfgGroup>
     );

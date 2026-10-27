@@ -1,10 +1,10 @@
 import React from "react";
 import Icon from "../../Icon";
 import { Btn, Seg } from "../../kx";
-import { CfgGroup, CfgKey, FormRow, Switch } from "../parts";
+import { CfgDisc, CfgGroup, CfgKey, FormRow, Switch } from "../parts";
 import { RULE_KINDS, RULE_GROUPS } from "@/lib/contentKinds";
-import { PREF_CONTENTS, RULE_SHORTCUTS, ruleShortcut, ruleSummary, normalizeRule, stageOptions, pastorOptions, lyricsOptions } from "@/lib/outputPrefs";
-import { partsSummary } from "@/lib/console/ajustesSummaries";
+import { PREF_CONTENTS, RULE_SHORTCUTS, RULE_EMPTY, ruleShortcut, ruleSummary, normalizeRule, stageOptions, pastorOptions, lyricsOptions } from "@/lib/outputPrefs";
+import { partsSummary, conteudoSummary, kindsSummary } from "@/lib/console/ajustesSummaries";
 
 const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
 
@@ -21,9 +21,12 @@ function Kind({ on, label, hint, onChange }) {
 // recebe" — ONE rule per output, the same list on every output, replacing the
 // old Conteúdo select and Mostrar buttons: shortcuts (Tudo, Letra e Bíblia,
 // Vídeos, Avisos; changing an item shows Personalizado), the kinds in three
-// groups and "Por cima de tudo" (Aviso rápido, Logo no canto). Cifra and Nome
-// da parte of a song sit here too. The Palco and the Pastor list the parts of
-// their design instead (their switches, OutputPref.options).
+// groups and "Por cima de tudo" (Aviso rápido, Logo no canto) folded under
+// them as "Escolher por tipo" (owner 2026-10-27, T2 = A: open when the rule
+// is Personalizado), and "Sem item da lista", the rule's other half (T4 = A,
+// from Comportamento). Cifra and Nome da parte of a song sit here too. The
+// Palco and the Pastor list the parts of their design instead (their
+// switches, OutputPref.options).
 export default function ConteudoBlock({ ctx }) {
     const { path, label, pref, rule, design, save, saveOpt, isStage, isPastor, renderer } = ctx;
     const setRule = (patch) => save({ content_rule: normalizeRule({ ...rule, ...patch, top: { ...rule.top, ...(patch.top || {}) } }) });
@@ -37,7 +40,7 @@ export default function ConteudoBlock({ ctx }) {
     // An old Conteúdo choice turned this page into a renderer view: no UI
     // picks one any more; the way back is here.
     const oldView = own && pref.content ? PREF_CONTENTS.find((x) => x.id === pref.content) : null;
-    const summary = own ? partsSummary(path, pref) : ruleSummary(rule);
+    const summary = own ? partsSummary(path, pref) : conteudoSummary(rule, ruleSummary(rule));
 
     return (
         <CfgGroup id="editor.conteudo" k="Conteúdo" summary={summary}>
@@ -50,38 +53,48 @@ export default function ConteudoBlock({ ctx }) {
                         ))}
                         {shortcut === "custom" && <span className="cfg-rule-prof is-on is-custom" aria-pressed="true">Personalizado</span>}
                     </div>
-                    {RULE_GROUPS.map((g) => (
-                        <div key={g} className="cfg-rule-g">
-                            <span className="kx-section">{g}</span>
-                            <div className="cfg-kinds kx-checks" role="group" aria-label={g}>
-                                {RULE_KINDS.filter((k) => k.group === g).map((k) => (
-                                    <Kind key={k.id} on={has(k.id)} label={k.label} hint={has(k.id) ? `${label} recebe ${k.label.toLowerCase()} · clique para tirar` : `${label} não recebe ${k.label.toLowerCase()} · clique para receber`} onChange={(on) => toggle(k.id, on)} />
-                                ))}
+                    <CfgDisc k="Escolher por tipo" defaultOpen={shortcut === "custom"} summary={kindsSummary(rule, RULE_KINDS.length)}>
+                        {RULE_GROUPS.map((g) => (
+                            <div key={g} className="cfg-rule-g">
+                                <span className="kx-section">{g}</span>
+                                <div className="cfg-kinds kx-checks" role="group" aria-label={g}>
+                                    {RULE_KINDS.filter((k) => k.group === g).map((k) => (
+                                        <Kind key={k.id} on={has(k.id)} label={k.label} hint={has(k.id) ? `${label} recebe ${k.label.toLowerCase()} · clique para tirar` : `${label} não recebe ${k.label.toLowerCase()} · clique para receber`} onChange={(on) => toggle(k.id, on)} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        <div className="cfg-rule-g">
+                            <span className="kx-section">Por cima de tudo</span>
+                            <div className="cfg-kinds kx-checks" role="group" aria-label="Por cima de tudo">
+                                <Kind on={rule.top.alert} label="Aviso rápido" hint="A barra do Aviso rápido por cima do que estiver na tela" onChange={(on) => setRule({ top: { alert: on } })} />
+                                <Kind on={rule.top.logo} label="Logo no canto" hint="A camada Logo do console, no canto desta tela" onChange={(on) => setRule({ top: { logo: on } })} />
                             </div>
                         </div>
-                    ))}
-                    <div className="cfg-rule-g">
-                        <span className="kx-section">Por cima de tudo</span>
-                        <div className="cfg-kinds kx-checks" role="group" aria-label="Por cima de tudo">
-                            <Kind on={rule.top.alert} label="Aviso rápido" hint="A barra do Aviso rápido por cima do que estiver na tela" onChange={(on) => setRule({ top: { alert: on } })} />
-                            <Kind on={rule.top.logo} label="Logo no canto" hint="A camada Logo do console, no canto desta tela" onChange={(on) => setRule({ top: { logo: on } })} />
-                        </div>
-                    </div>
-                    <span className="kx-meta cfg-rule-note">O que não está na lista deixa a tela no que está por baixo; a música de uma letra continua tocando. Quando nada da lista está no ar, veja Comportamento.</span>
+                        <span className="kx-meta cfg-rule-note">O que não está na lista deixa a tela no que está por baixo; a música de uma letra continua tocando.</span>
+                    </CfgDisc>
                 </div>
             )}
-            {renderer && has("lyrics") && (
+            {renderer && (
                 <div className="frm cfg-outprefs-form">
+                    {/* The rule's other half (T4 = A): with nothing from the
+                        list on air, the papel de parede (as always), the Tela
+                        preta or the Logo. */}
+                    <FormRow k="Sem item da lista">
+                        <Seg small label={`O que ${label} mostra sem item da lista`} value={rule.empty} options={RULE_EMPTY} onChange={(v) => setRule({ empty: v })} />
+                    </FormRow>
                     {/* What this screen adds to a song's lyrics (lyricsOptions):
                         the chords over the syllables and the part's name. */}
-                    <FormRow k="Cifra">
-                        <Switch on={lyrics.chords} onChange={(on) => saveOpt("chords", on)} label={`Cifra em ${label}`} />
-                        <span className="kx-meta">os acordes da letra ([G]) sobre as sílabas</span>
-                    </FormRow>
-                    <FormRow k="Nome da parte">
-                        <Switch on={lyrics.labels} onChange={(on) => saveOpt("labels", on)} label={`Nome da parte em ${label}`} />
-                        <span className="kx-meta">Verso, Refrão, Ponte… sobre a letra</span>
-                    </FormRow>
+                    {has("lyrics") && <>
+                        <FormRow k="Cifra">
+                            <Switch on={lyrics.chords} onChange={(on) => saveOpt("chords", on)} label={`Cifra em ${label}`} />
+                            <span className="kx-meta">os acordes da letra ([G]) sobre as sílabas</span>
+                        </FormRow>
+                        <FormRow k="Nome da parte">
+                            <Switch on={lyrics.labels} onChange={(on) => saveOpt("labels", on)} label={`Nome da parte em ${label}`} />
+                            <span className="kx-meta">Verso, Refrão, Ponte… sobre a letra</span>
+                        </FormRow>
+                    </>}
                 </div>
             )}
             {own && (
