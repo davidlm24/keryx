@@ -416,9 +416,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The item Esc took off stays in the column (Rodada Q7, S4 = A): a band over
    the slides, no green row, the slide where it stopped in the grey ring of
    "próximo" with "parou aqui" on its label line. */
-.console .slides-gone { display: flex; align-items: center; gap: var(--space-2); flex: none; margin: 0 var(--space-1) var(--space-1); padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-ui); line-height: 16px; }
-.console .slides-gone > svg { flex: none; width: 14px; height: 14px; color: var(--fg-3); }
-.console .slides-gone b { font-weight: 600; color: var(--fg-1); }
 .kx.console .kx-slide.is-stopped, .kx.console .kx-slide.is-stopped:hover { box-shadow: var(--next-ring); }
 .console .kx-slide.is-stopped > .kx-slide-n { color: var(--fg-1); }
 .console .kx-slide-stop { color: var(--fg-1); }
@@ -2286,7 +2283,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover * { background: HighlightText; color: Highlight; }
   .console :is(.kx-slide, .onair-card).is-next:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
   .console .kx-slide.is-stopped:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
-  .console .slides-gone { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .mv-th.is-air { outline: 3px solid Highlight; outline-offset: 2px; }
   /* Relatar um problema's answer (sent, queued, refused) is a tinted box. */
   .console .report-dialog .rp-res { outline: 1px solid CanvasText; outline-offset: -1px; }
