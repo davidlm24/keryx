@@ -12,7 +12,7 @@ import { normalizePref, designOf } from "@/lib/outputPrefs";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
 import { useThemes } from "../useConsoleData";
-import RemoteBlock from "./RemoteBlock";
+import PhonesBlock from "./PhonesBlock";
 import { enderecosSummary, connectedSummary } from "@/lib/console/cfgSummaries";
 
 // How long Mostrar PIN keeps it on screen.
@@ -29,7 +29,8 @@ const newPin = () => {
 // the screen pages in a browser (electron/lan.cjs). On/off, the address and
 // its QR code, the PIN and who is connected now. Rodada H1 (owner
 // 2026-10-19): groups — Conexão (the switch and the PIN, static), Endereços,
-// Controle remoto (RemoteBlock) and Telas conectadas pela rede.
+// KERYX no celular (PhonesBlock: the Controle and the Equipe, one group
+// since 2026-10-27) and Telas conectadas pela rede.
 export default function RedeSection({ c }) {
     const look = useOutputLooks();
     const prefRows = useOutputPrefRows();
@@ -158,8 +159,7 @@ export default function RedeSection({ c }) {
                 </React.Fragment>
             ))}
             </CfgGroup>
-            <RemoteBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} />
-            <RemoteBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} role="team" />
+            <PhonesBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} />
             <CfgGroup id="rede.conectadas" k="Telas conectadas pela rede" summary={connectedSummary(clients, info.running)}>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
             {clients.map((cl) => {

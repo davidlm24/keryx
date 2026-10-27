@@ -20,7 +20,7 @@ const FILES = {
     "ajustes/OutputAjustes.jsx": "telas",
     "TransicoesBlock.jsx": "telas",
     "RedeSection.jsx": "rede",
-    "RemoteBlock.jsx": "rede",
+    "PhonesBlock.jsx": "rede",
     "TemasSection.jsx": "temas",
     "BibliaSection.jsx": "biblia",
     "BibliasSection.jsx": "biblia",

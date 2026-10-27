@@ -48,8 +48,9 @@ export const SETTINGS_INDEX = [
     e("rede", "Ligar telas na rede", "celulares, tablets e TVs pela rede da igreja", ["Conexão", "wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
     e("rede", "Endereços", "o endereço de cada tela, com QR code, para abrir no tablet ou na TV", ["endereço", "url", "link", "qr", "qr code", "ip", "copiar"]),
     e("rede", "Transmissão", "a legenda da transmissão ao vivo (OBS): cor, tamanho e posição da faixa", ["obs", "live", "legenda", "faixa", "transmissão", "youtube"], { target: "Ligar telas na rede" }),
-    e("rede", "Controle remoto", "um celular conduz o culto: slides, Tela preta, setlist, Bíblia", ["celular", "remoto", "controle", "telefone", "palco", "pregador", "Celular", "Código", "Conectados", "desconectar", "Trocar o código"]),
-    e("rede", "Equipe", "a equipe de louvor no celular: pedidos, mensagens, letras, Bíblia e setlist; nunca mexe no ar", ["equipe", "louvor", "músicos", "banda", "pedido", "pedidos", "chat", "mensagem", "mensagens", "letra", "celular", "Código", "Trocar o código", "Conectados", "desconectar"]),
+    e("rede", "KERYX no celular", "um endereço para os celulares: o Controle e a Equipe, cada um com o seu código", ["celular", "celulares", "Celulares", "telefone", "QR", "Código", "Conectados", "desconectar", "Trocar o código"]),
+    e("rede", "Controle", "o controle remoto: um celular conduz o culto (slides, Tela preta, setlist, Bíblia)", ["controle remoto", "remoto", "celular", "telefone", "palco", "pregador", "Código", "Conectados", "desconectar", "Trocar o código"]),
+    e("rede", "Equipe", "a equipe de louvor no celular: pedidos, chat, letras, Bíblia e setlist; nunca mexe no ar", ["equipe", "louvor", "músicos", "banda", "pedido", "pedidos", "chat", "mensagem", "mensagens", "letra", "celular", "Código", "Trocar o código", "Conectados", "desconectar"]),
     e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),
 
