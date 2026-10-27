@@ -30,6 +30,27 @@
 // have other names). Two computers that made a code at the same moment: the
 // one that lost sees "outro código" and types the code that stayed.
 //
+// On Google Drive there is no code (Google Drive direto, the owner's item 4,
+// 27/10): the church's account is the access control, as in Holyrics, and
+// the hidden appDataFolder only KERYX reads keeps the key itself.
+//
+//   keryx-sync.json   { v: 2, id, check, made, by, removed, key, mac }
+//
+// - key: 32 random bytes (base64url), made by the first computer that
+//   entered with the account (joinDrive: putIfAbsent, the first made wins,
+//   so two first computers end on one key) and read by every other one.
+//   `check` proves it whole (a key that does not make the check is a
+//   damaged object). The key is never derived from a code, and a folder's
+//   code file never carries one.
+// - The rest is as above: the lines and state objects keep their signatures
+//   (they catch a damaged or half object, not someone with the account's
+//   password), the removed list is Desconectar's.
+// - A computer that holds the account's key writes the object back when it
+//   is missing or damaged (sync.cjs), with the same key; one that does not
+//   (a new computer) makes a new key over an object that is plainly damaged,
+//   and the others take it (syncControl.cjs, then each sends everything
+//   again, as joining does).
+//
 // Pure Node (crypto) over a store, tested in sync.test.cjs.
 
 const crypto = require("node:crypto");
@@ -39,6 +60,7 @@ const { oldestOf } = require("./syncStore/rules.cjs");
 
 const PAIRING_FILE = "keryx-sync.json";
 const VERSION = 1;
+const DRIVE_VERSION = 2;
 const KEY_BYTES = 32;
 // About half a second and 64 MB per try, paid once when a code is made or
 // typed: the code is short (35 bits, the owner's pick), so each guess of it
@@ -105,10 +127,20 @@ function cleanRemoved(list) {
 }
 
 // The code file: for a new code, or the same code with another list of
-// computers taken out.
-function pairingFile(keys, pc, now = new Date(), removed = [], made = null) {
-    const file = { v: VERSION, id: keys.id, check: keys.check, made: made || now.toISOString(), by: pc, removed: cleanRemoved(removed) };
-    return { ...file, mac: keys.fileMac(file) };
+// computers taken out. With `secret` (the key itself: Drive's), the file
+// carries it (v 2).
+function pairingFile(keys, pc, now = new Date(), removed = [], made = null, secret = null) {
+    const file = { v: secret ? DRIVE_VERSION : VERSION, id: keys.id, check: keys.check, made: made || now.toISOString(), by: pc, removed: cleanRemoved(removed) };
+    return { ...file, ...(secret ? { key: b64url(secret) } : {}), mac: keys.fileMac(file) };
+}
+
+// The key a Drive file carries, when it is whole (it makes the file's
+// check), else null.
+function secretOf(file) {
+    if (!file || typeof file.key !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(file.key)) return null;
+    const key = Buffer.from(file.key, "base64url");
+    if (key.length !== KEY_BYTES) return null;
+    return matches(file, keysFor(key, file.id)) ? key : null;
 }
 
 // The computers taken out, from a code file with a valid mac; null when the
@@ -121,8 +153,10 @@ function removedOf(file, keys) {
 const isPairingFile = (f) => f && typeof f === "object" && !Array.isArray(f)
     && typeof f.id === "string" && f.id.length >= 8 && f.id.length <= 100 && typeof f.check === "string";
 
-// -> { state: "missing" } | { state: "bad" } (half downloaded, or not ours)
-// | { state: "ok", file }. A store that cannot be listed throws.
+// -> { state: "missing" } | { state: "bad", reason } (half downloaded, or
+// not ours: reason "read" when it could not be read now, "content" when
+// what was read is not a code file) | { state: "ok", file }. A store that
+// cannot be listed throws.
 async function readPairing(store) {
     const first = oldestOf((await store.list(PAIRING_FILE)).filter((o) => o.name === PAIRING_FILE));
     if (!first) return { state: "missing" };
@@ -132,13 +166,13 @@ async function readPairing(store) {
         if (!bytes) return { state: "missing" };
         text = bytes.toString("utf8");
     } catch {
-        return { state: "bad" }; // locked by the sync service
+        return { state: "bad", reason: "read" }; // locked by the sync service, or offline
     }
     try {
         const file = JSON.parse(text);
-        return isPairingFile(file) ? { state: "ok", file } : { state: "bad" };
+        return isPairingFile(file) ? { state: "ok", file } : { state: "bad", reason: "content" };
     } catch {
-        return { state: "bad" };
+        return { state: "bad", reason: "content" };
     }
 }
 
@@ -197,8 +231,45 @@ async function updateRemoved(store, pairing, change, { pc, now = new Date() } = 
     const before = removedOf(found.file, keys) || [];
     const after = cleanRemoved(change(before.map((r) => ({ ...r })), now));
     if (JSON.stringify(after) === JSON.stringify(before) && found.file.mac === keys.fileMac(found.file)) return after;
-    await writePairing(store, pairingFile(keys, found.file.by || pc, now, after, found.file.made), { replace: true });
+    // Drive's file keeps the key it carries (it is this pairing's: matches).
+    const secret = pairing.share || found.file.key ? pairing.key : null;
+    await writePairing(store, pairingFile(keys, found.file.by || pc, now, after, found.file.made, secret), { replace: true });
     return after;
 }
 
-module.exports = { PAIRING_FILE, deriveKey, keysFor, pairingFile, removedOf, readPairing, writePairing, matches, createPairing, joinPairing, updateRemoved, codeRules };
+// Drive (no code): the account's key, the one every computer that enters
+// with it uses. -> { id, key, created } (created: this computer made it),
+// or { error: "busy" } (the object could not be read now: try again).
+//
+// - A whole file: its key, whatever `mine` is (the first made wins, so two
+//   computers that made one at the same moment end on the oldest).
+// - None yet: a new key, put only where there is none.
+// - A file that is no Drive key file — damaged, or a code file of the old
+//   Drive mode (PR 2, never released) — is written over: with `mine` (the
+//   key this computer already has for this account: nobody else's lines
+//   change), else with a new key (the computers that had the old one take
+//   the new one and send everything again).
+async function joinDrive(store, { pc, now = new Date(), mine = null } = {}) {
+    for (let tries = 0; tries < 3; tries += 1) {
+        const found = await readPairing(store);
+        if (found.state === "bad" && found.reason === "read") return { error: "busy" };
+        const key = found.state === "ok" ? secretOf(found.file) : null;
+        if (key) return { id: found.file.id, key, created: false };
+        if (found.state === "missing") {
+            const made = newDriveKey();
+            const file = pairingFile(keysFor(made.key, made.id), pc, now, [], null, made.key);
+            if (await writePairing(store, file)) return { ...made, created: true };
+            continue; // another computer made it first: take that one
+        }
+        const use = mine && mine.id && Buffer.isBuffer(mine.key) ? { id: mine.id, key: mine.key } : newDriveKey();
+        const keys = keysFor(use.key, use.id);
+        const removed = (found.state === "ok" && removedOf(found.file, keys)) || [];
+        await writePairing(store, pairingFile(keys, pc, now, removed, null, use.key), { replace: true });
+        return { ...use, created: !mine };
+    }
+    return { error: "busy" };
+}
+
+const newDriveKey = () => ({ id: crypto.randomUUID(), key: crypto.randomBytes(KEY_BYTES) });
+
+module.exports = { PAIRING_FILE, deriveKey, keysFor, pairingFile, secretOf, removedOf, readPairing, writePairing, matches, createPairing, joinPairing, updateRemoved, joinDrive, codeRules };

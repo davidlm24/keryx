@@ -154,7 +154,7 @@ function createGoogleAuth({
         access = null;
         refreshing = null;
     };
-    let flow = null; // the sign-in waiting for the browser: { cancel }
+    let flow = null; // the sign-in waiting for the browser: { cancel, url }
     const changed = () => {
         try {
             onChange?.();
@@ -217,7 +217,7 @@ function createGoogleAuth({
         const challenge = b64url(crypto.createHash("sha256").update(verifier).digest());
         const state = b64url(crypto.randomBytes(16));
         const listening = await listenOnce(state, signInMs);
-        const mine = { cancel: listening.cancel };
+        const mine = { cancel: listening.cancel, url: null };
         flow = mine;
         changed();
         try {
@@ -235,6 +235,7 @@ function createGoogleAuth({
                 access_type: "offline",
                 prompt: "select_account consent",
             })) url.searchParams.set(k, v);
+            mine.url = url.href;
             try {
                 await openExternal(url.href);
             } catch {
@@ -320,9 +321,30 @@ function createGoogleAuth({
         return { revoked, ...status() };
     }
 
+    // Cancelar: the sign-in waiting for the browser ends (its signIn()
+    // rejects with "canceled"); nothing kept changes.
+    function cancel() {
+        if (flow) flow.cancel();
+        return status();
+    }
+
+    // Abrir de novo: the same Google page in the browser again (the person
+    // closed the tab), for the sign-in still waiting.
+    async function reopen() {
+        if (!flow || !flow.url) throw fail("Nenhuma entrada esperando o navegador.", "canceled");
+        try {
+            await openExternal(flow.url);
+        } catch {
+            throw fail("Não foi possível abrir o navegador.", "canceled");
+        }
+        return status();
+    }
+
     return {
         signIn,
         signOut,
+        cancel,
+        reopen,
         accessToken,
         // After Google refused an access token (401): the next call refreshes.
         invalidate: () => { access = null; },

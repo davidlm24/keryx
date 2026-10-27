@@ -236,6 +236,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   a range as read when all its numbers are (`parseChanges` → `{ seq, hi,
   range }`: use `hi` where the highest number matters). Sessions never sign
   in to Google (`docs/google-drive-setup.md`, the owner's steps).
+  **On Drive there is no church code** (owner 2026-10-27, item 4; §8b
+  item 9): the Google account is the access control, as in Holyrics. The
+  key is 32 random bytes in Drive's `keryx-sync.json` (v 2: `key` beside
+  `id`/`check`/`removed`/`mac`), made by the first computer that enters
+  (`joinDrive` in syncPairing.cjs, `putIfAbsent`, first made wins) and
+  read by the rest; lines stay signed with it (damage, not a password).
+  `googleSignIn` does it all: Drive, join or make the key (`joined: {
+  created, sent }`, status `accountNew`), off the Desconectar list,
+  `store.snapshot`; `googleCancel`/`googleReopen` for the waiting browser
+  (the IPC error carries `code` "canceled"). Kept as `sync.drive = { email,
+  id, key, joinedAt, accountNew }`, sealed; **`sync.pairing` stays the
+  folder's code, untouched** (the two never share a key; back to the
+  folder needs no code). A computer with the key writes a missing or
+  damaged file back with the same key; a key that changed there, or one
+  that will not open here, is joined again by itself on a pass; only a
+  sign-in readmits a desconectado one (G3 = A). `create`/`join`/`rotate`/
+  `showCode` refuse on Drive. The threat note (Desconectar is not a
+  revocation: remove KERYX's access in the Google account) is in §8b.
   Configurações › Sincronização's main side
   `electron/syncControl.cjs` (`keryx:sync`; the key and code sealed with
   safeStorage), the section `settings/SyncSection.jsx` (pt-BR status in

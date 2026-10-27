@@ -263,7 +263,9 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
             return { data: await sync.ops[op](event, args || {}) };
         } catch (err) {
             if (!err.status) log(`[keryx-sync] ${op}: ${err && err.stack}`);
-            return { error: { message: err.message || "Falha na sincronização.", status: err.status || 500 } };
+            // code: googleAuth's ("canceled", "denied", "timeout", …), so the
+            // page tells a Cancelar from a failure.
+            return { error: { message: err.message || "Falha na sincronização.", status: err.status || 500, ...(typeof err.code === "string" ? { code: err.code } : {}) } };
         }
     });
 
