@@ -744,10 +744,11 @@ app.whenReady().then(async () => {
         powerMonitor.on("resume", () => checks.resume());
     }
 
-    // Sync with the church's other computers through a shared folder
-    // (electron/sync.cjs), set up in Configurações › Sincronização
-    // (electron/syncControl.cjs): off until a folder is chosen and the
-    // church's code typed. A pass every 30 s and 3 s after a local change.
+    // Sync with the church's other computers through the church's Google
+    // account (electron/sync.cjs over the hidden appDataFolder), set up in
+    // Configurações › Sincronização (electron/syncControl.cjs): off until
+    // someone enters with the account here. A pass every 30 s and 3 s after a
+    // local change.
     let missingSent = "";
     // The Bible editions installed here, for the others' "Falta a NVI aqui"
     // (computer.json; never the text). Counted at most once a minute: the
@@ -763,8 +764,8 @@ app.whenReady().then(async () => {
         }
         return bibles.list;
     };
-    // Google Drive direto (PR 2): the church's account, entered in the
-    // system's browser; Chromium's network stack (the system's proxy).
+    // The church's account, entered in the system's browser; Chromium's
+    // network stack (the system's proxy).
     const protect = sealWith(safeStorage);
     const googleFetch = (url, init) => net.fetch(url, init);
     const google = createGoogleAuth({
@@ -782,15 +783,6 @@ app.whenReady().then(async () => {
         protect,
         google,
         driveOptions: { fetchImpl: googleFetch },
-        chooseFolder: async (event) => {
-            const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender) || undefined, {
-                title: "Pasta da sincronização",
-                buttonLabel: "Usar esta pasta",
-                properties: ["openDirectory", "createDirectory"],
-            });
-            return canceled || !filePaths[0] ? null : filePaths[0];
-        },
-        openPath: (folder) => shell.openPath(folder),
         describe: () => ({ name: os.hostname(), version: app.getVersion(), bibles: installedBibles() }),
         notify: (n) => notifications.add(n),
         dismiss: (key) => notifications.remove((n) => n.key === key),

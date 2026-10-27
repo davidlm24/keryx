@@ -875,6 +875,12 @@ Recorded so the decision is not lost (2026-10-08; nothing built):
 
 ### Sincronização entre computadores (owner 2026-10-16; built in PRs 1–6)
 
+> **Since "Google Drive direto" PR 4 (2026-10-27) the shared folder and the
+> church's code are gone**: the sync is the church's Google account only
+> (items 7–11). Items 3–6 below are kept as the history of the folder mode;
+> what they say about the format of lines, the signatures, the outbox, the
+> cleanup and the duplicates still holds, through the account's key.
+
 The owner chose **two-way sync through a shared folder** (as Holyrics'
 Drive sync): every verified computer edits, and each one writes to and reads
 from one folder that Google Drive para computador (or OneDrive, Dropbox)
@@ -1340,7 +1346,10 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      computer stops ("Este computador foi desconectado da sincronização.
      Entre com a conta da igreja nele para voltar.") until someone enters
      with the account on it again (`googleSignIn` takes it off the list;
-     the owner's G3 = A). Its passes never readmit it.
+     the owner's G3 = A). Its passes never readmit it. A sign-in takes off
+     only the entries made at or before it (`readmitPending = { at }`;
+     owner 2026-10-27): a readmit Drive failed is retried by the passes,
+     and a Desconectar made after the sign-in stays.
    - **Ops for PR 3** (`keryx:sync`): `googleSignIn` (the browser, then
      Drive, the account's key — joined, or made: `joined: { created, sent
      }` — off the Desconectar list, everything sent; a join Drive fails
@@ -1386,6 +1395,44 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      that will not open joins again by itself; Cancelar and Abrir de
      novo), `googleAuth.test.cjs` (Abrir de novo opens the same page,
      Cancelar ends the sign-in).
+10. **Configurações › Sincronização around the account (2026-10-27, PR 3,
+    the owner's mockup "Sincronização · conta Google", G1–G5 = A):** the
+    page (`settings/SyncSection.jsx`, words in `src/lib/console/syncView.js`)
+    and the top bar's cloud (`SyncPop.jsx`): Entrar com Google, Termine a
+    entrada no navegador, the account (Andamento, Espaço da conta,
+    Dispositivos conectados with Desconectar…), its problems on top, and
+    the migration banner for a computer that synced by the folder. The
+    status adds `waiting` (the outbox) and `arriving` (the file coming
+    down) and `googleStatus().quota.mine` (the hidden folder's bytes).
+11. **The folder mode goes (2026-10-27, PR 4; the plan's "migração sem
+    volta", merged only after the owner's test on two real PCs):**
+    - Gone: the `folder` adapter (`syncStore/folder.cjs`), the church's
+      code (`shared/syncCode.mjs`, `createPairing`/`joinPairing`, the
+      scrypt key, the v 1 code file), the engine's `getFolder`,
+      `inspectFolder`/`inspectStore` and its reading of an older KERYX's
+      byte cursors (a folder's state is another store's: it starts over),
+      the ops `choose`, `open`, `inspect`, `create`, `join`,
+      `rotate`, `showCode` and `useDrive`, the folder picker in
+      main.cjs, and the page's folder rows (`SyncFolderSteps.jsx`).
+    - The engine signs with the account's key only; its key file is always
+      v 2 (`pairingFile` takes the key); a v 1 file found in the account
+      (PR 2's code file, never released) is written over like a damaged
+      one.
+    - **A computer that synced by the folder** (settings `sync.folder`
+      and `pairing` from 0.2.21): it does not sync and records nothing
+      in its outbox (`store: null`, engine "off"); the status keeps
+      `folder` for the banner (G4: "Até entrar, este computador não
+      sincroniza com os outros"); the bell tells once (`googleNoticed`);
+      the cloud is red, "Entre com a conta". Entering merges everything it
+      has (`store.snapshot`) and forgets `folder` and `pairing`.
+      Nothing in the folder is read, written or deleted: the banner says
+      it can be deleted once every computer has entered. A change the
+      folder had not yet carried to the others when this version arrived
+      reaches them through the entry's snapshot (rows; a delete still in
+      that computer's outbox does not — the same as any join).
+    - Tests: `sync.test.cjs` and `syncControl.test.cjs` run every case on
+      the fake Drive (server); the folder's own cases and the code's are
+      gone, and a folder computer's migration has its test.
 
 ## 9. Project layout after the change
 

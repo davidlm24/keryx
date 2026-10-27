@@ -16,81 +16,6 @@ export function ago(iso, nowMs = Date.now()) {
     return d === 1 ? "ontem" : `há ${d} dias`;
 }
 
-// Which part of the section shows: "unavailable" (no desktop: the browser
-// preview), "folder" (choose it), "code" (make the church's code or type
-// it), "on".
-export function syncStep(st) {
-    if (!st || st.available === false) return "unavailable";
-    if (!st.folder) return "folder";
-    if (!st.paired || st.keyLost || st.engine?.state === "mismatch" || st.engine?.state === "removed") return "code";
-    return "on";
-}
-
-// -> { tone: "ok" | "wait" | "off", label, detail }: the Estado row.
-export function syncState(st, nowMs = Date.now()) {
-    const e = st?.engine || {};
-    if (!st || st.available === false) return { tone: "off", label: "Desligada", detail: "" };
-    if (!st.folder) return { tone: "off", label: "Desligada", detail: "" };
-    if (st.paused) return { tone: "off", label: "Pausada", detail: "as mudanças deste computador esperam e vão quando ligar de novo" };
-    if (st.keyLost) return { tone: "wait", label: "Digite o código da igreja de novo", detail: "a chave guardada não abre neste computador" };
-    if (!st.paired) return { tone: "off", label: "Falta o código da igreja", detail: "" };
-    switch (e.state) {
-        case "ok": return { tone: "ok", label: "Em dia", detail: e.lastPass ? `última passagem ${ago(e.lastPass, nowMs)}` : "" };
-        case "offline": return { tone: "wait", label: "Aguardando a pasta", detail: e.error || "a pasta não está disponível" };
-        case "mismatch": return { tone: "wait", label: "O código da igreja mudou nesta pasta", detail: "digite o código novo; as mudanças deste computador esperam" };
-        case "removed": return { tone: "wait", label: "Este computador foi tirado da sincronização", detail: "digite o código da igreja para voltar; as mudanças deste computador esperam" };
-        case "error": return { tone: "wait", label: "Não sincronizou", detail: e.error || "" };
-        default: return { tone: "off", label: "Começando…", detail: "" };
-    }
-}
-
-// -> [{ pc, name, self, tone, detail, tag }]: this computer first, then the
-// others as the folder shows them, the ones without the code flagged.
-export function computerRows(st, nowMs = Date.now()) {
-    if (!st) return [];
-    const rows = [{ pc: st.pc, name: st.name || "Este computador", self: true, tone: "ok", detail: st.version ? `este computador · KERYX ${st.version}` : "este computador", tag: "este" }];
-    for (const c of st.engine?.computers || []) {
-        const bits = [];
-        if (c.removed) {
-            const by = c.removed.by === st.pc ? "por este computador" : "";
-            rows.push({
-                pc: c.pc,
-                name: c.name || `Computador ${String(c.pc).slice(0, 4).toUpperCase()}`,
-                self: false,
-                tone: "off",
-                detail: ["tirado", ago(c.removed.at, nowMs), by].filter(Boolean).join(" "),
-                tag: "tirado",
-                removed: true,
-            });
-            continue;
-        }
-        if (c.verified === false) {
-            bits.push(c.rejected ? `${c.rejected} ${c.rejected === 1 ? "mudança ignorada" : "mudanças ignoradas"}` : "sem o código");
-        } else {
-            const when = c.lastChange || c.seen;
-            if (when) bits.push(`${c.lastChange ? "escreveu" : "visto"} ${ago(when, nowMs)}`);
-            if (c.version) bits.push(c.version);
-        }
-        const old = c.lastChange && nowMs - Date.parse(c.lastChange) > 7 * 86400000;
-        rows.push({
-            pc: c.pc,
-            name: c.name || `Computador ${String(c.pc).slice(0, 4).toUpperCase()}`,
-            self: false,
-            tone: c.verified === false ? "wait" : old || c.verified == null ? "off" : "ok",
-            detail: bits.join(" · "),
-            tag: c.verified === false ? "sem o código" : c.verified ? "verificado" : "",
-        });
-    }
-    return rows;
-}
-
-// "14 mudanças enviadas · 31 recebidas" since KERYX opened.
-export function sinceLine(st) {
-    const s = st?.since || {};
-    const n = (v, one, many) => `${v} ${v === 1 ? one : many}`;
-    return `${n(s.sent || 0, "mudança enviada", "mudanças enviadas")} · ${n(s.applied || 0, "recebida", "recebidas")}`;
-}
-
 // Whether two answers of the status say the same (useSyncStatus): the poll
 // asks every 4 s and the status changes only when a pass runs or an action
 // answers, so an answer like the last one keeps the old object and wakes
@@ -105,19 +30,6 @@ export function sameSyncStatus(a, b) {
         return false;
     }
 }
-
-// "O que vai e o que fica" (Rodada G7, owner 2026-10-17/19): the two short
-// lists the section shows before and while syncing, and the hints about the
-// folder. What travels is every synced entity and the files its rows use
-// (electron/db/syncScope.cjs, checked by the whole-church test in
-// electron/sync.test.cjs); the screens' designs stay until Rodada G10.
-export const SYNC_GOES = "Músicas, setlist e cultos, mídia e fundos, avisos, temas, Escola bíblica, o perfil da igreja e os arquivos de tudo isso.";
-export const SYNC_STAYS = "As edições da Bíblia instaladas, os desenhos e ajustes das telas, a posição das saídas nos monitores e a disposição do console.";
-// Worded so it does not hang on Drive's exact labels (they change between
-// versions): mirrored files, or the folder kept offline, both mean the
-// videos are on this computer before the service.
-export const SYNC_MIRROR_HINT = "No Google Drive para computador, deixe os arquivos espelhados (Preferências › Pastas do Google Drive) ou a pasta do KERYX disponível off-line. Assim os vídeos já estão neste computador antes do culto.";
-export const SYNC_SHARED_HINT = "Pasta que outra pessoa compartilhou com você: no site do Drive, em Compartilhados comigo, adicione um atalho dela ao seu Drive; só então ela aparece neste computador.";
 
 // "NVI", "NVI e ACF", "NVI, ACF e AA" — with `article`, "a NVI e a ACF".
 export function editionsList(names, article = false) {
@@ -146,26 +58,17 @@ export function biblesMissingHere(st, here) {
     return { elsewhere, missing, own, line: `Instaladas ${where}: ${editionsList(elsewhere)}. ${lack}${ask}` };
 }
 
-// Configurações › Sincronização › Código da igreja, the group's summary while
-// it is closed (Rodada H1): how many computers hold the code.
-export function syncSummary(st) {
-    const n = computerRows(st).filter((r) => !r.removed && r.tag !== "sem o código").length;
-    return `${n} ${n === 1 ? "computador com o código" : "computadores com o código"}`;
-}
-// "O que vai e o que fica", closed: the two lists in a line.
-export const SYNC_TRAVEL_SUMMARY = "Músicas, cultos e mídias vão · Bíblias, telas e disposição ficam";
-
-// -- Google Drive direto, PR 3 (the owner's mockup "Sincronização · conta
-// Google", 2026-10-26, marks G1–G5 = A) --------------------------------------
+// -- The church's Google account (Google Drive direto, PR 3; the owner's
+// mockup "Sincronização · conta Google", 2026-10-26, marks G1–G5 = A) ------
 //
 // The page and the top bar's cloud read the same status. The church's
-// account is the way in; the folder is only what a computer that synced by
-// it before still uses until someone enters there (G4 = A).
+// account is the way in; a computer that synced by the shared folder before
+// (PR 4 took it out) only shows the banner until someone enters there (G4).
 
 // Whether this computer syncs at all (the Biblioteca's "parece repetida",
 // the PDF pages' backfill, the Bíblia's "Falta a NVI aqui").
 export function syncsHere(st) {
-    return Boolean(st && st.paired && (st.folder || st.store === "drive"));
+    return Boolean(st && st.paired && st.store === "drive");
 }
 
 const googleOf = (st) => st?.google || {};
@@ -175,8 +78,8 @@ const needsEntry = (st) => Boolean(googleOf(st).refused || googleOf(st).keyLost 
 
 // Which page Sincronização shows: "unavailable" (no desktop), "signing" (the
 // browser is open on Google's page), "on" (the account, or its problems),
-// "folder" (synced by the folder before: the banner, then the folder's
-// rows) or "none" (Entrar com Google).
+// "folder" (synced by the shared folder before PR 4: the banner, G4) or
+// "none" (Entrar com Google).
 export function googlePage(st) {
     if (!st || st.available === false) return "unavailable";
     const g = googleOf(st);
@@ -309,10 +212,7 @@ export function cloudView(st, nowMs = Date.now()) {
     const waiting = Number(st?.waiting) || 0;
     if (page === "unavailable" || page === "none") return { tone: "off", label: "Sem conta", when: "", text: "Este computador não sincroniza. Entre com a conta Google da igreja para os computadores ficarem iguais.", act: page === "none" ? "signin" : null, rows: [] };
     if (page === "signing") return { tone: "wait", label: "Entrando…", when: "", text: "Termine a entrada no navegador: escolha a conta da igreja e permita o acesso à pasta do KERYX.", act: null, rows: [] };
-    if (page === "folder") {
-        const old = syncState(st, nowMs);
-        return { tone: old.tone === "ok" ? "ok" : old.tone === "wait" ? "wait" : "off", label: old.label, when: "", text: "Pela pasta. A sincronização agora é pela conta Google: até entrar, este computador continua pela pasta.", act: "signin", rows: [] };
-    }
+    if (page === "folder") return { tone: "need", label: "Entre com a conta", when: "", text: "A sincronização agora é pela conta Google: a pasta de antes não é mais usada. Até entrar, este computador não sincroniza.", act: "signin", rows: [] };
     if (needsEntry(st)) return { tone: "need", label: "Entre de novo", when: "", text: "O Google não aceita mais a entrada deste computador. As mudanças daqui esperam.", act: "signin", rows: [] };
     if (e.state === "removed") return { tone: "need", label: "Desconectado", when: "", text: "Alguém desconectou este computador da sincronização. Nada foi apagado aqui. Para voltar, entre de novo com a conta da igreja.", act: "signin", rows: [] };
     if (e.state === "offline") return { tone: "wait", label: "Sem internet", when: "", text: `${waiting ? `${changes(waiting)} esperando. ` : ""}Tudo aqui funciona; ${waiting ? "elas vão" : "o que mudar vai"} quando a internet voltar.`, act: "retry", rows: [] };

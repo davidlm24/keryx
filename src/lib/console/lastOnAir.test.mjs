@@ -16,6 +16,16 @@ test("Esc keeps the song that was on air, at the slide it stopped on", () => {
     assert.equal(last.key, airKey(after));
 });
 
+test("the item's own Fundo goes with it, so sending it again brings its theme's background back", () => {
+    const theme = { kind: "image", value: "keryx-media://campo.jpg", title: "Campo" };
+    const wall = { kind: "image", value: "keryx-media://nebulosa.jpg", title: "Nebulosa" };
+    const last = lastFromEnd({ content: song, background: theme, defaultBackground: wall }, { content: null, background: wall });
+    assert.deepEqual(last.args.fundo, theme);
+    // Over the papel de parede itself, or with no Fundo: nothing to bring.
+    assert.equal(lastFromEnd({ content: song, background: wall, defaultBackground: wall }, { content: null }).args.fundo, undefined);
+    assert.equal(lastFromEnd({ content: song }, { content: null }).args.fundo, undefined);
+});
+
 test("nothing is kept without slides on air, or when the text stayed", () => {
     assert.equal(lastFromEnd({ media: { kind: "video", shownAt: 5 } }, { content: null }), null);
     assert.equal(lastFromEnd({ content: { ...song, slides: [] } }, {}), null);

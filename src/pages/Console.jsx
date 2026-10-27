@@ -492,7 +492,7 @@ export default function Console() {
         const live = c.live;
         if (fundoPadrao && fundoGoesOnNow(live)) c.liveOp("background.set", fundoPadrao).catch(() => {});
     }, [liveReady, padraoKey]); // eslint-disable-line react-hooks/exhaustive-deps
-    const { outputs, network, seen, forgetOutput } = useOutputs();
+    const { outputs, network, seen, forgetOutput, refresh: refreshOutputs } = useOutputs();
     // Outputs: the projector window missing its display, or closed, is the warning.
     const projector = outputs.find((o) => o.key === "/Projection");
 
@@ -798,9 +798,9 @@ export default function Console() {
         else if (action === "whatsnew") openWhatsNew();
         else if (action.startsWith("settings:")) openSettings(action.slice("settings:".length));
     };
-    const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
+    const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {}).then(refreshOutputs);
     // Closed here on purpose: forgotten, so it is not reported as a problem.
-    const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {});
+    const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {}).then(refreshOutputs);
     // Adicionar saída (the Saídas popover): back on the list with the same
     // screen, "Abrir ao iniciar" and Ajustes it had.
     const restoreOutput = (key) => window.keryxDesktop?.displays.set(key, { removed: false }).catch((err) => c.say(err?.message || "Não foi possível adicionar a saída."));
