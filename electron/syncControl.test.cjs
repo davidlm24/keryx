@@ -74,6 +74,7 @@ function computer(name, opts = {}) {
         log: () => {},
         google,
         driveOptions,
+        ...(opts.now ? { now: opts.now } : {}),
     });
     const call = (op, args) => control.ops[op](null, args);
     return { store, settings, control, call, bell, google, close: () => store.close() };
@@ -411,4 +412,60 @@ test("a computer that synced by the folder: it stops, the bell says so once, ent
     assert.deepEqual(titles(b), ["Da pasta", "Esperando"]);
     a.close();
     b.close();
+});
+
+// A sign-in whose readmit Drive did not take: the passes try it again, and
+// take off the Desconectar list only what was disconnected before that
+// sign-in (the owner, 2026-10-27: "tirar da lista só o que foi desconectado
+// antes da entrada").
+async function readmitRace(t, { againAfter }) {
+    const srv = await fakeDriveServer({ page: 50 });
+    t.after(() => srv.close());
+    let busy = false;
+    srv.fault(() => busy, 500, { times: 1e6 });
+    // Drive's retries without their waits; B's clock moves past the retry wait.
+    const driveOptions = { api: srv.api, upload: srv.upload, freshMs: 0, sleep: async () => {} };
+    const clock = { ahead: 0 };
+    const a = computer("A", { srv });
+    const b = computer("B", { google: fakeGoogle(srv), driveOptions, now: () => new Date(Date.now() + clock.ahead) });
+    await a.call("googleSignIn");
+    await b.call("googleSignIn");
+    await settle([a, b], 1);
+    await a.call("remove", { pc: b.store.pcId });
+    assert.equal((await b.call("now")).engine.state, "removed");
+    await new Promise((r) => setTimeout(r, 5));
+
+    // B enters again while Drive does not answer: the sign-in stands, the
+    // readmit waits.
+    busy = true;
+    const entered = await b.call("googleSignIn");
+    assert.ok(entered.joinError, "Drive was busy");
+    busy = false;
+    await new Promise((r) => setTimeout(r, 5));
+    if (againAfter) await a.call("remove", { pc: b.store.pcId });
+
+    // Past the retry wait, B's passes try the readmit again.
+    clock.ahead = 2 * 60 * 1000;
+    await b.call("now");
+    for (let i = 0; i < 100; i++) {
+        await new Promise((r) => setTimeout(r, 10));
+        const listed = driveFile(srv).removed.some((r) => r.pc === b.store.pcId.toLowerCase());
+        if (againAfter ? i > 30 : !listed) break;
+    }
+    const st = await b.call("now");
+    a.close();
+    b.close();
+    return { st, removed: driveFile(srv).removed, pc: b.store.pcId.toLowerCase() };
+}
+
+test("a readmit Drive failed, retried: a Desconectar made after the sign-in stays (G3 = A)", async (t) => {
+    const { st, removed, pc } = await readmitRace(t, { againAfter: true });
+    assert.deepEqual(removed.map((r) => r.pc), [pc], "the new Desconectar is still on the list");
+    assert.equal(st.engine.state, "removed", "only a new sign-in brings it back");
+});
+
+test("a readmit Drive failed, retried: a Desconectar made before the sign-in is taken off", async (t) => {
+    const { st, removed } = await readmitRace(t, { againAfter: false });
+    assert.deepEqual(removed, []);
+    assert.equal(st.engine.state, "ok");
 });

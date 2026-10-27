@@ -146,9 +146,10 @@ function createSyncControl({ store, mediaDir, settings, protect, describe = () =
         pairing = null;
         pairingFrom = null;
     };
-    // Drive's join (driveJoin): a sign-in's readmit not done yet, the join
-    // under way, and when the last one failed.
-    let readmitPending = false;
+    // Drive's join (driveJoin): a sign-in's readmit not done yet ({ at }: when
+    // that sign-in happened), the join under way, and when the last one
+    // failed.
+    let readmitPending = null;
     let joining = null;
     let joinFailedAt = 0;
 
@@ -247,21 +248,30 @@ function createSyncControl({ store, mediaDir, settings, protect, describe = () =
 
     // Joins this computer to the account's key (joinDrive), made there
     // when the account has none. With `readmit` (a sign-in) it also takes
-    // itself off the Desconectar list. A key that is new here is kept and
+    // itself off the Desconectar list — only what was disconnected before
+    // that sign-in (the owner, 2026-10-27: "tirar da lista só o que foi
+    // desconectado antes da entrada"): a readmit that Drive failed is tried
+    // again by the passes, and a Desconectar made meanwhile stays (G3 = A:
+    // only a new sign-in brings it back). A key that is new here is kept and
     // everything here is sent (it merges: store.snapshot); the same key again
     // changes nothing. -> { created, sent } | throws.
     async function driveJoin({ readmit = false } = {}) {
-        if (readmit) readmitPending = true;
+        if (readmit) readmitPending = { at: now().toISOString() };
         const where = await sharedOrFail();
         const me = String(store.pcId).toLowerCase();
         const email = account();
-        const kept = drivePairing() && currentPairing();
+        // No account known (it should be, right after a sign-in): never hand
+        // joinDrive a key kept for another one.
+        const kept = email ? drivePairing() && currentPairing() : null;
         const got = await joinDrive(where, { pc: me, now: now(), mine: kept });
         if (got.error) throw fail("O Google Drive não entregou o arquivo da sincronização. Tente de novo em instantes.", 503);
         const joinedKey = { id: got.id, key: got.key };
         if (readmitPending) {
-            const list = await updateRemoved(where, joinedKey, (cur) => cur.filter((r) => r.pc !== me), { pc: me, now: now() });
-            if (!list.error) readmitPending = false;
+            const since = readmitPending.at;
+            // An entry's `at` is the ISO time the other computer wrote (its
+            // clock); one at or before this sign-in goes.
+            const list = await updateRemoved(where, joinedKey, (cur) => cur.filter((r) => r.pc !== me || String(r.at || "") > since), { pc: me, now: now() });
+            if (!list.error) readmitPending = null;
         }
         if (kept && kept.id === got.id && kept.key.equals(got.key)) return { created: false, sent: 0 };
         // The account had no KERYX yet: this computer started the church's
@@ -479,6 +489,8 @@ function createSyncControl({ store, mediaDir, settings, protect, describe = () =
             if (!google) throw fail("O Google Drive não está disponível nesta versão.", 404);
             const out = await google.signOut();
             driveStore = null;
+            // A readmit still pending belonged to that sign-in.
+            readmitPending = null;
             if (onDrive()) await engine.pass();
             return { ...status(), revoked: out.revoked };
         },

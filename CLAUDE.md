@@ -244,7 +244,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   id, key, joinedAt, accountNew }`, sealed with safeStorage. A computer
   with the key writes a missing or damaged file back with the same key; a
   key that changed there, or one that will not open here, is joined again
-  by itself on a pass; only a sign-in readmits a desconectado one (G3 = A).
+  by itself on a pass; only a sign-in readmits a desconectado one (G3 = A),
+  and only from a Desconectar made before it (a readmit Drive failed is
+  retried by the passes; one made after the sign-in stays).
   The threat note (Desconectar is not a revocation: remove KERYX's access in
   the Google account) is in §8b. Configurações › Sincronização's main side
   `electron/syncControl.cjs` (`keryx:sync`: status, now, setPaused,
