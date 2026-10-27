@@ -8,7 +8,6 @@ import { useSyncStatus, setSyncStatus } from "@/hooks/useSyncStatus";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { signInWithGoogle, cancelGoogleSignIn, reopenGoogleSignIn, useGoogleQuota } from "@/hooks/useGoogleSync";
 import { googlePage, driveProgress, quotaView, deviceRows, pageProblems, OFFLINE_TEXT, QUOTA_WARN_TEXT, GOOGLE_GOES, GOOGLE_STAYS, GOOGLE_TRAVEL_SUMMARY } from "@/lib/console/syncView";
-import SyncFolderSteps from "./SyncFolderSteps";
 import SyncDuplicates from "./SyncDuplicates";
 
 // Configurações › Sincronização (Google Drive direto, PR 3; the owner's
@@ -18,8 +17,9 @@ import SyncDuplicates from "./SyncDuplicates";
 // syncStore/drive.cjs; the main side is electron/syncControl.cjs over
 // keryx:sync). Five pages, by googlePage (syncView.js): Entrar com Google,
 // Termine a entrada no navegador, the account (with its problems on top),
-// the folder of before under its banner (G4), and the browser preview's
-// "only on the computer".
+// a computer that synced by the folder of before (its banner, G4: since
+// PR 4 it does not sync until it enters), and the browser preview's "only
+// on the computer".
 export default function SyncSection({ c }) {
     const sync = useBridge("sync");
     const st = useSyncStatus();
@@ -55,14 +55,7 @@ export default function SyncSection({ c }) {
 
     if (page === "signing") return <Signing c={c} />;
     if (page === "none") return <NoAccount onEnter={enter} />;
-    if (page === "folder") {
-        return (
-            <>
-                <Migration st={st} onEnter={enter} />
-                <SyncFolderSteps c={c} st={st} sync={sync} busy={busy} run={run} />
-            </>
-        );
-    }
+    if (page === "folder") return <Migration st={st} onEnter={enter} />;
     return <Account c={c} st={st} quota={quota} busy={busy} run={run} onEnter={enter} />;
 }
 
@@ -118,23 +111,30 @@ function Signing({ c }) {
     );
 }
 
-// Board 5 · a computer that synced by the folder (G4 = A): the banner on top,
-// the folder's rows under it until someone enters here.
+// Board 5 · a computer that synced by the folder (G4 = A): the banner, then
+// what goes and what stays. The folder is no longer read (PR 4): this
+// computer waits for someone to enter here.
 function Migration({ st, onEnter }) {
     return (
-        <CfgKey k="Conta Google" className="cfg-sync-banner">
-            <span className="cfg-sync-banner-t">A sincronização agora é pela conta Google</span>
-            <span>Este computador sincronizava pela pasta <b>{st.folder}</b> (Google Drive para computador). O KERYX agora entra direto na conta Google da igreja e não precisa mais desse programa nem da pasta.</span>
-            <ol className="cfg-sync-steps">
-                <li>Entre com a <b>mesma conta</b> que tem a pasta, em cada computador da igreja.</li>
-                <li>Cada um junta o que tem: <b>nada é apagado</b>, e as músicas que existem nos dois lados viram uma só.</li>
-                <li>Depois que todos tiverem entrado, a pasta antiga pode ser apagada (o KERYX não lê mais).</li>
-            </ol>
-            <div className="cfg-sync-acts is-center">
-                <GoogleBtn onEnter={onEnter} />
-                <span className="kx-meta">Até entrar, este computador continua sincronizando pela pasta.</span>
+        <>
+            <CfgKey k="Conta Google" className="cfg-sync-banner">
+                <span className="cfg-sync-banner-t">A sincronização agora é pela conta Google</span>
+                <span>Este computador sincronizava pela pasta <b>{st.folder}</b> (Google Drive para computador). O KERYX agora entra direto na conta Google da igreja e não precisa mais desse programa nem da pasta.</span>
+                <ol className="cfg-sync-steps">
+                    <li>Entre com a <b>mesma conta</b> que tem a pasta, em cada computador da igreja.</li>
+                    <li>Cada um junta o que tem: <b>nada é apagado</b>, e as músicas que existem nos dois lados viram uma só.</li>
+                    <li>Depois que todos tiverem entrado, a pasta antiga pode ser apagada (o KERYX não lê mais).</li>
+                </ol>
+                <div className="cfg-sync-acts is-center">
+                    <GoogleBtn onEnter={onEnter} />
+                    <span className="kx-meta">Até entrar, este computador não sincroniza com os outros. O que ele tem fica aqui.</span>
+                </div>
+            </CfgKey>
+            <div className="cfg-sync-travel">
+                <CfgKey k="O que vai e o que fica" className="listhead"><span className="kx-section">O que vai e o que fica</span></CfgKey>
+                <TravelLines />
             </div>
-        </CfgKey>
+        </>
     );
 }
 

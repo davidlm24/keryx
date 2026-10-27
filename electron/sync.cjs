@@ -1,9 +1,9 @@
 // Sync between the church's computers (docs/desktop-architecture.md §8b). No
 // server: each computer writes its own changes to a shared store and reads
-// everyone else's. The store is electron/syncStore/ — today the shared folder
-// Google Drive para computador keeps in step (`folder`), next Google Drive
-// itself — and it has Drive's rules: objects written whole and never
-// appended, names that are not unique, a listing that may lag a write.
+// everyone else's. The store is electron/syncStore/ — the hidden
+// appDataFolder of the church's Google account (Google Drive direto) — and
+// it has Drive's rules: objects written whole and never appended, names that
+// are not unique, a listing that may lag a write.
 //
 //   changes/<pc>/<seq>.jsonl   one pass's outbox entries (up to `batch`), one
 //                              JSON object a line, each signed, and a last
@@ -14,7 +14,7 @@
 //                              changes and the media its rows use, for the
 //                              cleanup; replaced whole
 //   computers/<pc>.json        who that computer is; replaced whole
-//   keryx-sync.json            the church's code file (syncPairing.cjs)
+//   keryx-sync.json            the account's key file (syncPairing.cjs)
 //   media/<file>               the media files those rows use, by their uuid
 //                              name, never overwritten; collected once no
 //                              computer uses one (collect())
@@ -25,28 +25,24 @@
 // line, as ranges (`seen[pc].done`), plus the ids of the extra objects read
 // when two share a name (`seen[pc].dup`); and, for an object read only part
 // of the way, how far (`part[id].at`, bytes past its last whole line). An
-// object without its end line is still arriving — a file Drive para
-// computador is still bringing down, or one a computer on an older KERYX
-// keeps appending to (0.2.21 and before: a changes file that only grew) — so
-// it is read as far as it goes and again when it grows; one with its end is
-// never read again. Two objects of one name (a conflict copy, a Drive upload
-// made twice) are each read. Entries are idempotent through store.applyRemote
+// object without its end line is cut short (a write that failed, a damaged
+// object): it is read as far as it goes and again when it grows; one with
+// its end is never read again. Two objects of one name (a Drive upload made
+// twice) are each read. Entries are idempotent through store.applyRemote
 // (last edit wins per row), which is what makes reading twice, late or out of
 // order harmless. A last line without its newline is left for the next pass,
 // never skipped.
 //
-// Only computers with the church's sync code count (PCs verificados,
-// electron/syncPairing.cjs): the store holds the code's file, every line and
-// every state object is signed with the key the code makes, and what does
-// not verify is counted for its computer, never applied (nor counted by the
-// cleanup). Without a code nothing is read or written; with a code that is
-// no longer the store's (it changed) neither, and the outbox waits; the same
-// for a computer another one took out ("Tirar": the code file's removed
-// list), whose changes the others skip until the code is typed on it again.
-// On Drive there is no code: the key is in the store's own pairing file
-// (getPairing() gives { id, key, share: true }, syncPairing.cjs joinDrive),
-// this computer writes it back when it is missing or damaged, and a
-// "mismatch" there is syncControl's to join again by itself.
+// Only computers that entered with the church's account count (PCs
+// verificados, electron/syncPairing.cjs): the store holds the account's key
+// file, every line and every state object is signed with that key, and what
+// does not verify is counted for its computer, never applied (nor counted
+// by the cleanup). Without the key nothing is read or written and the
+// outbox waits; this computer writes the file back when it is missing or
+// damaged, and a key there that is not this one's ("mismatch") is
+// syncControl's to join again by itself. A computer another one took out
+// (Desconectar: the key file's removed list) stops, and the others skip its
+// changes, until someone enters with the account on it again.
 //
 // Pure Node over the store and a sync store, so it runs under node --test.
 
@@ -54,7 +50,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { isSynced, SYNC_ENTITIES } = require("./db/syncScope.cjs");
 const { keysFor, readPairing, writePairing, matches, pairingFile, removedOf, secretOf } = require("./syncPairing.cjs");
-const { createFolderStore, changesName, parseChanges, PC_DIR } = require("./syncStore/index.cjs");
+const { changesName, parseChanges, PC_DIR } = require("./syncStore/index.cjs");
 
 const fsp = fs.promises;
 
@@ -226,57 +222,14 @@ async function bestComputer(shared, objs, keys) {
     return best;
 }
 
-// What a store holds, for choosing it and typing the code (before any pass
-// runs there): { exists, code: "missing" | "bad" | "ok", computers: [{ pc,
-// name, files, lastChange }] }. Reads only; the names are what the store
-// says (nothing can be checked before the code is typed).
-async function inspectStore(shared) {
-    if (!(await shared.available())) return { exists: false, code: "missing", computers: [] };
-    const code = (await readPairing(shared)).state;
-    const all = await shared.list("");
-    const computers = new Map();
-    for (const [pc, objs] of byPc(all)) {
-        const seen = { pc, name: null, files: 0, lastChange: 0 };
-        const who = await bestComputer(shared, objs.filter((o) => o.name === computerName(pc)));
-        seen.name = who?.name || null;
-        for (const o of objs) {
-            if (!parseChanges(o.name)) continue;
-            seen.files += 1;
-            seen.lastChange = Math.max(seen.lastChange, o.modified || 0);
-        }
-        computers.set(pc, seen);
-    }
-    return {
-        exists: true,
-        code,
-        computers: [...computers.values()].map((c) => ({ ...c, lastChange: c.lastChange ? new Date(c.lastChange).toISOString() : null })),
-    };
-}
-
-const inspectFolder = (folder) => inspectStore(createFolderStore(folder));
-
 const emptyGc = () => ({ at: null, candidates: {}, marks: {}, collected: [] });
 
-// The mark an older KERYX kept ({ "<pc dir>/<file>": bytes }) as one of
-// these: those files are the folder adapter's objects of those ids.
-function markFromCursors(cursors) {
-    const mark = {};
-    for (const [id, at] of Object.entries(cursors || {})) {
-        const pc = (PC_DIR.exec(id) || [])[1]?.toLowerCase();
-        const seq = Number((/\/changes-(\d+)/.exec(id) || [])[1]);
-        if (!pc || !Number.isFinite(seq)) continue;
-        (mark[pc] ||= { done: [], part: {} }).part[id] = [seq, Number(at) || 0];
-    }
-    return mark;
-}
-
-// getStore() -> the sync store (syncStore/), or null (off); or, instead,
-// getFolder() -> the shared folder chosen, or null. getPairing() -> { id, key }
-// (the code file's id and the key the code makes, syncPairing.cjs), or null
-// (no code typed on this computer yet). describe() -> { name, version,
+// getStore() -> the sync store (syncStore/), or null (off). getPairing() ->
+// { id, key } (the account's key and its file's id, syncPairing.cjs), or
+// null (this computer has not joined yet). describe() -> { name, version,
 // bibles }: this computer as the others list it.
 function createSyncEngine({
-    store, mediaDir, getStore = null, getFolder = null, getPairing = () => null, describe = null, log = console.warn, batch = BATCH, now = () => new Date(), onStatus = null,
+    store, mediaDir, getStore = null, getPairing = () => null, describe = null, log = console.warn, batch = BATCH, now = () => new Date(), onStatus = null,
     gcEveryMs = GC_EVERY_MS, gcGraceMs = GC_GRACE_MS, writeWaitMs = WRITE_WAIT_MS,
     compactAgeMs = COMPACT_AGE_MS, compactEveryMs = COMPACT_EVERY_MS,
 }) {
@@ -307,7 +260,6 @@ function createSyncEngine({
     let debounce = null;
     let unsubscribe = null;
     let keys = null; // keysFor the pairing in use, made again when it changes
-    let folderStore = null;
     // When the outbox was first seen waiting (this run), and the pass that
     // comes when the wait is over.
     let pendingSince = null;
@@ -321,12 +273,7 @@ function createSyncEngine({
 
     // The store in use, or null (off).
     function current() {
-        if (getStore) return getStore() || null;
-        const folder = getFolder ? getFolder() : null;
-        if (!folder) return null;
-        const root = path.resolve(String(folder));
-        if (!folderStore || folderStore.key !== root) folderStore = createFolderStore(root);
-        return folderStore;
+        return getStore ? getStore() || null : null;
     }
 
     const setStatus = (next) => {
@@ -347,29 +294,19 @@ function createSyncEngine({
     // What was read and the writer's number belong to one store; another
     // starts over (reading twice is harmless). The writer's state is also
     // this computer's: a database brought from elsewhere drops it. Another
-    // code (it changed, or the computer joined again) reads everything again:
-    // lines skipped under the old key may verify now. A state an older KERYX
-    // saved (byte cursors by file) is taken as it was: those files are the
-    // folder's objects of those ids.
+    // key (the account's changed, or the computer joined again) reads
+    // everything again: lines skipped under the old key may verify now. A
+    // state an older KERYX saved for its shared folder is another store's:
+    // it starts over.
     function loadState(key, pairing) {
         const saved = store.getMeta(STATE_KEY);
         const fresh = { store: key, pairing, seen: {}, part: {}, peers: {}, out: null, missing: [], me: null, removed: [], gc: emptyGc() };
-        if (!saved || (saved.store ?? saved.folder) !== key) return fresh;
+        if (!saved || saved.store !== key) return fresh;
         const gc = saved.gc && typeof saved.gc === "object" ? saved.gc : {};
         const sameCode = saved.pairing === pairing;
-        const legacy = !saved.seen && saved.cursors && typeof saved.cursors === "object";
-        let part = sameCode && saved.part && typeof saved.part === "object" ? saved.part : {};
-        if (sameCode && legacy) {
-            part = {};
-            for (const [id, p] of Object.entries(markFromCursors(saved.cursors))) {
-                for (const [objId, [seq, at]] of Object.entries(p.part)) part[objId] = { pc: id, seq, at };
-            }
-        }
-        let out = saved.out && saved.out.pc === pc ? saved.out : null;
-        // An older KERYX's file number n: the objects from n + 1 on are this one's.
-        if (out && !out.first) out = { pc, n: Number(out.n) || 0, first: (Number(out.n) || 0) + 1 };
-        let marks = gc.marks && typeof gc.marks === "object" ? gc.marks : {};
-        if (legacy) marks = Object.fromEntries(Object.entries(marks).map(([at, m]) => [at, markFromCursors(m)]));
+        const part = sameCode && saved.part && typeof saved.part === "object" ? saved.part : {};
+        const out = saved.out && saved.out.pc === pc ? saved.out : null;
+        const marks = gc.marks && typeof gc.marks === "object" ? gc.marks : {};
         return {
             store: key,
             pairing,
@@ -687,7 +624,7 @@ function createSyncEngine({
                     peer.rejected += 1;
                     peer.last = "rejected";
                     totals.rejected += 1;
-                    logOnce(`linhas sem a assinatura do código da igreja ignoradas em ${obj.name}`);
+                    logOnce(`linhas sem a assinatura da conta ignoradas em ${obj.name}`);
                 }
             }
             if (pending.length >= batch) await flush();
@@ -715,7 +652,7 @@ function createSyncEngine({
                 seen.signed = info.verified;
                 if (info.verified) Object.assign(seen, { name: info.name, version: info.version, bibles: info.bibles, seen: info.at });
             }
-            // Taken out: listed, never read, until it types the code again.
+            // Taken out: listed, never read, until someone enters on it again.
             if (out.has(from)) {
                 seen.removed = { at: out.get(from).at, by: out.get(from).by };
                 computers.push(seen);
@@ -740,7 +677,7 @@ function createSyncEngine({
             computers.push(seen);
         }
         // verified: the last line read from it carried this church's
-        // signature (false: it writes without the code, or with an old one);
+        // signature (false: it writes without the key, or with an old one);
         // with no line read yet, its computer object says; null: nothing at
         // all. name, version, bibles, seen: from its computer object, only
         // when signed.
@@ -774,8 +711,8 @@ function createSyncEngine({
     // A computer that still uses a file someone collected (a row edited while
     // it was away) puts it back from its own media folder: the names
     // collected are announced in the state object (`collected`). The state
-    // object is signed like a line: only computers with the church's code
-    // count, and a computer taken out ("Tirar") holds nothing back.
+    // object is signed like a line: only computers with the account's key
+    // count, and a computer taken out (Desconectar) holds nothing back.
 
     // The media every row here names (the church's content only).
     function liveRefs() {
@@ -806,7 +743,7 @@ function createSyncEngine({
     // The other computers that count: every one with a state object or whose
     // lines verified, and the newest signed state object each wrote (null:
     // none yet, which holds every file). A computer taken out, or one whose
-    // lines never verified (no code, an old one), does not count. An older
+    // lines never verified (no key, an old one), does not count. An older
     // KERYX's state object keeps its refs and its collected names, and holds
     // every file (its `read` cannot be compared with objects).
     async function readManifests(shared, state) {
@@ -1114,8 +1051,8 @@ function createSyncEngine({
         let pairing = null;
         try {
             pairing = getPairing();
-        } catch { /* unreadable: as if no code */ }
-        // A store but no code: nothing is read or written (the outbox waits).
+        } catch { /* unreadable: as if no key */ }
+        // A store but no key yet: nothing is read or written (the outbox waits).
         if (!pairing || !pairing.id || !pairing.key) {
             setStatus({ state: "unpaired", folder: where, lastPass: at, error: null });
             return;
@@ -1124,8 +1061,6 @@ function createSyncEngine({
             keys = { ...keysFor(pairing.key, pairing.id), key: pairing.key };
             published = "";
         }
-        // The folder itself is never made here: missing, it is a drive not
-        // mounted or a sync service not running, not a place to start one.
         let up = false;
         try {
             up = await shared.available();
@@ -1139,39 +1074,31 @@ function createSyncEngine({
             }
         }
         if (!up) {
-            const why = shared.kind === "folder" ? "A pasta de sincronização não está disponível." : "O Google Drive não respondeu.";
-            setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: why });
+            setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: "O Google Drive não respondeu." });
             logOnce(`indisponível: ${where}`);
             return;
         }
         try {
-            // The store's code file: this code's, written back if it went
-            // missing (any computer with the code can), or another code's —
-            // then this computer neither reads nor writes until the new code
-            // is typed here.
-            // On Drive (pairing.share: the account's key, no code) the file
-            // carries the key, and a computer that has it writes back a
-            // damaged one too, with the same key and the list it kept.
-            const share = Boolean(pairing.share);
+            // The account's key file: this key's, written back when it is
+            // missing or damaged (with the same key and the list it kept), or
+            // another key's — then this computer neither reads nor writes
+            // until it joins that one (syncControl.cjs does, by itself).
             const code = await readPairing(shared);
-            if (code.state === "bad" && !(share && code.reason === "content")) {
-                setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: share ? "O Google Drive não entregou o arquivo da sincronização. Tentando de novo." : "O arquivo do código da igreja ainda está chegando pela pasta." });
+            if (code.state === "bad" && code.reason !== "content") {
+                setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: "O Google Drive não entregou o arquivo da sincronização. Tentando de novo." });
                 return;
             }
             let state = null;
-            if (code.state !== "ok" || (share && matches(code.file, keys) && !secretOf(code.file)?.equals(pairing.key))) {
+            if (code.state !== "ok" || (matches(code.file, keys) && !secretOf(code.file)?.equals(pairing.key))) {
                 state = loadState(shared.key, pairing.id);
                 if (code.state === "ok") state.removed = removedOf(code.file, keys) || state.removed;
-                const file = pairingFile(keys, pc, now(), state.removed, code.state === "ok" ? code.file.made : null, share ? pairing.key : null);
+                const file = pairingFile(keys, pc, now(), state.removed, code.state === "ok" ? code.file.made : null, pairing.key);
                 if (code.state === "missing") await writePairing(shared, file);
                 else await writePairing(shared, file, { replace: true });
-                logOnce(code.state === "missing" ? "arquivo do código refeito" : "arquivo da sincronização danificado: refeito");
+                logOnce(code.state === "missing" ? "arquivo da sincronização refeito" : "arquivo da sincronização danificado: refeito");
             } else if (!matches(code.file, keys)) {
-                const error = share
-                    ? "A chave da sincronização mudou nesta conta. Entrando de novo com ela."
-                    : "O código da igreja mudou nesta pasta. Digite o código novo para voltar a sincronizar.";
-                setStatus({ ...status, state: "mismatch", folder: where, lastPass: at, error });
-                logOnce("o código da pasta não é o deste computador");
+                setStatus({ ...status, state: "mismatch", folder: where, lastPass: at, error: "A chave da sincronização mudou nesta conta. Entrando de novo com ela." });
+                logOnce("a chave da conta não é a deste computador");
                 return;
             }
             if (!state) {
@@ -1181,11 +1108,8 @@ function createSyncEngine({
             const me = state.removed.find((r) => r.pc === pc);
             if (me) {
                 saveState(state);
-                const error = share
-                    ? "Este computador foi desconectado da sincronização. Entre com a conta da igreja nele para voltar."
-                    : "Este computador foi tirado da sincronização. Digite o código da igreja para voltar.";
-                setStatus({ ...status, state: "removed", folder: where, lastPass: at, removed: { at: me.at, by: me.by }, error });
-                logOnce("este computador foi tirado da sincronização");
+                setStatus({ ...status, state: "removed", folder: where, lastPass: at, removed: { at: me.at, by: me.by }, error: "Este computador foi desconectado da sincronização. Entre com a conta da igreja nele para voltar." });
+                logOnce("este computador foi desconectado da sincronização");
                 return;
             }
             const own = (await shared.list(`changes/${pc}/`, { quick: true })).filter((o) => parseChanges(o.name)?.pc === pc);
@@ -1318,4 +1242,4 @@ function createSyncEngine({
     return { pass, poke, start, stop, status: () => status, missing, arriving: coming };
 }
 
-module.exports = { createSyncEngine, inspectStore, inspectFolder, mediaRefs, coalesce, addRange, inRanges, endLine, STATE_KEY };
+module.exports = { createSyncEngine, mediaRefs, coalesce, addRange, inRanges, endLine, STATE_KEY };

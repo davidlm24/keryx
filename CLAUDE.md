@@ -6,7 +6,8 @@ offline-first Electron desktop app with a local SQLite store. Desktop only:
 the web build on Supabase was retired (2026-10-08, like Holyrics or
 ProPresenter, the app is the program on the church computer); `supabase/` is
 kept, unused, for a possible cloud backup (the sync between the church's
-computers is a shared folder, no server: `electron/sync.cjs`). Plan:
+computers is the church's Google account, no server of ours:
+`electron/sync.cjs`). Plan:
 `docs/desktop-architecture.md`. Read `README.md` first — it covers the
 stack, how to run it, the backend wiring, the data model and the known gaps.
 
@@ -188,20 +189,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   writes through the store's operations reach the sync outbox (`_outbox`;
   `importRows` and `applyRemote` record nothing, so remote changes never
   echo back).
-- **Sincronização entre computadores** (owner 2026-10-16; docs/desktop-architecture.md
-  §8b): a folder Google Drive para computador (or OneDrive, Dropbox) keeps
-  in step, no server, no sign-in, last edit wins per row. Only computers
-  with the church's code count (`shared/syncCode.mjs`: 8 symbols,
-  `K7QM-2HXP`; every line signed, `electron/syncPairing.cjs`). The engine
-  is `electron/sync.cjs`; **what it shares goes through the store seam
-  `electron/syncStore/`** (owner 2026-10-26, "Google Drive direto" PR 1 of
-  4: Drive spoken to directly will replace the folder; `index.cjs` is the
+- **Sincronização entre computadores** (owner 2026-10-16; "Google Drive
+  direto" 2026-10-26/27, PRs 1–4; docs/desktop-architecture.md §8b): the
+  church's Google account, entered inside KERYX on every computer, as in
+  Holyrics; no server of ours, last edit wins per row. **There is no shared
+  folder and no church code any more** (PR 4, 2026-10-27): don't bring
+  either back. The engine is `electron/sync.cjs`; **what it shares goes
+  through the store seam `electron/syncStore/`** (`index.cjs` is the
   interface — list, read, putNew, putWhole, putIfAbsent, remove,
   upload/download —, built for Drive's rules: objects never appended or
-  renamed, names not unique, a listing that lags). Adapters: `folder` (the
-  shared folder in its old layout, so 0.2.21 computers keep syncing through
-  it until PR 4) and `fakeDrive` (in memory, the tests' Drive; never `fs`
-  in a sync test that is not about the folder). A burst of edits (20 s,
+  renamed, names not unique, a listing that lags). Adapters: `drive` (the
+  account's hidden `appDataFolder`) and `fakeDrive` (in memory, the
+  tests' Drive; never `fs` in a sync test). A burst of edits (20 s,
   `writeWaitMs`; `pass({ flush: true })` for Sincronizar agora) becomes ONE
   new object, `changes/<pc>/<seq>.jsonl`, ending in
   `{"keryx":"end","lines":n}` (the count is checked); a number is pruned
@@ -209,56 +208,51 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   confirmed is removed and sent again; listings never stat what was read
   (`list(…, { quick })`, `stat(id)`); readers keep the `<seq>`s read to their end
   as ranges (`sync.state.seen`), copies of one name by id, and only an
-  object without its end line by bytes (`part`: still arriving, or an older
-  KERYX's growing file). `state/<pc>.json` and `computers/<pc>.json` are
-  replaced whole. **PR 2 (no UI; Configurações' page is PR 3, after a
-  mockup):** the sign-in `electron/googleAuth.cjs` (code + PKCE S256, a
-  one-request listener on 127.0.0.1, the system's browser, never a KERYX
-  window; scopes `drive.appdata openid email`; the refresh token sealed in
-  settings.json `"google"`, the access token in memory; `invalid_grant` =
-  `{ email, refused }`, the engine's state "auth" and the bell, no retry
-  loop; Sair revokes), the client in `electron/googleConfig.cjs` (Google
-  requires the client secret even for a desktop client; it is **never in
-  git**: the builder's shell has `KERYX_GOOGLE_CLIENT_SECRET`, electron-builder's
+  object without its end line by bytes (`part`: cut short). `state/<pc>.json`
+  and `computers/<pc>.json` are replaced whole. **The sign-in**
+  `electron/googleAuth.cjs` (code + PKCE S256, a one-request listener on
+  127.0.0.1, the system's browser, never a KERYX window; scopes
+  `drive.appdata openid email`; the refresh token sealed in settings.json
+  `"google"`, the access token in memory; `invalid_grant` = `{ email,
+  refused }`, the engine's state "auth" and the bell, no retry loop; Sair
+  revokes), the client in `electron/googleConfig.cjs` (Google requires the
+  client secret even for a desktop client; it is **never in git**: the
+  builder's shell has `KERYX_GOOGLE_CLIENT_SECRET`, electron-builder's
   beforePack writes the gitignored `electron/googleSecret.json` and afterPack
   removes it, `scripts/google-secret.cjs`; no variable = the build stops,
-  `KERYX_BUILD_WITHOUT_GOOGLE=1` for a test build); the adapter `electron/syncStore/drive.cjs` (REST over
-  fetch, `appDataFolder` only, one full listing then `changes.list`,
-  multipart create, resumable media in 8 MB chunks, Range downloads,
-  backoff with Retry-After; tested against
-  `electron/fixtures/fakeDriveServer.cjs`); `sync.store = "drive"` and the
-  ops `googleSignIn`/`googleStatus`/`googleSignOut`/`useDrive` in
-  syncControl. **Compaction** (`compact` in sync.cjs, in `collect`):
-  every 14 days a computer's own confirmed objects older than 14 days that
-  every computer that counts has read (v2 state) become
-  `changes/<pc>/<lo>-<hi>.jsonl` (last line per row, every User line, the
-  end line with `range`; read back before the originals go); readers take
-  a range as read when all its numbers are (`parseChanges` → `{ seq, hi,
-  range }`: use `hi` where the highest number matters). Sessions never sign
-  in to Google (`docs/google-drive-setup.md`, the owner's steps).
-  **On Drive there is no church code** (owner 2026-10-27, item 4; §8b
-  item 9): the Google account is the access control, as in Holyrics. The
-  key is 32 random bytes in Drive's `keryx-sync.json` (v 2: `key` beside
+  `KERYX_BUILD_WITHOUT_GOOGLE=1` for a test build); the adapter
+  `electron/syncStore/drive.cjs` (REST over fetch, `appDataFolder` only, one
+  full listing then `changes.list`, multipart create, resumable media in
+  8 MB chunks, Range downloads, backoff with Retry-After; tested against
+  `electron/fixtures/fakeDriveServer.cjs`). **Compaction** (`compact` in
+  sync.cjs, in `collect`): every 14 days a computer's own confirmed objects
+  older than 14 days that every computer that counts has read (v2 state)
+  become `changes/<pc>/<lo>-<hi>.jsonl` (last line per row, every User line,
+  the end line with `range`; read back before the originals go); readers
+  take a range as read when all its numbers are (`parseChanges` → `{ seq,
+  hi, range }`: use `hi` where the highest number matters). Sessions never
+  sign in to Google (`docs/google-drive-setup.md`, the owner's steps).
+  **The account is the key** (owner 2026-10-27, item 4; §8b item 9): 32
+  random bytes in the account's `keryx-sync.json` (v 2: `key` beside
   `id`/`check`/`removed`/`mac`), made by the first computer that enters
-  (`joinDrive` in syncPairing.cjs, `putIfAbsent`, first made wins) and
-  read by the rest; lines stay signed with it (damage, not a password).
+  (`joinDrive` in syncPairing.cjs, `putIfAbsent`, first made wins) and read
+  by the rest; every line is signed with it (damage, not a password).
   `googleSignIn` does it all: Drive, join or make the key (`joined: {
   created, sent }`, status `accountNew`), off the Desconectar list,
   `store.snapshot`; `googleCancel`/`googleReopen` for the waiting browser
   (the IPC error carries `code` "canceled"). Kept as `sync.drive = { email,
-  id, key, joinedAt, accountNew }`, sealed; **`sync.pairing` stays the
-  folder's code, untouched** (the two never share a key; back to the
-  folder needs no code). A computer with the key writes a missing or
-  damaged file back with the same key; a key that changed there, or one
-  that will not open here, is joined again by itself on a pass; only a
-  sign-in readmits a desconectado one (G3 = A). `create`/`join`/`rotate`/
-  `showCode` refuse on Drive. The threat note (Desconectar is not a
-  revocation: remove KERYX's access in the Google account) is in §8b.
-  Configurações › Sincronização's main side
-  `electron/syncControl.cjs` (`keryx:sync`; the key and code sealed with
-  safeStorage), the section `settings/SyncSection.jsx` (pt-BR status in
-  `src/lib/console/syncView.js`, one poll in `useSyncStatus`). **PR 3, the
-  page around the church's Google account** (owner's mockup "Sincronização ·
+  id, key, joinedAt, accountNew }`, sealed with safeStorage. A computer
+  with the key writes a missing or damaged file back with the same key; a
+  key that changed there, or one that will not open here, is joined again
+  by itself on a pass; only a sign-in readmits a desconectado one (G3 = A),
+  and only from a Desconectar made before it (a readmit Drive failed is
+  retried by the passes; one made after the sign-in stays).
+  The threat note (Desconectar is not a revocation: remove KERYX's access in
+  the Google account) is in §8b. Configurações › Sincronização's main side
+  `electron/syncControl.cjs` (`keryx:sync`: status, now, setPaused,
+  remove/restore, google*, leave), the section `settings/SyncSection.jsx`
+  (pt-BR status in `src/lib/console/syncView.js`, one poll in
+  `useSyncStatus`). **The page** (PR 3, owner's mockup "Sincronização ·
   conta Google", 2026-10-26, G1–G5 = A): `googlePage` picks one of Entrar
   com Google (no account), "Termine a entrada no navegador" (Cancelar,
   Abrir de novo; Google's 5 minutes), the account (Conta, Andamento with
@@ -270,10 +264,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   vai e o que fica, Músicas repetidas, Sair da conta…), board 4's problems
   on top (`pageProblems`: Entre de novo, desconectado, an account with no
   KERYX data yet — Trocar de conta / É esta mesmo, kept per e-mail in
-  localStorage `keryx.sync.accountOk` —, the space above 90 %), and a
-  computer still on the folder (G4: the banner with its path and 3 steps on
-  top of the old folder rows, `SyncFolderSteps.jsx`, until it enters; the
-  bell once, `googleNoticed` in its settings). Entering is
+  localStorage `keryx.sync.accountOk` —, the space above 90 %), and **a
+  computer that synced by the folder on 0.2.21** (settings `sync.folder`):
+  it does not sync (`store: null`, its outbox records nothing) and shows
+  only the banner (G4: its path, 3 steps, "Até entrar, este computador não
+  sincroniza com os outros"), the cloud red, the bell once (`googleNoticed`);
+  entering merges what it has and forgets `folder` and its old
+  `pairing`; nothing in the folder is read, written or deleted. Entering is
   `signInWithGoogle` (`src/hooks/useGoogleSync.js`), the same from the page
   and the cloud; G1: a computer with songs merges at once and one toast
   (`joinNote`) says how many came and went. **The cloud beside Ver is always
@@ -288,15 +285,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`store.snapshot`), never replaces; likely duplicate songs are
   `shared/syncDuplicates.mjs` (Juntar em uma / Manter as duas,
   `User.song_duplicates_kept`; "parece repetida" in the Biblioteca).
-  "Tirar" pauses a computer (the code file's `removed` list); "Trocar o
-  código" cuts it. Restoring or importing on a computer that syncs asks
-  ("Voltar todos", by default, or "Só este computador", which leaves).
-  The outbox records only while syncing; what a newer version sends is
-  parked (`_parked`) and a remote row never erases a column its sender
-  does not know. Tests use temp stores and the fake Drive (a temp folder
-  for the folder adapter's own cases, the fake Drive server for the Drive
-  adapter's); only real Drive folders and the owner's real account confirm
-  the rest (docs/checklist-pc-igreja.md, item 8).
+  Restoring or importing on a computer that syncs asks ("Voltar todos", by
+  default, or "Só este computador", which leaves). The outbox records only
+  while syncing; what a newer version sends is parked (`_parked`) and a
+  remote row never erases a column its sender does not know. Tests use temp
+  stores and the fake Drive (the fake Drive server for the Drive adapter's
+  and syncControl's); only the owner's real account confirms the rest
+  (docs/checklist-pc-igreja.md, item 8).
   **What travels** (Rodada G7): every `SYNC_ENTITIES` row and every
   `keryx-media://` file any of its fields names. The whole-church test in
   `electron/sync.test.cjs` (`churchInABox`: a row of every synced entity,
@@ -310,8 +305,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   installed editions (`bibles`, names only), and Bíblia e músicas says
   "Falta a NVI aqui" with Instalar aqui (`biblesMissingHere`); an edition
   of the church's own asks for its file instead (`own`). The section's
-  "O que vai e o que fica" (with the Drive hints) is `SYNC_GOES`/`SYNC_STAYS`
-  in syncView.js: change it with the scope.
+  "O que vai e o que fica" is `GOOGLE_GOES`/`GOOGLE_STAYS` in syncView.js:
+  change it with the scope.
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by
@@ -1235,8 +1230,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   just before Esc — `lastFromEnd`, `lastStays`, `columnSource` in
   `src/lib/console/lastOnAir.js`, tested; sessionStorage like the Prévia),
   only when slides were on air (a video or a picture alone does not count),
-  Limpar texto (C) the same when it took slides off; a band "Saiu do ar ·
-  clique num slide para preparar de novo", no green row, the slide it
+  Limpar texto (C) the same when it took slides off; no band (owner
+  2026-10-27: the "Saiu do ar" band is gone), no green row, the slide it
   stopped on in the grey `--next-ring` with "parou aqui" (`is-stopped`); a
   click prepares a slide (the Prévia stays empty until then), a double
   click sends it, the footer's arrows move the "parou aqui"; it goes when
@@ -1516,8 +1511,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   reaches every window with the whole row, deletes included.
 - **No login.** `auth.me()` is one local operator profile (`entities.User`
   maps to it whatever id is passed). Don't add features that assume
-  accounts: the sync between the church's computers (`electron/sync.cjs`)
-  goes through a shared folder, with no sign-in. The profile and the church's preferences are read through
+  accounts: the one sign-in is the church's Google account for the sync
+  between its computers (`electron/sync.cjs`), never a person's. The profile and the church's preferences are read through
   `src/hooks/useUser.js` (`useUser`, `usePrefs`, `getPrefs`, `updateUser`;
   null = default, `src/lib/prefs/schema.js`): a preference that should ride
   a backup is a User field, never localStorage (that is for this computer:
@@ -1584,6 +1579,29 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/verseMarks.js` (numbers in sequence only). Favourites and notes
   are `BibleNote` rows (`useBibleNotes`). Never bundle Bible text: the
   editions are copyrighted; churches install them (`electron/bible.cjs`).
+  **Bíblias neste computador** (owner 2026-10-27, "as mais usadas,
+  instaladas sozinhas", pick C of three): the first time the console opens
+  on a computer never asked with no edition installed it asks which to
+  download (`BibleSetupDialog.jsx`; `setupAsks`, `setupRows` in
+  `src/lib/console/bibleSetup.js`, tested), the most used ones ticked —
+  `DEFAULT_BIBLES` NVI, ARA, ARC, NTLH in `shared/bibleSetup.mjs` (the
+  rules, tested) —, the church's own files never listed; "Baixar n
+  Bíblias" records the answer and the main process downloads them in the
+  background, one at a time, each whole or nothing as Baixar does
+  (`electron/bibleSetup.cjs`, tested: settings.json `bibleSetup`, retried
+  at launch, every 10 min while any waits, on resume and when the console
+  sees the internet back; no internet ends a pass, the source answering
+  wrong gives up after `MAX_TRIES` or at once for a file that is not a
+  whole Bible; the end rings the bell, the console toasts
+  `finishedWords`). KERYX still never takes a publisher's edition by
+  itself: the click is the church's, the licence line is on the dialog.
+  "Agora não" records the answer; Esc only closes it this time. Reopened
+  from Bíblias instaladas › "Escolher as Bíblias…" (installed rows held
+  ticked, a `setupLine` says what waits or failed, Tentar de novo); the
+  version in use follows the answer when it was left out
+  (`defaultAfterSetup`). The browser preview runs the same rules in the
+  page (`src/api/backends/preview.js`); a smoke run never asks (main.cjs
+  writes the answer first).
 - **Fundos gerados** (2026-10-12): a background the screens compute, never
   a file — `background: { kind: "generator", value: <id>, gen: {...} }` in
   the live state. What the numbers are is `shared/generators.mjs`

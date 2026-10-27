@@ -55,6 +55,13 @@ ipcRenderer.on("keryx:notifications", (_event, list) => {
         try { listener(list); } catch (err) { console.error("[keryx] notifications listener failed:", err); }
     }
 });
+// Bíblias neste computador: the background downloads' state (electron/bibleSetup.cjs).
+const bibleSetupListeners = new Set();
+ipcRenderer.on("keryx:bible:setup", (_event, state) => {
+    for (const listener of bibleSetupListeners) {
+        try { listener(state); } catch (err) { console.error("[keryx] bible setup listener failed:", err); }
+    }
+});
 
 // The console's zoom changed (Ctrl+= / Ctrl+− / Ctrl+0, electron/consoleZoom.cjs).
 const zoomListeners = new Set();
@@ -147,6 +154,16 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         onlineChapter: (code, book, chapter) => ipcRenderer.invoke("keryx:bible:online-chapter", { code, book, chapter }),
         install: (version) => ipcRenderer.invoke("keryx:bible:install", { version }),
         installFromFile: (version) => ipcRenderer.invoke("keryx:bible:install-file", { version }),
+        // Bíblias neste computador (electron/bibleSetup.cjs): the first
+        // opening's question and the downloads it starts, in the background.
+        setup: () => ipcRenderer.invoke("keryx:bible:setup", { op: "state" }),
+        setupChoose: (versions) => ipcRenderer.invoke("keryx:bible:setup", { op: "choose", versions }),
+        setupDismiss: () => ipcRenderer.invoke("keryx:bible:setup", { op: "dismiss" }),
+        setupRetry: () => ipcRenderer.invoke("keryx:bible:setup", { op: "retry" }),
+        onSetup(listener) {
+            bibleSetupListeners.add(listener);
+            return () => bibleSetupListeners.delete(listener);
+        },
         // An edition of the church's own (electron/bible.cjs createOwnInstaller):
         // pick and read a file, install the reading, or delete one.
         readOwn: () => ipcRenderer.invoke("keryx:bible:own", { op: "read" }),

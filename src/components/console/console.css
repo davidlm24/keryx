@@ -416,9 +416,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The item Esc took off stays in the column (Rodada Q7, S4 = A): a band over
    the slides, no green row, the slide where it stopped in the grey ring of
    "próximo" with "parou aqui" on its label line. */
-.console .slides-gone { display: flex; align-items: center; gap: var(--space-2); flex: none; margin: 0 var(--space-1) var(--space-1); padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-ui); line-height: 16px; }
-.console .slides-gone > svg { flex: none; width: 14px; height: 14px; color: var(--fg-3); }
-.console .slides-gone b { font-weight: 600; color: var(--fg-1); }
 .kx.console .kx-slide.is-stopped, .kx.console .kx-slide.is-stopped:hover { box-shadow: var(--next-ring); }
 .console .kx-slide.is-stopped > .kx-slide-n { color: var(--fg-1); }
 .console .kx-slide-stop { color: var(--fg-1); }
@@ -1162,26 +1159,11 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-note { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; margin: var(--space-1) var(--space-1) 0; padding: 7px var(--space-3); border-radius: var(--radius-control); background: var(--warn-tint); border: 1px solid color-mix(in srgb, var(--warn) 25%, transparent); color: var(--fg-1); font-size: var(--fs-ui); line-height: 1.5; }
 .console .cfg .cfg-note > span { flex: 1 1 260px; min-width: 0; }
 .console .cfg .cfg-note b { font-weight: 600; }
-.console .cfg .cfg-sync-made { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin: var(--space-2) var(--space-3); padding: var(--space-3); border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 55%, transparent); }
-.console .cfg .cfg-sync-bigcode { font: 600 26px/1.2 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .1em; color: var(--fg-1); font-variant-numeric: tabular-nums; user-select: all; }
 .console .cfg .cfg-sync-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; }
-.console .cfg .cfg-sync-codein { width: 132px; height: 28px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line-strong); padding: 0 8px; font: 500 var(--fs-content-lg)/1 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
-.console .cfg .cfg-sync-codein:focus-visible { outline: 2px solid var(--rh, var(--brand)); outline-offset: 1px; }
-.console .cfg .cfg-sync-codein.is-ok { box-shadow: inset 0 0 0 1px var(--ok); }
-.console .cfg .cfg-sync-codein.is-err { box-shadow: inset 0 0 0 1px var(--warn); }
 .console .cfg .cfg-sync-full { flex-basis: 100%; }
-.console .cfg .cfg-sync-codeshown { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .08em; }
 .console .cfg .cfg-sync-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--fg-3); }
 .console .cfg .cfg-sync-dot.is-ok { background: var(--ok); }
 .console .cfg .cfg-sync-dot.is-wait { background: var(--warn); }
-.console .cfg .cfg-sync-pcs { display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0; }
-.console .cfg .cfg-sync-pc { display: flex; align-items: center; gap: var(--space-2); min-height: 30px; padding: 2px var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); min-width: 0; }
-.console .cfg .cfg-sync-pc.is-bad { background: color-mix(in srgb, var(--warn) 10%, var(--bg-2)); }
-.console .cfg .cfg-sync-pc-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-ui); }
-.console .cfg .cfg-sync-pc-t b { font-weight: 500; color: var(--fg-1); }
-.console .cfg .cfg-sync-tag { flex: none; font-size: var(--fs-meta); padding: 0 6px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-3); white-space: nowrap; }
-.console .cfg .cfg-sync-tag.is-ok { color: var(--ok-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 55%, transparent); }
-.console .cfg .cfg-sync-tag.is-warn { color: var(--warn-fg, var(--warn)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 55%, transparent); }
 .console .cfg .cfg-sync-dups { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; }
 .console .cfg .cfg-sync-dup { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); }
 .console .cfg .cfg-sync-dup-t { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); }
@@ -1869,6 +1851,23 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .ob-dialog .ob-note { margin: 0; }
 /* A short window scrolls the dialog; Instalar and Cancelar stay in view. */
 .console .ob-dialog .acts { position: sticky; bottom: calc(-1 * var(--space-4)); margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-4)); padding: var(--space-3) var(--space-4) var(--space-4); background: var(--bg-2); }
+/* Bíblias neste computador (BibleSetupDialog.jsx): the import dialog's
+   frame, narrower, one row per edition with its check, its licence chip. */
+.console .dialog.confirm-dialog.import-dialog.bs-dialog { width: min(560px, calc(100% - 32px)); }
+.console .bs-dialog .bs-lead { margin: 0; padding: var(--space-3) var(--space-3) var(--space-1); color: var(--fg-2); font-size: var(--fs-ui); line-height: 1.5; }
+.console .bs-dialog .bs-list { min-height: 0; }
+.console .bs-dialog .bs-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); min-height: var(--row); padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); cursor: pointer; }
+.console .bs-dialog .bs-row:hover { background: var(--bg-3); }
+.console .bs-dialog .bs-row.is-here { cursor: default; }
+.console .bs-dialog .bs-row input { margin: 0 auto; width: 14px; height: 14px; accent-color: var(--brand); }
+.console .bs-dialog .bs-main { display: flex; flex-direction: column; min-width: 0; }
+.console .bs-dialog .bs-name { font-size: var(--fs-content); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg-1); }
+.console .bs-dialog .bs-meta { font-size: var(--fs-meta); color: var(--fg-3); }
+.console .bs-dialog .bs-row .bib-lic { margin-left: 0; }
+.console .bs-dialog .bs-note { margin: 0; padding: var(--space-1) var(--space-3) var(--space-2); line-height: 1.5; }
+.console .cfg .bib-setup { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; margin: var(--space-1) var(--space-1) 0; padding: 7px var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font-size: var(--fs-ui); line-height: 1.5; }
+.console .cfg .bib-setup > span { flex: 1; min-width: 0; }
+.console .cfg .bib-own { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 /* Ajuda › Primeiros passos (Popovers.jsx FirstSteps): numbered steps, each
    with the button that opens what it names; scrolls on a short window. */
 .console .dialog.fs { width: min(600px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); }
@@ -2296,7 +2295,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover * { background: HighlightText; color: Highlight; }
   .console :is(.kx-slide, .onair-card).is-next:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
   .console .kx-slide.is-stopped:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
-  .console .slides-gone { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .mv-th.is-air { outline: 3px solid Highlight; outline-offset: 2px; }
   /* Relatar um problema's answer (sent, queued, refused) is a tinted box. */
   .console .report-dialog .rp-res { outline: 1px solid CanvasText; outline-offset: -1px; }

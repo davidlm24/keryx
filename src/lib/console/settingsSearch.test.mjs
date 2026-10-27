@@ -28,7 +28,6 @@ const FILES = {
     "ConsoleSection.jsx": "console",
     "DadosSection.jsx": "backup",
     "SyncSection.jsx": "sincronizacao",
-    "SyncFolderSteps.jsx": "sincronizacao",
     "SyncDuplicates.jsx": "sincronizacao",
     "SobreSection.jsx": "sobre",
 };

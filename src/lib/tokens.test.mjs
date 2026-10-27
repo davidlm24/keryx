@@ -39,7 +39,6 @@ function declarations(css) {
 const FONT_SIZE_KEPT = [
     [/\.kx-mark::after$/, "the logo's K, drawn to the size of its mark"],
     [/\.fd-preview$/, "a font specimen in the Fontes do computador dialog"],
-    [/\.cfg-sync-bigcode$/, "the church's sync code, shown big to be copied by hand"],
 ];
 const kept = (selector) => FONT_SIZE_KEPT.some(([re]) => re.test(selector));
 const SCALE = ["--fs-meta", "--fs-ui", "--fs-content", "--fs-content-lg", "--fs-live", "--fs-clock", "--fs-count"];

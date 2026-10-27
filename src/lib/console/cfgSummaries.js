@@ -2,7 +2,7 @@
 // settings/parts.jsx; Rodada H1, owner 2026-10-19): what is chosen, computed
 // from the section's own values so it is never stale. State lives here, never
 // in a header hint. Pure (tested); `outputsSummary` is in outputs.js,
-// `syncSummary` in syncView.js, `transitionsSummary` in transitions.js.
+// `transitionsSummary` in transitions.js.
 import { linesLimit } from "../songImport.js";
 
 const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
