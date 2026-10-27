@@ -696,7 +696,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         },
         running: () => Boolean(server && server.listening),
         port: () => (server && server.listening ? server.address().port : null),
-        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen, role }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle remoto") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
+        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen, role }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
         // Desconectar todos: the phones' event streams close now (their
         // cookie stops working with the new key the caller saves). role:
         // only the Controle's ("control") or only the Equipe's ("team").
