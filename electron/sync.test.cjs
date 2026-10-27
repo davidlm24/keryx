@@ -1,9 +1,8 @@
 // node --test electron/sync.test.cjs   (npm test)
 // Two or three computers (temp stores, each with its media folder) and one
 // fake Google Drive (syncStore/fakeDrive.cjs: immutable objects, names that
-// are not unique, a listing that can lag) standing in for the church's. The
-// last tests run the folder adapter on a temp folder, as Drive para
-// computador keeps one in step, with computers on an older KERYX in it.
+// are not unique, a listing that can lag) standing in for the church's
+// account. The shared folder of before went in PR 4.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
@@ -11,22 +10,20 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { createStore, PROFILE_ID } = require("./db/store.cjs");
-const { createSyncEngine, inspectStore, inspectFolder, mediaRefs, coalesce, addRange, endLine, STATE_KEY } = require("./sync.cjs");
-const { keysFor, createPairing, joinPairing, readPairing, updateRemoved, joinDrive, secretOf, removedOf, PAIRING_FILE } = require("./syncPairing.cjs");
-const { createFakeDrive, createFolderStore, changesName } = require("./syncStore/index.cjs");
+const { createSyncEngine, mediaRefs, coalesce, addRange, endLine, STATE_KEY } = require("./sync.cjs");
+const { keysFor, updateRemoved, joinDrive, secretOf, removedOf, PAIRING_FILE } = require("./syncPairing.cjs");
+const { createFakeDrive, changesName } = require("./syncStore/index.cjs");
 const schema = require("./db/schema.json");
 const { SYNC_ENTITIES, ON_EACH_COMPUTER, LOCAL_USER_FIELDS, syncRow } = require("./db/syncScope.cjs");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-sync-"));
 
-// The church's code, already typed on every test computer unless a test says
-// otherwise (the key is what the code would make; the first pass writes the
-// code's file into the store).
+// The account's key, already joined on every test computer unless a test
+// says otherwise (the first pass writes its file into the store).
 const CHURCH = { id: "igreja-de-teste-0001", key: crypto.randomBytes(32) };
 const signed = keysFor(CHURCH.key, CHURCH.id);
 
-// A computer on a fake Drive (`where`), or on a folder (a path), or on
-// whatever a function returns.
+// A computer on a fake Drive (`where`), or on whatever a function returns.
 function computer(where, opts = {}) {
     const dir = opts.dir || tmp();
     const mediaDir = path.join(dir, "media");
@@ -34,12 +31,11 @@ function computer(where, opts = {}) {
     const file = path.join(dir, "keryx.db");
     const store = createStore({ file, schema, log: () => {} });
     const pick = typeof where === "function" ? where : () => where;
-    const onFolder = typeof pick() === "string" || opts.folder;
     let pairing = opts.pairing === undefined ? CHURCH : opts.pairing;
     const engine = createSyncEngine({
         store,
         mediaDir,
-        ...(onFolder ? { getFolder: pick } : { getStore: pick }),
+        getStore: pick,
         getPairing: () => pairing,
         log: () => {},
         // The outbox goes at every pass here; the wait for a burst has its own test.
@@ -586,7 +582,7 @@ test("a pass runs at a time; local changes ask for one; remote ones do not echo"
 
 // -- PCs verificados ------------------------------------------------------------
 
-test("lines without the church's signature are counted for their computer, never applied", async () => {
+test("lines without the account's signature are counted for their computer, never applied", async () => {
     const drive = createFakeDrive();
     const a = computer(drive);
     await a.engine.pass(); // writes the code's file
@@ -613,187 +609,6 @@ test("lines without the church's signature are counted for their computer, never
     const again = await a.engine.pass();
     assert.equal(again.rejected, 0);
     assert.equal(again.computers.find((c) => c.pc === stranger.id).verified, false);
-    a.close();
-});
-
-test("a computer joins with the church's code; a wrong code or a typo is told apart", async () => {
-    const drive = createFakeDrive();
-    const { makeCode } = await import("../shared/syncCode.mjs");
-    const valid = makeCode();
-    const typo = valid.slice(0, -1) + (valid.endsWith("0") ? "1" : "0");
-    assert.deepEqual(await joinPairing(drive, typo), { error: "check" });
-    assert.equal((await joinPairing(drive, "K7QM-2H")).error, "short");
-
-    const a = computer(drive, { pairing: null });
-    assert.equal((await a.engine.pass()).state, "unpaired", "a store and no code: nothing happens");
-    assert.equal((await inspectStore(drive)).code, "missing");
-    const nothingYet = await joinPairing(drive, valid);
-    assert.equal(nothingYet.error, "nocode");
-
-    const made = await createPairing(drive, { pc: a.store.pcId });
-    assert.match(made.code, /^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
-    const file = JSON.parse(drive.text(PAIRING_FILE));
-    assert.equal(file.id, made.id);
-    assert.ok(!JSON.stringify(file).includes(made.code.replace(/-/g, "")), "the code is never in the store");
-    assert.deepEqual(await createPairing(drive, { pc: a.store.pcId }), { error: "exists" }, "a second code needs asking");
-    assert.equal(drive.all(PAIRING_FILE).length, 1, "and leaves nothing behind");
-
-    a.pair({ id: made.id, key: made.key });
-    a.store.call("Song", "create", [{ title: "Da primeira" }]);
-    assert.equal((await a.engine.pass()).state, "ok");
-
-    // Another church's code, valid but not this store's.
-    const elsewhere = createFakeDrive();
-    const theirs = await createPairing(elsewhere, { pc: crypto.randomUUID() });
-    assert.deepEqual(await joinPairing(drive, theirs.code), { error: "wrong" });
-
-    // Typed the way people type it.
-    const typed = ` ${made.code.toLowerCase().replace(/-/g, " ")} `;
-    const joined = await joinPairing(drive, typed);
-    assert.equal(joined.id, made.id);
-    assert.ok(joined.key.equals(made.key));
-    const b = computer(drive, { pairing: { id: joined.id, key: joined.key } });
-    b.store.call("Song", "create", [{ title: "Da segunda" }]);
-    const c = computer(drive, { pairing: { id: joined.id, key: joined.key } });
-    await rounds([a, b, c], 2);
-    for (const pc of [a, b, c]) assert.deepEqual(titles(pc), ["Da primeira", "Da segunda"]);
-    const seen = await inspectStore(drive);
-    assert.equal(seen.code, "ok");
-    assert.equal(seen.computers.length, 3, "each says what it read (its state object)");
-    assert.equal(seen.computers.filter((x) => x.files > 0).length, 2, "two wrote changes; the third only read");
-    for (const pc of [a, b, c]) pc.close();
-});
-
-test("two computers make a code at the same moment: the first made counts, the other is told", async () => {
-    const drive = createFakeDrive({ lag: 0 });
-    const first = await createPairing(drive, { pc: "a" });
-    assert.ok(first.code);
-    assert.deepEqual(await createPairing(drive, { pc: "b" }), { error: "exists" }, "the listing shows the first one: the second goes");
-    assert.equal(drive.all(PAIRING_FILE).length, 1);
-
-    // Neither listing shows the other's yet: both think they made it.
-    const later = createFakeDrive({ lag: 5 });
-    const one = await createPairing(later, { pc: "a" });
-    const two = await createPairing(later, { pc: "b" });
-    assert.ok(one.code && two.code);
-    later.lag = 0;
-    later.reveal();
-    assert.equal(later.all(PAIRING_FILE).length, 2, "two objects of one name");
-    const a = computer(later, { pairing: { id: one.id, key: one.key } });
-    const b = computer(later, { pairing: { id: two.id, key: two.key } });
-    // The listing still lags those two by a few calls.
-    for (let i = 0; i < 6; i++) await later.list("");
-    assert.equal((await a.engine.pass()).state, "ok", "the first made is the code");
-    const lost = await b.engine.pass();
-    assert.equal(lost.state, "mismatch", "the other types the code that stayed");
-    assert.equal((await readPairing(later)).file.id, one.id);
-    a.close();
-    b.close();
-});
-
-test("the code changes: a computer with the old one stops, keeps its changes, and catches up with the new one", async () => {
-    const drive = createFakeDrive();
-    const first = await createPairing(drive, { pc: "x" });
-    const old = { id: first.id, key: first.key };
-    const a = computer(drive, { pairing: old });
-    const b = computer(drive, { pairing: old });
-    a.store.call("Song", "create", [{ title: "Antes" }]);
-    b.store.call("Song", "create", [{ title: "Antes, de B" }]);
-    await rounds([a, b], 2);
-    assert.equal(songs(b).length, 2);
-    const fromBBefore = objectsOf(drive, b).length;
-
-    // A makes a new code (to leave out a computer that should not sync any more).
-    const next = await createPairing(drive, { pc: a.store.pcId, replace: true });
-    a.pair({ id: next.id, key: next.key });
-    assert.equal(drive.all(PAIRING_FILE).length, 1, "replaced whole, not beside");
-    b.store.call("Song", "create", [{ title: "Enquanto isso" }]);
-    let status = await b.engine.pass();
-    assert.equal(status.state, "mismatch");
-    assert.match(status.error, /código/);
-    assert.equal(b.store.outbox().length, 1, "nothing written with the old code: the change waits");
-    assert.equal(objectsOf(drive, b).length, fromBBefore, "no new object from B");
-    status = await a.engine.pass();
-    assert.equal(status.state, "ok");
-    assert.equal(songs(a).length, 2);
-
-    // B types the new code.
-    const joined = await joinPairing(drive, next.code);
-    b.pair({ id: joined.id, key: joined.key });
-    await rounds([b, a], 2);
-    assert.deepEqual(titles(a), ["Antes", "Antes, de B", "Enquanto isso"]);
-    assert.equal(b.store.outbox().length, 0);
-    // A read B's objects again from the start under the new code: B's lines
-    // from before the change no longer verify (A had them already), its new
-    // ones do.
-    const fromB = (await a.engine.pass()).computers.find((c) => c.pc === b.store.pcId);
-    assert.equal(fromB.verified, true);
-    assert.ok(fromB.rejected >= 1);
-    a.close();
-    b.close();
-});
-
-test("Tirar: a computer taken out stops, the others skip it, and typing the code brings it back", async () => {
-    const drive = createFakeDrive();
-    const a = computer(drive);
-    const b = computer(drive);
-    const c = computer(drive);
-    a.store.call("Song", "create", [{ title: "Antes" }]);
-    b.store.call("Song", "create", [{ title: "De B, antes" }]);
-    await rounds([a, b, c], 2);
-
-    // A takes B out.
-    const list = await updateRemoved(drive, CHURCH, (now) => [...now, { pc: b.store.pcId, at: new Date().toISOString(), by: a.store.pcId }], { pc: a.store.pcId });
-    assert.deepEqual(list.map((r) => r.pc), [b.store.pcId]);
-    b.store.call("Song", "create", [{ title: "De B, tirado" }]);
-    const out = await b.engine.pass();
-    assert.equal(out.state, "removed");
-    assert.equal(out.removed.by, a.store.pcId);
-    assert.equal(b.store.outbox().length, 1, "its change waits");
-    // An object B wrote anyway (it had not seen the list yet) is skipped too.
-    const late = { seq: 9, entity: "Song", id: crypto.randomUUID(), op: "upsert", row: { title: "Atrasada" }, at: new Date().toISOString(), pc: b.store.pcId };
-    drive.put(changesName(b.store.pcId, 50), signed.sign(JSON.stringify(late)) + "\n" + endLine(1));
-    const seen = await c.engine.pass();
-    assert.ok(!titles(c).includes("Atrasada"), "a computer taken out is not read");
-    assert.equal(seen.computers.find((x) => x.pc === b.store.pcId).removed.by, a.store.pcId);
-
-    // A list edited without the key takes nobody out.
-    const code = drive.all(PAIRING_FILE)[0];
-    const forged = JSON.parse(drive.bytesOf(code.id).toString());
-    forged.removed.push({ pc: c.store.pcId, at: "x", by: "y" });
-    drive.rewrite(code.id, JSON.stringify(forged));
-    assert.equal((await c.engine.pass()).state, "ok", "the forged entry has no valid mac");
-    assert.equal((await b.engine.pass()).state, "ok", "and the whole list stops counting while it does not verify");
-    await updateRemoved(drive, CHURCH, (now) => now.filter((r) => r.pc !== c.store.pcId), { pc: a.store.pcId });
-
-    // B is back once the list no longer names it (B typing the code takes
-    // itself off: syncControl's join).
-    await updateRemoved(drive, CHURCH, (now) => [...now, { pc: b.store.pcId, at: new Date().toISOString(), by: a.store.pcId }], { pc: a.store.pcId });
-    assert.equal((await b.engine.pass()).state, "removed");
-    await updateRemoved(drive, CHURCH, (now) => now.filter((r) => r.pc !== b.store.pcId), { pc: b.store.pcId });
-    await rounds([b, a, c], 2);
-    for (const pc of [a, c]) assert.ok(titles(pc).includes("De B, tirado"));
-    for (const pc of [a, b, c]) pc.close();
-});
-
-test("the code's file: written back when it goes missing, waited for while it arrives", async () => {
-    const drive = createFakeDrive();
-    const a = computer(drive);
-    await a.engine.pass();
-    assert.equal((await readPairing(drive)).file.id, CHURCH.id);
-
-    drive.drop(PAIRING_FILE);
-    assert.equal((await a.engine.pass()).state, "ok");
-    assert.equal(drive.all(PAIRING_FILE).length, 1, "any computer with the code writes it back");
-
-    const code = drive.all(PAIRING_FILE)[0];
-    drive.rewrite(code.id, '{"v":1,"id":"igreja');
-    a.store.call("Song", "create", [{ title: "Espera" }]);
-    const status = await a.engine.pass();
-    assert.equal(status.state, "offline");
-    assert.match(status.error, /chegando/);
-    assert.equal(a.store.outbox().length, 1);
-    assert.equal(drive.text(PAIRING_FILE), '{"v":1,"id":"igreja', "never written over");
     a.close();
 });
 
@@ -939,24 +754,6 @@ test("Drive: Desconectar keeps the key in the file; the computer stops until it 
     assert.ok(titles(a).includes("Desconectado"));
     a.close();
     b.close();
-});
-
-test("the folder keeps the church's code: its file never carries a key, and a damaged one is never written over", async () => {
-    const folder = tmp();
-    const shared = createFolderStore(folder);
-    const made = await createPairing(shared, { pc: "a" });
-    const a = computer(folder, { pairing: { id: made.id, key: made.key } });
-    await a.engine.pass();
-    const file = JSON.parse(fs.readFileSync(path.join(folder, "sync", PAIRING_FILE), "utf8"));
-    assert.equal(file.v, 1);
-    assert.equal(file.key, undefined);
-    fs.rmSync(path.join(folder, "sync", PAIRING_FILE));
-    assert.equal((await a.engine.pass()).state, "ok");
-    assert.equal(JSON.parse(fs.readFileSync(path.join(folder, "sync", PAIRING_FILE), "utf8")).key, undefined, "written back without one");
-    fs.writeFileSync(path.join(folder, "sync", PAIRING_FILE), '{"v":1,"id":"igr');
-    assert.equal((await a.engine.pass()).state, "offline");
-    assert.equal(fs.readFileSync(path.join(folder, "sync", PAIRING_FILE), "utf8"), '{"v":1,"id":"igr');
-    a.close();
 });
 
 test("coalesce: one line per row and moment, the later write winning", () => {
@@ -1440,164 +1237,6 @@ test("a burst of edits is one object: the outbox waits for the rest, unless a ba
     a.close();
 });
 
-// -- The shared folder (the `folder` adapter, until Drive is spoken to) -------
-
-const folderPc = (folder, keys = signed) => {
-    const id = crypto.randomUUID();
-    const dir = path.join(folder, "sync", id);
-    fs.mkdirSync(dir, { recursive: true });
-    const fake = fakePc(null, keys);
-    // Its own id, written into each entry.
-    const entry = (title, extra) => ({ ...fake.entry(title, extra), pc: id });
-    return { id, dir, entry, line: fake.line, file: (n) => path.join(dir, `changes-${String(n).padStart(6, "0")}.jsonl`) };
-};
-
-test("folder: an older KERYX's file that keeps growing is read by a cursor; a half line waits; conflict copies are read; a shorter copy is read again", async () => {
-    const folder = tmp();
-    const b = computer(folder);
-    const old = folderPc(folder);
-    const file = old.file(1);
-    const x = old.entry("X");
-    const y = old.line(old.entry("Y"));
-    fs.writeFileSync(file, old.line(x) + y.slice(0, 25));
-
-    let status = await b.engine.pass();
-    assert.equal(status.state, "ok");
-    assert.deepEqual(titles(b), ["X"]);
-    assert.equal(meta(b).part[`${old.id}/changes-000001.jsonl`].at, Buffer.byteLength(old.line(x)), "the cursor stops before the half line");
-
-    // The rest arrives, and the older KERYX appends more (no end line ever).
-    fs.appendFileSync(file, y.slice(25));
-    await b.engine.pass();
-    fs.appendFileSync(file, old.line(old.entry("V")));
-    await b.engine.pass();
-    assert.deepEqual(titles(b), ["V", "X", "Y"]);
-
-    // Drive's conflict copies: an old entry again and a new one.
-    fs.writeFileSync(path.join(old.dir, "changes-000001 (1).jsonl"), old.line(x) + old.line(old.entry("Z")));
-    fs.writeFileSync(path.join(old.dir, "changes-000001-PC-RECEPCAO.jsonl"), old.line(old.entry("W")));
-    status = await b.engine.pass();
-    assert.deepEqual(titles(b), ["V", "W", "X", "Y", "Z"]);
-    assert.equal(status.computers.find((c) => c.pc === old.id).files, 3);
-
-    // Replaced by a shorter copy: read again from the start.
-    fs.writeFileSync(path.join(old.dir, "changes-000003.jsonl"), old.line(old.entry("Três")));
-    await b.engine.pass();
-    fs.writeFileSync(path.join(old.dir, "changes-000003.jsonl"), old.line(old.entry("3")));
-    await b.engine.pass();
-    assert.ok(titles(b).includes("3"));
-    b.close();
-});
-
-test("folder: a church with computers on an older KERYX keeps syncing through it", async () => {
-    const folder = tmp();
-    const a = computer(folder);
-    const old = folderPc(folder);
-    fs.writeFileSync(old.file(1), old.line(old.entry("Do antigo")));
-    a.store.call("Song", "create", [{ title: "Do novo" }]);
-    a.store.call("Song", "create", [{ title: "Do novo, 2" }]);
-    await a.engine.pass();
-    assert.deepEqual(titles(a), ["Do antigo", "Do novo", "Do novo, 2"]);
-
-    // What this one wrote is where an older KERYX reads: <pc>/changes-000001.jsonl,
-    // every line signed and of this computer, the end line no entry of anyone's.
-    const mine = path.join(folder, "sync", a.store.pcId);
-    assert.deepEqual(fs.readdirSync(mine).filter((n) => n.startsWith("changes-")), ["changes-000001.jsonl"]);
-    const lines = fs.readFileSync(path.join(mine, "changes-000001.jsonl"), "utf8").split("\n").filter(Boolean);
-    assert.equal(lines.length, 3);
-    for (const text of lines.slice(0, -1)) {
-        assert.ok(signed.verify(text));
-        const e = JSON.parse(text);
-        assert.equal(e.entity, "Song");
-        assert.equal(e.pc, a.store.pcId);
-    }
-    assert.deepEqual(JSON.parse(lines[2]), { keryx: "end", lines: 2 });
-    assert.ok(fs.existsSync(path.join(mine, "state.json")) && fs.existsSync(path.join(folder, "sync", "keryx-sync.json")));
-    // The state.json an older KERYX reads: its read cannot be taken for cursors (it holds files, never frees one).
-    assert.equal(typeof JSON.parse(fs.readFileSync(path.join(mine, "state.json"), "utf8")).read[`${old.id}/changes-000001.jsonl`], "undefined");
-    a.close();
-});
-
-test("folder: a database an older KERYX left goes on where it was", async () => {
-    const folder = tmp();
-    const a = computer(folder);
-    const old = folderPc(folder);
-    const first = old.line(old.entry("Lida antes"));
-    fs.writeFileSync(old.file(1), first);
-    // What 0.2.21 kept: a byte cursor per file, its own file number.
-    a.store.setMeta(STATE_KEY, { folder: path.resolve(folder), pairing: CHURCH.id, cursors: { [`${old.id}/changes-000001.jsonl`]: Buffer.byteLength(first) }, peers: {}, out: { pc: a.store.pcId, n: 3, used: true }, missing: [], removed: [], gc: { at: null, candidates: {}, marks: {}, collected: [] } });
-    fs.appendFileSync(old.file(1), old.line(old.entry("Nova")));
-    a.store.call("Song", "create", [{ title: "Daqui" }]);
-    const status = await a.engine.pass();
-    assert.deepEqual(status.received, { applied: 1, skipped: 0, failed: 0 }, "only the line after the cursor");
-    assert.deepEqual(titles(a), ["Daqui", "Nova"]);
-    assert.ok(fs.existsSync(path.join(folder, "sync", a.store.pcId, "changes-000004.jsonl")), "the next number after the old file's");
-    a.close();
-});
-
-test("folder: a pass does not stat what it has read to its end, nor the media", async () => {
-    const folder = tmp();
-    const a = computer(folder);
-    const b = computer(folder);
-    for (let i = 0; i < 30; i++) {
-        fs.writeFileSync(path.join(a.mediaDir, `f${i}.jpg`), `f${i}`);
-        a.store.call("Media", "create", [{ title: `F${i}`, type: "image", file_url: `keryx-media://f${i}.jpg` }]);
-        await a.engine.pass();
-    }
-    assert.equal(fs.readdirSync(path.join(folder, "sync", a.store.pcId)).filter((n) => n.startsWith("changes-")).length, 30);
-    await b.engine.pass();
-    assert.equal(b.store.call("Media", "list", []).length, 30);
-    const real = fs.promises.stat;
-    let stats = 0;
-    fs.promises.stat = (file, ...rest) => {
-        if (String(file).startsWith(path.resolve(folder))) stats += 1;
-        return real(file, ...rest);
-    };
-    try {
-        assert.equal((await b.engine.pass()).state, "ok");
-    } finally {
-        fs.promises.stat = real;
-    }
-    assert.ok(stats < 10, `${stats} stats for 30 objects and 30 files`);
-    a.close();
-    b.close();
-});
-
-test("folder: not there, nothing made; media, the code's file and what it holds are where they always were", async () => {
-    const base = tmp();
-    let folder = null;
-    const a = computer(() => folder, { folder: true });
-    a.store.call("Song", "create", [{ title: "Guardada" }]);
-    assert.equal((await a.engine.pass()).state, "off");
-    folder = path.join(base, "G-drive", "KERYX");
-    const status = await a.engine.pass();
-    assert.equal(status.state, "offline");
-    assert.match(status.error, /não está disponível/);
-    assert.ok(!fs.existsSync(folder));
-    assert.equal(a.store.outbox().length, 1, "kept for when the folder is back");
-
-    fs.mkdirSync(folder, { recursive: true });
-    fs.writeFileSync(path.join(a.mediaDir, "foto.jpg"), "picture");
-    a.store.call("Media", "create", [{ title: "Foto", type: "image", file_url: "keryx-media://foto.jpg" }]);
-    assert.equal((await a.engine.pass()).sent, 2);
-    assert.equal(fs.readFileSync(path.join(folder, "sync", "media", "foto.jpg"), "utf8"), "picture");
-    assert.equal(JSON.parse(fs.readFileSync(path.join(folder, "sync", PAIRING_FILE), "utf8")).id, CHURCH.id);
-    const b = computer(folder);
-    await b.engine.pass();
-    assert.equal(fs.readFileSync(path.join(b.mediaDir, "foto.jpg"), "utf8"), "picture");
-    const seen = await inspectFolder(folder);
-    assert.equal(seen.code, "ok");
-    assert.equal(seen.computers.length, 2);
-    assert.deepEqual(await inspectFolder(path.join(base, "nada")), { exists: false, code: "missing", computers: [] });
-    // The store's names map onto the old layout, and nothing else.
-    const store = createFolderStore(folder);
-    assert.deepEqual((await store.list("changes/")).map((o) => o.id).sort(), [`${a.store.pcId}/changes-000001.jsonl`]);
-    await assert.rejects(store.putNew("outra/coisa.txt", Buffer.from("x")), /fora da sincronização/);
-    await assert.rejects(store.putNew(changesName(a.store.pcId, 1), Buffer.from("x")), /EEXIST/, "never over an object");
-    a.close();
-    b.close();
-});
-
 // -- Compaction --------------------------------------------------------------
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -1758,25 +1397,6 @@ test("compaction stops before a number the listing does not show, and one cut sh
     assert.deepEqual(songs(c), songs(b), "both there: read twice, the same rows");
     await a.engine.pass();
     assert.deepEqual(namesOf(drive, a), [changesName(a.store.pcId, 1, 2), changesName(a.store.pcId, 3, 5)].sort());
-    for (const pc of [a, b, c]) pc.close();
-});
-
-test("folder: a compacted object is changes-<lo>-<hi>.jsonl beside the others, read back under its name", async () => {
-    const folder = tmp();
-    const time = clock();
-    const a = computer(folder, onClock(time));
-    const b = computer(folder, onClock(time));
-    await history(a, b);
-    time.ahead = 15 * DAY;
-    await b.engine.pass();
-    await a.engine.pass();
-    const dir = path.join(folder, "sync", a.store.pcId);
-    assert.deepEqual(fs.readdirSync(dir).filter((n) => n.startsWith("changes-")), ["changes-000001-000005.jsonl"]);
-    const listed = await createFolderStore(folder).list(`changes/${a.store.pcId}/`);
-    assert.deepEqual(listed.map((o) => o.name), [changesName(a.store.pcId, 1, 5)]);
-    const c = computer(folder, onClock(time));
-    await rounds([c], 1);
-    assert.deepEqual(songs(c), songs(b));
     for (const pc of [a, b, c]) pc.close();
 });
 
