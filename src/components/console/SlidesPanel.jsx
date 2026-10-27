@@ -43,7 +43,7 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
     const source = columnSource({ hand, air, last: c.last });
     const gone = source === "last";
     // The kept item as a stage (its bookkeeping out), for the Prévia and a send.
-    const lastStage = useMemo(() => { if (!c.last) return null; const { stopped: _s, key: _k, ...st } = c.last; return { ...st, fromLast: true }; }, [c.last]);
+    const lastStage = useMemo(() => { if (!c.last) return null; const { stopped: _s, key: _k, ...st } = c.last; return st; }, [c.last]);
     const slides = useMemo(() => (hand ? prev.slides : gone ? c.last.slides : air ? air.slides : []), [hand, prev, air, gone, c.last]);
     const index = hand ? prev.index : gone ? c.last.stopped : air ? air.index : -1;
     // The Prévia holds the item that is on air (another slide of it): mark both.
@@ -82,13 +82,6 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
                     <button type="button" role="tab" aria-selected={!showAir} tabIndex={showAir ? -1 : 0} className={`dock-tab ${showAir ? "" : "is-on"}`} onClick={() => setSide("prev")} title={`Na prévia: ${prev.title || "Sem título"}`} aria-label={`Na prévia: ${prev.title || "Sem título"}`}>
                         <span className="slides-dot is-prev" aria-hidden="true" /><span className="slides-tab-w" aria-hidden="true">Prévia</span><ClipTitle className="slides-tab-t" text={prev.title || "Sem título"} />
                     </button>
-                </div>
-            )}
-            {/* The band stays while a slide of it waits in the Prévia, so the list
-                does not move between the two clicks of a double click. */}
-            {(gone || (hand && prev.fromLast && !air)) && (
-                <div className="slides-gone" role="status">
-                    <Icon name="undo" /><span><b>Saiu do ar</b> · clique num slide para preparar de novo</span>
                 </div>
             )}
             {!slides.length && <Empty icon="list" title="Nenhum item em mãos">Clique num item da Setlist ou da Biblioteca.</Empty>}

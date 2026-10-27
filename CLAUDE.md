@@ -1230,8 +1230,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   just before Esc — `lastFromEnd`, `lastStays`, `columnSource` in
   `src/lib/console/lastOnAir.js`, tested; sessionStorage like the Prévia),
   only when slides were on air (a video or a picture alone does not count),
-  Limpar texto (C) the same when it took slides off; a band "Saiu do ar ·
-  clique num slide para preparar de novo", no green row, the slide it
+  Limpar texto (C) the same when it took slides off; no band (owner
+  2026-10-27: the "Saiu do ar" band is gone), no green row, the slide it
   stopped on in the grey `--next-ring` with "parou aqui" (`is-stopped`); a
   click prepares a slide (the Prévia stays empty until then), a double
   click sends it, the footer's arrows move the "parou aqui"; it goes when

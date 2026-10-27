@@ -35,7 +35,15 @@ export function lastFromEnd(before, after) {
     const content = before?.content;
     if (!content?.slides?.length || after?.content) return null;
     const at = after?.updatedAt ?? content.startedAt ?? 0;
-    const [op, args] = restoreArgs({ layer: "content", data: content });
+    const [op, restored] = restoreArgs({ layer: "content", data: content });
+    // The item's own background (its theme's) went to the Fundo layer when it
+    // was sent, so the content alone has none: sent again it came back over
+    // the culto's papel de parede, which Esc had put on. The Fundo on air
+    // goes with it, unless it was the papel de parede itself (as Desfazer
+    // judges it, restore.js).
+    const bg = before.background;
+    const own = bg && JSON.stringify(bg) !== JSON.stringify(before.defaultBackground ?? null);
+    const args = own ? { ...restored, fundo: { ...bg } } : restored;
     const stopped = Math.max(0, Math.min(content.slides.length - 1, content.index || 0));
     return { kind: content.kind, id: idOf(content, at), title: content.title || "", meta: "Saiu do ar", slides: content.slides, index: stopped, op, args, stopped, key: airKey(after) };
 }
