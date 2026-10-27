@@ -75,6 +75,8 @@ export const SETTINGS_INDEX = [
     e("biblia", "Ao importar letras", "uma estrofe, 2 ou 4 linhas por slide", ["importar", "letras", "músicas", "estrofe", "linhas", "slide"]),
     e("biblia", "Bíblias instaladas", "baixar versões para usar sem internet; a versão em uso na Bíblia",
         ["versão em uso", "usar esta", "versão padrão", "tornar padrão","baixar", "instalar", "sem internet", "offline", "do arquivo", "NVI", "ARA", "ACF", "ARC", "NAA", "NTLH", "AA", "KJA", "King James", "pela internet", "zip"]),
+    e("biblia", "Escolher as Bíblias", "as edições deste computador, as mais usadas já marcadas; baixam em segundo plano, como na primeira abertura",
+        ["escolher", "mais usadas", "primeira abertura", "baixar várias", "segundo plano", "NVI", "ARA", "ARC", "NTLH", "Bíblias"]),
 
     e("culto", "Planejamento", "o dia, o horário e a duração padrão do culto, a previsão do fim e a pausa entre itens", ["dia", "horário", "duração", "previsão", "setlist", "novo culto", "pausa"]),
     e("culto", "Fora do ar", "o que as telas mostram sem nada no ar e depois do Esc", ["papel de parede", "fora do ar", "esc", "espera", "aparência"]),

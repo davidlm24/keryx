@@ -24,7 +24,8 @@ const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const { createGoogleAuth } = require("./googleAuth.cjs");
-const { installedVersions } = require("./bible.cjs");
+const { installedVersions, installFromSource, SOURCES: BIBLE_SOURCES } = require("./bible.cjs");
+const { createBibleSetup } = require("./bibleSetup.cjs");
 const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
 const windowState = require("./windowState.cjs");
 const schema = require("./db/schema.json");
@@ -116,6 +117,8 @@ let appSettings = null;
 let consoleZoom = null;
 // The bell, set once the notifications exist (a window can crash before then).
 let notify = () => {};
+// Bíblias neste computador: the background downloads (electron/bibleSetup.cjs).
+let bibleSetup = null;
 // A quit already decided (app.quit: the updater, the menu, the guard's
 // "Fechar o KERYX"): the console's X no longer asks.
 let quitting = false;
@@ -592,6 +595,24 @@ app.whenReady().then(async () => {
         system.reports.start().catch((err) => logger.warn(`[keryx-relato] ${err.message}`));
         powerMonitor.on("resume", () => { system.reports.flush().catch(() => {}); });
     }
+    // Bíblias neste computador (owner 2026-10-27, electron/bibleSetup.cjs):
+    // the editions ticked at the first opening download in the background,
+    // the ones still waiting at launch, every 10 min and when the PC wakes.
+    // A smoke run never asks (its data folder is new every time).
+    bibleSetup = createBibleSetup({
+        settings,
+        known: Object.keys(BIBLE_SOURCES),
+        install: (version) => installFromSource(store, version),
+        installed: () => installedVersions(store),
+        notify: (n) => notifications.add(n),
+        onChange: (state) => broadcast("keryx:bible:setup", state),
+        logger,
+    });
+    if (SMOKE) settings.set("bibleSetup", { asked: new Date().toISOString(), wanted: [] });
+    else {
+        bibleSetup.start().catch((err) => logger.warn(`[keryx-biblias] ${err.message}`));
+        powerMonitor.on("resume", () => { bibleSetup.flush().catch(() => {}); });
+    }
 
     // Did the last run end normally? A crash a few minutes ago brings the
     // screens back as the audience saw them and reopens the outputs that were
@@ -791,6 +812,7 @@ app.whenReady().then(async () => {
         sync,
         live,
         lyrics: createLyrics(),
+        bibleSetup,
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
