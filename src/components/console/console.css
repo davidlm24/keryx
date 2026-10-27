@@ -1841,6 +1841,23 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .ob-dialog .ob-note { margin: 0; }
 /* A short window scrolls the dialog; Instalar and Cancelar stay in view. */
 .console .ob-dialog .acts { position: sticky; bottom: calc(-1 * var(--space-4)); margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-4)); padding: var(--space-3) var(--space-4) var(--space-4); background: var(--bg-2); }
+/* Bíblias neste computador (BibleSetupDialog.jsx): the import dialog's
+   frame, narrower, one row per edition with its check, its licence chip. */
+.console .dialog.confirm-dialog.import-dialog.bs-dialog { width: min(560px, calc(100% - 32px)); }
+.console .bs-dialog .bs-lead { margin: 0; padding: var(--space-3) var(--space-3) var(--space-1); color: var(--fg-2); font-size: var(--fs-ui); line-height: 1.5; }
+.console .bs-dialog .bs-list { min-height: 0; }
+.console .bs-dialog .bs-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); min-height: var(--row); padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); cursor: pointer; }
+.console .bs-dialog .bs-row:hover { background: var(--bg-3); }
+.console .bs-dialog .bs-row.is-here { cursor: default; }
+.console .bs-dialog .bs-row input { margin: 0 auto; width: 14px; height: 14px; accent-color: var(--brand); }
+.console .bs-dialog .bs-main { display: flex; flex-direction: column; min-width: 0; }
+.console .bs-dialog .bs-name { font-size: var(--fs-content); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg-1); }
+.console .bs-dialog .bs-meta { font-size: var(--fs-meta); color: var(--fg-3); }
+.console .bs-dialog .bs-row .bib-lic { margin-left: 0; }
+.console .bs-dialog .bs-note { margin: 0; padding: var(--space-1) var(--space-3) var(--space-2); line-height: 1.5; }
+.console .cfg .bib-setup { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; margin: var(--space-1) var(--space-1) 0; padding: 7px var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font-size: var(--fs-ui); line-height: 1.5; }
+.console .cfg .bib-setup > span { flex: 1; min-width: 0; }
+.console .cfg .bib-own { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 /* Ajuda › Primeiros passos (Popovers.jsx FirstSteps): numbered steps, each
    with the button that opens what it names; scrolls on a short window. */
 .console .dialog.fs { width: min(600px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); }

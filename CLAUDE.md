@@ -1579,6 +1579,29 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/verseMarks.js` (numbers in sequence only). Favourites and notes
   are `BibleNote` rows (`useBibleNotes`). Never bundle Bible text: the
   editions are copyrighted; churches install them (`electron/bible.cjs`).
+  **Bíblias neste computador** (owner 2026-10-27, "as mais usadas,
+  instaladas sozinhas", pick C of three): the first time the console opens
+  on a computer never asked with no edition installed it asks which to
+  download (`BibleSetupDialog.jsx`; `setupAsks`, `setupRows` in
+  `src/lib/console/bibleSetup.js`, tested), the most used ones ticked —
+  `DEFAULT_BIBLES` NVI, ARA, ARC, NTLH in `shared/bibleSetup.mjs` (the
+  rules, tested) —, the church's own files never listed; "Baixar n
+  Bíblias" records the answer and the main process downloads them in the
+  background, one at a time, each whole or nothing as Baixar does
+  (`electron/bibleSetup.cjs`, tested: settings.json `bibleSetup`, retried
+  at launch, every 10 min while any waits, on resume and when the console
+  sees the internet back; no internet ends a pass, the source answering
+  wrong gives up after `MAX_TRIES` or at once for a file that is not a
+  whole Bible; the end rings the bell, the console toasts
+  `finishedWords`). KERYX still never takes a publisher's edition by
+  itself: the click is the church's, the licence line is on the dialog.
+  "Agora não" records the answer; Esc only closes it this time. Reopened
+  from Bíblias instaladas › "Escolher as Bíblias…" (installed rows held
+  ticked, a `setupLine` says what waits or failed, Tentar de novo); the
+  version in use follows the answer when it was left out
+  (`defaultAfterSetup`). The browser preview runs the same rules in the
+  page (`src/api/backends/preview.js`); a smoke run never asks (main.cjs
+  writes the answer first).
 - **Fundos gerados** (2026-10-12): a background the screens compute, never
   a file — `background: { kind: "generator", value: <id>, gen: {...} }` in
   the live state. What the numbers are is `shared/generators.mjs`
