@@ -47,9 +47,37 @@ export function aparenciaSummary({ page, pref, themeName = "" }) {
     return parts.join(" · ");
 }
 
-// Comportamento: "Sem item da lista: papel de parede".
+// Conteúdo (owner 2026-10-27, T4 = A: Sem item da lista lives here now): the
+// rule's line, plus what the screen shows with nothing from it on air when
+// that is not the papel de parede — "Vídeos · sem item: tela preta".
 export const EMPTY_WORDS = { wall: "papel de parede", black: "tela preta", logo: "logo" };
-export const comportamentoSummary = (rule) => `Sem item da lista: ${EMPTY_WORDS[rule?.empty] || EMPTY_WORDS.wall}`;
+export function conteudoSummary(rule, ruleLine) {
+    return rule?.empty && rule.empty !== "wall" ? `${ruleLine} · sem item: ${EMPTY_WORDS[rule.empty]}` : ruleLine;
+}
+// "Escolher por tipo", folded under the shortcuts (T2 = A): "9 de 9 tipos ·
+// por cima: Aviso rápido, Logo". `total` is the list's length.
+export function kindsSummary(rule, total) {
+    const top = [rule?.top?.alert && "Aviso rápido", rule?.top?.logo && "Logo"].filter(Boolean);
+    return `${(rule?.kinds || []).length} de ${total} tipos${top.length ? ` · por cima: ${top.join(", ")}` : " · nada por cima"}`;
+}
+// Comportamento keeps only what the KERYX already does by itself.
+export const COMPORTAMENTO_SUMMARY = "Já faz sozinho: monitor, rede e tela ligada";
+
+// "Nome e ícone", folded at the end of Destino (T3 = A): "Telão · ícone
+// próprio", "Projeção · ícone padrão".
+export const nomeIconeSummary = ({ name, icon }) => `${name} · ${icon ? "ícone próprio" : "ícone padrão"}`;
+
+// The Aviso rápido's look, folded in Aparência (T3 = A): "Faixa âmbar no
+// alto · desliza"; "não aparece nesta saída" when the rule leaves it out.
+// `look` is alertOptions(); `amber` whether its colours are the default.
+const ALERT_STYLE = { band: "Faixa", pill: "Pílula" };
+const ALERT_WHERE = { top: "no alto", bottom: "embaixo" };
+const ALERT_IN = { slide: "desliza", fade: "aparece", none: "sem entrada" };
+export function alertSummary(look, { amber = true, hidden = false } = {}) {
+    if (hidden) return "não aparece nesta saída";
+    const size = { s: " · P", l: " · G" }[look.size] || "";
+    return `${ALERT_STYLE[look.style] || "Faixa"}${amber ? " âmbar" : ""} ${ALERT_WHERE[look.position] || "no alto"} · ${ALERT_IN[look.entrance] || "desliza"}${size}`;
+}
 
 // Diagnóstico: "Aberta · 2 telas na rede". `output` is the health row of the
 // output ({ open, placement }, or null: it has none, the Transmissão).

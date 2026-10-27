@@ -134,7 +134,11 @@ export function rowStatus(row, { locked = false } = {}) {
 // removed (Telas e saídas › Remover saída) is no row, no count and no
 // banner — but a network screen showing that page still is: removal is
 // about this computer's window and the lists, never the church network.
-export function outputHealth({ outputs = [], seen = {}, locked = false, air = "", tries = 1 }) {
+// `leaving` are the outputs whose rule leaves out what is on air now
+// (outputsLeavingAir in outputPrefs.js: [{ page, name, kind, receives }]): a
+// screen of theirs is connected but does not show the item, so the Programa
+// says "em 1 de 2 telas" (owner 2026-10-27, P2 = A).
+export function outputHealth({ outputs = [], seen = {}, locked = false, air = "", tries = 1, leaving = [] }) {
     const rows = [];
     for (const o of outputs) {
         if (o.removed) continue;
@@ -182,10 +186,22 @@ export function outputHealth({ outputs = [], seen = {}, locked = false, air = ""
     else status = { label: `Saídas · ${connected} ${connected === 1 ? "conectada" : "conectadas"}`, compact: telas(connected), state: "" };
 
     // Where the Programa is: the sentence, and the short form its pill shows.
+    // A connected screen whose rule leaves the item out does not count as
+    // showing it; `why` says which and what it receives.
+    const left = new Map(leaving.map((l) => [l.page, l]));
+    const leftRows = rows.filter((r) => r.state === "connected" && left.has(r.local ? r.key : r.screen));
+    const showing = connected - leftRows.length;
+    const why = [...new Set(leftRows.map((r) => r.local ? r.key : r.screen))].map((page) => {
+        const l = left.get(page);
+        return `${l.name} não mostra ${l.kind} (recebe: ${l.receives})`;
+    });
+    const of = (n) => `${n || "nenhuma"} de ${total} ${total === 1 ? "tela" : "telas"}`;
     let onAir;
     if (!connected) onAir = { text: "em nenhuma tela", short: "nenhuma tela", warn: true };
-    else if (problems.length) onAir = { text: `em ${connected} de ${total} telas`, short: `${connected} de ${total} telas`, warn: true };
+    else if (problems.length || leftRows.length) onAir = { text: `em ${of(showing)}`, short: of(showing), warn: true };
     else onAir = { text: `em ${telas(connected)}`, short: telas(connected), warn: false };
+    onAir.why = why;
+    onAir.filtered = leftRows.length > 0;
 
     // One banner (banners never stack): the projector on the wrong monitor
     // first (it has its own, with Tela preta and Mostrar logo), else the

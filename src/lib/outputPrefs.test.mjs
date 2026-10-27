@@ -405,3 +405,41 @@ test("the rule: a song's playback track follows the screens that receive text, n
     assert.equal(prefState("/CommunicationProjection", songLive, normalizePref({})).track, undefined);
     assert.ok(prefState("/VideoProjection", songLive, normalizePref({ content_rule: { kinds: ["video", "bible"] } })).track, "with a text kind in its list it does");
 });
+
+test("the rule's doors: a shortcut, one kind more, what leaves the air (owner 2026-10-27)", async () => {
+    const { ruleWithShortcut, ruleWithKind, leavesOut, airKinds, leftOutNow, outputsLeavingAir, ruleDrops } = await import("./outputPrefs.js");
+    const all = defaultRule("/Projection");
+    const custom = { kinds: ["lyrics"], top: { alert: false, logo: true }, empty: "black" };
+    // A shortcut changes the kinds only: Por cima de tudo and Sem item da lista stay.
+    assert.deepEqual(ruleWithShortcut(custom, "videos"), { kinds: ["video", "youtube"], top: { alert: false, logo: true }, empty: "black" });
+    assert.equal(ruleWithShortcut(custom, "nope"), custom);
+    // One kind more, in the list's order; already there = the same object.
+    assert.deepEqual(ruleWithKind(custom, "bible").kinds, ["lyrics", "bible"]);
+    assert.deepEqual(ruleWithKind({ ...custom, kinds: ["video"] }, "lyrics").kinds, ["lyrics", "video"]);
+    assert.equal(ruleWithKind(custom, "lyrics"), custom);
+    assert.equal(ruleWithKind(custom, "nope"), custom);
+    // Only an output that normally shows a kind leaves it out; never the Palco.
+    assert.equal(leavesOut("/VideoProjection", defaultRule("/VideoProjection"), "lyrics"), false, "the Vídeo never showed lyrics");
+    assert.equal(leavesOut("/Projection", custom, "bible"), true);
+    assert.equal(leavesOut("/Projection", all, "bible"), false);
+    assert.equal(leavesOut("/StageView", custom, "bible"), false);
+    // What fills the screens: none under Tela preta or the Logo.
+    assert.deepEqual(airKinds(live), ["lyrics", "notice"]);
+    assert.deepEqual(airKinds({ ...live, screen: "black" }), []);
+    assert.deepEqual(airKinds(null), []);
+    assert.deepEqual(airKinds({ media: { kind: "youtube", url: "u" } }), ["youtube"]);
+    assert.deepEqual(leftOutNow("/Projection", { ...custom, kinds: ["notice"] }, live), { kind: "lyrics", label: "Letras", instead: "a tela preta" });
+    assert.equal(leftOutNow("/Projection", all, live), null);
+    // Every output leaving the air out, by name and what it receives.
+    const rows = [{ screen_path: "/Projection", name: "Telão", content_rule: { kinds: ["video", "youtube"], top: { alert: true, logo: true }, empty: "wall" } }];
+    assert.deepEqual(outputsLeavingAir(live, rows), [{ page: "/Projection", name: "Telão", kind: "Letras", receives: "Vídeos" }]);
+    assert.deepEqual(outputsLeavingAir(live, []), [], "no row: every output as always");
+    // What a change of rule takes off a screen now.
+    assert.deepEqual(ruleDrops(all, ruleWithShortcut(all, "videos"), live), ["Letras", "Avisos"]);
+    assert.deepEqual(ruleDrops(all, ruleWithShortcut(all, "letters"), { content: live.content }), []);
+});
+
+test("the Prévia's warning carries the kind's id for its fix", () => {
+    const got = outputsNotShowing({ kind: "bible" }, [{ screen_path: "/Projection", content_rule: { kinds: ["lyrics"], top: { alert: true, logo: true }, empty: "wall" } }]);
+    assert.equal(got[0].kindId, "bible");
+});

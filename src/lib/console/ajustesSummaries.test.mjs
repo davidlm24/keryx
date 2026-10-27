@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { placementShort, destinoSummary, partsSummary, aparenciaSummary, comportamentoSummary, diagnosticoSummary, netClientsLine, estadoText, ajustesLine, showsNowText } from "./ajustesSummaries.js";
+import { placementShort, destinoSummary, partsSummary, aparenciaSummary, conteudoSummary, kindsSummary, nomeIconeSummary, alertSummary, COMPORTAMENTO_SUMMARY, diagnosticoSummary, netClientsLine, estadoText, ajustesLine, showsNowText } from "./ajustesSummaries.js";
 import { normalizePref, defaultRule } from "../outputPrefs.js";
 import { ruleKindOf, ruleKind } from "../contentKinds.js";
 
@@ -32,9 +32,20 @@ test("Aparência: theme, text scale and margins", () => {
     assert.equal(aparenciaSummary({ page: "/StreamView", pref: normalizePref(null) }), "Faixa embaixo · texto automático");
 });
 
-test("Comportamento and Diagnóstico", () => {
-    assert.equal(comportamentoSummary({ empty: "black" }), "Sem item da lista: tela preta");
-    assert.equal(comportamentoSummary(defaultRule("/Projection")), "Sem item da lista: papel de parede");
+test("Conteúdo carries Sem item da lista; the folded rows say what is chosen (owner 2026-10-27, T2–T4)", () => {
+    assert.equal(conteudoSummary({ empty: "black" }, "Vídeos"), "Vídeos · sem item: tela preta");
+    assert.equal(conteudoSummary(defaultRule("/Projection"), "Tudo · por cima: Aviso rápido, Logo"), "Tudo · por cima: Aviso rápido, Logo");
+    assert.equal(kindsSummary(defaultRule("/Projection"), 9), "9 de 9 tipos · por cima: Aviso rápido, Logo");
+    assert.equal(kindsSummary({ kinds: ["notice"], top: { alert: false, logo: false } }, 9), "1 de 9 tipos · nada por cima");
+    assert.equal(nomeIconeSummary({ name: "Telão", icon: "tv" }), "Telão · ícone próprio");
+    assert.equal(nomeIconeSummary({ name: "Projeção", icon: "" }), "Projeção · ícone padrão");
+    assert.equal(alertSummary({ style: "band", position: "top", entrance: "slide", size: "m" }), "Faixa âmbar no alto · desliza");
+    assert.equal(alertSummary({ style: "pill", position: "bottom", entrance: "none", size: "l" }, { amber: false }), "Pílula embaixo · sem entrada · G");
+    assert.equal(alertSummary({ style: "band" }, { hidden: true }), "não aparece nesta saída");
+    assert.equal(COMPORTAMENTO_SUMMARY, "Já faz sozinho: monitor, rede e tela ligada");
+});
+
+test("Diagnóstico", () => {
     assert.equal(diagnosticoSummary({ output: { open: true, placement: {} }, clients: 2 }), "Aberta · 2 telas na rede");
     assert.equal(diagnosticoSummary({ output: { open: false, placement: {} }, clients: 0 }), "Fechada");
     assert.equal(diagnosticoSummary({ output: { open: true, placement: { missing: true } }, clients: 1 }), "Tela desligada · 1 tela na rede");

@@ -1,9 +1,9 @@
 import React from "react";
 import Icon from "../../Icon";
 import { Btn, Seg } from "../../kx";
-import { CfgGroup, FormRow, Switch } from "../parts";
+import { CfgDisc, CfgGroup, FormRow, Switch } from "../parts";
 import { ownsTheme, streamOptions, alertOptions, showsAlert, ALERT_DEFAULTS } from "@/lib/outputPrefs";
-import { aparenciaSummary } from "@/lib/console/ajustesSummaries";
+import { aparenciaSummary, alertSummary } from "@/lib/console/ajustesSummaries";
 import { openEditor } from "@/lib/editorWindow";
 import { themeName } from "@/lib/console/themes";
 
@@ -73,11 +73,11 @@ export default function AparenciaBlock({ ctx }) {
                     </FormRow>
                 </>}
                 {/* The Aviso rápido bar on this screen (alertOptions; Rodada E3):
-                    no choice is the amber band across the top, as always. */}
-                {alertShown && <>
+                    no choice is the amber band across the top, as always.
+                    Set once, so folded under its summary (T3 = A). */}
+                {alertShown && <CfgDisc k="Aviso rápido" bodyClass="frm" summary={alertSummary(alertLook, { amber: alertColoursDefault, hidden: alertHidden })}>
                     <div className="cfg-frm-head">
-                        <span className="kx-section">Aviso rápido</span>
-                        {alertHidden && <span className="kx-meta">esta saída não mostra o Aviso rápido (Conteúdo › Por cima de tudo)</span>}
+                        {alertHidden && <span className="kx-meta">esta saída não mostra o Aviso rápido (Conteúdo › Escolher por tipo › Por cima de tudo)</span>}
                         <span className="grow" />
                         {onAlertSample && !alertHidden && <Btn small on={ctx.alertSample} onClick={() => onAlertSample(!alertSample, true)} title="Um aviso de exemplo na tela ao lado, com estes ajustes">Ver exemplo</Btn>}
                     </div>
@@ -102,7 +102,7 @@ export default function AparenciaBlock({ ctx }) {
                             <span className="kx-meta">sem movimento quando o Windows pede menos animação</span>
                         </FormRow>
                     </>}
-                </>}
+                </CfgDisc>}
             </div>
         </CfgGroup>
     );

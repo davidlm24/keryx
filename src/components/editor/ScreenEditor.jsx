@@ -120,8 +120,10 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const [guides, setGuides] = useState([]);
     const [pickImage, setPickImage] = useState(false);
     // The middle column's two halves (Rodada C, fase d2): the drawing, and
-    // the output's settings (which save at once, outside the draft).
-    const [tab, setTab] = useState("desenho");
+    // the output's settings (which save at once, outside the draft). It opens
+    // on the settings (owner 2026-10-27, T1 = A: what the operator changes
+    // each week); a click on the canvas goes to the drawing.
+    const [tab, setTab] = useState("ajustes");
     const [starting, setStarting] = useState(null); // "model" | "copy": the pickers at the drawing's tail
     const [pickBgImage, setPickBgImage] = useState(false);
     // The element list (top first, the reverse of the drawing order): the
@@ -253,6 +255,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     };
     const startDrag = (e, el, handle = null) => {
         e.preventDefault(); e.stopPropagation();
+        setTab("desenho");
         if (!handle && (e.ctrlKey || e.metaKey || e.shiftKey)) { pickEl(el.id, e); return; }
         const group = !handle && many && marked.includes(el.id) ? { ids: marked, start: draft.elements } : null;
         if (!group) setSel(el.id);

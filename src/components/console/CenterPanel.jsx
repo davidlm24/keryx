@@ -100,7 +100,9 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
     // An output just took a refused YouTube link off (live.refused): amber.
     const refused = refusedNow(cur);
     const shown = refused || (idle ? "Nada no ar" : title);
-    const tone = projectorDown || refused ? "warn" : locked ? "rh" : idle ? "idle" : "air";
+    // An output whose rule leaves the item out (where.filtered): amber too,
+    // "em 1 de 2 telas" says it (owner 2026-10-27, P2 = A).
+    const tone = projectorDown || refused || where?.filtered ? "warn" : locked ? "rh" : idle ? "idle" : "air";
     const said = refused ? refused.toLowerCase() : inPlayer ? "no ar, no player" : idle ? "nada no ar" : title;
     return (
         <div className={`prog-pill kx-pill is-${tone}`} role="group" aria-label="Programa">
@@ -110,7 +112,7 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
                 {locked && <span className="prog-locked">Travado</span>}
                 {pos && <span className="kx-meta pp-pos">{pos}</span>}
             </span>
-            {where && <span className={`kx-meta prog-where ${where.warn ? "kx-warn" : ""}`} title={`O Programa está ${where.text} agora · detalhes em Saídas`}>{where.short}</span>}
+            {where && <span className={`kx-meta prog-where ${where.warn ? "kx-warn" : ""}`} title={where.why?.length ? [`O Programa está ${where.text} agora`, ...where.why, "Mude em Saídas › Recebe"].join("\n") : `O Programa está ${where.text} agora · detalhes em Saídas`}>{where.short}</span>}
             <span className="pp-sep kx-pill-sep pp-full" aria-hidden="true" />
             <span className="pp-btns kx-pill-btns pp-full">
                 {btn({ className: `pp-hist ${histOpen ? "is-on" : ""}`, onClick: onHist, "aria-label": "Voltar ao anterior", "aria-expanded": histOpen, title: "Voltar ao anterior · o que esteve no ar há pouco" }, "undo")}
@@ -198,7 +200,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
         <div className={`mons ${player ? "" : "no-player"}`} data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
                 {multiview ? (
-                    <MultiView live={cur} now={shownNow} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick} still={still}
+                    <MultiView live={cur} now={shownNow} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick} onRule={multiview.onRule} still={still}
                         state={progState} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
                         {pill}
                         {dropHint}
@@ -249,7 +251,7 @@ function PreviaPill({ prev, block, onSend }) {
 // pill's style (owner 2026-10-20, Rodada N5; PreviaPill), plus Enter, a
 // double click on it or its right-click menu send. Where it goes is the
 // dock's (Dock.jsx).
-export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notesInTab = false, className = "" }) {
+export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, onShowKind = null, notesInTab = false, className = "" }) {
     // A file the sync has not brought yet: said over the Prévia, not drawn broken.
     const pending = usePendingMedia();
     const { cur, prev, locked, stamp } = c;
@@ -272,7 +274,9 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
     const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
     const railVars = prefVars(railPref);
     // Every output that normally shows the prepared kind and, by what it
-    // receives (Ajustes › O que esta tela recebe), will not.
+    // receives (Ajustes › O que esta tela recebe), will not: an amber band
+    // each, with the fix (owner 2026-10-27, P1 = A; onShowKind adds the kind
+    // to that output's rule, the toast offers Desfazer).
     const outputRows = useOutputPrefRows();
     const notShowing = useMemo(() => outputsNotShowing(prev, outputRows), [prev, outputRows]);
     // The caption is a badge in the screen's top-left corner.
@@ -301,7 +305,13 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
                     <div className="prev-foot">
                         {notShowing.length > 0 && (
                             <div className="kx-prev-warn" role="status">
-                                {notShowing.map((o) => <span key={o.page}><Icon name="warn" size={12} />A saída <b>{o.name}</b> não vai mostrar {o.kind}</span>)}
+                                {notShowing.map((o) => (
+                                    <span key={o.page} className="kx-prev-warn-l">
+                                        <Icon name="warn" size={12} />
+                                        <span className="kx-prev-warn-t" title={`${o.name} não vai mostrar ${o.kind} · fica ${o.instead}`}><b>{o.name}</b> não vai mostrar {o.kind} · fica {o.instead}</span>
+                                        {onShowKind && <button type="button" className="kx-prev-fix kx-t" onClick={() => onShowKind(o.page, o.kindId)} title={`${o.name} passa a receber ${o.kind} · o aviso oferece Desfazer`} aria-label={`Mostrar ${o.kind} em ${o.name} também`}>Mostrar<span className="kx-prev-fix-k"> {o.kind}</span> também</button>}
+                                    </span>
+                                ))}
                             </div>
                         )}
                         <PreviaPill prev={prev} block={block} onSend={onSend} />

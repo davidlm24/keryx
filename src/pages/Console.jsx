@@ -81,6 +81,8 @@ import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList } from "@/lib/console/layout";
 import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode, dockLocked, setDockLock, withLockOf, nodeAt, isSplit, setSplitWeights, presetsForSplit, weightsLabel, parseWeights, bibleLocks } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
+import { outputsLeavingAir, ruleWithKind } from "@/lib/outputPrefs";
+import useOutputRules from "@/components/console/useOutputRules";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
 import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, DockLockSwitch, ZONE_LABEL } from "@/components/console/Dock";
@@ -744,7 +746,17 @@ export default function Console() {
     // Output health (src/lib/console/outputs.js): the status in the top bar,
     // the rows of Saídas, "em N telas" beside the Programa and the banner.
     const airWords = captionOf(c.cur, "No ar").replace(/^No ar · /, "");
-    const health = useMemo(() => outputHealth({ outputs, seen, locked: c.locked, air: airWords, tries }), [outputs, seen, c.locked, airWords, tries]);
+    // What each output receives, changed from here (Saídas, the Multiview,
+    // the Prévia's fix; owner 2026-10-27), and the outputs whose rule leaves
+    // out what is on air now: the Programa says "em 1 de 2 telas" (P2 = A).
+    const outputRules = useOutputRules(c);
+    const leaving = useMemo(() => outputsLeavingAir(c.cur, outputRules.rows), [c.cur, outputRules.rows]);
+    const health = useMemo(() => outputHealth({ outputs, seen, locked: c.locked, air: airWords, tries, leaving }), [outputs, seen, c.locked, airWords, tries, leaving]);
+    // Under the button that asked (a keyboard press has no pointer).
+    const ruleMenu = (e, page, name) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        openMenu({ preventDefault: () => e.preventDefault(), stopPropagation: () => e.stopPropagation(), clientX: r.left, clientY: r.bottom + 2 }, { title: `O que ${name} recebe`, items: outputRules.receivesItems(page) });
+    };
 
     // Updates (electron/updater.cjs): with Atualizar automaticamente a version
     // found right after opening shows its popup by itself, once; later it only
@@ -1340,7 +1352,7 @@ export default function Console() {
         "sep",
         { label: "Ajustes das saídas…", icon: "sliders", onSelect: () => openSettings("telas") },
     ] });
-    const multiview = layout.multiview ? { tiles: layout.mvTiles, rows: health.rows, onPick: pickQuadrant } : null;
+    const multiview = layout.multiview ? { tiles: layout.mvTiles, rows: health.rows, onPick: pickQuadrant, onRule: ruleMenu } : null;
 
     // The player (always visible): under the Programa until the dock places it.
     const playerSlot = (
@@ -1383,6 +1395,7 @@ export default function Console() {
     const previaPanel = (
         <PreviaPanel c={c} logoUrl={logoUrl} notesInTab={panelOnScreen && tabLists.panel.includes("notas")}
             onSend={() => sendStage()} onDropStage={dropStage}
+            onShowKind={(page, kind) => outputRules.setRule(page, (r) => ruleWithKind(r, kind))}
             onPrevMenu={(e) => openMenu(e, { title: "Prévia", items: [
                 { label: "Limpar a prévia", icon: "x", disabled: !c.prev, onSelect: () => c.setPrev(null) },
                 menuItem("enviarAoAr", { air: true, disabled: !c.prev || c.locked, onSelect: () => sendStage() }, letters),
@@ -1653,7 +1666,7 @@ export default function Console() {
             <SyncPop open={open} setOpen={setOpen} onSettings={openSettings} say={c.say} songsHere={data.songs.length} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)}
                 songLine={songLine} onSongLine={(k, v) => setLayout({ ...layout, [SONG_LINE_KEYS[k]]: v })} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />

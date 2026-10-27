@@ -17,6 +17,7 @@ import { formatReference } from "@/lib/bibleBooks";
 import { referenceFrom } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
 import { byGroup, rowStatus } from "@/lib/console/outputs";
+import { PREF_OUTPUTS, ruleLabel, ruleSummary } from "@/lib/outputPrefs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { Switch } from "./settings/parts";
 import { useDialogFocus } from "./useDialogFocus";
@@ -141,7 +142,7 @@ export function useAnchor(selector, width, active) {
 const TONE_DOT = { ok: "var(--ok)", rh: "var(--rh)", warn: "var(--warn)", off: "var(--fg-3)" };
 const TONE_CLS = { ok: "", rh: "is-rh", warn: "is-warn", off: "is-off" };
 
-export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, idle, onIdle, onSettings }) {
+export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, idle, onIdle, onSettings, ruleOf = null, onRule = null }) {
     const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
     const box = useFocusFirst(open === "outs");
@@ -163,6 +164,7 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                 <div className="kx-menu-h out-group"><span className="kx-section">{g.label}</span></div>
                 {g.items.map((r) => {
                 const st = rowStatus(r, { locked });
+                const page = r.local ? r.key : r.screen;
                 const icon = r.local ? look(r.key).icon : r.screen ? look(r.screen).icon : DEVICE_ICON[r.kind] || "tv";
                 return (
                     // One switch per local row: ligado = a janela existe. The
@@ -179,6 +181,14 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                             <div className="kx-out-meta">{r.meta}</div>
                             {r.shows && <div className="kx-out-meta" style={{ color: "var(--fg-2)" }}>Mostra: {r.shows}</div>}
                             {st.hint && <div className="kx-out-meta">{st.hint}</div>}
+                            {/* What this output receives, changed right here (owner
+                                2026-10-27, S1 = A): the four shortcuts and the Editor.
+                                Palco, Pastor and Transmissão draw their own thing. */}
+                            {ruleOf && onRule && PREF_OUTPUTS.includes(page) && (
+                                <button type="button" className="kx-t kx-out-recv" aria-haspopup="menu" title={`O que ${r.name} recebe: ${ruleSummary(ruleOf(page))}`} onClick={(e) => onRule(e, page, r.name)}>
+                                    Recebe: <b>{ruleLabel(ruleOf(page))}</b><Icon name="chevron-down" size={12} />
+                                </button>
+                            )}
                         </div>
                         <span className="kx-out-st" style={{ gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                             <i className="kx-dot" style={{ background: TONE_DOT[st.tone] }} />{st.text}
