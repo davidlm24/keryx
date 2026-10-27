@@ -145,6 +145,13 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
     const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
     const box = useFocusFirst(open === "outs");
+    // The switch moves on the click; the row's state catches up when the
+    // window is there (onOpen/onClose read the outputs again when done).
+    const [want, setWant] = useState({});
+    const flip = (key, on) => {
+        setWant((w) => ({ ...w, [key]: on }));
+        Promise.resolve(on ? onOpen(key) : onClose(key)).finally(() => setWant(({ [key]: _done, ...rest }) => rest));
+    };
     if (open !== "outs") return null;
     const rows = health.rows;
     const summary = health.total ? `${health.connected} de ${health.total} conectadas${locked ? " · travadas" : ""}` : "nenhuma aberta";
@@ -163,7 +170,7 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                     // no taskbar button). Network rows have no switch: the
                     // console cannot reopen a tablet.
                     <div key={r.id} className={`kx-out is-tall ${r.local ? "has-sw" : ""} ${TONE_CLS[st.tone]}`}>
-                        {r.local && <Switch on={Boolean(st.switchOn)} onChange={(on) => (on ? onOpen(r.key) : onClose(r.key))} label={st.switchOn ? `Fechar ${r.name} · Ctrl+W na própria saída` : `Abrir ${r.name}`} />}
+                        {r.local && <Switch on={r.key in want ? want[r.key] : Boolean(st.switchOn)} onChange={(on) => flip(r.key, on)} label={st.switchOn ? `Fechar ${r.name} · Ctrl+W na própria saída` : `Abrir ${r.name}`} />}
                         <span className="kx-glyph"><Icon name={icon} /></span>
                         <div style={{ minWidth: 0 }}>
                             {r.local && st.switchOn

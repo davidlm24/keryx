@@ -43,6 +43,9 @@ import { endsByItself, AUTOPLAY_SAY } from "@/lib/console/autoplay";
 import Layers from "@/components/console/Layers";
 import PromptDialog from "@/components/console/PromptDialog";
 import ReportDialog, { ReportContext, DIAGNOSTIC_SAVED } from "@/components/console/ReportDialog";
+import BibleSetupDialog from "@/components/console/BibleSetupDialog";
+import { useBibleSetup } from "@/components/console/useBibleSetup";
+import { setupAsks } from "@/lib/console/bibleSetup";
 import { timerChoices, minutesLabel } from "@/lib/console/timerPresets";
 import ThemeStrip from "@/components/console/ThemeStrip";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
@@ -272,6 +275,17 @@ export default function Console() {
     const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
     // Ajuda › Relatar um problema (ReportDialog): open or not.
     const [reporting, setReporting] = useState(false);
+    // Bíblias neste computador (BibleSetupDialog; owner 2026-10-27): asked
+    // once by itself, on a computer never asked with no edition installed;
+    // the downloads it starts are the main process's (electron/bibleSetup.cjs).
+    const bibleSetup = useBibleSetup({ say: c.say });
+    const [bibleAsk, setBibleAsk] = useState(false);
+    const bibleAsked = useRef(false);
+    useEffect(() => {
+        if (bibleAsked.current || !setupAsks(bibleSetup.state)) return;
+        bibleAsked.current = true;
+        setBibleAsk(true);
+    }, [bibleSetup.state]);
     // Importar músicas (ImportSongsDialog): { files, busy } while it is open.
     const [importReq, setImportReq] = useState(null);
     // The KERYX package (PackageDialogs.jsx): Exportar… and Abrir pacote do
@@ -479,7 +493,7 @@ export default function Console() {
         const live = c.live;
         if (fundoPadrao && fundoGoesOnNow(live)) c.liveOp("background.set", fundoPadrao).catch(() => {});
     }, [liveReady, padraoKey]); // eslint-disable-line react-hooks/exhaustive-deps
-    const { outputs, network, seen, forgetOutput } = useOutputs();
+    const { outputs, network, seen, forgetOutput, refresh: refreshOutputs } = useOutputs();
     // Outputs: the projector window missing its display, or closed, is the warning.
     const projector = outputs.find((o) => o.key === "/Projection");
 
@@ -785,9 +799,9 @@ export default function Console() {
         else if (action === "whatsnew") openWhatsNew();
         else if (action.startsWith("settings:")) openSettings(action.slice("settings:".length));
     };
-    const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
+    const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {}).then(refreshOutputs);
     // Closed here on purpose: forgotten, so it is not reported as a problem.
-    const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {});
+    const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {}).then(refreshOutputs);
     // Adicionar saída (the Saídas popover): back on the list with the same
     // screen, "Abrir ao iniciar" and Ajustes it had.
     const restoreOutput = (key) => window.keryxDesktop?.displays.set(key, { removed: false }).catch((err) => c.say(err?.message || "Não foi possível adicionar a saída."));
@@ -930,11 +944,11 @@ export default function Console() {
                 // "window": Esc goes to the TOP page's registered request
                 // (nav.js), which pops one level — "← Voltar" — or, at the
                 // first, closes; an unsaved guard may ask instead.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq || pkg.open, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, selection: selections.any(), edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq || pkg.open || bibleAsk, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, selection: selections.any(), edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
-                    else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else if (importReq) closeImport(); else if (pkg.open) pkg.close(); else setReporting(false); }
+                    else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else if (importReq) closeImport(); else if (pkg.open) pkg.close(); else if (bibleAsk) setBibleAsk(false); else setReporting(false); }
                     else if (top === "library") { if (!libEsc.current?.()) closeLibrary(null); }
                     else if (top === "popover") setOpen(null);
                     else if (top === "window") winEsc("esc");
@@ -949,7 +963,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if ((libReq || confirmReq || reporting || importReq || pkg.open) && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq || reporting || importReq || pkg.open || bibleAsk) && !["black", "logo"].includes(action)) return;
             // Behind the window only the emergency keys (Tela preta, Logo)
             // act; a page's own keys (Mídia's Enter and Delete, the editors'
             // Ctrl+S, Space while marking timings) are its own listeners.
@@ -988,7 +1002,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, reporting, importReq, closeImport, pkg, letters, autoplay]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, reporting, importReq, closeImport, pkg, letters, autoplay, bibleAsk]);
     useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -1533,7 +1547,7 @@ export default function Console() {
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} verDot={pedidosUnread && !pedidosReachable} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
-                menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq)} />
+                menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq || bibleAsk)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1640,6 +1654,7 @@ export default function Console() {
             <ImportSongsDialog request={importReq} onClose={closeImport} onBusy={(busy) => setImportReq((r) => (r ? { ...r, busy } : r))} say={c.say} />
             {pkg.element}
             <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />
+            <BibleSetupDialog open={bibleAsk} first setup={bibleSetup} say={c.say} onClose={() => setBibleAsk(false)} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !winOpen && env === "culto" && (() => {
                 // Never over the Programa: on the side of it with more room

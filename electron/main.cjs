@@ -26,7 +26,8 @@ const { createYouTube } = require("./youtube.cjs");
 const { importMedia } = require("./mediaImport.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const { createGoogleAuth } = require("./googleAuth.cjs");
-const { installedVersions } = require("./bible.cjs");
+const { installedVersions, installFromSource, SOURCES: BIBLE_SOURCES } = require("./bible.cjs");
+const { createBibleSetup } = require("./bibleSetup.cjs");
 const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
 const windowState = require("./windowState.cjs");
 const schema = require("./db/schema.json");
@@ -119,6 +120,8 @@ let appSettings = null;
 let consoleZoom = null;
 // The bell, set once the notifications exist (a window can crash before then).
 let notify = () => {};
+// Bíblias neste computador: the background downloads (electron/bibleSetup.cjs).
+let bibleSetup = null;
 // A quit already decided (app.quit: the updater, the menu, the guard's
 // "Fechar o KERYX"): the console's X no longer asks.
 let quitting = false;
@@ -595,6 +598,24 @@ app.whenReady().then(async () => {
         system.reports.start().catch((err) => logger.warn(`[keryx-relato] ${err.message}`));
         powerMonitor.on("resume", () => { system.reports.flush().catch(() => {}); });
     }
+    // Bíblias neste computador (owner 2026-10-27, electron/bibleSetup.cjs):
+    // the editions ticked at the first opening download in the background,
+    // the ones still waiting at launch, every 10 min and when the PC wakes.
+    // A smoke run never asks (its data folder is new every time).
+    bibleSetup = createBibleSetup({
+        settings,
+        known: Object.keys(BIBLE_SOURCES),
+        install: (version) => installFromSource(store, version),
+        installed: () => installedVersions(store),
+        notify: (n) => notifications.add(n),
+        onChange: (state) => broadcast("keryx:bible:setup", state),
+        logger,
+    });
+    if (SMOKE) settings.set("bibleSetup", { asked: new Date().toISOString(), wanted: [] });
+    else {
+        bibleSetup.start().catch((err) => logger.warn(`[keryx-biblias] ${err.message}`));
+        powerMonitor.on("resume", () => { bibleSetup.flush().catch(() => {}); });
+    }
 
     // Did the last run end normally? A crash a few minutes ago brings the
     // screens back as the audience saw them and reopens the outputs that were
@@ -726,10 +747,11 @@ app.whenReady().then(async () => {
         powerMonitor.on("resume", () => checks.resume());
     }
 
-    // Sync with the church's other computers through a shared folder
-    // (electron/sync.cjs), set up in Configurações › Sincronização
-    // (electron/syncControl.cjs): off until a folder is chosen and the
-    // church's code typed. A pass every 30 s and 3 s after a local change.
+    // Sync with the church's other computers through the church's Google
+    // account (electron/sync.cjs over the hidden appDataFolder), set up in
+    // Configurações › Sincronização (electron/syncControl.cjs): off until
+    // someone enters with the account here. A pass every 30 s and 3 s after a
+    // local change.
     let missingSent = "";
     // The Bible editions installed here, for the others' "Falta a NVI aqui"
     // (computer.json; never the text). Counted at most once a minute: the
@@ -745,8 +767,8 @@ app.whenReady().then(async () => {
         }
         return bibles.list;
     };
-    // Google Drive direto (PR 2): the church's account, entered in the
-    // system's browser; Chromium's network stack (the system's proxy).
+    // The church's account, entered in the system's browser; Chromium's
+    // network stack (the system's proxy).
     const protect = sealWith(safeStorage);
     const googleFetch = (url, init) => net.fetch(url, init);
     const google = createGoogleAuth({
@@ -764,15 +786,6 @@ app.whenReady().then(async () => {
         protect,
         google,
         driveOptions: { fetchImpl: googleFetch },
-        chooseFolder: async (event) => {
-            const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender) || undefined, {
-                title: "Pasta da sincronização",
-                buttonLabel: "Usar esta pasta",
-                properties: ["openDirectory", "createDirectory"],
-            });
-            return canceled || !filePaths[0] ? null : filePaths[0];
-        },
-        openPath: (folder) => shell.openPath(folder),
         describe: () => ({ name: os.hostname(), version: app.getVersion(), bibles: installedBibles() }),
         notify: (n) => notifications.add(n),
         dismiss: (key) => notifications.remove((n) => n.key === key),
@@ -810,6 +823,7 @@ app.whenReady().then(async () => {
         live,
         lyrics: createLyrics(),
         youtube,
+        bibleSetup,
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),

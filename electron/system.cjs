@@ -69,7 +69,7 @@ const AFTER_IMPORT_KEY = "syncAfterImport";
 // Whether this computer syncs, from syncControl's status: through the folder
 // or Google Drive, with the church's code -> { others }, else null.
 function syncingFrom(st) {
-    if (!st || !(st.folder || st.store === "drive") || !st.paired) return null;
+    if (!st || st.store !== "drive" || !st.paired) return null;
     return { others: (st.engine?.computers || []).filter((c) => !c.removed).length };
 }
 

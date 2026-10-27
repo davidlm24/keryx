@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Btn, Empty } from "../kx";
 import Icon from "../Icon";
 import { editionCredit } from "@/lib/bibleEditions";
 import { forgetInstalledVersions } from "@/lib/bibleText";
-import { useBridge, usePoll, desktopOnly, Reading, CfgGroup } from "./parts";
+import { setupLine } from "@/lib/console/bibleSetup";
+import { useBibleSetup } from "../useBibleSetup";
+import BibleSetupDialog from "../BibleSetupDialog";
+import { useBridge, usePoll, desktopOnly, Reading, CfgGroup, CfgKey } from "./parts";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { biblesMissingHere } from "@/lib/console/syncView";
@@ -23,13 +26,29 @@ import OwnBibleDialog from "./OwnBibleDialog";
 // the sync between the church's computers: a computer that syncs says which
 // editions the others have and this one lacks, with Instalar aqui (Rodada G7,
 // biblesMissingHere; each computer's list rides its computer.json) — an
-// edition of the church's own asks for its file instead.
+// edition of the church's own asks for its file instead. **Escolher as
+// Bíblias…** (owner 2026-10-27) opens the first opening's question again
+// (BibleSetupDialog: the most used ticked, downloads in the background,
+// electron/bibleSetup.cjs), and a line says where those downloads stand.
 export default function BibliasSection({ c }) {
     const bible = useBridge("bible");
     const [installed, refresh, , readError] = usePoll(() => bible?.status(), 0);
     const [busy, setBusy] = useState("");
     // The own-edition dialog: false, true (a new one) or the edition whose file is swapped.
     const [ownOpen, setOwnOpen] = useState(false);
+    const setup = useBibleSetup();
+    const [setupOpen, setSetupOpen] = useState(false);
+    // An edition the background downloads brought: the list follows.
+    const installedKey = JSON.stringify(setup.state?.installed || null);
+    useEffect(() => { if (setup.state) { forgetInstalledVersions(); refresh(); } }, [installedKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
+    useEffect(() => {
+        const on = () => setOnline(true), off = () => setOnline(false);
+        window.addEventListener("online", on);
+        window.addEventListener("offline", off);
+        return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+    }, []);
+    const progress = setupLine(setup.state, online);
     const def = usePrefs().bible_version;
     const sync = useSyncStatus();
     const editions = useBibleEditions();
@@ -91,9 +110,17 @@ export default function BibliasSection({ c }) {
     };
     const afterOwn = async () => { forgetInstalledVersions(); await refresh(); };
     const groups = bibleGroups(editions, installed);
+    // Tentar de novo: what waits goes now; what was given up is chosen again.
+    const retrySetup = () => (progress?.tone === "warn" ? setup.choose(setup.state.wanted) : setup.retry()).catch((err) => c.say(err?.message || "Não foi possível tentar de novo."));
 
     return group(
         <>
+            {progress && (
+                <div className={progress.tone === "warn" ? "cfg-note" : "bib-setup"} role="status">
+                    <span>{progress.text}</span>
+                    {progress.retry && <Btn small kind="outline" disabled={Boolean(busy)} onClick={retrySetup}>Tentar de novo</Btn>}
+                </div>
+            )}
             {elsewhere && (
                 <div className="cfg-note" role="status">
                     <span>{elsewhere.line}</span>
@@ -126,7 +153,10 @@ export default function BibliasSection({ c }) {
                     ))}
                 </React.Fragment>
             ))}
-            <div className="bib-own"><Btn kind="outline" disabled={Boolean(busy)} onClick={() => setOwnOpen(true)}><Icon name="plus" />Instalar uma edição própria…</Btn></div>
+            <div className="bib-own">
+                {setup.available && <CfgKey k="Escolher as Bíblias" as="span"><Btn kind="outline" disabled={Boolean(busy)} onClick={() => setSetupOpen(true)}><Icon name="download" />Escolher as Bíblias…</Btn></CfgKey>}
+                <Btn kind="outline" disabled={Boolean(busy)} onClick={() => setOwnOpen(true)}><Icon name="plus" />Instalar uma edição própria…</Btn>
+            </div>
             <div className="listhead"><span className="kx-meta">A versão em uso vale em todo o KERYX, na Bíblia e nas referências; trocá-la aqui ou no seletor de Livros é a mesma coisa. Se a escolhida faltar, o KERYX avisa e mostra outra instalada; nunca troca em silêncio. Sem internet aqui, use "Do arquivo" com o arquivo baixado em outro computador (JSON, zip, USFM, VPL, OSIS, Zefania ou MySword).</span></div>
             <OwnBibleDialog
                 open={Boolean(ownOpen)}
@@ -137,6 +167,7 @@ export default function BibliasSection({ c }) {
                 onInstalled={afterOwn}
                 onClose={() => setOwnOpen(false)}
             />
+            <BibleSetupDialog open={setupOpen} setup={setup} say={c.say} onClose={() => setSetupOpen(false)} />
         </>
     );
 }

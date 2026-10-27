@@ -201,9 +201,9 @@ test("desempenho: every window by its page, the GPU, and a report even when Chro
     bare.store.close();
 });
 
-test("syncingFrom: a computer that syncs through the folder or Google Drive is asked; not paired, or neither, is not", () => {
+test("syncingFrom: a computer that syncs through the account is asked; not paired, or one that synced by the folder before, is not", () => {
     const engine = { computers: [{ pc: "a" }, { pc: "b", removed: { at: "x" } }] };
-    assert.deepEqual(syncingFrom({ folder: "G:/igreja", paired: true, engine }), { others: 1 });
+    assert.equal(syncingFrom({ folder: "G:/igreja", paired: true, engine }), null, "the folder went in PR 4");
     assert.deepEqual(syncingFrom({ store: "drive", folder: null, paired: true, engine }), { others: 1 });
     assert.equal(syncingFrom({ store: "drive", paired: false }), null);
     assert.equal(syncingFrom({ store: "folder", folder: null, paired: true }), null);

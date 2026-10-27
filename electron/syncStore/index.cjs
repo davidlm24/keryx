@@ -24,18 +24,18 @@
 //
 // An adapter is an object with:
 //
-//   kind                       "folder" | "drive"
-//   where                      what the status shows (the folder's path)
+//   kind                       "drive"
+//   where                      what the status shows (the account)
 //   key                        what the engine's read state belongs to:
 //                              another key starts the reading over
-//   available()                -> Promise<bool>: reachable now (the folder
-//                              is there; Drive answers)
+//   available()                -> Promise<bool>: reachable now (Drive
+//                              answers)
 //   list(prefix, { quick })    -> Promise<[{ id, name, size, created,
 //                              modified, props }]>, every object whose name
 //                              starts with prefix (created/modified in ms);
 //                              with quick, an adapter for which they cost a
-//                              call per object (the folder) may leave size,
-//                              created and modified null
+//                              call per object may leave size, created and
+//                              modified null
 //   stat(id)                   -> Promise<{ size, created, modified } | null>
 //   read(id)                   -> Promise<Buffer | null>: the whole object,
 //                              null when it is gone
@@ -50,7 +50,7 @@
 //                              and the other answers false (firstWins)
 //   remove(id)                 -> Promise<void>, nothing when already gone
 //   upload(name, fromFile)     -> Promise<object | null>: a local file as a
-//                              new object (null: the folder already has it);
+//                              new object (null: the store already has it);
 //                              an interrupted upload may go on where it was
 //   download(id, toFile)       -> Promise<void>: the object's bytes into a
 //                              local file, which may hold the start of them
@@ -58,15 +58,13 @@
 //                              there when the adapter can tell it is the
 //                              same object)
 //
-// Adapters: `folder` (folder.cjs), the shared folder Google Drive para
-// computador keeps in step, until PR 4 of "Google Drive direto" (then it
-// goes); `drive` (drive.cjs), Google Drive's REST API in the account's
-// appDataFolder (PR 2); `fakeDrive` (fakeDrive.cjs), in memory, enforcing
-// the rules above, for the tests.
+// Adapters: `drive` (drive.cjs), Google Drive's REST API in the account's
+// appDataFolder ("Google Drive direto", PR 2); `fakeDrive` (fakeDrive.cjs),
+// in memory, enforcing the rules above, for the tests. The shared folder of
+// before (Google Drive para computador, `folder.cjs`) went in PR 4.
 
-const { createFolderStore } = require("./folder.cjs");
 const { createDriveStore } = require("./drive.cjs");
 const { createFakeDrive } = require("./fakeDrive.cjs");
 const rules = require("./rules.cjs");
 
-module.exports = { createFolderStore, createDriveStore, createFakeDrive, ...rules };
+module.exports = { createDriveStore, createFakeDrive, ...rules };

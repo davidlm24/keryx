@@ -211,7 +211,12 @@ from eBible.org, or an edition of the church's own from its file (USFM,
 VPL, OSIS, Zefania, MySword or JSON; `electron/bibleFormats.cjs`); after that, reading, word search and comparing
 run from the local database with no internet. An edition not installed is
 read from bolls.life one chapter at a time (all but NVI and AA). All Bible
-text goes through `src/lib/bibleText.js`.
+text goes through `src/lib/bibleText.js`. The first time the console opens
+on a computer with no edition installed it asks which to download, the
+most used ones (NVI, ARA, ARC, NTLH) already ticked; one click starts them
+in the background (`electron/bibleSetup.cjs`: one at a time, retried while
+the internet is missing, the bell says when they came), and Configurações ›
+Bíblia e músicas › "Escolher as Bíblias…" asks again any time.
 
 ### Fonts (Temas)
 

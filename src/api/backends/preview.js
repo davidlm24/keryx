@@ -11,6 +11,8 @@
 // `import.meta.env.DEV`).
 
 import { reportCode, reportMail } from "@shared/support.mjs";
+import { emptySetup, chooseSetup, dismissSetup, pendingSetup, afterInstall, setupStatus } from "@shared/bibleSetup.mjs";
+import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
 import { previewSyncCall } from "./previewSync";
 
 const API = "/__keryx/";
@@ -96,6 +98,57 @@ export function createPreviewBridge() {
         source.addEventListener("live", (event) => { try { emit(liveListeners, JSON.parse(event.data)); } catch { /* the next frame carries it all */ } });
         source.addEventListener("youtube", (event) => { try { emit(youtubeListeners, JSON.parse(event.data)); } catch { /* the next frame carries it */ } });
     }
+
+    // Bíblias neste computador: the desktop's runner (electron/bibleSetup.cjs)
+    // run here with the same rules (shared/bibleSetup.mjs), the state in
+    // memory (a reload asks again) and the downloads through bible-install,
+    // one at a time, into the preview's store.
+    const setupListeners = new Set();
+    const setupKnown = BIBLE_VERSIONS.filter((v) => v.install).map((v) => v.id);
+    let setupState = emptySetup();
+    let setupInstalling = null;
+    let setupRun = null;
+    const setupHere = async () => (await request("bible"))?.data || {};
+    const setupSnapshot = async () => ({ ...setupStatus(setupState, await setupHere()), installing: setupInstalling, installed: await setupHere() });
+    const setupPush = async () => emit(setupListeners, await setupSnapshot());
+    const setupFlush = () => {
+        if (setupRun) return setupRun;
+        setupRun = (async () => {
+            try {
+                for (;;) {
+                    const [version] = pendingSetup(setupState, await setupHere());
+                    if (!version) break;
+                    setupInstalling = version;
+                    await setupPush();
+                    const res = await request("bible-install", { method: "POST", body: { version } });
+                    const { state, stop } = afterInstall(setupState, version, res?.error ? { error: res.error } : { ok: true });
+                    setupState = state;
+                    setupInstalling = null;
+                    if (stop) break;
+                }
+            } finally {
+                setupInstalling = null;
+                setupRun = null;
+            }
+            await setupPush();
+        })();
+        return setupRun;
+    };
+    const bibleSetup = {
+        setup: async () => ({ data: await setupSnapshot() }),
+        async setupChoose(versions) {
+            setupState = chooseSetup(setupState, versions, setupKnown, new Date().toISOString());
+            const data = await setupSnapshot();
+            setupFlush().catch(() => {});
+            return { data };
+        },
+        async setupDismiss() {
+            setupState = dismissSetup(setupState, new Date().toISOString());
+            return { data: await setupSnapshot() };
+        },
+        async setupRetry() { setupFlush().catch(() => {}); return { data: await setupSnapshot() }; },
+        onSetup(listener) { setupListeners.add(listener); return () => setupListeners.delete(listener); },
+    };
 
     // Output pages open as browser tabs; the console sees which are open.
     const windows = new Map();
@@ -194,6 +247,7 @@ export function createPreviewBridge() {
             },
             installOwn: (args) => request("bible-own", { method: "POST", body: { op: "install", ...args } }),
             removeOwn: (sigla) => request("bible-own", { method: "POST", body: { op: "remove", sigla } }),
+            ...bibleSetup,
         },
         network: {
             async call(op) {

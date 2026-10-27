@@ -101,7 +101,7 @@ Precisa de dois computadores com internet e da **conta Google da igreja** (a mes
 12. Desligue a internet de um deles e mude uma música: a nuvem fica âmbar, **Sem internet · 1 mudança esperando**, e o KERYX continua normal. Ligue de novo: a mudança vai sozinha (ou **Tentar agora**).
 13. Em **Dispositivos conectados**, use **Desconectar…** no outro computador: ele mostra **"Este computador foi desconectado da sincronização"** e a nuvem fica vermelha. Clique **Entrar com Google** nele: volta a sincronizar.
 14. Em um deles, **Sair da conta…**: nada é apagado, a página volta a **Entrar com Google** e os outros continuam com o que ele mandou.
-15. Num computador que **sincronizava pela pasta** antes desta versão: depois de atualizar, o sino avisa uma vez e Sincronização mostra a faixa **"A sincronização agora é pela conta Google"** com a pasta dele. Até entrar, ele continua pela pasta. **Entrar com Google** com a mesma conta: ele junta o que tem, nada some. Depois que todos tiverem entrado, a pasta antiga pode ser apagada.
+15. Num computador que **sincronizava pela pasta** antes desta versão: depois de atualizar, o sino avisa uma vez e Sincronização mostra a faixa **"A sincronização agora é pela conta Google"** com a pasta dele, e a nuvem fica vermelha. Até entrar, ele **não sincroniza** (o que ele tem fica nele). **Entrar com Google** com a mesma conta: ele junta o que tem, nada some. Depois que todos tiverem entrado, a pasta antiga pode ser apagada.
 16. Anote quanto tempo uma mudança leva para chegar e quanto tempo um vídeo grande leva.
 
 ## Ao terminar

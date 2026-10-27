@@ -33,7 +33,7 @@ const { createSystemFonts } = require("./systemFonts.cjs");
 const { importMedia, MAX_IMPORT_BYTES } = require("./mediaImport.cjs");
 const { createPackages } = require("./keryxPackage.cjs");
 
-function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, youtube, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, youtube, bibleSetup = null, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -191,6 +191,16 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
     ipcMain.handle("keryx:bible:status", bibleOp(() => bible.installedVersions(store)));
     ipcMain.handle("keryx:bible:online-chapter", bibleOp((_e, args) => bible.fetchOnlineChapter(args)));
     ipcMain.handle("keryx:bible:install", bibleOp((_e, { version }) => bible.installFromSource(store, version)));
+    // Bíblias neste computador (electron/bibleSetup.cjs): the question's
+    // answer and the state of the downloads it started.
+    ipcMain.handle("keryx:bible:setup", bibleOp(async (_e, { op, versions }) => {
+        if (!bibleSetup) throw Object.assign(new Error("As Bíblias ainda não estão prontas."), { status: 503 });
+        if (op === "state") return bibleSetup.state();
+        if (op === "choose") return bibleSetup.choose(Array.isArray(versions) ? versions.map(String).slice(0, 40) : []);
+        if (op === "dismiss") return bibleSetup.dismiss();
+        if (op === "retry") { bibleSetup.flush().catch(() => {}); return bibleSetup.state(); }
+        throw Object.assign(new Error("Operação de Bíblias desconhecida."), { status: 400 });
+    }));
     // The Bible files the readers know (electron/bibleFormats.cjs); PDF and
     // Word are listed so choosing one says what to do instead.
     const BIBLE_FILES = [

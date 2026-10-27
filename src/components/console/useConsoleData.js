@@ -210,6 +210,7 @@ export function useOutputs() {
     const look = useOutputLooks();
     const lookRef = useRef(look);
     lookRef.current = look;
+    const readRef = useRef(null);
     useEffect(() => {
         const bridge = window.keryxDesktop;
         if (!bridge) return undefined;
@@ -237,10 +238,14 @@ export function useOutputs() {
                 return next;
             });
         };
+        readRef.current = read;
         read();
         const id = setInterval(read, 5000);
-        return () => { alive = false; clearInterval(id); };
+        return () => { alive = false; readRef.current = null; clearInterval(id); };
     }, []);
+    // Opening or closing an output reads again at once: waiting for the next
+    // poll left the Saídas switch up to 5 s behind the window.
+    const refresh = useCallback(() => readRef.current?.(), []);
     // The shape Verificar and the player use: one entry per network screen,
     // online or not (lastSeen: when it dropped).
     const network = useMemo(() => Object.values(seen).filter((v) => v.kind === "net").map((v) => ({
@@ -253,5 +258,5 @@ export function useOutputs() {
         role: v.screen === "/VideoProjection" ? "media" : "lyrics",
     })), [seen]);
     const forgetOutput = useCallback((id) => setSeen((prev) => forget(prev, id)), []);
-    return { displays: local.displays, outputs: local.outputs, network, seen, forgetOutput };
+    return { displays: local.displays, outputs: local.outputs, network, seen, forgetOutput, refresh };
 }

@@ -1,8 +1,8 @@
 // The names the sync uses and the few rules every adapter shares
 // (index.cjs describes the interface).
 
-// A computer's id (its folder's name, where there are folders: Drive para
-// computador may add " (1)" to a copy of it).
+// A computer's id at the start of a name (an older KERYX's folder name
+// could carry a " (1)" after it).
 const PC_DIR = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
 // The changes object's name for a computer and a number, and back; with
@@ -27,9 +27,8 @@ const oldestOf = (list) => [...list].sort(byAge)[0] || null;
 // putIfAbsent where the service has no "only if absent" (Drive): make it,
 // then look; when an older object of the name is there, this one goes. Two
 // computers that both list before the other's object shows both think they
-// won; readers take the oldest (oldestOf), so the other one sees "outro
-// código" and types the code that stayed — what the folder did with a
-// conflict copy.
+// won; readers take the oldest (oldestOf), so the one that lost takes the
+// key that stayed (syncPairing.cjs joinDrive).
 async function firstWins(store, name, bytes) {
     const mine = await store.putNew(name, bytes);
     const all = (await store.list(name)).filter((o) => o.name === name);
