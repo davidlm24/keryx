@@ -1,0 +1,481 @@
+// node --test electron/syncControl.test.cjs   (npm test)
+// Configurações › Sincronização's main-process side, on temp stores and one
+// temp folder, with the folder picker, the system's protection and the bell
+// faked.
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { createStore, PROFILE_ID } = require("./db/store.cjs");
+const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const schema = require("./db/schema.json");
+const { fakeDriveServer } = require("./fixtures/fakeDriveServer.cjs");
+
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-syncctl-"));
+
+// settings.json in memory, the way settings.cjs answers.
+function memorySettings() {
+    const data = {};
+    return { data, get: (k, d) => (data[k] === undefined ? d : data[k]), set: (k, v) => { data[k] = v; } };
+}
+
+// A protection that is not plain text, like Windows' (and one that a
+// different "account" cannot open).
+function fakeProtection(account = "igreja") {
+    return sealWith({
+        isEncryptionAvailable: () => true,
+        encryptString: (t) => Buffer.from(`${account}|${t}`),
+        decryptString: (b) => {
+            const [who, ...rest] = b.toString().split("|");
+            if (who !== account) throw new Error("outra conta");
+            return rest.join("|");
+        },
+    });
+}
+
+function computer(folder, name, opts = {}) {
+    const dir = tmp();
+    const mediaDir = path.join(dir, "media");
+    fs.mkdirSync(mediaDir);
+    const store = createStore({ file: path.join(dir, "keryx.db"), schema, log: () => {} });
+    const settings = opts.settings || memorySettings();
+    const bell = [];
+    const control = createSyncControl({
+        store,
+        mediaDir,
+        settings,
+        protect: opts.protect || fakeProtection(),
+        chooseFolder: async () => folder,
+        describe: () => ({ name, version: "0.2.20" }),
+        notify: (n) => bell.push(n),
+        dismiss: (key) => bell.push({ dismissed: key }),
+        log: () => {},
+        google: opts.google || null,
+        driveOptions: opts.driveOptions || {},
+    });
+    const call = (op, args) => control.ops[op](null, args);
+    return { store, settings, control, call, bell, close: () => store.close() };
+}
+
+const titles = (pc) => pc.store.call("Song", "list", []).map((s) => s.title).sort();
+const settle = async (pcs, n = 3) => { for (let i = 0; i < n; i++) for (const pc of pcs) await pc.call("now"); };
+
+test("two computers: choose the folder, make the code on one, type it on the other, both end with everything", async () => {
+    const folder = tmp();
+    const a = computer(folder, "IGREJA-SOM");
+    const b = computer(folder, "NOTEBOOK-PASTOR");
+    a.store.call("Song", "create", [{ title: "Só no som" }]);
+    a.store.call("User", "update", [PROFILE_ID, { church_name: "Igreja Gerar" }]);
+    b.store.call("Song", "create", [{ title: "Só no notebook" }]);
+
+    assert.equal((await a.call("status")).folder, null);
+    assert.equal(a.store.isRecording(), false, "not syncing: the outbox stays empty");
+    assert.equal(a.store.outbox().length, 0);
+    await assert.rejects(a.call("create"), /Escolha a pasta/);
+    const chosen = await a.call("choose");
+    assert.equal(chosen.folder, path.resolve(folder));
+    assert.equal(chosen.inspect.code, "missing");
+    const made = await a.call("create");
+    assert.match(made.code, /^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+    assert.equal(made.paired, true);
+    const stored = JSON.stringify(a.settings.data);
+    assert.ok(!stored.includes(made.code), "the code is never kept in plain text");
+    assert.equal((await a.call("showCode")).code, made.code);
+
+    const seen = await b.call("choose");
+    assert.equal(seen.inspect.code, "ok");
+    await assert.rejects(b.call("join", { code: "K7QM-2H" }), /Faltam/);
+    await assert.rejects(b.call("join", { code: made.code.replace(/^./, (c) => (c === "A" ? "B" : "A")) }), /errada|desta pasta/);
+    const joined = await b.call("join", { code: made.code.toLowerCase() });
+    assert.equal(joined.paired, true);
+
+    await settle([a, b]);
+    assert.deepEqual(titles(a), ["Só no notebook", "Só no som"], "the first join merges");
+    assert.deepEqual(titles(b), ["Só no notebook", "Só no som"]);
+    assert.equal(b.store.call("User", "get", [PROFILE_ID]).church_name, "Igreja Gerar", "a fresh profile never overwrites the church's");
+
+    // An edit on one reaches the other on the next passes.
+    const song = a.store.call("Song", "list", []).find((s) => s.title === "Só no som");
+    a.store.call("Song", "update", [song.id, { title: "Agora em todos" }]);
+    await settle([a, b], 1);
+    assert.ok(titles(b).includes("Agora em todos"));
+
+    const st = await b.call("status");
+    assert.equal(st.engine.state, "ok");
+    assert.ok(!b.bell.some((n) => n.key === "sync-dups"), "no look-alike songs, no bell");
+    assert.equal(st.name, "NOTEBOOK-PASTOR");
+    const other = st.engine.computers.find((c) => c.pc === a.store.pcId);
+    assert.equal(other.name, "IGREJA-SOM");
+    assert.equal(other.version, "0.2.20");
+    assert.equal(other.verified, true);
+    assert.ok(st.since.applied >= 2);
+    a.close();
+    b.close();
+});
+
+test("pause, sync now, change the code, leave", async () => {
+    const folder = tmp();
+    const a = computer(folder, "A");
+    const b = computer(folder, "B");
+    await a.call("choose");
+    const made = await a.call("create");
+    await b.call("choose");
+    await b.call("join", { code: made.code });
+    await settle([a, b], 1);
+
+    // Paused: the folder and the code stay; changes wait.
+    const paused = await b.call("setPaused", { paused: true });
+    assert.equal(paused.paused, true);
+    assert.equal(paused.engine.state, "off");
+    b.store.call("Song", "create", [{ title: "Durante a pausa" }]);
+    await settle([a, b], 1);
+    assert.ok(!titles(a).includes("Durante a pausa"));
+    await b.call("setPaused", { paused: false });
+    await settle([b, a], 1);
+    assert.ok(titles(a).includes("Durante a pausa"));
+
+    // A changes the code: B stops (the bell says so) until it types the new one.
+    const next = await a.call("rotate");
+    assert.notEqual(next.code, made.code);
+    b.store.call("Song", "create", [{ title: "Com o código velho" }]);
+    const stopped = await b.call("now");
+    assert.equal(stopped.engine.state, "mismatch");
+    assert.equal(b.bell.at(-1).key, "sync");
+    assert.match(b.bell.at(-1).title, /código/);
+    await b.call("join", { code: next.code });
+    await settle([b, a], 2);
+    assert.ok(titles(a).includes("Com o código velho"), "what waited goes with the new code");
+    assert.deepEqual(b.bell.at(-1), { dismissed: "sync" }, "the bell clears once it is fine");
+
+    // Tirar from A: B stops until it types the code again.
+    await assert.rejects(a.call("remove", { pc: a.store.pcId }), /Sair da sincronização/);
+    const afterRemove = await a.call("remove", { pc: b.store.pcId });
+    assert.equal(afterRemove.engine.computers.find((c) => c.pc === b.store.pcId).removed.by, a.store.pcId.toLowerCase());
+    b.store.call("Song", "create", [{ title: "Enquanto tirado" }]);
+    assert.equal((await b.call("now")).engine.state, "removed");
+    await settle([a], 1);
+    assert.ok(!titles(a).includes("Enquanto tirado"));
+    await b.call("join", { code: next.code });
+    await settle([b, a], 2);
+    assert.ok(titles(a).includes("Enquanto tirado"), "typing the code brought it back");
+    // Deixar voltar, from A.
+    await a.call("remove", { pc: b.store.pcId });
+    assert.equal((await b.call("now")).engine.state, "removed");
+    await a.call("restore", { pc: b.store.pcId });
+    assert.equal((await b.call("now")).engine.state, "ok");
+
+    // Leaving: this computer stops, nothing is deleted anywhere.
+    const left = await b.call("leave");
+    assert.equal(left.folder, null);
+    assert.equal(left.paired, false);
+    assert.equal(left.engine.state, "off");
+    assert.equal(b.settings.data.sync, null);
+    b.store.call("Song", "create", [{ title: "Depois de sair" }]);
+    await settle([a], 1);
+    assert.ok(!titles(a).includes("Depois de sair"));
+    assert.ok(titles(a).includes("Com o código velho"), "what it sent stays");
+    assert.equal(b.store.outbox().length, 0, "nothing is recorded while it does not sync");
+    a.close();
+    b.close();
+});
+
+test("after a join, the bell says once that some songs look repeated", async () => {
+    const folder = tmp();
+    const a = computer(folder, "A");
+    const b = computer(folder, "B");
+    a.store.call("Song", "create", [{ title: "Grande é o Senhor", lyrics: "Grande é o Senhor" }]);
+    b.store.call("Song", "create", [{ title: "Grande e o senhor", lyrics: "grande é o Senhor!" }]);
+    b.store.call("Song", "create", [{ title: "Santo", lyrics: "Santo" }]);
+    await a.call("choose");
+    const made = await a.call("create");
+    await b.call("choose");
+    await b.call("join", { code: made.code });
+    await settle([a, b], 2);
+    for (const pc of [a, b]) {
+        const dups = pc.bell.filter((n) => n.key === "sync-dups");
+        assert.equal(dups.length, 1, "once");
+        assert.equal(dups[0].title, "1 música parece repetida");
+        assert.equal(dups[0].action, "settings:sincronizacao");
+    }
+    a.close();
+    b.close();
+});
+
+test("a backup restored here for everyone wins on the others; for this one only, it leaves", async () => {
+    const folder = tmp();
+    const a = computer(folder, "A");
+    const b = computer(folder, "B");
+    a.store.importRows("Song", [{ id: "hino", title: "Hino", created_date: "2026-10-01T00:00:00.000Z", updated_date: "2026-10-01T00:00:00.000Z" }]);
+    await a.call("choose");
+    const made = await a.call("create");
+    await b.call("choose");
+    await b.call("join", { code: made.code });
+    await settle([a, b], 2);
+    b.store.call("Song", "update", ["hino", { title: "Hino (editado depois do backup)" }]);
+    b.store.call("Song", "create", [{ title: "Nova depois do backup" }]);
+    await settle([b, a], 1);
+    // A restores the backup (the swap: the old row, before B's edit and new song).
+    a.store.importRows("Song", [{ id: "hino", title: "Hino", created_date: "2026-10-01T00:00:00.000Z", updated_date: "2026-10-01T00:00:00.000Z" }]);
+    a.control.afterImport("all");
+    await settle([a, b], 2);
+    assert.equal(b.store.call("Song", "get", ["hino"]).title, "Hino", "the backup wins everywhere");
+    assert.ok(titles(b).includes("Nova depois do backup"), "what was made after stays");
+
+    a.control.afterImport("leave");
+    const st = await a.call("status");
+    assert.equal(st.folder, null);
+    assert.equal(st.paired, false);
+    a.close();
+    b.close();
+});
+
+test("a key that does not open here (settings from another Windows account) asks for the code again", async () => {
+    const folder = tmp();
+    const a = computer(folder, "A");
+    await a.call("choose");
+    await a.call("create");
+    const moved = computer(folder, "A-copiado", { settings: a.settings, protect: fakeProtection("outra") });
+    const st = await moved.call("now");
+    assert.equal(st.paired, true);
+    assert.equal(st.keyLost, true);
+    assert.equal(st.engine.state, "unpaired", "nothing is read or written without a key");
+    await assert.rejects(moved.call("showCode"), /não está guardado/);
+    a.close();
+    moved.close();
+});
+
+test("sealWith: the system's protection, or a marked plain fallback", () => {
+    const none = sealWith({ isEncryptionAvailable: () => false });
+    const sealed = none.seal("K7QM-2HXP-9WRT");
+    assert.match(sealed, /^plain:/);
+    assert.equal(none.open(sealed), "K7QM-2HXP-9WRT");
+    assert.equal(none.open("garbage"), null);
+    const safe = fakeProtection();
+    assert.match(safe.seal("x"), /^safe:/);
+    assert.equal(safe.open(safe.seal("x")), "x");
+});
+
+// The church's Google account, faked (googleAuth.cjs's surface): every
+// computer signs in to the same one, whose token the fake Drive takes.
+function fakeGoogle(srv) {
+    const g = { signed: false, refused: false };
+    const auth = () => Object.assign(new Error("Entre de novo com a conta da igreja."), { code: "auth" });
+    Object.assign(g, {
+        status: () => ({ signedIn: g.signed, email: g.signed || g.refused ? "igreja@example.com" : null, refused: g.refused, keyLost: false, signingIn: false, configured: true }),
+        email: () => (g.signed ? "igreja@example.com" : null),
+        signIn: async () => { g.signed = true; g.refused = false; return g.status(); },
+        signOut: async () => { g.signed = false; return { revoked: true, ...g.status() }; },
+        accessToken: async () => { if (!g.signed) throw auth(); return srv.token; },
+        invalidate() {},
+        refuse() { g.signed = false; g.refused = true; },
+        cancel: () => { g.canceled = (g.canceled || 0) + 1; return g.status(); },
+        reopen: async () => { g.reopened = (g.reopened || 0) + 1; return g.status(); },
+    });
+    return g;
+}
+
+const driveFile = (srv) => {
+    const [f] = srv.named("keryx-sync.json");
+    return f ? JSON.parse(f.bytes.toString("utf8")) : null;
+};
+
+test("Google Drive direto, no code: entering with the account joins (or starts) the church's sync; Desconectar and back; the folder's code stays kept", async (t) => {
+    const srv = await fakeDriveServer({ page: 50 });
+    t.after(() => srv.close());
+    const folder = tmp();
+    const driveOptions = { api: srv.api, upload: srv.upload, freshMs: 0 };
+    const ga = fakeGoogle(srv);
+    const gb = fakeGoogle(srv);
+    const gc = fakeGoogle(srv);
+    const a = computer(folder, "IGREJA-SOM", { google: ga, driveOptions });
+    const b = computer(tmp(), "NOTEBOOK-PASTOR", { google: gb, driveOptions });
+    const c = computer(tmp(), "SALA-JOVENS", { google: gc, driveOptions });
+    a.store.call("Song", "create", [{ title: "Só no som" }]);
+    b.store.call("Song", "create", [{ title: "Só no notebook" }]);
+
+    // A syncs through the folder with the church's code first.
+    await a.call("choose");
+    const made = await a.call("create");
+    await a.call("now");
+    assert.equal((await a.call("status")).store, "folder");
+    const folderPairing = a.settings.data.sync.pairing;
+
+    // Entering with the account moves it to Drive and starts the church's
+    // sync there: the account had nothing of KERYX.
+    await assert.rejects(a.call("useDrive", { on: true }), /Entre com a conta da igreja/);
+    const entered = await a.call("googleSignIn");
+    assert.equal(entered.store, "drive");
+    assert.equal(entered.google.signedIn, true);
+    const { mine, ...quota } = entered.google.quota;
+    assert.deepEqual(quota, { used: 524288, total: 16106127360 });
+    assert.ok(mine > 0, "the hidden folder holds the key file already");
+    assert.equal(entered.joined.created, true);
+    assert.ok(entered.joined.sent > 0, "everything here goes");
+    assert.equal(entered.paired, true);
+    assert.equal(entered.accountNew, true);
+    assert.equal(entered.canShowCode, false, "no code on Drive");
+    const file = driveFile(srv);
+    assert.equal(file.v, 2);
+    assert.match(file.key, /^[A-Za-z0-9_-]{43}$/, "the key is in the hidden folder");
+    assert.notEqual(file.id, made.id, "never the folder's code's key");
+    assert.deepEqual(a.settings.data.sync.pairing, folderPairing, "the folder's pairing stays as it was");
+    assert.match(a.settings.data.sync.drive.key, /^safe:/, "the account's key sealed here");
+    assert.equal(a.settings.data.sync.drive.email, "igreja@example.com");
+    for (const op of ["create", "join", "rotate", "showCode"]) await assert.rejects(a.call(op, { code: made.code }), /não há código/);
+    await a.call("now");
+    assert.equal((await a.call("status")).engine.state, "ok");
+
+    // B enters with the same account: no code, the same key.
+    const bIn = await b.call("googleSignIn");
+    assert.equal(bIn.joined.created, false);
+    assert.equal(bIn.accountNew, false);
+    assert.equal(b.settings.data.sync.drive.id, file.id);
+    assert.equal((await b.call("useDrive", { on: true })).store, "drive", "already there: nothing more");
+    await settle([a, b]);
+    assert.deepEqual(titles(a), ["Só no notebook", "Só no som"]);
+    assert.deepEqual(titles(b), ["Só no notebook", "Só no som"]);
+    assert.equal((await a.call("status")).accountNew, false, "another computer showed up");
+
+    // A third one.
+    await c.call("googleSignIn");
+    await settle([c, a, b]);
+    assert.deepEqual(titles(c), ["Só no notebook", "Só no som"]);
+    assert.equal(srv.named("keryx-sync.json").length, 1);
+
+    // Desconectar B from A: B stops, its change waits; entering again on B
+    // takes it off the list.
+    await assert.rejects(a.call("remove", { pc: a.store.pcId }), /Sair da sincronização/);
+    await a.call("remove", { pc: b.store.pcId });
+    assert.deepEqual(driveFile(srv).removed.map((r) => r.pc), [b.store.pcId.toLowerCase()]);
+    assert.ok(driveFile(srv).key, "the key stays in the file");
+    b.store.call("Song", "create", [{ title: "Depois de desconectado" }]);
+    const off = await b.call("now");
+    assert.equal(off.engine.state, "removed");
+    assert.match(off.engine.error, /desconectado/);
+    assert.equal((await b.call("now")).engine.state, "removed", "a pass never readmits it");
+    await settle([a]);
+    assert.ok(!titles(a).includes("Depois de desconectado"));
+    const back = await b.call("googleSignIn");
+    assert.equal(back.joined.sent, 0, "the same key: nothing sent again");
+    assert.deepEqual(driveFile(srv).removed, []);
+    await settle([b, a]);
+    assert.ok(titles(a).includes("Depois de desconectado"));
+
+    // Signed out: the engine says so, the changes wait, and go once it enters.
+    const out = await b.call("googleSignOut");
+    assert.equal(out.revoked, true);
+    assert.equal(out.engine.state, "auth");
+    b.store.call("Song", "create", [{ title: "Enquanto fora" }]);
+    assert.ok(b.store.outbox().length > 0);
+    await b.call("googleSignIn");
+    await settle([b, a]);
+    assert.ok(titles(a).includes("Enquanto fora"));
+
+    // Google refusing the account here: the state, and the bell once.
+    ga.refuse();
+    const refused = await a.call("now");
+    assert.equal(refused.engine.state, "auth");
+    assert.match(refused.engine.error, /Entre de novo/);
+    assert.equal(a.bell.filter((n) => /entre de novo com a conta/.test(n.title || "")).length, 1);
+
+    // Back to the folder: its code still works here, nothing typed.
+    const home = await a.call("useDrive", { on: false });
+    assert.equal(home.store, "folder");
+    assert.equal(home.paired, true);
+    assert.equal(home.canShowCode, true);
+    assert.equal((await a.call("now")).engine.state, "ok");
+    assert.equal((await a.call("showCode")).code, made.code);
+    for (const pc of [a, b, c]) pc.close();
+});
+
+test("Drive: a computer whose kept key will not open joins again by itself; a join Drive fails leaves the sign-in standing", async (t) => {
+    const srv = await fakeDriveServer({ page: 50 });
+    t.after(() => srv.close());
+    // Drive's retries without their waits.
+    const driveOptions = { api: srv.api, upload: srv.upload, freshMs: 0, sleep: async () => {} };
+    const a = computer(tmp(), "IGREJA-SOM", { google: fakeGoogle(srv), driveOptions });
+    a.store.call("Song", "create", [{ title: "Da conta" }]);
+    await a.call("googleSignIn");
+    await a.call("now");
+
+    // Settings brought from another Windows account: the key does not open.
+    const gb = fakeGoogle(srv);
+    await gb.signIn();
+    const settings = memorySettings();
+    settings.data.sync = JSON.parse(JSON.stringify(a.settings.data.sync));
+    const b = computer(tmp(), "NOTEBOOK", { google: gb, driveOptions, settings, protect: fakeProtection("outra") });
+    const first = await b.call("now");
+    assert.equal(first.keyLost, false, "on Drive the key comes from the account again");
+    assert.equal(first.engine.state, "unpaired");
+    for (let i = 0; i < 50 && !b.settings.data.sync.drive.key.startsWith("safe:b3V0cm"); i++) await new Promise((r) => setTimeout(r, 10));
+    assert.equal(b.control.status().paired, true);
+    await settle([b]);
+    assert.deepEqual(titles(b), ["Da conta"]);
+
+    // Drive failing during the sign-in: the sign-in stands, the join waits for the passes.
+    const c = computer(tmp(), "SALA", { google: fakeGoogle(srv), driveOptions });
+    srv.fault(() => true, 500, { times: 40 });
+    const entered = await c.call("googleSignIn");
+    assert.equal(entered.google.signedIn, true);
+    assert.equal(entered.joined, null);
+    assert.ok(entered.joinError);
+    assert.equal(entered.paired, false);
+    a.close();
+    b.close();
+    c.close();
+});
+
+test("Google sign-in: Cancelar and Abrir de novo reach the browser's sign-in", async (t) => {
+    const srv = await fakeDriveServer({ page: 50 });
+    t.after(() => srv.close());
+    const g = fakeGoogle(srv);
+    const a = computer(tmp(), "IGREJA-SOM", { google: g, driveOptions: { api: srv.api, upload: srv.upload } });
+    await a.call("googleReopen");
+    await a.call("googleCancel");
+    assert.equal(g.reopened, 1);
+    assert.equal(g.canceled, 1);
+    const none = computer(tmp(), "SEM-GOOGLE");
+    await assert.rejects(none.call("googleCancel"), /não está disponível/);
+    a.close();
+    none.close();
+});
+
+test("Google Drive direto, PR 3: the folder computer's one bell, the changes waiting, the KERYX space", async (t) => {
+    const srv = await fakeDriveServer({ page: 50 });
+    t.after(() => srv.close());
+    const driveOptions = { api: srv.api, upload: srv.upload, freshMs: 0 };
+    const settings = memorySettings();
+    const a = computer(tmp(), "IGREJA-SOM", { google: fakeGoogle(srv), driveOptions, settings });
+    // No folder yet: no bell (a new computer goes straight to the account).
+    a.control.start({ intervalMs: 60000 });
+    a.control.stop();
+    assert.equal(a.bell.filter((n) => n.key === "sync-google").length, 0);
+
+    await a.call("choose");
+    await a.call("create");
+    a.store.call("Song", "create", [{ title: "Esperando" }]);
+    const waiting = await a.call("status");
+    assert.ok(waiting.waiting > 0, "the outbox count");
+    assert.equal(waiting.arriving, null);
+
+    // On the folder: the bell once, never again after a restart.
+    for (let i = 0; i < 2; i++) {
+        a.control.start({ intervalMs: 60000 });
+        a.control.stop();
+    }
+    const notes = a.bell.filter((n) => n.key === "sync-google");
+    assert.equal(notes.length, 1);
+    assert.equal(notes[0].title, "A sincronização agora é pela conta Google");
+    assert.equal(notes[0].action, "settings:sincronizacao");
+
+    // Entered and on Drive: the notice goes, the space counts the KERYX folder.
+    await a.call("googleSignIn");
+    await a.call("useDrive", { on: true });
+    assert.ok(a.bell.some((n) => n.dismissed === "sync-google"));
+    await a.call("now");
+    assert.equal((await a.call("status")).waiting, 0, "sent");
+    const q = (await a.call("googleStatus")).quota;
+    assert.ok(q.mine > 0 && q.mine <= q.used + 1e12, "bytes in the hidden folder");
+    a.close();
+});

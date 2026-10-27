@@ -1,0 +1,74 @@
+{
+  "name": "ServiceMessage",
+  "type": "object",
+  "properties": {
+    "serviceId": {
+      "type": "string",
+      "description": "Culto da mensagem (Service.id; sem culto, a setlist de hoje)"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "chat",
+        "pedido"
+      ],
+      "default": "chat",
+      "description": "chat = mensagem entre a equipe e o operador; pedido = pedido de louvor"
+    },
+    "sender": {
+      "type": "string",
+      "description": "Quem mandou, como escreveu no celular (Equipe; até 40 letras); \"Operador\" quando side = operator"
+    },
+    "text": {
+      "type": "string",
+      "description": "A mensagem, ou a observação do pedido (até 280 letras)"
+    },
+    "singer": {
+      "type": "string",
+      "description": "Pedido: quem canta"
+    },
+    "song": {
+      "type": "string",
+      "description": "Pedido: o louvor, como escrito"
+    },
+    "songId": {
+      "type": "string",
+      "description": "Pedido: a música da biblioteca (Song.id), quando escolhida de lá"
+    },
+    "mediaId": {
+      "type": "string",
+      "description": "Pedido: um vídeo ou áudio da Mídia (Media.id), quando escolhido de lá (Rodada Q, S15); nunca junto com songId"
+    },
+    "link": {
+      "type": "string",
+      "description": "Um link do YouTube, sempre reescrito pelo console (https://www.youtube.com/watch?v=<id>)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "done"
+      ],
+      "default": "open",
+      "description": "open = a atender; done = atendido"
+    },
+    "side": {
+      "type": "string",
+      "enum": [
+        "",
+        "team",
+        "operator"
+      ],
+      "description": "Quem escreveu (Rodada Q, S12/S14): team = um celular da Equipe; operator = o operador, no console (uma resposta no Chat ou um pedido anotado). Vazio = team (linhas de antes)"
+    },
+    "sentAt": {
+      "type": "string",
+      "description": "Quando chegou (ISO 8601); a lista vai por ordem de chegada"
+    }
+  },
+  "required": [
+    "serviceId",
+    "kind",
+    "sentAt"
+  ]
+}

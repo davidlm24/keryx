@@ -1,0 +1,171 @@
+{
+  "name": "BibleProjectionSync",
+  "type": "object",
+  "properties": {
+    "channel": {
+      "type": "string",
+      "description": "Canal do operador (UUID por PC) - isola proje\u00e7\u00f5es entre diferentes PCs na mesma rede"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "project",
+        "stop",
+        "slide"
+      ],
+      "default": "project",
+      "description": "A\u00e7\u00e3o: projetar conte\u00fado, parar ou mudar slide"
+    },
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "slides",
+        "quiz",
+        "video",
+        "image",
+        "blank"
+      ],
+      "default": "slides"
+    },
+    "title": {
+      "type": "string"
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "slide_index": {
+      "type": "number",
+      "default": 0
+    },
+    "quiz_question": {
+      "type": "string"
+    },
+    "quiz_options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "quiz_correct": {
+      "type": "number"
+    },
+    "quiz_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correct": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "quiz_index": {
+      "type": "number",
+      "default": 0
+    },
+    "quiz_reveal": {
+      "type": "boolean",
+      "default": false
+    },
+    "media_url": {
+      "type": "string"
+    },
+    "background_image": {
+      "type": "string"
+    },
+    "background_color": {
+      "type": "string",
+      "default": "#0f172a"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff"
+    },
+    "font_size": {
+      "type": "string",
+      "default": "large"
+    },
+    "font_family": {
+      "type": "string",
+      "default": "sans"
+    },
+    "text_effect": {
+      "type": "string",
+      "default": "shadow"
+    },
+    "overlays": {
+      "type": "array",
+      "description": "Camadas sobrepostas \u00e0 proje\u00e7\u00e3o principal (logos, an\u00fancios, texto)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "logo",
+              "announcement",
+              "text",
+              "image"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number"
+          },
+          "opacity": {
+            "type": "number",
+            "default": 1
+          },
+          "z_index": {
+            "type": "number",
+            "default": 10
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Unix ms - para ordenar o mais recente"
+    }
+  },
+  "required": [
+    "channel",
+    "timestamp"
+  ]
+}

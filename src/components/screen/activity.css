@@ -1,0 +1,44 @@
+/* Escola bíblica activities on screen (ActivityView.jsx): sized in container
+   units like the rest of the screen, so a preview is the output. Colours
+   follow the theme's text colour (currentColor); only "certo" is a fixed
+   green, the same on every theme. */
+.ks-act { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 6cqw 7cqw; gap: 2.4cqw; }
+.ks-act-kicker { font-size: 1.5cqw; letter-spacing: .2em; text-transform: uppercase; font-weight: 500; opacity: .65; }
+.ks-act-q { font-size: calc(var(--ks-size, 4.8cqw) * .9); font-weight: 700; line-height: 1.18; white-space: pre-wrap; max-width: 100%; text-wrap: balance; }
+.ks-act-verse { font-size: calc(var(--ks-size, 4.8cqw) * .82); font-weight: 500; line-height: 1.45; white-space: pre-wrap; max-width: 100%; text-wrap: balance; }
+.ks-act-ref { font-size: 2cqw; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .8; animation: ks-act-in .4s ease-out; }
+
+/* Quiz and Verdadeiro ou falso: the options as cards, two a row. */
+.ks-act-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4cqw; width: 100%; max-width: 86cqw; }
+.ks-act-opt { position: relative; display: flex; align-items: center; gap: 1.4cqw; min-width: 0; padding: 1.3cqw 1.8cqw; border-radius: 1.2cqw; text-align: left; font-size: 2.9cqw; font-weight: 500; line-height: 1.2;
+    background: color-mix(in srgb, currentColor 10%, transparent); box-shadow: inset 0 0 0 .15cqw color-mix(in srgb, currentColor 24%, transparent);
+    transition: opacity .35s ease-out, background-color .35s ease-out, box-shadow .35s ease-out, transform .35s cubic-bezier(.2, .8, .2, 1); }
+.ks-act-opt > span { min-width: 0; overflow-wrap: anywhere; }
+.ks-act-opt > b { flex: none; display: grid; place-items: center; width: 2.1em; height: 2.1em; border-radius: 50%; font-size: .85em; font-weight: 700; background: color-mix(in srgb, currentColor 18%, transparent); transition: background-color .35s, color .35s; }
+.ks-act-opt > i { margin-left: auto; font-style: normal; font-weight: 700; font-size: 1.25em; color: #4fd08a; animation: ks-act-in .35s ease-out; }
+.ks-act-opts.is-many .ks-act-opt { font-size: 2.3cqw; padding: 1cqw 1.6cqw; }
+.ks-act-opts.is-tf { max-width: 70cqw; gap: 2.4cqw; }
+.ks-act-opts.is-tf .ks-act-opt { justify-content: center; font-size: 3.3cqw; font-weight: 600; padding: 2.2cqw 2cqw; }
+.ks-act-opt.is-dim { opacity: .32; }
+.ks-act-opt.is-right { background: rgba(48, 164, 108, .38); box-shadow: inset 0 0 0 .26cqw #4fd08a, 0 0 2.4cqw rgba(79, 208, 138, .35); transform: scale(1.03); }
+.ks-act-opt.is-right > b { background: #4fd08a; color: #06210f; }
+.ks-act-opts.is-tf .ks-act-opt > i { margin-left: 0; }
+
+/* Complete a frase and Memorizar: a gap keeps the word's room. */
+.ks-gap { display: inline-block; border-bottom: .3cqw solid currentColor; line-height: 1.1; opacity: .85; }
+.ks-gap > span { visibility: hidden; }
+.ks-word-in { font-weight: 700; text-decoration: underline; text-decoration-thickness: .22cqw; text-underline-offset: .3em; }
+.ks-word-in.is-new { display: inline-block; animation: ks-act-pop .45s cubic-bezier(.2, .8, .2, 1); }
+
+/* Discussão: the timer under the question; waiting, dim; at zero, red. */
+.ks-act-timer { font-size: 11cqw; line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; transition: opacity .3s; }
+.ks-act-timer.is-wait { opacity: .45; }
+.ks-act-timer.is-done { color: #ff6b70; -webkit-text-fill-color: #ff6b70; }
+
+@keyframes ks-act-in { from { opacity: 0; } }
+@keyframes ks-act-pop { from { opacity: 0; transform: translateY(.35em) scale(.9); } }
+@media (prefers-reduced-motion: reduce) {
+    /* the console's monitors (.kx) only: an output plays the reveals for the audience */
+    .kx :is(.ks-act-opt, .ks-act-opt > b) { transition: none; }
+    .kx :is(.ks-act-opt > i, .ks-act-ref, .ks-word-in.is-new) { animation: none; }
+}

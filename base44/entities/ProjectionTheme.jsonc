@@ -1,0 +1,152 @@
+{
+  "name": "ProjectionTheme",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do tema"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "description": "Cor do texto"
+    },
+    "text_color_2": {
+      "type": "string",
+      "description": "Segunda cor para gradiente"
+    },
+    "text_opacity": { "type": "number", "description": "Opacidade do texto (0.2 a 1), Camadas" },
+    "text_max_width": { "type": "number", "description": "Largura máxima do texto (40 a 100 %), Camadas" },
+    "line_height": { "type": "string", "description": "Entrelinhas: um número de 0.9 a 2 (Rodada HF2) ou os nomes antigos tight, normal, loose; vazio = normal (1.22)" },
+    "font_weight": { "type": "string", "enum": ["", "normal", "bold"], "description": "Negrito do texto (Rodada HF2); vazio = o peso das telas (600, 500 na Bíblia)" },
+    "font_style": { "type": "string", "enum": ["", "normal", "italic"], "description": "Itálico do texto (Rodada HF2); vazio = normal" },
+    "letter_spacing": { "type": "number", "description": "Espaçamento entre letras em em (-0.1 a 0.5, Rodada HF2); vazio = 0" },
+    "text_outline_px": { "type": "number", "description": "Contorno das letras, px numa tela de 1920 (0 a 8, Rodada HF2), por trás do preenchimento; independente do Efeito" },
+    "text_outline_color": { "type": "string", "description": "Cor do contorno (#rrggbb); vazio = preto" },
+    "note": { "type": "string", "description": "Comentário do tema (até 500 caracteres, Rodada HF2): nunca vai ao ar, aparece na dica do tema em Temas" },
+    "text_case": { "type": "string", "enum": ["none", "upper"], "description": "Caixa alta, Camadas" },
+    "text_box": { "type": "string", "enum": ["none", "band", "block"], "description": "Caixa atrás do texto: faixa ou bloco, Camadas" },
+    "text_box_color": { "type": "string", "description": "Cor da caixa atrás do texto (#rrggbb)" },
+    "text_box_opacity": { "type": "number", "description": "Opacidade da caixa (0 a 0.9)" },
+    "text_align": { "type": "string", "enum": ["", "left", "center", "right"], "description": "Alinhamento do texto do tema; vazio = centro" },
+    "text_position": { "type": "string", "enum": ["", "top", "middle", "bottom"], "description": "Posição do texto na tela; vazio = meio" },
+    "text_nudge": { "type": "number", "description": "Ajuste fino vertical do texto (-20 a 20 % da altura)" },
+    "background_fit": { "type": "string", "enum": ["cover", "contain"], "description": "Ajuste da imagem de fundo" },
+    "background_dim": { "type": "number", "description": "Escurecer o fundo (0 a 0.9)" },
+    "background_blur": { "type": "number", "description": "Desfoque do fundo (px numa tela de 1920)" },
+    "background_generator": { "type": "object", "description": "Fundo gerado do tema (shared/generators.mjs: gerador, números e cores); vazio quando o tema usa uma imagem ou nenhum fundo" },
+    "background": { "type": "object", "description": "Fundo do tema, de qualquer tipo ({ kind: image|video|generator|color, value, gen, dim, blur, fit }; src/lib/console/backgroundSpec.js); os campos antigos (background_image, background_generator) continuam escritos ao lado" },
+    "font_family": {
+      "type": "string",
+      "default": "sans",
+      "description": "Tipo de fonte: uma chave do KERYX (sans = Geist; serif, mono, cursive, arial, georgia, times, verdana = fontes do aparelho) ou o nome de família de uma fonte da igreja (Media de categoria font, Rodada HF1)"
+    },
+    "font_size": {
+      "type": "string",
+      "default": "large",
+      "description": "Tamanho da fonte: um número em % da largura da tela (1 a 12, guardado como texto, \"4.8\"; Rodada HF2, src/lib/textSize.js) ou um nome antigo (xsmall, small, medium, large, xlarge, xxlarge), que vale o seu número"
+    },
+    "text_effect": {
+      "type": "string",
+      "enum": [
+        "shadow",
+        "glow",
+        "outline",
+        "double-shadow",
+        "3d",
+        "neon",
+        "none"
+      ],
+      "default": "shadow",
+      "description": "Efeito visual do texto"
+    },
+    "transition": {
+      "type": "string",
+      "default": "",
+      "description": "Transição entre slides deste tema (fade, slide, cut); vazio = a de fábrica (a transição é só do tema desde 2026-10-14)"
+    },
+    "show_item_title": {
+      "type": "boolean",
+      "description": "Mostrar o título do item sobre o slide (do tema desde a Rodada B 2026-10-14; a migração prefs v3 copiou o valor da igreja; vazio = o campo legado User.show_item_title decide)"
+    },
+    "transition_ms": {
+      "type": "integer",
+      "description": "Duração da transição em ms (120 a 600)"
+    },
+    "background_image": {
+      "type": "string",
+      "description": "URL da imagem de fundo"
+    },
+    "elements": {
+      "type": "array",
+      "description": "Elementos posicion\u00e1veis do tema (layout visual)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador \u00fanico do elemento"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "title",
+              "lyrics",
+              "image",
+              "background"
+            ],
+            "description": "Tipo de elemento"
+          },
+          "x": {
+            "type": "number",
+            "description": "Posi\u00e7\u00e3o X em percentagem (0-100)",
+            "default": 0
+          },
+          "y": {
+            "type": "number",
+            "description": "Posi\u00e7\u00e3o Y em percentagem (0-100)",
+            "default": 0
+          },
+          "width": {
+            "type": "number",
+            "description": "Largura em percentagem (0-100)",
+            "default": 100
+          },
+          "height": {
+            "type": "number",
+            "description": "Altura em percentagem (0-100)",
+            "default": 100
+          },
+          "z_index": {
+            "type": "number",
+            "default": 1
+          },
+          "alignment": {
+            "type": "string",
+            "enum": [
+              "left",
+              "center",
+              "right"
+            ],
+            "default": "center"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Propriedades espec\u00edficas do elemento (cor, opacidade, etc.)"
+          }
+        }
+      }
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Tema predefinido (sistema)"
+    },
+    "pinned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Fixado no console: aparece em Camadas › Temas (consoleThemes em src/lib/console/themes.js)"
+    }
+  },
+  "required": []
+}

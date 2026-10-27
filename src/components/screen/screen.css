@@ -1,0 +1,185 @@
+/* The projected screen (ScreenRenderer): one look for the projector window
+   and for the console's monitors, sized in container units so a preview is
+   the output scaled down. Console tokens never appear here. */
+.ks { position: relative; overflow: hidden; background: #000; color: #fff; isolation: isolate;
+  font-family: "Geist", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.ks.ks-fill { position: fixed; inset: 0; container-type: size; }
+.ks.ks-box { width: 100%; aspect-ratio: 16 / 9; container-type: inline-size; }
+.ks-layer { position: absolute; inset: 0; }
+.ks-bg-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.ks-bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ks-bg-gen { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ks-bg-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); }
+.ks-bg-default { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 20%, #26304f 0%, #10131f 55%, #06070c 100%); }
+.ks-black { position: absolute; inset: 0; background: #000; }
+
+/* Content: lyrics, Bible, free text */
+.ks-content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 7cqw 8cqw; gap: 2cqw; }
+.ks-content.ks-pos-top { justify-content: flex-start; padding-top: 9cqw; }
+.ks-content.ks-pos-bottom { justify-content: flex-end; padding-bottom: 8cqw; }
+.ks-content.ks-al-left { align-items: flex-start; text-align: left; }
+.ks-content.ks-al-right { align-items: flex-end; text-align: right; }
+.ks-title { position: absolute; top: 3.5cqw; left: 8cqw; right: 8cqw; text-align: center; font-size: 2.2cqw; font-weight: 500; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-text { font-weight: 600; line-height: 1.22; white-space: pre-wrap; max-width: 100%; }
+.ks-slide-img { max-width: 84%; max-height: 52cqh; object-fit: contain; border-radius: .6cqw; }
+.ks-slide-img.is-alone { max-height: 80cqh; }
+/* The size is a number in cqw (Rodada HF2), set as --ks-size on .ks-content. */
+.ks-text { font-size: var(--ks-size, 4.8cqw); }
+.ks-bible .ks-text { font-weight: 500; line-height: 1.3; font-size: calc(var(--ks-size, 4.8cqw) * .8); }
+.ks-text sup { font-size: .5em; opacity: .65; margin-right: .35em; vertical-align: .6em; font-weight: 500; }
+.ks-chorus { font-size: 1.6cqw; letter-spacing: .2em; text-transform: uppercase; opacity: .6; font-weight: 500; }
+/* A song: one line of the lyrics, one line on screen; the font shrinks
+   instead (ScreenRenderer useFitWidth: the probe measures, the span shrinks);
+   a line too long even at the smallest size wraps (is-wrap). */
+.ks-text.ks-lines { white-space: pre; position: relative; }
+.ks-text.ks-lines.is-wrap { white-space: pre-wrap; }
+/* inline-block takes no decoration from its parent: the theme's underline (Rodada P) is passed down. */
+.ks-fit { display: inline-block; max-width: none; text-decoration: inherit; }
+.is-wrap > .ks-fit { max-width: 100%; }
+.ks-fit-probe { position: absolute; left: 0; top: 0; width: max-content; white-space: pre; visibility: hidden; pointer-events: none; }
+/* Chords over the syllables, on the outputs that show them (content.show). */
+.ks .ns-chorded { display: block; }
+.ks .ns-line { display: block; }
+.ks .ns-seg { display: inline-block; vertical-align: bottom; white-space: pre; text-align: left; }
+.ks .ns-ch { display: block; min-height: 1.1em; font-size: .5em; line-height: 1.1; font-weight: 700; color: #f2c14e; -webkit-text-fill-color: #f2c14e; text-shadow: 0 .1em .4em #000000b3; }
+.ks .ns-tx { white-space: pre; }
+/* Two editions of a passage (slide.pair): side by side, or the second
+   under the first, a little smaller and fainter (style.pair); each says
+   its sigla. */
+.ks-pair { display: grid; gap: 3cqw; width: 100%; }
+.ks-pair.is-side { grid-template-columns: 1fr 1fr; align-items: start; }
+.ks-pair.is-side .ks-text { font-size: calc(var(--ks-size, 4.8cqw) * .7); }
+.ks-pair.is-stack { gap: 2cqw; }
+.ks-pair.is-stack .ks-text + .ks-text { font-size: calc(var(--ks-size, 4.8cqw) * .7); opacity: .85; }
+.ks-sigla { display: block; margin-top: .5em; font-size: max(.4em, 1.4cqw); letter-spacing: .12em; font-weight: 500; opacity: .7; }
+.ks-ref { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .8; }
+/* The slide change. The class sits on a display: contents wrapper (keyed by
+   slide, so it remounts), which has no box of its own and animates nothing:
+   the animation is on its children. --ks-tr is the length (Aparência or
+   Camadas, style.transition_ms). Only "from" frames and no fill mode, so a
+   text's own opacity (Camadas) is where the fade ends. */
+.ks-anim-fade > * { animation: ks-fade var(--ks-tr, .4s) ease-out; }
+.ks-anim-slide > * { animation: ks-slide var(--ks-tr, .35s) cubic-bezier(.2, .8, .2, 1); }
+.ks-anim-zoom > * { animation: ks-zoom var(--ks-tr, .35s) ease-out; }
+@keyframes ks-fade { from { opacity: 0; } }
+@keyframes ks-slide { from { opacity: 0; transform: translateY(2cqw); } }
+@keyframes ks-zoom { from { opacity: 0; transform: scale(.96); } }
+
+/* Tools */
+.ks-tool { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1cqw; text-align: center; padding: 6cqw; }
+.ks-tool-lab { font-size: 2.2cqw; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; opacity: .7; }
+.ks-tool-v { font-size: 14cqw; line-height: 1; font-weight: 500; text-shadow: 0 .3cqw 1.2cqw rgba(0, 0, 0, .7); }
+.ks-tool-v.ks-done { color: #ff6b70; }
+.ks-tool-date { font-size: 2.4cqw; opacity: .7; text-transform: capitalize; }
+.ks-free { font-size: 5cqw; line-height: 1.25; font-weight: 600; white-space: pre-wrap; text-shadow: 0 .2cqw 1cqw rgba(0, 0, 0, .7); }
+
+/* Communication pieces (countdown, timer, announcement, image + text) */
+.ks-comm { --ks-size: 5cqw; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--ks-size) * .3); text-align: center; padding: 6cqw 8cqw; }
+.ks-comm.ks-pos-top { justify-content: flex-start; padding-top: 9cqw; }
+.ks-comm.ks-pos-bottom { justify-content: flex-end; padding-bottom: 8cqw; }
+.ks-comm.ks-al-left { align-items: flex-start; text-align: left; }
+.ks-comm.ks-al-right { align-items: flex-end; text-align: right; }
+.ks-comm-big { font-size: calc(var(--ks-size) * 3.2); line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ks-comm-big.ks-urgent { color: #ff6b70 !important; -webkit-text-fill-color: #ff6b70; animation: ks-pulse 1s ease-in-out infinite; }
+.ks-comm-t { font-size: var(--ks-size); line-height: 1.2; font-weight: 600; white-space: pre-wrap; max-width: 100%; }
+.ks-comm-s { font-size: calc(var(--ks-size) * .52); line-height: 1.35; opacity: .9; white-space: pre-wrap; max-width: 100%; }
+.ks-comm-flag { font-size: calc(var(--ks-size) * .42); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #1a1300; background: #f5b83d; padding: .3em .9em; border-radius: .3em; }
+.ks-comm-attention .ks-comm-t, .ks-comm-announcement .ks-comm-t, .ks-comm-image_text .ks-comm-t { font-weight: 700; }
+.ks-logo.ks-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+@keyframes ks-pulse { 50% { transform: scale(1.06); } }
+/* The console (.kx) honours reduced motion on its monitors; the outputs never do (the audience sees them). */
+@media (prefers-reduced-motion: reduce) { .kx .ks-comm-big.ks-urgent { animation: none; } }
+
+/* Media in a preview: a still (a video's poster, else its kind and title), never a playing video */
+.ks-media { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; background: #000; }
+.ks-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.ks-media-kind { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; opacity: .6; font-weight: 500; }
+.ks-media-t { font-size: 3.2cqw; font-weight: 500; max-width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-media-chip { position: absolute; left: 2cqw; bottom: 2cqw; font-size: 1.8cqw; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; background: rgba(0, 0, 0, .6); padding: .4cqw 1.2cqw; border-radius: .6cqw; }
+.ks-media-count { position: absolute; top: 2cqw; right: 2cqw; font-size: 2cqw; background: rgba(0, 0, 0, .55); padding: .4cqw 1.2cqw; border-radius: .6cqw; }
+
+/* A presentation (a PDF's pages, Rodada F3): the page whole on black; the next one loads hidden */
+.ks-pres { position: absolute; inset: 0; background: #000; }
+.ks-pres > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.ks-pres > .ks-pres-next { display: none; }
+
+/* Corner logo and the idle/logo screens */
+.ks-logo { position: absolute; z-index: 20; object-fit: contain; opacity: .95; }
+.ks-logo.ks-medium { width: 8cqw; height: 8cqw; } .ks-logo.ks-small { width: 5cqw; height: 5cqw; } .ks-logo.ks-large { width: 12cqw; height: 12cqw; }
+.ks-logo.ks-top-left { top: 3cqw; left: 3cqw; } .ks-logo.ks-top-right { top: 3cqw; right: 3cqw; }
+.ks-logo.ks-bottom-left { bottom: 3cqw; left: 3cqw; } .ks-logo.ks-bottom-right { bottom: 3cqw; right: 3cqw; }
+.ks-logo-screen { position: absolute; inset: 0; display: grid; place-items: center; background: #000; }
+.ks-logo-screen img { max-width: 50cqw; max-height: 50cqh; object-fit: contain; }
+.ks-idle { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3cqh; }
+.ks-idle img { max-width: 30cqw; max-height: 30cqh; object-fit: contain; opacity: .8; }
+/* The Tela ociosa's look (shared/idleLook.mjs): the logo P / M (as always) / G,
+   its own fundo, and the words under the logo. */
+.ks-idle.is-s img { max-width: 18cqw; max-height: 18cqh; }
+.ks-idle.is-l img { max-width: 44cqw; max-height: 44cqh; }
+.ks-bg-idle { position: absolute; inset: 0; }
+.ks-idle-text { margin: 0; max-width: 80cqw; color: #f4f1ea; font-size: 4.2cqw; font-weight: 600; line-height: 1.25; text-align: center; text-shadow: 0 .3cqw 1.6cqw #000a; overflow-wrap: anywhere; }
+
+/* Overlays (percent positions) */
+.ks-overlays { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+.ks-ov { position: absolute; }
+.ks-ov img { width: 100%; height: auto; object-fit: contain; display: block; }
+.ks-ov-text { padding: .8cqw 1.4cqw; background: rgba(0, 0, 0, .6); border-radius: .6cqw; font-size: 1.6cqw; line-height: 1.3; font-weight: 500; text-align: center; }
+
+/* The Aviso rápido (AlertBar, Rodada E3): one look on every screen, in each
+   output's choice (alertOptions): Faixa, the full width at the top or the
+   bottom; Pílula, centred, off the edge; P / M / G; it slides in from its
+   edge, fades in or just appears. No choice (no is-* classes): the amber
+   band across the top, exactly as the Projeção drew it. A type "alert"
+   stays red whatever the colours. */
+.ks-alert { position: absolute; z-index: 90; left: 0; right: 0; top: 0; box-sizing: border-box; min-height: 6cqw; display: flex; align-items: center; justify-content: center; padding: 1cqw 3cqw;
+  background: var(--ka-bg, #f5a524); color: var(--ka-fg, #1a1300); font-family: "Geist", system-ui, sans-serif; font-size: 2.8cqw; line-height: 1.2; font-weight: 600; text-align: center; white-space: pre-wrap; pointer-events: none; }
+.ks-alert.ks-alert-alert { background: #e5484d; color: #fff; }
+.ks-alert.is-size-s { min-height: 4.6cqw; padding: .7cqw 2.4cqw; font-size: 2.1cqw; }
+.ks-alert.is-size-l { min-height: 7.8cqw; padding: 1.3cqw 3.6cqw; font-size: 3.7cqw; }
+.ks-alert.is-bottom { top: auto; bottom: 0; }
+.ks-alert.is-pill { top: 2.6cqw; width: fit-content; max-width: 84cqw; margin-inline: auto; padding-inline: 3.6cqw; border-radius: 3cqw; box-shadow: 0 .4cqw 1.6cqw rgba(0, 0, 0, .35); }
+.ks-alert.is-pill.is-bottom { top: auto; bottom: 2.6cqw; }
+.ks-alert.is-pill.is-size-s { border-radius: 2.3cqw; padding-inline: 2.8cqw; }
+.ks-alert.is-pill.is-size-l { border-radius: 3.9cqw; padding-inline: 4.4cqw; }
+.ks-alert.is-in-slide { animation: ks-alert-down .35s cubic-bezier(.2, .8, .2, 1); }
+.ks-alert.is-in-slide.is-bottom { animation-name: ks-alert-up; }
+.ks-alert.is-in-fade { animation: ks-fade .3s ease-out; }
+@keyframes ks-alert-down { from { opacity: 0; transform: translateY(-100%); } }
+@keyframes ks-alert-up { from { opacity: 0; transform: translateY(100%); } }
+/* Over a page that draws something else full screen (the Vídeo's clip). */
+.ks-alert-layer { position: fixed; inset: 0; z-index: 9999; container-type: size; pointer-events: none; overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* the theme's slide entrance: still on the console's monitors (.kx), played on the outputs */
+  .kx :is(.ks-anim-fade, .ks-anim-slide, .ks-anim-zoom) > * { animation: none; }
+  .ks-alert { animation: none !important; } /* every entrance, whatever its class */
+}
+
+/* The console's Programa monitor mirroring the video channel: the clip
+   covers the box, as TabletVideoReceiver covers the projector. */
+.ks-vidcover { position: absolute; inset: 0; background: #000; z-index: 80; }
+.ks-vidcover-v { width: 100%; height: 100%; }
+.ks-vidcover-v video, .ks-vidcover-v > div { width: 100%; height: 100%; object-fit: contain; }
+
+/* Transições (Rodada F2): the screen before a change, on top of the one now,
+   going transparent over the live state's duration (inline). Above the look
+   layers, under the video channel's cover and the Aviso rápido. Not under the
+   reduced-motion rule: the audience sees it (the console decides for its own
+   monitors). .ks-fade-out is the same fade for a clip over a page. */
+.ks-ghost { position: absolute; inset: 0; z-index: 70; pointer-events: none; animation: ks-out linear forwards; }
+.ks-ghost > * { pointer-events: none; }
+.ks-fade-out { animation: ks-out linear forwards; pointer-events: none; }
+@keyframes ks-out { to { opacity: 0; } }
+
+/* One box per look layer, stacked by live.layerOrder (inline z-index). */
+.ks-z { position: absolute; inset: 0; pointer-events: none; }
+.ks-z > * { pointer-events: auto; }
+
+/* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
+   what the congregation sees never takes this computer's contrast theme.
+   An output's whole document opts out (App.jsx marks it ks-output-doc),
+   and so does every root that draws an output anywhere else — the
+   renderer, a screen's design, the Palco, the Pastor, the Aviso rápido
+   beside them, the Transmissão band — so the console's stills match the
+   outputs (its monitors opt out in bundle.css). */
+html.ks-output-doc, .ks, .kl, .ks-alert-layer, .net-stage, .net:has(> .net-pastor), .kx-stream-band { forced-color-adjust: none; }

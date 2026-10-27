@@ -1,0 +1,2296 @@
+{
+  "entities": {
+    "AlertMessage": {
+      "table": "alert_message",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "message": {
+          "type": "text"
+        },
+        "type": {
+          "type": "text",
+          "default": "alert"
+        },
+        "status": {
+          "type": "text",
+          "default": "active"
+        },
+        "timestamp": {
+          "type": "real"
+        }
+      }
+    },
+    "AlertPreset": {
+      "table": "alert_preset",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "message": {
+          "type": "text"
+        }
+      }
+    },
+    "BackgroundPref": {
+      "table": "background_pref",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "source": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text",
+          "default": ""
+        },
+        "category": {
+          "type": "text",
+          "default": ""
+        },
+        "dim_pct": {
+          "type": "real"
+        },
+        "blur_px": {
+          "type": "real"
+        },
+        "fit": {
+          "type": "text"
+        },
+        "position": {
+          "type": "text"
+        },
+        "hidden": {
+          "type": "boolean",
+          "default": false
+        },
+        "favorite": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "BannerTemplate": {
+      "table": "banner_template",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "category": {
+          "type": "text",
+          "default": "opening"
+        },
+        "title": {
+          "type": "text"
+        },
+        "subtitle": {
+          "type": "text"
+        },
+        "phrases": {
+          "type": "json"
+        },
+        "event_date": {
+          "type": "text"
+        },
+        "event_time": {
+          "type": "text"
+        },
+        "location": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "countdown_duration": {
+          "type": "real",
+          "default": 60
+        },
+        "background_type": {
+          "type": "text",
+          "default": "celestial"
+        },
+        "background_id": {
+          "type": "text"
+        },
+        "custom_image": {
+          "type": "text"
+        },
+        "background_speed": {
+          "type": "real",
+          "default": 1
+        },
+        "background_intensity": {
+          "type": "real",
+          "default": 0.5
+        },
+        "background_overlay": {
+          "type": "real",
+          "default": 0.3
+        },
+        "animation": {
+          "type": "text",
+          "default": "fade_in"
+        },
+        "animation_speed": {
+          "type": "real",
+          "default": 1
+        },
+        "phrase_duration": {
+          "type": "real",
+          "default": 3
+        },
+        "text_color": {
+          "type": "text",
+          "default": "#ffffff"
+        },
+        "text_color_2": {
+          "type": "text"
+        },
+        "font_family": {
+          "type": "text",
+          "default": "sans"
+        },
+        "font_size": {
+          "type": "text",
+          "default": "xlarge"
+        },
+        "text_weight": {
+          "type": "text",
+          "default": "bold"
+        },
+        "text_letter_spacing": {
+          "type": "real",
+          "default": 0
+        },
+        "text_line_height": {
+          "type": "real",
+          "default": 1.2
+        },
+        "text_align_h": {
+          "type": "text",
+          "default": "center"
+        },
+        "text_align_v": {
+          "type": "text",
+          "default": "middle"
+        },
+        "text_effect": {
+          "type": "text",
+          "default": "shadow"
+        },
+        "text_effect_color": {
+          "type": "text"
+        },
+        "text_transform": {
+          "type": "text",
+          "default": "none"
+        },
+        "text_padding": {
+          "type": "real",
+          "default": 8
+        },
+        "audio_url": {
+          "type": "text"
+        },
+        "audio_volume": {
+          "type": "real",
+          "default": 0.7
+        },
+        "audio_fade_in": {
+          "type": "boolean",
+          "default": false
+        },
+        "audio_fade_out": {
+          "type": "boolean",
+          "default": false
+        },
+        "audio_loop": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "BibleEdition": {
+      "table": "bible_edition",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "sigla": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "format": {
+          "type": "text"
+        },
+        "file_name": {
+          "type": "text"
+        },
+        "verses": {
+          "type": "real"
+        },
+        "books": {
+          "type": "real"
+        },
+        "testament": {
+          "type": "text"
+        },
+        "language": {
+          "type": "text"
+        },
+        "rights_confirmed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "BibleMaterial": {
+      "table": "bible_material",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "title": {
+          "type": "text"
+        },
+        "type": {
+          "type": "text",
+          "default": "slides"
+        },
+        "class_id": {
+          "type": "text"
+        },
+        "class_name": {
+          "type": "text"
+        },
+        "age_group": {
+          "type": "text",
+          "default": "all"
+        },
+        "subject": {
+          "type": "text"
+        },
+        "slides": {
+          "type": "json"
+        },
+        "quiz_question": {
+          "type": "text"
+        },
+        "quiz_options": {
+          "type": "json"
+        },
+        "quiz_correct": {
+          "type": "real"
+        },
+        "quiz_questions": {
+          "type": "json"
+        },
+        "video_url": {
+          "type": "text"
+        },
+        "image_url": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "text_color": {
+          "type": "text",
+          "default": "#ffffff"
+        },
+        "background_image": {
+          "type": "text"
+        },
+        "background_color": {
+          "type": "text",
+          "default": "#0f172a"
+        }
+      }
+    },
+    "BibleNote": {
+      "table": "bible_note",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "reference": {
+          "type": "text"
+        },
+        "book": {
+          "type": "text"
+        },
+        "chapter": {
+          "type": "real"
+        },
+        "verse": {
+          "type": "real"
+        },
+        "verse_text": {
+          "type": "text"
+        },
+        "note_type": {
+          "type": "text",
+          "default": "note"
+        },
+        "note_text": {
+          "type": "text"
+        },
+        "highlight_color": {
+          "type": "text",
+          "default": "#fbbf24"
+        }
+      }
+    },
+    "BiblePassage": {
+      "table": "bible_passage",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "reference": {
+          "type": "text"
+        },
+        "book": {
+          "type": "text"
+        },
+        "chapter": {
+          "type": "real"
+        },
+        "verses": {
+          "type": "text"
+        },
+        "text": {
+          "type": "text"
+        },
+        "slides": {
+          "type": "json"
+        },
+        "version": {
+          "type": "text",
+          "default": "NVI"
+        },
+        "font_size": {
+          "type": "text",
+          "default": "large"
+        },
+        "font_family": {
+          "type": "text",
+          "default": "sans"
+        },
+        "text_effect": {
+          "type": "text",
+          "default": "shadow"
+        },
+        "text_color": {
+          "type": "text",
+          "default": "#ffffff"
+        },
+        "text_color_2": {
+          "type": "text"
+        },
+        "background_image": {
+          "type": "text"
+        }
+      }
+    },
+    "BibleProjectionSync": {
+      "table": "bible_projection_sync",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "channel": {
+          "type": "text"
+        },
+        "action": {
+          "type": "text",
+          "default": "project"
+        },
+        "content_type": {
+          "type": "text",
+          "default": "slides"
+        },
+        "title": {
+          "type": "text"
+        },
+        "slides": {
+          "type": "json"
+        },
+        "slide_index": {
+          "type": "real",
+          "default": 0
+        },
+        "quiz_question": {
+          "type": "text"
+        },
+        "quiz_options": {
+          "type": "json"
+        },
+        "quiz_correct": {
+          "type": "real"
+        },
+        "quiz_questions": {
+          "type": "json"
+        },
+        "quiz_index": {
+          "type": "real",
+          "default": 0
+        },
+        "quiz_reveal": {
+          "type": "boolean",
+          "default": false
+        },
+        "media_url": {
+          "type": "text"
+        },
+        "background_image": {
+          "type": "text"
+        },
+        "background_color": {
+          "type": "text",
+          "default": "#0f172a"
+        },
+        "text_color": {
+          "type": "text",
+          "default": "#ffffff"
+        },
+        "font_size": {
+          "type": "text",
+          "default": "large"
+        },
+        "font_family": {
+          "type": "text",
+          "default": "sans"
+        },
+        "text_effect": {
+          "type": "text",
+          "default": "shadow"
+        },
+        "overlays": {
+          "type": "json"
+        },
+        "timestamp": {
+          "type": "real"
+        }
+      }
+    },
+    "BibleSchoolClass": {
+      "table": "bible_school_class",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "age_group": {
+          "type": "text",
+          "default": "children"
+        },
+        "teacher_name": {
+          "type": "text"
+        },
+        "assistant_name": {
+          "type": "text"
+        },
+        "room": {
+          "type": "text"
+        },
+        "students": {
+          "type": "json"
+        },
+        "meeting_time": {
+          "type": "text"
+        },
+        "curriculum": {
+          "type": "text"
+        },
+        "notes": {
+          "type": "text"
+        }
+      }
+    },
+    "BibleVerse": {
+      "table": "bible_verse",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "version": {
+          "type": "text",
+          "default": "ARA"
+        },
+        "testament": {
+          "type": "text"
+        },
+        "book": {
+          "type": "text"
+        },
+        "chapter": {
+          "type": "real"
+        },
+        "verse": {
+          "type": "real"
+        },
+        "text": {
+          "type": "text"
+        }
+      }
+    },
+    "ChatMessage": {
+      "table": "chat_message",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "sender_name": {
+          "type": "text"
+        },
+        "message": {
+          "type": "text"
+        },
+        "channel": {
+          "type": "text",
+          "default": "worship"
+        },
+        "file_url": {
+          "type": "text"
+        },
+        "file_type": {
+          "type": "text"
+        },
+        "file_name": {
+          "type": "text"
+        }
+      }
+    },
+    "CommunicationVideo": {
+      "table": "communication_video",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "title": {
+          "type": "text"
+        },
+        "type": {
+          "type": "text"
+        },
+        "duration": {
+          "type": "real"
+        },
+        "text": {
+          "type": "text"
+        },
+        "subtext": {
+          "type": "text"
+        },
+        "background_image": {
+          "type": "text"
+        },
+        "background_video": {
+          "type": "text"
+        },
+        "background_color": {
+          "type": "text"
+        },
+        "background_audio": {
+          "type": "text"
+        },
+        "files": {
+          "type": "json"
+        },
+        "text_color": {
+          "type": "text",
+          "default": "#ffffff"
+        },
+        "text_color_2": {
+          "type": "text"
+        },
+        "font_size": {
+          "type": "text",
+          "default": "large"
+        },
+        "font_family": {
+          "type": "text",
+          "default": "sans"
+        },
+        "text_effect": {
+          "type": "text",
+          "default": "shadow"
+        },
+        "text_position_h": {
+          "type": "text",
+          "default": "center"
+        },
+        "text_position_v": {
+          "type": "text",
+          "default": "middle"
+        },
+        "show_logo": {
+          "type": "boolean",
+          "default": true
+        },
+        "logo_position": {
+          "type": "text",
+          "default": "top-left"
+        },
+        "sound_alert": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "LiveSession": {
+      "table": "live_session",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "serviceId": {
+          "type": "text"
+        },
+        "status": {
+          "type": "text",
+          "default": "idle"
+        },
+        "currentItemId": {
+          "type": "text"
+        },
+        "currentSlideIndex": {
+          "type": "real",
+          "default": 0
+        },
+        "startedAt": {
+          "type": "real"
+        },
+        "endedAt": {
+          "type": "real"
+        },
+        "channel": {
+          "type": "text"
+        },
+        "latencyProbe": {
+          "type": "real"
+        }
+      }
+    },
+    "LyricSync": {
+      "table": "lyric_sync",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "song_title": {
+          "type": "text"
+        },
+        "artist": {
+          "type": "text"
+        },
+        "slides": {
+          "type": "json"
+        },
+        "slide_index": {
+          "type": "real",
+          "default": 0
+        },
+        "text_color": {
+          "type": "text",
+          "default": "#ffffff"
+        },
+        "text_color_2": {
+          "type": "text"
+        },
+        "background_image": {
+          "type": "text"
+        },
+        "font_size": {
+          "type": "text",
+          "default": "large"
+        },
+        "font_family": {
+          "type": "text",
+          "default": "sans"
+        },
+        "text_effect": {
+          "type": "text",
+          "default": "shadow"
+        },
+        "overlays": {
+          "type": "json"
+        },
+        "status": {
+          "type": "text",
+          "default": "active"
+        },
+        "timestamp": {
+          "type": "real"
+        }
+      }
+    },
+    "Media": {
+      "table": "media",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "title": {
+          "type": "text"
+        },
+        "type": {
+          "type": "text"
+        },
+        "file_url": {
+          "type": "text"
+        },
+        "thumbnail_url": {
+          "type": "text"
+        },
+        "source_url": {
+          "type": "text"
+        },
+        "youtube_state": {
+          "type": "text"
+        },
+        "video_codec": {
+          "type": "text"
+        },
+        "video_bit_depth": {
+          "type": "real"
+        },
+        "video_chroma": {
+          "type": "text"
+        },
+        "duration": {
+          "type": "real"
+        },
+        "pages": {
+          "type": "json"
+        },
+        "description": {
+          "type": "text"
+        },
+        "category": {
+          "type": "text",
+          "default": "Outros"
+        },
+        "font": {
+          "type": "json"
+        }
+      }
+    },
+    "OutputPref": {
+      "table": "output_pref",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "screen_path": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text",
+          "default": ""
+        },
+        "icon": {
+          "type": "text",
+          "default": ""
+        },
+        "options": {
+          "type": "json",
+          "default": {}
+        },
+        "content": {
+          "type": "text",
+          "default": ""
+        },
+        "hidden_kinds": {
+          "type": "json",
+          "default": []
+        },
+        "content_rule": {
+          "type": "json"
+        },
+        "text_scale": {
+          "type": "real",
+          "default": 100
+        },
+        "margin_pct": {
+          "type": "real",
+          "default": 0
+        },
+        "show_logo": {
+          "type": "boolean",
+          "default": true
+        },
+        "theme_id": {
+          "type": "text",
+          "default": ""
+        },
+        "layout_id": {
+          "type": "text",
+          "default": ""
+        },
+        "design": {
+          "type": "json"
+        }
+      }
+    },
+    "Playlist": {
+      "table": "playlist",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "date": {
+          "type": "text"
+        },
+        "service_type": {
+          "type": "text",
+          "default": "Culto de Celebração"
+        },
+        "songs": {
+          "type": "json"
+        },
+        "notes": {
+          "type": "text"
+        },
+        "status": {
+          "type": "text",
+          "default": "Planejado"
+        }
+      }
+    },
+    "Poll": {
+      "table": "poll",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "question": {
+          "type": "text"
+        },
+        "options": {
+          "type": "json"
+        },
+        "is_active": {
+          "type": "boolean",
+          "default": false
+        },
+        "is_multi_select": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "ProjectionDevice": {
+      "table": "projection_device",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "type": {
+          "type": "text",
+          "default": "projector"
+        },
+        "role": {
+          "type": "text",
+          "default": "lyrics"
+        },
+        "pairing_code": {
+          "type": "text"
+        },
+        "is_online": {
+          "type": "boolean",
+          "default": false
+        },
+        "last_seen": {
+          "type": "text"
+        },
+        "config": {
+          "type": "json"
+        },
+        "current_output": {
+          "type": "json"
+        },
+        "notes": {
+          "type": "text"
+        }
+      }
+    },
+    "ProjectionScene": {
+      "table": "projection_scene",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "items": {
+          "type": "json"
+        },
+        "is_active": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "ProjectionState": {
+      "table": "projection_state",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "active": {
+          "type": "boolean",
+          "default": false
+        },
+        "current_type": {
+          "type": "text"
+        },
+        "song_id": {
+          "type": "text"
+        },
+        "slide_index": {
+          "type": "real",
+          "default": 0
+        },
+        "bible_reference": {
+          "type": "text"
+        },
+        "bible_text": {
+          "type": "text"
+        },
+        "media_url": {
+          "type": "text"
+        },
+        "custom_background": {
+          "type": "text"
+        },
+        "operator_name": {
+          "type": "text"
+        },
+        "updated_at": {
+          "type": "text"
+        }
+      }
+    },
+    "ProjectionTheme": {
+      "table": "projection_theme",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "text_color": {
+          "type": "text",
+          "default": "#ffffff"
+        },
+        "text_color_2": {
+          "type": "text"
+        },
+        "text_opacity": {
+          "type": "real"
+        },
+        "text_max_width": {
+          "type": "real"
+        },
+        "line_height": {
+          "type": "text"
+        },
+        "font_weight": {
+          "type": "text"
+        },
+        "font_style": {
+          "type": "text"
+        },
+        "letter_spacing": {
+          "type": "real"
+        },
+        "text_outline_px": {
+          "type": "real"
+        },
+        "text_outline_color": {
+          "type": "text"
+        },
+        "note": {
+          "type": "text"
+        },
+        "text_case": {
+          "type": "text"
+        },
+        "text_box": {
+          "type": "text"
+        },
+        "text_box_color": {
+          "type": "text"
+        },
+        "text_box_opacity": {
+          "type": "real"
+        },
+        "text_align": {
+          "type": "text"
+        },
+        "text_position": {
+          "type": "text"
+        },
+        "text_nudge": {
+          "type": "real"
+        },
+        "background_fit": {
+          "type": "text"
+        },
+        "background_dim": {
+          "type": "real"
+        },
+        "background_blur": {
+          "type": "real"
+        },
+        "background_generator": {
+          "type": "json"
+        },
+        "background": {
+          "type": "json"
+        },
+        "font_family": {
+          "type": "text",
+          "default": "sans"
+        },
+        "font_size": {
+          "type": "text",
+          "default": "large"
+        },
+        "text_effect": {
+          "type": "text",
+          "default": "shadow"
+        },
+        "transition": {
+          "type": "text",
+          "default": ""
+        },
+        "show_item_title": {
+          "type": "boolean"
+        },
+        "transition_ms": {
+          "type": "integer"
+        },
+        "background_image": {
+          "type": "text"
+        },
+        "elements": {
+          "type": "json"
+        },
+        "is_default": {
+          "type": "boolean",
+          "default": false
+        },
+        "pinned": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "Quiz": {
+      "table": "quiz",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "question": {
+          "type": "text"
+        },
+        "options": {
+          "type": "json"
+        },
+        "correct_index": {
+          "type": "real"
+        },
+        "bible_reference": {
+          "type": "text"
+        },
+        "category": {
+          "type": "text",
+          "default": "bible"
+        },
+        "difficulty": {
+          "type": "text",
+          "default": "medium"
+        },
+        "is_active": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "Raffle": {
+      "table": "raffle",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "participants": {
+          "type": "json"
+        },
+        "winner": {
+          "type": "text"
+        },
+        "runners_up": {
+          "type": "json"
+        },
+        "num_winners": {
+          "type": "real",
+          "default": 1
+        },
+        "is_active": {
+          "type": "boolean",
+          "default": false
+        },
+        "drawn_at": {
+          "type": "text"
+        }
+      }
+    },
+    "ScreenLayout": {
+      "table": "screen_layout",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "category": {
+          "type": "text",
+          "default": "palco"
+        },
+        "elements": {
+          "type": "json",
+          "default": []
+        },
+        "background": {
+          "type": "json",
+          "default": {}
+        }
+      }
+    },
+    "Service": {
+      "table": "service",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "title": {
+          "type": "text"
+        },
+        "date": {
+          "type": "text"
+        },
+        "time": {
+          "type": "text"
+        },
+        "startTime": {
+          "type": "text"
+        },
+        "standby_background": {
+          "type": "text"
+        },
+        "theme_id": {
+          "type": "text"
+        },
+        "kind_themes": {
+          "type": "json"
+        },
+        "background": {
+          "type": "json"
+        },
+        "location": {
+          "type": "text"
+        },
+        "organizationId": {
+          "type": "text"
+        },
+        "templateId": {
+          "type": "text"
+        },
+        "service_type": {
+          "type": "text",
+          "default": "culto"
+        },
+        "event_description": {
+          "type": "text"
+        },
+        "worship_team": {
+          "type": "json"
+        },
+        "items": {
+          "type": "json"
+        },
+        "notes": {
+          "type": "text"
+        },
+        "autoplay": {
+          "type": "boolean",
+          "default": false
+        },
+        "autoplay_gap": {
+          "type": "integer"
+        },
+        "operator_notes": {
+          "type": "text"
+        },
+        "status": {
+          "type": "text",
+          "default": "DRAFT"
+        }
+      }
+    },
+    "ServiceItem": {
+      "table": "service_item",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "serviceId": {
+          "type": "text"
+        },
+        "order": {
+          "type": "real",
+          "default": 0
+        },
+        "type": {
+          "type": "text",
+          "default": "SONG"
+        },
+        "title": {
+          "type": "text"
+        },
+        "contentId": {
+          "type": "text"
+        },
+        "duration": {
+          "type": "real"
+        },
+        "notes": {
+          "type": "text"
+        },
+        "sceneId": {
+          "type": "text"
+        },
+        "autoAdvance": {
+          "type": "boolean",
+          "default": false
+        },
+        "end_action": {
+          "type": "text"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "requested_by": {
+          "type": "text"
+        }
+      }
+    },
+    "ServiceMessage": {
+      "table": "service_message",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "serviceId": {
+          "type": "text"
+        },
+        "kind": {
+          "type": "text",
+          "default": "chat"
+        },
+        "sender": {
+          "type": "text"
+        },
+        "text": {
+          "type": "text"
+        },
+        "singer": {
+          "type": "text"
+        },
+        "song": {
+          "type": "text"
+        },
+        "songId": {
+          "type": "text"
+        },
+        "mediaId": {
+          "type": "text"
+        },
+        "link": {
+          "type": "text"
+        },
+        "status": {
+          "type": "text",
+          "default": "open"
+        },
+        "side": {
+          "type": "text"
+        },
+        "sentAt": {
+          "type": "text"
+        }
+      }
+    },
+    "ServiceTemplate": {
+      "table": "service_template",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "background": {
+          "type": "json"
+        },
+        "theme_id": {
+          "type": "text"
+        },
+        "kind_themes": {
+          "type": "json"
+        },
+        "items": {
+          "type": "json"
+        },
+        "isDefault": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "Song": {
+      "table": "song",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "title": {
+          "type": "text"
+        },
+        "artist": {
+          "type": "text"
+        },
+        "lyrics": {
+          "type": "text"
+        },
+        "duration": {
+          "type": "real"
+        },
+        "audio_url": {
+          "type": "text"
+        },
+        "background_image": {
+          "type": "text"
+        },
+        "background": {
+          "type": "json"
+        },
+        "theme_id": {
+          "type": "text",
+          "default": ""
+        },
+        "part_themes": {
+          "type": "json",
+          "default": {}
+        },
+        "lines_per_slide": {
+          "type": "integer"
+        },
+        "follow_mode": {
+          "type": "text",
+          "default": ""
+        },
+        "slide_seconds": {
+          "type": "real"
+        },
+        "slides": {
+          "type": "json"
+        },
+        "category": {
+          "type": "text",
+          "default": "worship"
+        },
+        "font_size": {
+          "type": "text",
+          "default": "large"
+        },
+        "style_mode": {
+          "type": "text"
+        },
+        "font_family": {
+          "type": "text",
+          "default": "sans"
+        },
+        "text_effect": {
+          "type": "text",
+          "default": "shadow"
+        },
+        "text_color": {
+          "type": "text",
+          "default": "#ffffff"
+        },
+        "text_color_2": {
+          "type": "text"
+        },
+        "bpm": {
+          "type": "real"
+        },
+        "song_key": {
+          "type": "text"
+        },
+        "chords": {
+          "type": "text"
+        },
+        "musician_notes": {
+          "type": "text"
+        },
+        "ccli_number": {
+          "type": "text"
+        },
+        "copyright": {
+          "type": "text"
+        },
+        "is_favorite": {
+          "type": "boolean",
+          "default": false
+        },
+        "last_played_at": {
+          "type": "text"
+        },
+        "play_count": {
+          "type": "real",
+          "default": 0
+        }
+      }
+    },
+    "SongHistory": {
+      "table": "song_history",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "song_id": {
+          "type": "text"
+        },
+        "song_title": {
+          "type": "text"
+        },
+        "song_artist": {
+          "type": "text"
+        },
+        "played_at": {
+          "type": "text"
+        },
+        "service_id": {
+          "type": "text"
+        },
+        "service_title": {
+          "type": "text"
+        },
+        "operator_name": {
+          "type": "text"
+        }
+      }
+    },
+    "TimerPreset": {
+      "table": "timer_preset",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "minutes": {
+          "type": "integer"
+        }
+      }
+    },
+    "User": {
+      "table": "profile",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "language": {
+          "type": "text",
+          "default": "pt"
+        },
+        "background_url": {
+          "type": "text"
+        },
+        "logo_url": {
+          "type": "text"
+        },
+        "transition_type": {
+          "type": "text"
+        },
+        "transition_ms": {
+          "type": "integer"
+        },
+        "show_forecast": {
+          "type": "boolean",
+          "default": false
+        },
+        "prefs_version": {
+          "type": "integer"
+        },
+        "bible_version": {
+          "type": "text"
+        },
+        "bible_book_names": {
+          "type": "text"
+        },
+        "bible_verses_per_slide": {
+          "type": "text"
+        },
+        "bible_show_reference": {
+          "type": "boolean"
+        },
+        "bible_show_version": {
+          "type": "boolean"
+        },
+        "bible_verse_numbers": {
+          "type": "text"
+        },
+        "bible_version_2": {
+          "type": "text"
+        },
+        "bible_pair": {
+          "type": "text"
+        },
+        "service_start_time": {
+          "type": "text"
+        },
+        "service_weekday": {
+          "type": "integer"
+        },
+        "duration_song": {
+          "type": "integer"
+        },
+        "autoplay_gap": {
+          "type": "integer"
+        },
+        "duration_other": {
+          "type": "integer"
+        },
+        "import_lines": {
+          "type": "integer"
+        },
+        "console_density": {
+          "type": "text"
+        },
+        "letter_keys": {
+          "type": "text"
+        },
+        "console_hidden_modules": {
+          "type": "json"
+        },
+        "background_categories": {
+          "type": "json"
+        },
+        "media_categories": {
+          "type": "json"
+        },
+        "song_duplicates_kept": {
+          "type": "json"
+        },
+        "logo_corner": {
+          "type": "text"
+        },
+        "logo_size": {
+          "type": "text"
+        },
+        "logo_opacity": {
+          "type": "real"
+        },
+        "idle_mode": {
+          "type": "text"
+        },
+        "idle_look": {
+          "type": "json"
+        },
+        "chime_on": {
+          "type": "boolean"
+        },
+        "chime_volume": {
+          "type": "integer"
+        },
+        "show_item_title": {
+          "type": "boolean"
+        },
+        "bible_theme_id": {
+          "type": "text"
+        },
+        "text_theme_id": {
+          "type": "text"
+        },
+        "timer_theme_id": {
+          "type": "text"
+        },
+        "youtube_hide_title": {
+          "type": "boolean"
+        },
+        "youtube_download_ok": {
+          "type": "boolean"
+        },
+        "media_transition": {
+          "type": "text"
+        },
+        "media_transition_ms": {
+          "type": "integer"
+        },
+        "clear_transition": {
+          "type": "text"
+        },
+        "clear_transition_ms": {
+          "type": "integer"
+        },
+        "screen_transition": {
+          "type": "boolean"
+        },
+        "pause_fade_ms": {
+          "type": "integer"
+        },
+        "enter_transition": {
+          "type": "text"
+        },
+        "enter_transition_ms": {
+          "type": "integer"
+        },
+        "enter_transition_kinds": {
+          "type": "json"
+        },
+        "standby_background": {
+          "type": "text"
+        },
+        "default_background": {
+          "type": "json"
+        },
+        "weekday_backgrounds": {
+          "type": "json"
+        },
+        "church_name": {
+          "type": "text"
+        },
+        "church_city": {
+          "type": "text"
+        },
+        "primary_color": {
+          "type": "text",
+          "default": "#84cc16"
+        },
+        "secondary_color": {
+          "type": "text",
+          "default": "#10b981"
+        },
+        "navbar_primary_color": {
+          "type": "text",
+          "default": "#84cc16"
+        },
+        "navbar_secondary_color": {
+          "type": "text",
+          "default": "#10b981"
+        },
+        "submenu_primary_color": {
+          "type": "text",
+          "default": "#6366f1"
+        },
+        "submenu_secondary_color": {
+          "type": "text",
+          "default": "#a855f7"
+        },
+        "device_mode": {
+          "type": "text",
+          "default": "desktop"
+        },
+        "full_name": {
+          "type": "text"
+        },
+        "email": {
+          "type": "text"
+        }
+      }
+    },
+    "VideoControl": {
+      "table": "video_control",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "action": {
+          "type": "text"
+        },
+        "time": {
+          "type": "real"
+        },
+        "volume": {
+          "type": "real"
+        },
+        "timestamp": {
+          "type": "real"
+        }
+      }
+    },
+    "VideoSync": {
+      "table": "video_sync",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "video_url": {
+          "type": "text"
+        },
+        "title": {
+          "type": "text"
+        },
+        "timestamp": {
+          "type": "real"
+        },
+        "status": {
+          "type": "text",
+          "default": "active"
+        }
+      }
+    },
+    "VolunteerSchedule": {
+      "table": "volunteer_schedule",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "title": {
+          "type": "text"
+        },
+        "date": {
+          "type": "text"
+        },
+        "service_title": {
+          "type": "text"
+        },
+        "assignments": {
+          "type": "json"
+        },
+        "status": {
+          "type": "text",
+          "default": "draft"
+        },
+        "notes": {
+          "type": "text"
+        }
+      }
+    },
+    "WorshipTeam": {
+      "table": "worship_team",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "phone": {
+          "type": "text"
+        },
+        "role": {
+          "type": "text",
+          "default": "other"
+        },
+        "email": {
+          "type": "text"
+        },
+        "notes": {
+          "type": "text"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

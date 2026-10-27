@@ -1,0 +1,209 @@
+{
+  "name": "Song",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo da m\u00fasica"
+    },
+    "artist": {
+      "type": "string",
+      "description": "Artista ou banda"
+    },
+    "lyrics": {
+      "type": "string",
+      "description": "Letra completa da m\u00fasica"
+    },
+    "duration": {
+      "type": "number",
+      "description": "Dura\u00e7\u00e3o em segundos"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "URL do arquivo de \u00e1udio (MP3/MP4)"
+    },
+    "background_image": {
+      "type": "string",
+      "description": "URL da imagem de fundo personalizada"
+    },
+    "background": {
+      "type": "object",
+      "description": "Fundo próprio da música, de qualquer tipo ({ kind: image|video|generator|color, value, gen, dim, blur, fit }; src/lib/console/backgroundSpec.js). Vai para a camada Fundo quando a música vai ao ar; background_image continua com a imagem para quem ainda lê só ela"
+    },
+    "theme_id": {
+      "type": "string",
+      "default": "",
+      "description": "Tema da música (ProjectionTheme): enquanto existir, manda no visual inteiro e mudar o tema muda a música; vazio usa o visual próprio (fonte, cores, fundo) desta música"
+    },
+    "part_themes": {
+      "type": "object",
+      "default": {},
+      "description": "Tema por parte da letra: o nome da parte ([Refrão], [Ponte]...) em minúsculas -> id do ProjectionTheme; os slides dessa parte usam o tema inteiro"
+    },
+    "lines_per_slide": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 12,
+      "description": "Como a letra vira slides: 0 = uma estrofe por slide, 1 a 12 = no maximo tantas linhas por slide (editor de musica); a letra nunca e reescrita por isso"
+    },
+    "follow_mode": {
+      "type": "string",
+      "enum": ["", "off", "marks", "time"],
+      "default": "",
+      "description": "Avançar sozinha (Rodada P7): off = Não, marks = Pelas marcas (Sincronizar), time = Por tempo (banda, sem mídia: slide_seconds por slide, a duration de um slide é a exceção dele); vazio = pelas marcas quando houver (src/lib/console/lyricSync.js followModeOf)"
+    },
+    "slide_seconds": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 120,
+      "description": "Por tempo: segundos de cada slide (vazio = 8)"
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "Nome da parte ([Verso], [Refr\u00e3o]...)"
+          },
+          "is_chorus": {
+            "type": "boolean"
+          },
+          "chorded": {
+            "type": "string",
+            "description": "O mesmo texto com os acordes [G] da letra, para as telas que mostram cifra"
+          },
+          "start": {
+            "type": "number",
+            "description": "In\u00edcio do slide no v\u00eddeo da m\u00fasica, em segundos"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Dura\u00e7\u00e3o do slide em segundos; em Por tempo (follow_mode time) \u00e9 a exce\u00e7\u00e3o do slide, gravada s\u00f3 quando escolhida"
+          }
+        }
+      },
+      "description": "Slides individuais com dura\u00e7\u00e3o"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "worship",
+        "praise",
+        "hymn",
+        "contemporary",
+        "louvor",
+        "adoracao",
+        "infantil",
+        "ceia",
+        "other",
+        "outro"
+      ],
+      "default": "worship",
+      "description": "Categoria da m\u00fasica"
+    },
+    "font_size": {
+      "type": "string",
+      "enum": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge"
+      ],
+      "default": "large",
+      "description": "Tamanho da letra na proje\u00e7\u00e3o"
+    },
+    "style_mode": {
+      "type": "string",
+      "enum": ["theme", "own"],
+      "description": "Estilo da musica: theme = segue o tema padrao (Configuracoes › Aparencia › Temas); own = o estilo proprio desta musica. Nulo = segue o tema enquanto o estilo for o de fabrica"
+    },
+    "font_family": {
+      "type": "string",
+      "enum": [
+        "sans",
+        "serif",
+        "mono",
+        "cursive",
+        "arial",
+        "georgia",
+        "times",
+        "verdana"
+      ],
+      "default": "sans",
+      "description": "Tipo de fonte na proje\u00e7\u00e3o"
+    },
+    "text_effect": {
+      "type": "string",
+      "enum": [
+        "shadow",
+        "glow",
+        "outline",
+        "double-shadow",
+        "3d",
+        "neon",
+        "none"
+      ],
+      "default": "shadow",
+      "description": "Efeito visual do texto"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "description": "Cor do texto"
+    },
+    "text_color_2": {
+      "type": "string",
+      "description": "Segunda cor para gradiente (opcional)"
+    },
+    "bpm": {
+      "type": "number",
+      "description": "Andamento da m\u00fasica (BPM)"
+    },
+    "song_key": {
+      "type": "string",
+      "description": "Tonalidade da m\u00fasica (ex: C, G, Am, F#m)"
+    },
+    "chords": {
+      "type": "string",
+      "description": "Cifra da m\u00fasica"
+    },
+    "musician_notes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es para m\u00fasicos"
+    },
+    "ccli_number": {
+      "type": "string",
+      "description": "N\u00famero CCLI da m\u00fasica (para licenciamento)"
+    },
+    "copyright": {
+      "type": "string",
+      "description": "Direitos autorais da m\u00fasica como vieram do arquivo importado (OpenLyrics, ChordPro\u2026), para os cr\u00e9ditos e os relat\u00f3rios"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false,
+      "description": "M\u00fasica favorita"
+    },
+    "last_played_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora da \u00faltima vez que foi tocada"
+    },
+    "play_count": {
+      "type": "number",
+      "default": 0,
+      "description": "N\u00famero de vezes que foi tocada"
+    }
+  },
+  "required": [
+    "title",
+    "lyrics"
+  ]
+}

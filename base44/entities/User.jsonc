@@ -1,0 +1,288 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": [
+        "pt",
+        "en",
+        "es",
+        "fr"
+      ],
+      "default": "pt",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Idioma da interface"
+    },
+    "background_url": {
+      "type": "string",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. URL da imagem de fundo"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL do logo"
+    },
+    "transition_type": {
+      "type": "string",
+      "enum": ["fade", "slide", "cut"],
+      "description": "Legado: nada le este campo; a transicao e so do tema desde a auditoria de 14/10/2026 (movida uma vez para o tema padrao, prefs_version 2). Mantido por ser dado do usuario"
+    },
+    "transition_ms": {
+      "type": "integer",
+      "description": "Legado: nada le este campo; a duracao da transicao mora no tema (movida uma vez para o tema padrao, prefs_version 2). Mantido por ser dado do usuario"
+    },
+    "show_forecast": {
+      "type": "boolean",
+      "default": false,
+      "description": "Mostrar a previsao do fim do culto e o atraso (termina ~, passou N min): so para igrejas que planejam o culto com duracoes"
+    },
+    "prefs_version": {
+      "type": "integer",
+      "description": "Marca de migracao das preferencias: 1 = as preferencias do console (que viviam no localStorage deste computador) ja estao no banco; 2 = a transicao de Aparencia foi movida para o tema padrao; nulo ou menor = migrar na proxima abertura do console"
+    },
+    "bible_version": {
+      "type": "string",
+      "description": "Versao padrao da Biblia (Configuracoes › Biblias; o ambiente Biblia troca tambem): a versao que a paleta e o planner usam. Nulo = NVI"
+    },
+    "bible_book_names": {
+      "type": "string",
+      "enum": ["short", "full"],
+      "description": "Livros da Biblia no seletor: abreviados (short) ou nomes inteiros (full). Nulo = abreviados"
+    },
+    "bible_verses_per_slide": {
+      "type": "string",
+      "enum": ["auto", "1", "2", "3"],
+      "description": "Biblia: versiculos por slide de um trecho (auto = pelo tamanho do texto). Nulo = auto"
+    },
+    "bible_show_reference": {
+      "type": "boolean",
+      "description": "Biblia: mostrar a referencia (Joao 3:16) embaixo do texto nas telas. Nulo = sim"
+    },
+    "bible_show_version": {
+      "type": "boolean",
+      "description": "Biblia: mostrar a versao (NVI) junto da referencia. Nulo = sim"
+    },
+    "bible_verse_numbers": {
+      "type": "string",
+      "enum": ["sup", "hide"],
+      "description": "Biblia: numeros dos versiculos pequenos no texto (sup) ou ocultos (hide). Nulo = sup"
+    },
+    "bible_version_2": {
+      "type": "string",
+      "description": "Biblia: uma segunda versao mostrada junto da primeira nas telas (sigla, como bible_version). Nulo ou vazio = so uma versao"
+    },
+    "bible_pair": {
+      "type": "string",
+      "enum": ["side", "stack"],
+      "description": "Biblia: com a segunda versao, as duas lado a lado (side) ou uma em cima da outra (stack). Nulo = lado a lado"
+    },
+    "service_start_time": {
+      "type": "string",
+      "description": "Culto: horario de sempre (HH:MM), para Novo culto e a setlist do dia. Nulo = sem horario (nunca um horario inventado)"
+    },
+    "service_weekday": {
+      "type": "integer",
+      "description": "Culto: dia da semana de sempre (0 = domingo ... 6 = sabado), para Novo culto. Nulo = hoje"
+    },
+    "duration_song": {
+      "type": "integer",
+      "description": "Culto: duracao de uma musica na setlist quando ela nao tem a sua, em segundos. Nulo = 240"
+    },
+    "autoplay_gap": {
+      "type": "integer",
+      "description": "Culto: pausa entre itens da Setlist automatica (Avancar sozinho), em segundos: 0, 3, 5 ou 10. Nulo = 5"
+    },
+    "duration_other": {
+      "type": "integer",
+      "description": "Culto: duracao de qualquer outro item na setlist quando ele nao tem a sua, em segundos. Nulo = 120"
+    },
+    "import_lines": {
+      "type": "integer",
+      "description": "Ao importar letras: linhas por slide (0 = uma estrofe por slide, 2 ou 4). Nulo = 0"
+    },
+    "console_density": {
+      "type": "string",
+      "enum": ["auto", "comfortable", "compact"],
+      "description": "Densidade das listas do console (Ver › Densidade): auto = compacta em telas baixas. Nulo = auto"
+    },
+    "letter_keys": {
+      "type": "string",
+      "enum": ["on", "shift", "off"],
+      "description": "Teclas de uma letra do console (B, L, C, / e ?; Configurações › Console): on = sozinhas, shift = só com Shift, off = desligadas. Nulo = on"
+    },
+    "console_hidden_modules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Modulos do console ocultos em Ver (lib, slides, camadas, roteiro, tl). Nulo = todos visiveis"
+    },
+    "background_categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Categorias da biblioteca de fundos, na ordem (Configuracoes › Temas e fundos). Nulo = as sugestoes de fabrica"
+    },
+    "media_categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Categorias da Midia, na ordem (a Midia › Categorias...). Nulo = Pregacao, Louvor, Avisos, Testemunho e Outros"
+    },
+    "song_duplicates_kept": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Musicas parecidas que a igreja manteve separadas (Configuracoes › Sincronizacao, Manter as duas): pares de ids 'a|b' em ordem. Nulo = nenhum"
+    },
+    "logo_corner": {
+      "type": "string",
+      "enum": ["top-left", "top-right", "bottom-left", "bottom-right"],
+      "description": "Logo nas telas: o canto (Configuracoes › Igreja). Nulo = embaixo a direita"
+    },
+    "logo_size": {
+      "type": "string",
+      "enum": ["small", "medium", "large"],
+      "description": "Logo nas telas: o tamanho. Nulo = medio"
+    },
+    "logo_opacity": {
+      "type": "number",
+      "description": "Logo nas telas: opacidade, 0.2 a 1. Nulo = 1"
+    },
+    "idle_mode": {
+      "type": "string",
+      "enum": ["logo", "black", "background"],
+      "description": "Tela ociosa da igreja (o que as telas mostram sem nada no ar), para um estado ao vivo novo. Nulo = logo"
+    },
+    "idle_look": {
+      "type": "object",
+      "description": "Visual da tela ociosa (Editor de telas › Tela ociosa): { bg (gradient, color ou media = Da biblioteca), c1, c2, dir, color, logo, phrase, text, media { kind image|video, value, name }, dim 0-0.7 }, shared/idleLook.mjs. Nulo = o degrade do KERYX e o logo M, como sempre"
+    },
+    "chime_on": {
+      "type": "boolean",
+      "description": "Som do aviso: tocar o sino dos avisos com Som de alerta (Configuracoes › Telas e saidas). Nulo = sim"
+    },
+    "chime_volume": {
+      "type": "integer",
+      "description": "Som do aviso: volume do sino, em porcentagem (5 a 100). Nulo = 35"
+    },
+    "show_item_title": {
+      "type": "boolean",
+      "description": "Telas: mostrar o titulo do item (o nome da musica) no topo do slide. Nulo = sim"
+    },
+    "bible_theme_id": {
+      "type": "string",
+      "description": "Tema da Biblia: o tema (ProjectionTheme) que veste as passagens sem estilo proprio. Vazio = o mesmo das letras (o tema padrao); \"none\" = estilo de fabrica"
+    },
+    "text_theme_id": {
+      "type": "string",
+      "description": "Tema padrao do Texto (itens de texto, Escola biblica): vazio = o mesmo das musicas; \"none\" = estilo de fabrica"
+    },
+    "timer_theme_id": {
+      "type": "string",
+      "description": "Tema padrao do Timer (relogio, cronometro, timers): vazio = o mesmo das musicas; \"none\" = estilo de fabrica"
+    },
+    "youtube_hide_title": {
+      "type": "boolean",
+      "description": "Telas: esconder a faixa de titulo e canal que o YouTube poe sobre o video (o player fica mais alto que a tela e as faixas ficam fora dela). Nulo = sim"
+    },
+    "youtube_download_ok": {
+      "type": "boolean",
+      "description": "A igreja marcou, no primeiro Baixar para a Midia, que so baixa videos do YouTube que tem permissao de usar (os Termos do YouTube nao permitem baixar sem autorizacao). Nulo = ainda nao"
+    },
+    "media_transition": {
+      "type": "string",
+      "enum": ["cut", "fade", "mix"],
+      "description": "Transicoes, entre audios e videos: quando um comeca, o que tocava para de corte (cut) ou suave (fade), ou toca junto (mix). Nulo = fade"
+    },
+    "media_transition_ms": {
+      "type": "integer",
+      "description": "Transicoes, entre audios e videos: a duracao do suave em ms (500, 1000 ou 2000). Nulo = 500"
+    },
+    "clear_transition": {
+      "type": "string",
+      "enum": ["cut", "fade"],
+      "description": "Transicoes, ao tirar do ar (Esc, Limpar e Parar; a imagem e o som saem juntos): de corte (cut) ou suave (fade). Nulo = fade"
+    },
+    "clear_transition_ms": {
+      "type": "integer",
+      "description": "Transicoes, ao tirar do ar: a duracao do suave em ms (300, 600 ou 1000). Nulo = 300"
+    },
+    "screen_transition": {
+      "type": "boolean",
+      "description": "Transicoes: Tela preta e Logo entram e saem com a transicao de Ao tirar do ar. Nulo = sim"
+    },
+    "pause_fade_ms": {
+      "type": "integer",
+      "description": "Transicoes, ao pausar o som: Pausar e Tocar no player suavizam o volume nesta duracao em ms (0 = corte, 200 ou 400). Nulo = 200"
+    },
+    "enter_transition": {
+      "type": "string",
+      "enum": ["cut", "fade"],
+      "description": "Transicoes, ao entrar ou trocar: o que entra na tela ou troca outra coisa (uma musica por outra, uma imagem, um aviso) entra de corte (cut) ou suave (fade); passar de slide continua sendo do tema. Nulo = fade"
+    },
+    "enter_transition_ms": {
+      "type": "integer",
+      "description": "Transicoes, ao entrar ou trocar: a duracao do suave em ms (300, 500 ou 1000). Nulo = 500"
+    },
+    "enter_transition_kinds": {
+      "type": "object",
+      "description": "Transicoes, ao entrar ou trocar, por tipo de conteudo: { lyrics, bible, text, presentation, image, video, notice, tool: cut | fade }; um tipo ausente segue a linha geral, menos o timer, que fica em corte. Nulo = todos no padrao"
+    },
+    "standby_background": {
+      "type": "string",
+      "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido). Antigo: lido quando default_background esta vazio"
+    },
+    "default_background": {
+      "type": "object",
+      "description": "Fundo padrao da igreja, de qualquer tipo ({ kind, value, gen, dim, blur, fit }): na camada Fundo quando nada esta no ar e o culto nao tem o seu"
+    },
+    "weekday_backgrounds": {
+      "type": "object",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Fundo padrao por dia da semana: { \"0\".. \"6\": fundo } (0 = domingo); vale antes do fundo padrao da igreja"
+    },
+    "church_name": {
+      "type": "string",
+      "description": "Nome da igreja (Configurações › Igreja)"
+    },
+    "church_city": {
+      "type": "string",
+      "description": "Cidade da igreja"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#84cc16",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor prim\u00e1ria (hex)"
+    },
+    "secondary_color": {
+      "type": "string",
+      "default": "#10b981",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor secund\u00e1ria (hex)"
+    },
+    "navbar_primary_color": {
+      "type": "string",
+      "default": "#84cc16",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor prim\u00e1ria da barra de navega\u00e7\u00e3o (hex)"
+    },
+    "navbar_secondary_color": {
+      "type": "string",
+      "default": "#10b981",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor secund\u00e1ria da barra de navega\u00e7\u00e3o (hex)"
+    },
+    "submenu_primary_color": {
+      "type": "string",
+      "default": "#6366f1",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor prim\u00e1ria do submenu / menu de navega\u00e7\u00e3o (hex)"
+    },
+    "submenu_secondary_color": {
+      "type": "string",
+      "default": "#a855f7",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor secund\u00e1ria do submenu / menu de navega\u00e7\u00e3o (hex)"
+    },
+    "device_mode": {
+      "type": "string",
+      "enum": [
+        "mobile",
+        "tablet",
+        "desktop"
+      ],
+      "default": "desktop",
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Modo de visualiza\u00e7\u00e3o"
+    }
+  },
+  "required": []
+}

@@ -1,0 +1,144 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const {
+    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, findDisplay, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
+} = require("./outputs.cjs");
+
+const display = (id, x, { primary = false, label = `Monitor ${id}`, width = 1920, height = 1080 } = {}) => ({
+    id, label, primary,
+    bounds: { x, y: 0, width, height },
+    workArea: { x, y: 0, width, height: height - 40 },
+});
+const laptop = display(1, 0, { primary: true, width: 1536, height: 864 });
+const projector = display(2, 1536);
+const tv = display(3, 3456);
+const main = outputForKey("/Projection");
+const stage = outputForKey("/StageView");
+
+test("outputKeyForUrl matches only same-origin output paths", () => {
+    const origin = "http://127.0.0.1:7700";
+    assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Projection", origin), "/Projection");
+    assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Projection/", origin), "/Projection");
+    assert.equal(outputKeyForUrl("/Projection", origin), null, "relative URLs are resolved by Electron before the handler");
+    assert.equal(outputKeyForUrl("http://127.0.0.1:7700/CommunicationProjection?x=1", origin), "/CommunicationProjection");
+    assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Home", origin), null);
+    assert.equal(outputKeyForUrl("http://evil.example/Projection", origin), null);
+    assert.equal(outputKeyForUrl("about:blank", origin), null);
+    assert.equal(outputKeyForUrl("not a url", origin), null);
+});
+
+test("every output has a unique key and window name", () => {
+    assert.equal(new Set(OUTPUTS.map((o) => o.key)).size, OUTPUTS.length);
+    assert.equal(new Set(OUTPUTS.map((o) => o.windowName)).size, OUTPUTS.length);
+});
+
+test("auto: only the main projection goes to the first external display", () => {
+    assert.deepEqual(resolvePlacement(main, [laptop, tv, projector], undefined), { mode: "fullscreen", display: projector });
+    assert.deepEqual(resolvePlacement(stage, [laptop, projector], undefined), { mode: "window" });
+});
+
+test("auto with one display opens a window the operator can see", () => {
+    assert.deepEqual(resolvePlacement(main, [laptop], { target: "auto" }), { mode: "window" });
+});
+
+test("window target never goes fullscreen", () => {
+    assert.deepEqual(resolvePlacement(main, [laptop, projector], { target: "window" }), { mode: "window" });
+});
+
+test("an assigned display wins, found by id", () => {
+    const placement = resolvePlacement(stage, [laptop, projector, tv], { target: displayRef(tv) });
+    assert.deepEqual(placement, { mode: "fullscreen", display: tv });
+});
+
+test("an assigned display that was unplugged: the output waits hidden and says so, never a window over the console (WIN-02)", () => {
+    const placement = resolvePlacement(stage, [laptop], { target: displayRef(tv) });
+    assert.deepEqual(placement, { mode: "hidden", missing: true });
+    assert.equal(staysOnTop(placement, laptop.id), false);
+    // Opened (or reopened) while it is off: hidden too, with or without a window before.
+    assert.deepEqual(resolvePlacement(stage, [laptop], { target: displayRef(tv) }, { waiting: true }), { mode: "hidden", missing: true });
+    // The monitor back: full screen on it again.
+    assert.deepEqual(resolvePlacement(stage, [laptop, tv], { target: displayRef(tv) }, { waiting: true }), { mode: "fullscreen", display: tv });
+});
+
+test("auto: the projector that left is waited for, hidden; opened with one monitor, a window (WIN-02)", () => {
+    // Full screen on the projector, then it leaves: hidden, missing (the banner).
+    assert.deepEqual(resolvePlacement(main, [laptop], undefined, { waiting: true }), { mode: "hidden", missing: true });
+    // It comes back: full screen on it.
+    assert.deepEqual(resolvePlacement(main, [laptop, projector], undefined, { waiting: true }), { mode: "fullscreen", display: projector });
+    // Opened on a notebook alone: the window the operator can see, as before.
+    assert.deepEqual(resolvePlacement(main, [laptop], undefined, { waiting: false }), { mode: "window" });
+});
+
+test("Em janela and outputs that open as windows never hide, whatever the monitors do", () => {
+    assert.deepEqual(resolvePlacement(main, [laptop], { target: "window" }, { waiting: true }), { mode: "window" });
+    assert.deepEqual(resolvePlacement(stage, [laptop], undefined, { waiting: true }), { mode: "window" });
+    assert.deepEqual(resolvePlacement(stage, [laptop], { target: "auto" }, { waiting: true }), { mode: "window" });
+});
+
+test("inPlace: shown, full screen and at its monitor's bounds; anything else is presented again (WIN-16)", () => {
+    const placement = { mode: "fullscreen", display: projector };
+    const there = { fullScreen: true, visible: true, bounds: { ...projector.bounds } };
+    assert.equal(inPlace(placement, there), true);
+    assert.equal(inPlace(placement, { ...there, fullScreen: false }), false, "out of full screen");
+    assert.equal(inPlace(placement, { ...there, visible: false }), false, "hidden, waiting for it");
+    assert.equal(inPlace(placement, { ...there, bounds: { ...projector.bounds, width: 1280 } }), false, "its resolution changed");
+    assert.equal(inPlace({ mode: "fullscreen", display: tv }, there), false, "another monitor");
+    assert.equal(inPlace({ mode: "window" }, there), false);
+    assert.equal(inPlace({ mode: "hidden", missing: true }, there), false);
+    assert.equal(inPlace(null, there), false);
+});
+
+test("a display whose id changed is recognised by label and size, if unambiguous", () => {
+    const ref = displayRef(tv);
+    const renumbered = { ...tv, id: 99 };
+    assert.equal(findDisplay([laptop, renumbered], ref), renumbered);
+    const twin = { ...tv, id: 100 };
+    assert.equal(findDisplay([laptop, renumbered, twin], ref), null, "two identical monitors are ambiguous");
+    assert.equal(findDisplay([laptop, { ...tv, id: 99, label: "Outro" }], ref), null);
+});
+
+test("windowed bounds are centred in the primary work area and never larger than it", () => {
+    const b = windowedBounds([projector, laptop]);
+    assert.deepEqual(b, { x: 128, y: 52, width: 1280, height: 720 });
+    const small = windowedBounds([display(1, 0, { primary: true, width: 1024, height: 600 })]);
+    assert.equal(small.width, 1024);
+    assert.equal(small.height, 560);
+    assert.ok(windowedBounds([]).width > 0);
+});
+
+test("normalizeAssignment accepts what the app writes and nothing else", () => {
+    const off = { openAtLaunch: false, removed: false };
+    assert.deepEqual(normalizeAssignment({ target: "window" }), { target: "window", ...off });
+    assert.deepEqual(normalizeAssignment({ target: displayRef(tv) }), { target: displayRef(tv), ...off });
+    assert.deepEqual(normalizeAssignment({ target: { id: "x" } }), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment({ target: "fullscreen" }), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment(null), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment({ target: { id: 3, label: "A", width: 10, height: 20, extra: 1 } }), { target: { id: 3, label: "A", width: 10, height: 20 }, ...off });
+    // Opening at launch is kept only when it is exactly true.
+    assert.deepEqual(normalizeAssignment({ target: "auto", openAtLaunch: true }), { target: "auto", openAtLaunch: true, removed: false });
+    assert.deepEqual(normalizeAssignment({ target: displayRef(tv), openAtLaunch: true }), { target: displayRef(tv), openAtLaunch: true, removed: false });
+    assert.deepEqual(normalizeAssignment({ target: "window", openAtLaunch: "yes" }), { target: "window", ...off });
+    assert.deepEqual(normalizeAssignment({ openAtLaunch: true }), { target: "auto", openAtLaunch: true, removed: false });
+});
+
+test("removed is kept only when exactly true; the rest of the entry stays", () => {
+    assert.deepEqual(normalizeAssignment({ target: "window", openAtLaunch: true, removed: true }), { target: "window", openAtLaunch: true, removed: true });
+    assert.deepEqual(normalizeAssignment({ target: displayRef(tv), removed: true }), { target: displayRef(tv), openAtLaunch: false, removed: true });
+    assert.equal(normalizeAssignment({ target: "auto", removed: "sim" }).removed, false);
+    // Settings written by an older KERYX (no removed field) mean present.
+    assert.equal(normalizeAssignment({ target: "auto", openAtLaunch: true }).removed, false);
+});
+
+test("the main projection cannot be removed; every other output can", () => {
+    assert.equal(canRemove("/Projection"), false);
+    for (const o of OUTPUTS) if (o.key !== "/Projection") assert.equal(canRemove(o.key), true, o.key);
+});
+
+test("an output stays on top only full screen off the console's monitor (0.2.18)", () => {
+    const tv = { id: 2 };
+    assert.equal(staysOnTop({ mode: "fullscreen", display: tv }, 1), true);
+    assert.equal(staysOnTop({ mode: "fullscreen", display: tv }, 2), false, "the console's own monitor: never over it");
+    assert.equal(staysOnTop({ mode: "window" }, 1), false);
+    assert.equal(staysOnTop({ mode: "hidden", missing: true }, 1), false);
+    assert.equal(staysOnTop(null, 1), false);
+});

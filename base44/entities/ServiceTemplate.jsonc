@@ -1,0 +1,102 @@
+{
+  "name": "ServiceTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do template"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descricao do template"
+    },
+    "background": {
+      "type": "object",
+      "description": "Fundo do culto que o modelo traz ({ kind, value, gen, dim, blur, fit }); aplicado so quando o culto ainda nao tem o seu"
+    },
+    "theme_id": {
+      "type": "string",
+      "description": "Tema do culto que o modelo traz (id de ProjectionTheme); aplicado so quando o culto ainda nao tem o seu (src/lib/console/serviceLook.js)"
+    },
+    "kind_themes": {
+      "type": "object",
+      "description": "Antigo (Visual do culto, ate 2026-10-14): temas por tipo { lyrics, bible, text, tool }; nada grava mais, so o lyrics e lido quando theme_id esta vazio"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "SONG",
+              "BIBLE",
+              "VIDEO",
+              "IMAGE",
+              "PDF",
+              "POWERPOINT",
+              "BANNER",
+              "ANNOUNCEMENT",
+              "TEXT",
+              "POLL",
+              "QUIZ",
+              "TIMER",
+              "FREE_CONTENT",
+              "AUDIO",
+              "SECTION",
+        "MATERIAL"
+            ],
+            "description": "Tipo do item"
+          },
+          "title": {
+            "type": "string",
+            "description": "Titulo sugerido do item"
+          },
+          "contentId": {
+            "type": "string",
+            "description": "Conteúdo do item (música, passagem, mídia, aviso), para o item tocar"
+          },
+          "order": {
+            "type": "number",
+            "description": "Ordem do item"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Duracao estimada em segundos"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notas do item"
+          }
+        }
+      },
+      "description": "Estrutura de itens do template (sem contentId - o operador escolhe o conteudo na edicao)"
+    },
+    "isDefault": {
+      "type": "boolean",
+      "default": false,
+      "description": "Template predefinido do sistema"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

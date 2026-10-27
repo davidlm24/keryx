@@ -1,0 +1,51 @@
+{
+  "name": "BibleEdition",
+  "type": "object",
+  "properties": {
+    "sigla": {
+      "type": "string",
+      "description": "Sigla da edição própria (2 a 8 letras ou números; a version dos BibleVerse dela)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome da edição, como a igreja a chamou"
+    },
+    "format": {
+      "type": "string",
+      "description": "Formato do arquivo de onde veio (USFM, OSIS XML, MySword…)"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Nome do arquivo escolhido"
+    },
+    "verses": {
+      "type": "number",
+      "description": "Versículos instalados"
+    },
+    "books": {
+      "type": "number",
+      "description": "Livros com texto"
+    },
+    "testament": {
+      "type": "string",
+      "enum": [
+        "all",
+        "nt",
+        "ot"
+      ],
+      "description": "A Bíblia inteira, só o Novo ou só o Antigo Testamento"
+    },
+    "language": {
+      "type": "string",
+      "description": "Idioma lido do arquivo (ou percebido no texto)"
+    },
+    "rights_confirmed": {
+      "type": "boolean",
+      "description": "A igreja confirmou ter o direito de usar esta edição"
+    }
+  },
+  "required": [
+    "sigla",
+    "name"
+  ]
+}

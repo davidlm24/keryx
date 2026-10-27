@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "keryx-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5180,
+      "autoPort": true
+    },
+    {
+      "name": "docs-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const h=require('http'),f=require('fs'),p=require('path');const r=p.resolve('docs');const t={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png','.md':'text/plain; charset=utf-8','.json':'application/json'};h.createServer((q,s)=>{const u=decodeURIComponent(q.url.split('?')[0]);const x=p.join(r,u);if(!x.startsWith(r)){s.writeHead(403);return s.end();}f.readFile(x,(e,d)=>{if(e){s.writeHead(404);return s.end('404');}s.writeHead(200,{'Content-Type':t[p.extname(x)]||'application/octet-stream'});s.end(d);});}).listen(process.env.PORT||5190,'127.0.0.1');"
+      ],
+      "port": 5190,
+      "autoPort": true
+    }
+  ]
+}

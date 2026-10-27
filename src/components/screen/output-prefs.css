@@ -1,0 +1,10 @@
+/* Per-output scale and margins (OutputPref, src/lib/outputPrefs.js) on top of
+   screen.css: OutputScreen wraps the renderer in .kp-out with --kp-text (a
+   factor) and --kp-margin (cqw of the screen). Without settings there is no
+   wrapper class and nothing here applies. */
+.kp-out .ks-content .ks-text { font-size: calc(var(--ks-size, 4.8cqw) * var(--kp-text, 1)); }
+.kp-out .ks-content.ks-bible .ks-text { font-size: calc(var(--ks-size, 4.8cqw) * .8 * var(--kp-text, 1)); }
+.kp-out .ks-content .ks-ref { font-size: calc(2.2cqw * var(--kp-text, 1)); }
+.kp-out .ks-comm-t, .kp-out .ks-comm-s, .kp-out .ks-comm-big { zoom: var(--kp-text, 1); }
+.kp-out .ks-content, .kp-out .ks-comm { inset: var(--kp-margin, 0); }
+.kp-out .ks-title { top: calc(3.5cqw + var(--kp-margin, 0px)); left: calc(8cqw + var(--kp-margin, 0px)); right: calc(8cqw + var(--kp-margin, 0px)); }

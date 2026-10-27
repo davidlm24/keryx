@@ -1,0 +1,199 @@
+// The console's layout: where the modules go (the docks, dock.js; Ver ›
+// Editar disposição), the sizes and order the old columns had (read once to
+// build the first dock), the named arrangements, the tab rows and the
+// multiview. Saved per operator profile in localStorage; "Restaurar
+// disposição" returns to DEFAULT_LAYOUT.
+import { DEFAULT_ORDER, DEFAULT_STACKS, normalizeArrangement } from "./arrange.js";
+import { DEFAULT_TILES, normalizeTiles } from "./multiview.js";
+import { DEFAULT_TABS, normalizeTabs } from "./panelTabs.js";
+import { normalizeDock, onairSpanOf, canFoldModule, envModules, dockLocked, setDockLock, withLockOf } from "./dock.js";
+import { normalizePresets } from "./dockPresets.js";
+import { readStep } from "./bibleRead.js";
+// Ver's module switches and the densities (layoutChoices.js: plain data the
+// church's preferences read without loading the dock).
+import { MODULES, DENSITIES } from "./layoutChoices.js";
+
+export { MODULES, DENSITIES };
+
+// The console's width tiers, measured on its grid (.main), not the window:
+// wide shows Biblioteca | Slides | Programa | Camadas over Setlist; medium puts the
+// Setlist beside the Prévia (Camadas is a drawer); narrow also stacks
+// Biblioteca over Slides in one column beside the Programa. The live column is never stacked below
+// anything and the page never scrolls.
+export const TIER_WIDE = 1400;
+export const TIER_MEDIUM = 1100;
+export const tierFor = (width) => (width >= TIER_WIDE ? "wide" : width >= TIER_MEDIUM ? "medium" : "narrow");
+
+// List density (Ver › Densidade, DENSITIES): automática is compacta when
+// the console's grid is shorter than AUTO_COMPACT_H (a notebook).
+export const AUTO_COMPACT_H = 820;
+// The density the console shows for a grid `height` px tall.
+export const shownDensity = (layout, height) => {
+    const d = densityOf(layout);
+    return d === "auto" ? (height < AUTO_COMPACT_H ? "compact" : "comfortable") : d;
+};
+// A panel's header at that density (.kx-panel-h: the tokens panel-head and
+// panel-head-compact, Rodada O, O5).
+export const panelHead = (density) => (density === "compact" ? 32 : 36);
+
+export const DEFAULT_LAYOUT = {
+    hidden: {},
+    libW: 260,
+    slidesW: 300,
+    rightW: 320,
+    // Camadas' height over the Setlist (the splitter between them); the
+    // Setlist takes the rest, most of the column.
+    camadasH: 280,
+    bibleSelW: 300,
+    bibleAirW: 400,
+    // The Prévia's width, % of the centre's bottom band (the splitter
+    // beside it; the Programa above gives way when the window is short).
+    prevPct: 44,
+    density: "auto",
+    order: DEFAULT_ORDER,
+    stacks: DEFAULT_STACKS,
+    // The tabs each trimmable row shows (panelTabs.js): the panel beside
+    // the Prévia and the Biblioteca.
+    tabs: DEFAULT_TABS,
+    // The culto environment's arrangement as a tree (dock.js, Ver › Editar
+    // disposição); null until the operator changes it: the console builds it
+    // from the columns above (fromArrangement), so an old save keeps its look.
+    dock: null,
+    // The Bíblia's, the same way (fromBibleArrangement until it changes).
+    bibleDock: null,
+    // One culto arrangement per width tier (owner 2026-10-14, the small-screen
+    // review): `dock` and `dockPreset` are the tier's on screen (`dockTier`);
+    // the others wait in `tierDocks` (switchTier), so a dock arranged on the
+    // church's big monitor never squeezes a notebook.
+    dockTier: null,
+    tierDocks: {},
+    // The panels folded with their header's chevron (owner 2026-10-16,
+    // Rodada F4): { [moduleId]: true }, both environments (their ids differ).
+    // Down a column a folded panel is its header, across a row a strip
+    // (dock.js fitDock's `folded`). The No ar strip's old `onairMin` is its
+    // entry here.
+    folded: {},
+    // Its band (dock.js ONAIR_SPANS; Editar disposição › No ar): under the
+    // columns beside the Setlist's, or the whole window.
+    onairSpan: "columns",
+    // The Bíblia's Livros, Capítulos and Versículos: small, medium or large
+    // cells (Livros' header menu; owner 2026-10-14).
+    bibleGrid: "medium",
+    // The size of its reading text (bibleRead.js: 0-4, M = 1; Rodada P, P5).
+    bibleRead: 1,
+    // Temas: small thumbnails (3 a row) or large (2), and their names
+    // (the panel's + › Visualização; owner 2026-10-14).
+    temasThumb: "small",
+    temasNames: true,
+    // What the Biblioteca's songs show on their second line (the header's
+    // (+) › Mostrar o artista / o tom / a duração; Rodada G1): the key and
+    // the length at first, the artist only when asked (it is always in
+    // the tooltip).
+    libShowArtist: false,
+    libShowKey: true,
+    libShowLength: true,
+    // A console never edited starts with the modules the church's old
+    // preference hid (console_hidden_modules) in the tray; after a restore,
+    // with every module (false).
+    trayFromChurch: true,
+    // Named arrangements (dockPresets.js, Ver › Disposição) and the one in
+    // use (null = Padrão).
+    dockPresets: [],
+    dockPreset: null,
+    bibleDockPreset: null,
+    // The Programa as four outputs at once (multiview.js), and which.
+    multiview: false,
+    mvTiles: DEFAULT_TILES,
+};
+
+// layout.folded made safe: only modules that fold, only `true`; a save from
+// before carries the No ar strip's `onairMin` instead.
+export function normalizeFolded(saved, onairMin = false) {
+    const out = {};
+    if (saved && typeof saved === "object" && !Array.isArray(saved)) {
+        for (const [id, on] of Object.entries(saved)) if (on === true && canFoldModule(id)) out[id] = true;
+    }
+    if (onairMin === true) out.onair = true;
+    return out;
+}
+// A panel's chevron: folded ↔ open.
+export function toggleFolded(folded, id) {
+    if (!canFoldModule(id)) return folded || {};
+    const { [id]: was, ...rest } = folded || {};
+    return was ? rest : { ...rest, [id]: true };
+}
+export const foldedList = (folded) => Object.keys(folded || {}).filter((id) => folded[id] === true);
+
+// One environment's arrangement back to the console's own (Padrão, the edit
+// banner's Restaurar posições), the other's left as it is; its panels open.
+const ENV_KEYS = {
+    culto: { keys: ["dock", "dockPreset", "libW", "slidesW", "rightW", "camadasH", "prevPct"], order: "culto", stacks: ["side", "source"], also: { trayFromChurch: false } },
+    biblia: { keys: ["bibleDock", "bibleDockPreset", "bibleSelW", "bibleAirW"], order: "biblia", stacks: ["picker"] },
+};
+export function restoreEnv(layout, env) {
+    const k = ENV_KEYS[env] || ENV_KEYS.culto;
+    const mine = envModules(env === "biblia" ? "biblia" : "culto");
+    return {
+        ...layout,
+        ...Object.fromEntries(k.keys.map((key) => [key, DEFAULT_LAYOUT[key]])),
+        folded: Object.fromEntries(Object.entries(layout.folded || {}).filter(([id]) => !mine.includes(id))),
+        order: { ...layout.order, [k.order]: DEFAULT_LAYOUT.order[k.order] },
+        stacks: { ...layout.stacks, ...Object.fromEntries(k.stacks.map((s) => [s, DEFAULT_LAYOUT.stacks[s]])) },
+        ...(k.also || {}),
+    };
+}
+
+// The culto's arrangement when the console's width tier changes: the one on
+// screen is kept for its tier and the new tier's comes back (null = the
+// console's own for that tier, fromArrangement). A save from before the tiers
+// had one dock: it belongs to the wide tier, where it was most likely made.
+export const TIERS = ["wide", "medium", "narrow"];
+// Travar fora da edição is the environment's (Rodada P4-1): the tier that
+// comes in takes the switch as it is on screen; one never arranged comes in
+// as `fresh(tier)` (the console's own for that tier) with the lock on it.
+export function switchTier(layout, tier, fresh = null) {
+    if (!TIERS.includes(tier)) return layout;
+    const from = TIERS.includes(layout.dockTier) ? layout.dockTier : layout.dock ? "wide" : tier;
+    if (from === tier) return layout.dockTier === tier ? layout : { ...layout, dockTier: tier };
+    const back = layout.tierDocks?.[tier] || {};
+    const locked = dockLocked(layout.dock);
+    const incoming = back.dock ? withLockOf(back.dock, layout.dock) : locked && fresh ? setDockLock(fresh(tier), true) : null;
+    return {
+        ...layout,
+        tierDocks: { ...layout.tierDocks, [from]: { dock: layout.dock || null, dockPreset: layout.dockPreset || null } },
+        dock: incoming,
+        dockPreset: back.dockPreset || null,
+        dockTier: tier,
+    };
+}
+
+function normalizeTierDocks(saved) {
+    const out = {};
+    for (const t of TIERS) {
+        const e = saved?.[t];
+        if (!e || typeof e !== "object") continue;
+        out[t] = { dock: e.dock ? normalizeDock(e.dock) : null, dockPreset: typeof e.dockPreset === "string" ? e.dockPreset : null };
+    }
+    return out;
+}
+
+export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
+
+const KEY = (profile) => `keryx.console.layout.${profile || "default"}`;
+
+export function loadLayout(profile) {
+    try {
+        const raw = localStorage.getItem(KEY(profile));
+        if (!raw) return { ...DEFAULT_LAYOUT };
+        const { onairMin, ...saved } = JSON.parse(raw);
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), folded: normalizeFolded(saved.folded, onairMin), onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", bibleRead: readStep(saved.bibleRead), temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, libShowArtist: saved.libShowArtist === true, libShowKey: saved.libShowKey !== false, libShowLength: saved.libShowLength !== false, dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
+    } catch {
+        return { ...DEFAULT_LAYOUT };
+    }
+}
+
+export function saveLayout(profile, layout) {
+    try {
+        localStorage.setItem(KEY(profile), JSON.stringify(layout));
+    } catch { /* private mode or quota: the layout just isn't remembered */ }
+}

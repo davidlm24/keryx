@@ -1,0 +1,156 @@
+{
+  "name": "Service",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Nome do culto"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do culto"
+    },
+    "time": {
+      "type": "string",
+      "description": "Horario do culto (legado - use startTime)"
+    },
+    "startTime": {
+      "type": "string",
+      "description": "Horario de inicio do culto"
+    },
+    "standby_background": {
+      "type": "string",
+      "description": "Fundo de espera do culto: a imagem das telas quando nada esta no ar (URL de midia ou fundo incluido). Antigo: lido quando background esta vazio"
+    },
+    "theme_id": {
+      "type": "string",
+      "description": "Tema do culto (id de ProjectionTheme, opcional): vira o tema em uso quando o culto e escolhido (src/lib/console/serviceLook.js)"
+    },
+    "kind_themes": {
+      "type": "object",
+      "description": "Antigo (Visual do culto, ate 2026-10-14): temas por tipo { lyrics, bible, text, tool }; nada grava mais, so o lyrics e lido quando theme_id esta vazio"
+    },
+    "background": {
+      "type": "object",
+      "description": "Fundo do culto, de qualquer tipo ({ kind: image|video|generator|color, value, gen, dim, blur, fit }; src/lib/console/defaultFundo.js): vai para a camada Fundo ao escolher o culto e a cada Esc"
+    },
+    "location": {
+      "type": "string",
+      "description": "Local do culto"
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "ID da organizacao/igreja"
+    },
+    "templateId": {
+      "type": "string",
+      "description": "ID do template usado para criar o culto"
+    },
+    "service_type": {
+      "type": "string",
+      "enum": [
+        "culto",
+        "evento"
+      ],
+      "default": "culto",
+      "description": "Tipo: Culto ou Evento"
+    },
+    "event_description": {
+      "type": "string",
+      "description": "Descricao do evento (quando tipo = evento)"
+    },
+    "worship_team": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string",
+            "description": "ID do membro da equipe de louvor"
+          },
+          "member_name": {
+            "type": "string",
+            "description": "Nome do membro"
+          },
+          "role": {
+            "type": "string",
+            "description": "Funcao no culto"
+          }
+        }
+      },
+      "description": "Escala da equipe de louvor"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "song",
+              "bible",
+              "media",
+              "announcement"
+            ]
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Itens do culto (legado - use entidade ServiceItem)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas gerais do culto"
+    },
+    "autoplay": {
+      "type": "boolean",
+      "default": false,
+      "description": "Setlist automatica (Rodada N2): Avancar sozinho, o interruptor do cabecalho da Setlist. Ligado, quando o item no ar termina, o proximo vai ao ar depois da pausa"
+    },
+    "autoplay_gap": {
+      "type": "integer",
+      "description": "Setlist automatica: pausa entre itens deste culto em segundos (0, 3, 5 ou 10). Nulo = a da igreja (User.autoplay_gap)"
+    },
+    "operator_notes": {
+      "type": "string",
+      "description": "Notas livres do operador no console (aba Notas): so no console, fora do PDF; vao com o culto e o backup"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "READY",
+        "LIVE",
+        "COMPLETED",
+        "ARCHIVED",
+        "planning",
+        "ready",
+        "completed"
+      ],
+      "default": "DRAFT",
+      "description": "Status do culto"
+    }
+  },
+  "required": [
+    "title",
+    "date"
+  ],
+  "rls": {
+    "read": {},
+    "update": {},
+    "delete": {}
+  }
+}

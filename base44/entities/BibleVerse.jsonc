@@ -1,0 +1,42 @@
+{
+  "name": "BibleVerse",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "default": "ARA",
+      "description": "Vers\u00e3o da B\u00edblia"
+    },
+    "testament": {
+      "type": "string",
+      "enum": [
+        "Antigo",
+        "Novo"
+      ],
+      "description": "Testamento"
+    },
+    "book": {
+      "type": "string",
+      "description": "Livro b\u00edblico"
+    },
+    "chapter": {
+      "type": "number",
+      "description": "Cap\u00edtulo"
+    },
+    "verse": {
+      "type": "number",
+      "description": "Vers\u00edculo"
+    },
+    "text": {
+      "type": "string",
+      "description": "Texto do vers\u00edculo"
+    }
+  },
+  "required": [
+    "version",
+    "book",
+    "chapter",
+    "verse",
+    "text"
+  ]
+}

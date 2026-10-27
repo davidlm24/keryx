@@ -1,0 +1,178 @@
+import { keryx } from "@/api/keryxClient";
+import { stripChords } from "../lib/chords.js";
+import { plan, clockAt, span, total, typeLabel, isSection } from "@/lib/console/setlist";
+import { singerOf } from "@/lib/console/pedidos";
+
+const dateBR = (iso) => (/^\d{4}-\d{2}-\d{2}$/.test(String(iso || "")) ? iso.split("-").reverse().join("/") : iso || "");
+
+/**
+ * Exporta um Service completo para PDF — itens, letras e referências bíblicas.
+ * @param {object} service - entidade Service
+ * @param {array} items - ServiceItems ordenados
+ */
+// church: { name, city } (Configurações › Igreja), a line over the title.
+export async function exportServiceToPdf(service, items, church = null) {
+    // jspdf (with its zip and image codecs, ~0.5 MB) loads only when a PDF is
+    // asked for, so it stays out of the console's first load.
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    let y = margin;
+
+    // A igreja, por cima do título.
+    const line = [church?.name, church?.city].filter(Boolean).join(" · ");
+    if (line) {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(110);
+        doc.text(line, margin, y);
+        doc.setTextColor(0);
+        y += 8;
+    }
+
+    // Título
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text(service.title || "Culto", margin, y);
+    y += 10;
+
+    // Metadados
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    const p = plan(service, items);
+    const hasStart = Boolean(service.startTime || service.time);
+    const meta = [
+        service.date && `Data: ${dateBR(service.date)}`,
+        // No time chosen: no invented one (the plan's times start at the first item).
+        (service.startTime || service.time)
+            ? `Início: ${service.startTime || service.time} · ${p.count} itens · ${total(p.seconds)} · termina às ${clockAt(p.ends)}`
+            : `${p.count} itens · ${total(p.seconds)}`,
+        service.location && `Local: ${service.location}`,
+    ].filter(Boolean);
+    meta.forEach(m => { doc.text(m, margin, y); y += 6; });
+    // The team, one line each.
+    const team = service.worship_team || [];
+    if (team.length) {
+        y += 2;
+        doc.setFont("helvetica", "bold");
+        doc.text("Equipe", margin, y);
+        y += 6;
+        doc.setFont("helvetica", "normal");
+        team.forEach((m) => { doc.text(`${m.member_name || ""}${m.role ? ` · ${m.role}` : ""}`, margin, y); y += 5; });
+    }
+    y += 4;
+
+    // Buscar conteúdo de cada item
+    for (const [i, item] of items.entries()) {
+        if (item.enabled === false) continue;
+
+        // Nova página se necessário
+        if (y > pageHeight - 40) { doc.addPage(); y = margin; }
+
+        // A section header (Pré-culto, Culto, Pós-culto).
+        if (isSection(item)) {
+            doc.setFontSize(15);
+            doc.setFont("helvetica", "bold");
+            doc.text(String(item.title || "Seção").toUpperCase(), margin, y);
+            y += 9;
+            continue;
+        }
+
+        // Cabeçalho do item: the planned time, the kind, the title, the length,
+        // and who sings when it came from a pedido ("· pedido de Ana", Rodada Q S13).
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "bold");
+        const at = p.rows[i]?.at;
+        const head = `${hasStart && at != null ? `${clockAt(at)}  ` : ""}${typeLabel(item.type)}: ${item.title || ""}`;
+        doc.text(head, margin, y);
+        let x = margin + doc.getTextWidth(head);
+        const who = singerOf(item);
+        if (who) {
+            doc.setFont("helvetica", "italic");
+            const by = ` · pedido de ${who}`;
+            doc.text(by, x, y);
+            x += doc.getTextWidth(by);
+            doc.setFont("helvetica", "bold");
+        }
+        if (item.duration) doc.text(`  (${span(item.duration)})`, x, y);
+        y += 7;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+
+        // Buscar conteúdo conforme o tipo
+        try {
+            const contentId = item.contentId;
+            if (item.type === "SONG" && contentId) {
+                const song = await keryx.entities.Song.get(contentId);
+                if (song.lyrics) {
+                    const lines = doc.splitTextToSize(stripChords(song.lyrics), pageWidth - 2 * margin);
+                    lines.forEach(line => {
+                        if (y > pageHeight - 15) { doc.addPage(); y = margin; }
+                        doc.text(line, margin, y);
+                        y += 5;
+                    });
+                }
+                if (song.chords) {
+                    y += 3;
+                    doc.setFont("helvetica", "italic");
+                    const chordLines = doc.splitTextToSize(`Cifra: ${song.chords}`, pageWidth - 2 * margin);
+                    chordLines.forEach(line => {
+                        if (y > pageHeight - 15) { doc.addPage(); y = margin; }
+                        doc.text(line, margin, y);
+                        y += 5;
+                    });
+                    doc.setFont("helvetica", "normal");
+                }
+            } else if (item.type === "BIBLE" && contentId) {
+                const passage = await keryx.entities.BiblePassage.get(contentId);
+                if (passage.text) {
+                    const lines = doc.splitTextToSize(passage.text, pageWidth - 2 * margin);
+                    lines.forEach(line => {
+                        if (y > pageHeight - 15) { doc.addPage(); y = margin; }
+                        doc.text(line, margin, y);
+                        y += 5;
+                    });
+                }
+            }
+            if (item.notes) {
+                doc.setFont("helvetica", "italic");
+                const lines = doc.splitTextToSize(`Notas: ${item.notes}`, pageWidth - 2 * margin);
+                lines.forEach(line => {
+                    if (y > pageHeight - 15) { doc.addPage(); y = margin; }
+                    doc.text(line, margin, y);
+                    y += 5;
+                });
+                doc.setFont("helvetica", "normal");
+            }
+        } catch (e) {
+            // conteúdo não disponível — continuar
+        }
+
+        y += 6;
+        doc.setDrawColor(200);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+    }
+
+    // Notas gerais
+    if (service.notes) {
+        if (y > pageHeight - 30) { doc.addPage(); y = margin; }
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("Notas Gerais:", margin, y);
+        y += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        const noteLines = doc.splitTextToSize(service.notes, pageWidth - 2 * margin);
+        noteLines.forEach(line => {
+            if (y > pageHeight - 15) { doc.addPage(); y = margin; }
+            doc.text(line, margin, y);
+            y += 5;
+        });
+    }
+
+    doc.save(`${(service.title || "culto").replace(/\s+/g, "_")}.pdf`);
+}
