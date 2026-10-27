@@ -1346,7 +1346,10 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      computer stops ("Este computador foi desconectado da sincronização.
      Entre com a conta da igreja nele para voltar.") until someone enters
      with the account on it again (`googleSignIn` takes it off the list;
-     the owner's G3 = A). Its passes never readmit it.
+     the owner's G3 = A). Its passes never readmit it. A sign-in takes off
+     only the entries made at or before it (`readmitPending = { at }`;
+     owner 2026-10-27): a readmit Drive failed is retried by the passes,
+     and a Desconectar made after the sign-in stays.
    - **Ops for PR 3** (`keryx:sync`): `googleSignIn` (the browser, then
      Drive, the account's key — joined, or made: `joined: { created, sent
      }` — off the Desconectar list, everything sent; a join Drive fails
