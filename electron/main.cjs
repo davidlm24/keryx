@@ -811,6 +811,8 @@ app.whenReady().then(async () => {
         store,
         runtime: { path: process.execPath, env: { ELECTRON_RUN_AS_NODE: "1" } },
         emit: (job) => broadcast("keryx:youtube", job),
+        // A download that ended also goes to the bell (youtubeNote).
+        notify: (note) => notifications.add(note),
         log: (m) => logger.warn(m),
     });
 

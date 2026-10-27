@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
     messagesInOrder, messageSay, freshMessages, hasUnread, newestAt, songOfPedido, FRESH_MS,
     isOperator, pedidosOf, chatOf, tabOf, chatHead, pedidoBy, operatorChat, operatorPedido, pedidoItem, singerOf, PEDIDO_MAX,
-    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pickRows, PICK_TABS,
+    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pickRows, PICK_TABS, pedidoNote,
 } from "./pedidos.js";
 
 const row = (id, sentAt, extra = {}) => ({ id, sentAt, kind: "chat", sender: "Ana", text: "oi", status: "open", ...extra });
@@ -157,4 +157,11 @@ test("a pedido on the Setlist keeps who sings and its note (S13 = A)", () => {
     assert.deepEqual(pedidoItem(row("c", "x")), {}, "a chat gives nothing");
     assert.equal(singerOf({ requested_by: " Ana " }), "Ana");
     assert.equal(singerOf({}), "");
+});
+
+test("a pedido in the bell: who asked, who sings and the note, its Ver the Pedidos tab", () => {
+    assert.deepEqual(pedidoNote(row("p1", "x", { kind: "pedido", sender: "Lucas", song: "Santo", singer: "Ana", text: "tom de Ré" })),
+        { key: "pedido:p1", kind: "pedido", title: "Pedido de Lucas: Santo", body: "Quem canta: Ana · tom de Ré", action: "painel:pedidos" });
+    assert.equal(pedidoNote(row("p2", "x", { kind: "pedido", sender: "Lucas", song: "Santo", text: "" })).body, "");
+    assert.equal(pedidoNote(row("c1", "x")), null, "the chat stays out of the bell");
 });

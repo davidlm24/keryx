@@ -167,8 +167,19 @@ function killTree(child) {
  * store: the local store (call(entity, op, args)).
  * emit(event): a job's progress, to every window ("keryx:youtube").
  */
+// The bell's word on a download that ended (owner 2026-10-27: whoever does
+// not know where the Mídia is sees it there), its Ver the file in the Mídia.
+// -> a note for notifications.add, or null (waiting, canceled).
+function youtubeNote(job, title) {
+    const name = String(title || "").trim() || "o vídeo do YouTube";
+    const base = { key: `youtube:${job.id}`, action: `media:${job.id}` };
+    if (job.phase === "done") return { ...base, kind: "youtube", title: `Baixado para a Mídia: ${name}`, body: "" };
+    if (job.phase === "failed") return { ...base, kind: "warn", title: `Não deu para baixar ${name}`, body: job.message || "" };
+    return null;
+}
+
 function createYouTube({
-    toolsDir, workDir, mediaDir, importMedia, store, runtime = null, emit = () => {}, log = () => {},
+    toolsDir, workDir, mediaDir, importMedia, store, runtime = null, emit = () => {}, notify = () => {}, log = () => {},
     fetchImpl = (...a) => fetch(...a), spawn = childProcess.spawn, execFile = childProcess.execFile, kill = killTree, now = () => Date.now(),
 } = {}) {
     const bundled = path.join(toolsDir, YTDLP);
@@ -295,6 +306,11 @@ function createYouTube({
         job.message = message;
         job.child = null;
         tell(job);
+        // Done or failed: the bell says so too, by the row's title.
+        let title = "";
+        try { title = store.call("Media", "get", [job.id])?.title || ""; } catch { /* the title only */ }
+        const note = youtubeNote(job, title);
+        if (note) notify(note);
         // A finished job stays listed a moment for windows that look later.
         setTimeout(() => { if (jobs.get(job.id) === job && job.phase === phase) jobs.delete(job.id); }, 60000).unref?.();
     }
@@ -404,4 +420,4 @@ function createYouTube({
     };
 }
 
-module.exports = { createYouTube, youtubeId, oembedState, downloadArgs, parseLine, track, progressOf, errorMessage, downloadedFields, YouTubeError, FORMAT };
+module.exports = { createYouTube, youtubeNote, youtubeId, oembedState, downloadArgs, parseLine, track, progressOf, errorMessage, downloadedFields, YouTubeError, FORMAT };

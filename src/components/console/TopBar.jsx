@@ -17,11 +17,12 @@ import { cloudView } from "@/lib/console/syncView";
 function SyncCloud({ open, onToggle }) {
     const st = useSyncStatus();
     const sync = cloudView(st);
-    const title = `Sincronização · ${sync.label}`;
+    // While a pass runs or a file comes down the dot pulses (owner 2026-10-27).
+    const title = `Sincronização · ${sync.busy ? "Sincronizando…" : sync.label}`;
     return (
         <span className="tb-sync">
             <IconBtn name="cloud" title={title} on={open} onClick={onToggle} aria-haspopup="dialog" aria-expanded={open} />
-            {!open && <i className={`tb-sync-dot is-${sync.tone}`} aria-hidden="true" />}
+            {!open && <i className={`tb-sync-dot is-${sync.tone}${sync.busy ? " is-busy" : ""}`} aria-hidden="true" />}
         </span>
     );
 }

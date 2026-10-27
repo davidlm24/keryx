@@ -74,7 +74,7 @@ export async function downloadToMedia(row, { askText, say }) {
     if (r?.error) { say?.(r.error.message); return false; }
     if (say) startedHere.set(row.id, say);
     put(r.data);
-    say?.(`Baixando "${row.title}" para a Mídia · o andamento aparece na linha.`);
+    say?.(`Baixando "${row.title}" para a Mídia · o andamento aparece na linha dele, e o sino avisa ao terminar.`);
     return true;
 }
 

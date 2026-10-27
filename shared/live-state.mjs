@@ -35,10 +35,15 @@ export const LOCKABLE_LAYERS = ["background"];
 const lockedOf = (value) => (Array.isArray(value) ? LOCKABLE_LAYERS.filter((k) => value.includes(k)) : []);
 export const layerLocked = (state, layer) => Boolean(state?.lockedLayers?.includes(layer));
 const LAYER_OPS = { background: ["background.set", "background.clear"] };
+// The Fundo is what lies under everything: whatever order comes in (any
+// sender, an old save) it ends last (owner 2026-10-27: dragged above Texto
+// principal, its box covered a video that went on playing, sound only).
 const layerOrderOf = (value) => {
     if (!Array.isArray(value) || value.length !== LAYER_ORDER.length || !LAYER_ORDER.every((k) => value.includes(k))) return null;
-    return [...value];
+    return [...value.filter((k) => k !== "background"), "background"];
 };
+// The order a renderer stacks by: the state's, the Fundo last, else the default.
+export const stackOrder = (value) => layerOrderOf(value) || [...LAYER_ORDER];
 
 export const SCREEN_MODES = ["show", "black", "logo"];
 // "presentation" (Rodada F3, owner 2026-10-16): a PDF's pages, one picture

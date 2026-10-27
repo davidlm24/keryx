@@ -7,7 +7,7 @@ import { useContextMenu } from "./ContextMenu";
 import { useConfirm } from "./ConfirmDialog";
 import { themeStyle, sameLook, newThemeBackground, defaultTheme, themeName } from "@/lib/console/themes";
 import { applyThemeOnAir } from "./themeActions";
-import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-state.mjs";
+import { STYLE_KEYS, stackOrder, layerHidden, layerLocked } from "@shared/live-state.mjs";
 import { OVERLAY_LIMIT, overlayName, newOverlay, overlayRows, moveOverlayRow } from "@/lib/console/overlays";
 import { bgFields, bgLabel } from "@/lib/console/backgroundSpec";
 import { fundoNow } from "@/lib/console/defaultFundo";
@@ -77,10 +77,14 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     // Drag to reorder: the anchors (fixed layers, the Sobreposições group)
     // follow live.layerOrder (top first); rows inside the group reorder only
     // the overlays among themselves.
-    const order = Array.isArray(cur?.layerOrder) && cur.layerOrder.length === LAYER_ORDER.length ? cur.layerOrder : LAYER_ORDER;
+    // The Fundo is always the last row and never moves (stackOrder): nothing
+    // goes under it, so it can never cover the text or a video (2026-10-27).
+    const order = stackOrder(cur?.layerOrder);
+    const floor = order.length - 2;
     const moveLayer = (fromKey, toIndex) => {
+        if (fromKey === "background") return;
         const next = order.filter((k) => k !== fromKey);
-        next.splice(Math.min(toIndex > order.indexOf(fromKey) ? toIndex - 1 : toIndex, next.length), 0, fromKey);
+        next.splice(Math.min(toIndex > order.indexOf(fromKey) ? toIndex - 1 : toIndex, next.length - 1), 0, fromKey);
         if (next.join() !== order.join()) c.callOp("layers.order", { order: next }).catch(() => {});
     };
 
@@ -236,19 +240,20 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
 
     const fixedRow = (L) => {
         const i = order.indexOf(L.key);
+        const bg = L.id === "bg";
         return (
             <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${empty[L.id] ? "is-empty" : visible[L.id] ? "" : "is-hidden"}`}
                 onClick={() => setSel(L.id)} role="listitem" tabIndex={0} aria-label={L.name} aria-description={layerState(!visible[L.id], locked[L.id], empty[L.id])}
                 onContextMenu={(e) => menu(e, { title: L.id === "bg" ? fundoTitle() : L.name, items: [
                     { label: visible[L.id] || empty[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] || empty[L.id] ? "eye-off" : "eye", disabled: empty[L.id], onSelect: () => toggleEye(L.id) },
                     { label: locked[L.id] ? "Destravar" : "Travar", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => toggleLock(L.id) },
-                    ...(L.id === "bg" ? fundoItems : [{ label: "Editar…", icon: "edit", onSelect: EDIT[L.id].run }]),
-                    { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
-                    { label: "Descer", disabled: i === order.length - 1, onSelect: () => moveLayer(L.key, i + 2) },
+                    ...(bg ? fundoItems : [{ label: "Editar…", icon: "edit", onSelect: EDIT[L.id].run },
+                        { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
+                        { label: "Descer", disabled: i >= floor, onSelect: () => moveLayer(L.key, i + 2) }]),
                 ] })}
-                {...layerDrag(i, L.name)}
-                title="Arraste para mudar a ordem das camadas">
-                <span className="kx-glyph"><Icon name="grip" /></span>
+                {...(bg ? {} : layerDrag(i, L.name))}
+                title={bg ? "O Fundo fica sempre embaixo das outras camadas" : "Arraste para mudar a ordem das camadas"}>
+                <span className="kx-glyph">{!bg && <Icon name="grip" />}</span>
                 {empty[L.id]
                     ? <button type="button" className="kx-btn kx-t is-empty" onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-disabled="true" aria-label={`${L.name}: vazio`} title={L.id === "bg" ? "Vazio: nada no Fundo" : "Vazio: nada no ar"}><Icon name="eye" /></button>
                     : <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={`${visible[L.id] ? "Ocultar" : "Mostrar"} ${LAYER_OF[L.id]}`} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>}
@@ -277,7 +282,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                     { label: "Editar…", icon: "edit", onSelect: () => toggleOpen(o.id) },
                     ...(anchor
                         ? [{ label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
-                            { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) }]
+                            { label: "Descer", disabled: oi >= floor, onSelect: () => moveLayer("overlays", oi + 2) }]
                         : [{ label: "Subir", disabled: r === 0, onSelect: () => { const next = moveOverlayRow(overlays, o.id, r - 1); if (next !== overlays) setOverlays(next); } },
                             { label: "Descer", disabled: r === ovRows.length - 1, onSelect: () => { const next = moveOverlayRow(overlays, o.id, r + 2); if (next !== overlays) setOverlays(next); } }]),
                     menuItem("excluir", { onSelect: () => removeOverlay(o) }),
@@ -303,7 +308,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                 onContextMenu={(e) => menu(e, { title: "Sobreposição", items: [
                     { label: "Criar a primeira", icon: "plus", onSelect: addOverlay },
                     { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
-                    { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) },
+                    { label: "Descer", disabled: oi >= floor, onSelect: () => moveLayer("overlays", oi + 2) },
                 ] })}
                 {...layerDrag(oi, "Sobreposição")}
                 title="Arraste para mudar a ordem das camadas">
@@ -325,7 +330,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                 <div className="kx-ovhead kx-t"
                     onContextMenu={(e) => menu(e, { title: "Sobreposições", items: [
                         { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
-                        { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) },
+                        { label: "Descer", disabled: oi >= floor, onSelect: () => moveLayer("overlays", oi + 2) },
                         menuItem("excluir", { label: "Excluir todas…", onSelect: removeAllOverlays }),
                     ] })}
                     title="Arraste para mudar a ordem das camadas — o grupo inteiro">

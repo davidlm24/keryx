@@ -49,6 +49,15 @@ export function messageSay(r) {
     return song ? `Pedido de ${who}: ${song}` : `Pedido de ${who}`;
 }
 
+// A new pedido in the bell (owner 2026-10-27: the toast goes, the bell
+// keeps it), one per row; its Ver opens the Pedidos tab. Chat stays out.
+export function pedidoNote(r) {
+    if (!isPedido(r) || !r.id) return null;
+    const singer = String(r.singer || "").trim();
+    const note = String(r.text || "").trim();
+    return { key: `pedido:${r.id}`, kind: "pedido", title: messageSay(r), body: [singer && `Quem canta: ${singer}`, note].filter(Boolean).join(" · "), action: "painel:pedidos" };
+}
+
 // The rows to announce now: sent within FRESH_MS and not announced before
 // (`told`: the ids already said, kept by the caller). Oldest first. What
 // the operator wrote is never announced to the operator.

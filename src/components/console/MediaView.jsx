@@ -162,6 +162,13 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         didIntent.current = true;
         if (intent === "upload") fileRef.current?.click();
         else if (intent === "youtube") addLink();
+        // From the bell (a YouTube download): that file chosen, in view.
+        else if (intent.startsWith("select:")) {
+            const id = intent.slice("select:".length);
+            if (!media.some((m) => m.id === id)) return;
+            ms.click(id, null);
+            requestAnimationFrame(() => document.querySelector(`[data-media-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" }));
+        }
     });
     // The link is checked in the dialog (may it play outside YouTube?), which
     // offers Adicionar o link and/or Baixar para a Mídia (owner 2026-10-27).

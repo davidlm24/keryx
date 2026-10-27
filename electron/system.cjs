@@ -14,6 +14,7 @@ const archive = require("./archive.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createReportQueue } = require("./reportQueue.cjs");
 const { perfReport } = require("./perfMetrics.cjs");
+const { consoleNote } = require("./notifications.cjs");
 
 const SETTINGS_KEY = "backup";
 
@@ -562,6 +563,12 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             notificationsRead: async () => notifications?.markAllRead() || [],
             notificationDismiss: async (_event, { id }) => notifications?.dismiss(id) || [],
             notificationsClear: async () => notifications?.clear() || [],
+            // The console's own notes (a pedido of the Equipe): checked by consoleNote.
+            notificationAdd: async (_event, n) => {
+                const note = consoleNote(n);
+                if (note && notifications) notifications.add(note);
+                return notifications?.list() || [];
+            },
             updateDownload: async () => { updater.download(); return info(); },
             updateInstall: async () => { updater.installAndRestart(); return info(); },
         },

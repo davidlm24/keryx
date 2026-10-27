@@ -385,7 +385,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
    only the fixed ring. */
 .kx .kx-toast { position: absolute; z-index: var(--z-toast); left: 50%; top: var(--toast-top, var(--pop-top, var(--space-2))); transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: var(--fs-ui); white-space: nowrap; max-width: calc(100vw - 24px); animation: kx-toast-in var(--dur-fold) var(--ease-out) both; }
 .kx .kx-toast.is-leaving { animation: kx-toast-out var(--dur-fold) var(--ease-out) both; pointer-events: none; }
-.kx .kx-toast.is-important { box-shadow: var(--shadow-popover), 0 0 0 1px var(--brand); }
+.kx .kx-toast.is-important { box-shadow: 0 0 0 1px var(--brand), var(--shadow-popover); } /* the gold ring first: the popover's own 1px ring painted over it */
 .kx .kx-toast-wave { position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 0 1px var(--brand); opacity: 0; pointer-events: none; animation: kx-toast-wave calc(var(--dur-fold) * 7) var(--ease-out) 3 both; }
 .kx .kx-toast-wave.is-2 { animation-delay: calc(var(--dur-fold) * 2); }
 @keyframes kx-toast-in { from { opacity: 0; transform: translate(-50%, calc(-1 * var(--space-2))); } to { opacity: 1; transform: translate(-50%, 0); } }

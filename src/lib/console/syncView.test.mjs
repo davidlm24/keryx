@@ -138,7 +138,11 @@ test("cloudView: board 6 and its three variants", () => {
     assert.equal(ok.when, "há 40 s");
     assert.equal(ok.act, "now");
     assert.deepEqual(ok.rows, [["Conta", "igreja@exemplo.com"], ["Internet", "conectado"], ["Esperando", "nada a enviar"], ["Chegando", "1 vídeo · 64 %"], ["Computadores", "2"]]);
+    assert.equal(ok.busy, true, "a file coming down: the dot pulses");
+    assert.equal(cloudView({ ...drive, engine: { ...drive.engine, busy: true } }, NOW).busy, true, "a pass running");
+    assert.equal(cloudView(drive, NOW).busy, false);
     const off = cloudView({ ...drive, waiting: 7, engine: { state: "offline" } }, NOW);
+    assert.ok(!off.busy, "no pulse without internet");
     assert.deepEqual([off.tone, off.label, off.act], ["wait", "Sem internet", "retry"]);
     assert.equal(off.text, "7 mudanças esperando. Tudo aqui funciona; elas vão quando a internet voltar.");
     const again = cloudView({ ...drive, google: { signedIn: false, refused: true } }, NOW);

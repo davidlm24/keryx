@@ -447,7 +447,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   ticking clock (it replayed the transition every second).
   Camadas' padlock on the Fundo is the live state's (`layers.lock`,
   `lockedLayers`; refuses `background.set`/`.clear` from anyone, and the
-  renderer leaves a song's own picture out). A background is one spec
+  renderer leaves a song's own picture out). **The Fundo is always the
+  bottom layer** (2026-10-27: dragged above Texto principal, its box hid a
+  video that played on, sound only): `layers.order` and `restoreState`
+  put `background` last whatever comes in, renderers stack by
+  `stackOrder`, and Camadas' Fundo row neither drags nor has Subir/Descer.
+  A background is one spec
   everywhere, `{ kind: image|video|generator|color, value, gen?, dim?, blur?, fit? }`
   (`bgSpec` reads `Song.background`/`ProjectionTheme.background` and the
   old `background_image`/`background_generator`; `bgFields` writes both).

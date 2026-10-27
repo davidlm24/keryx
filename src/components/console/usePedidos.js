@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { freshMessages, messageSay, hasUnread, newestAt, pedidosOf, chatOf, tabOf } from "@/lib/console/pedidos";
+import { freshMessages, messageSay, hasUnread, newestAt, pedidosOf, chatOf, tabOf, pedidoNote } from "@/lib/console/pedidos";
 
 // What the console says when the Equipe writes (Rodada Q, PR2), mounted once
 // in Console.jsx (never in /Janela). The runner's chat.send / request.send
@@ -32,19 +32,21 @@ const readKey = (key) => {
 // Before S12 one mark covered both kinds: the Chat starts from it.
 const readSeen = () => ({ pedidos: readKey(SEEN_KEY.pedidos), chat: readKey(SEEN_KEY.chat) || readKey(SEEN_KEY.pedidos) });
 
-export function usePedidos({ c, messages, open = {}, reachable = true, show, focus }) {
+export function usePedidos({ c, messages, open = {}, reachable = true, show, focus, bell }) {
     const told = useRef(null);
     if (!told.current) told.current = readTold();
-    const latest = useRef({ c, show, focus, reachable, open });
-    latest.current = { c, show, focus, reachable, open };
+    const latest = useRef({ c, show, focus, reachable, open, bell });
+    latest.current = { c, show, focus, reachable, open, bell };
     useEffect(() => {
         const fresh = freshMessages(messages, told.current);
         if (!fresh.length) return;
         for (const r of fresh) told.current.add(r.id);
         // Keep the list short: the ids of the last few hundred rows are enough.
         try { window.sessionStorage.setItem(TOLD_KEY, JSON.stringify([...told.current].slice(-300))); } catch { /* this window only */ }
-        const { c: con, show: showTabs, focus: focusTab, reachable: canSee, open: isOpen } = latest.current;
+        const { c: con, show: showTabs, focus: focusTab, reachable: canSee, open: isOpen, bell: ring } = latest.current;
         showTabs([...new Set(fresh.map(tabOf))]);
+        // Every new pedido also stays in the bell (2026-10-27), even one read now.
+        for (const r of fresh) { const note = pedidoNote(r); if (note) ring?.(note); }
         const unread = fresh.filter((r) => !(canSee && isOpen[tabOf(r)]));
         if (!unread.length) return;
         const last = unread[unread.length - 1];

@@ -465,9 +465,11 @@ export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
     );
 }
 
-const NOTE_ICON = { update: "download", warn: "warn", info: "check" };
+const NOTE_ICON = { update: "download", warn: "warn", info: "check", pedido: "music", youtube: "youtube" };
 // "settings:dados" is what older versions saved (the section is Backup now).
-const ACTION_LABEL = { update: "Atualizar agora", whatsnew: "Ver novidades", "settings:backup": "Abrir Backup", "settings:dados": "Abrir Backup", "settings:sincronizacao": "Abrir Sincronização" };
+const ACTION_LABEL = { update: "Atualizar agora", whatsnew: "Ver novidades", "settings:backup": "Abrir Backup", "settings:dados": "Abrir Backup", "settings:sincronizacao": "Abrir Sincronização", "painel:pedidos": "Ver o pedido" };
+// A YouTube download's note opens the Mídia on its file (media:<id>).
+const actionLabel = (act) => ACTION_LABEL[act] || (act?.startsWith("media:") ? "Abrir na Mídia" : null);
 
 // The bell's list: newest first, each with what can be done about it.
 export function Notifications({ open, setOpen, notes, update, onAction, onDismiss, onClear }) {
@@ -480,7 +482,7 @@ export function Notifications({ open, setOpen, notes, update, onAction, onDismis
     return (
         <div ref={box} className="pop kx-pop notifs" style={{ left: anchor?.left ?? 6, top: "var(--pop-top)", width: anchor?.width ?? 360, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }} role="dialog" aria-label="Notificações">
             <div className="kx-menu-h"><span className="kx-section">Notificações</span><span style={{ flex: 1 }} />{notes.length > 0 && <Btn small onClick={onClear}>Limpar</Btn>}</div>
-            {!notes.length && <div className="kx-menu-h"><span className="kx-meta">Nada por aqui. Atualizações e avisos de backup aparecem aqui.</span></div>}
+            {!notes.length && <div className="kx-menu-h"><span className="kx-meta">Nada por aqui. Atualizações, pedidos da equipe, downloads e avisos de backup aparecem aqui.</span></div>}
             {notes.map((n) => {
                 const act = n.action === "update" ? (hasUpdate(update) ? "update" : null) : n.action;
                 return (
@@ -491,7 +493,7 @@ export function Notifications({ open, setOpen, notes, update, onAction, onDismis
                             {n.body && <div className="note-d">{n.body}</div>}
                             <div className="note-f">
                                 <span className="kx-meta">{when(n.at)}</span>
-                                {act && ACTION_LABEL[act] && <Btn small kind="outline" onClick={() => { setOpen(null); onAction(act); }}>{ACTION_LABEL[act]}</Btn>}
+                                {actionLabel(act) && <Btn small kind="outline" onClick={() => { setOpen(null); onAction(act); }}>{actionLabel(act)}</Btn>}
                             </div>
                         </div>
                         <button type="button" className="kx-btn kx-btn-icon kx-t note-x" title="Dispensar" aria-label="Dispensar" onClick={() => onDismiss(n.id)}><Icon name="x" /></button>
