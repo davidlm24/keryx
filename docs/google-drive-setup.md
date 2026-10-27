@@ -127,8 +127,8 @@ entrar.
   e o e-mail da conta, para mostrar qual está conectada. A senha nunca passa
   pelo KERYX: ela é digitada só na página do Google, no navegador.
 - **No Google Drive da igreja**, na pasta oculta do app: as mudanças de cada
-  computador (assinadas com o código da igreja), o que cada um já leu e os
-  arquivos de mídia. Nenhum outro app nem pessoa vê essa pasta pelo Drive.
+  computador (assinadas com a chave da conta, que fica nessa mesma pasta),
+  o que cada um já leu e os arquivos de mídia. Nenhum outro app nem pessoa vê essa pasta pelo Drive.
 - **Sair da conta** no KERYX apaga a entrada deste computador e avisa o
   Google para cancelá-la.
 - Se o Google recusar a entrada guardada (a senha da conta mudou, alguém

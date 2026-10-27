@@ -34,12 +34,12 @@ function computers() {
 }
 
 function status(state = read()) {
-    const base = { available: true, preview: true, pc: "a1", name: "PC-LOUVOR", version: "0.2.22", paused: false, keyLost: false, canShowCode: false, joinedAt: null, waiting: 0, arriving: null, since: { sent: 12, applied: 31, skipped: 0, failed: 0, rejected: 0, collected: 0 } };
+    const base = { available: true, preview: true, pc: "a1", name: "PC-LOUVOR", version: "0.2.22", paused: false, joinedAt: null, waiting: 0, arriving: null, since: { sent: 12, applied: 31, skipped: 0, failed: 0, rejected: 0, collected: 0 } };
     const google = { signedIn: true, email: "igreja@exemplo.com", refused: false, keyLost: false, signingIn: false, configured: true };
     const ok = { state: "ok", lastPass: new Date(born - 40000).toISOString(), lastOk: new Date(born - 40000).toISOString(), received: { applied: 0 }, missingMedia: 0, computers: computers() };
     const drive = { ...base, store: "drive", folder: null, paired: true, google, engine: ok };
     switch (state) {
-        case "entrando": return { ...base, store: "folder", folder: null, paired: false, google: { ...google, signedIn: false, email: null, signingIn: true }, engine: { state: "off" } };
+        case "entrando": return { ...base, store: null, folder: null, paired: false, google: { ...google, signedIn: false, email: null, signingIn: true }, engine: { state: "off" } };
         case "em-dia": return drive;
         case "chegando": return { ...drive, arriving: { name: "batismo-2026.mp4", size: 200e6, got: 128e6 }, engine: { ...ok, missingMedia: 1 } };
         case "sem-internet": return { ...drive, waiting: 7, engine: { ...ok, state: "offline", error: "O Google Drive não respondeu." } };
@@ -47,8 +47,8 @@ function status(state = read()) {
         case "cheio": return drive;
         case "desconectado": return { ...drive, engine: { ...ok, state: "removed", removed: { at: iso(3600000), by: "b2" } } };
         case "conta-nova": return { ...drive, accountNew: true, google: { ...google, email: "pessoal@gmail.com" }, engine: { ...ok, computers: [] } };
-        case "pasta": return { ...base, store: "folder", folder: "G:\\Meu Drive\\KERYX", paired: true, canShowCode: true, google: { ...google, signedIn: false, email: null }, engine: { ...ok, computers: computers() } };
-        default: return { ...base, store: "folder", folder: null, paired: false, google: { ...google, signedIn: false, email: null }, engine: { state: "off", folder: null } };
+        case "pasta": return { ...base, store: null, folder: "G:\\Meu Drive\\KERYX", paired: false, google: { ...google, signedIn: false, email: null }, engine: { state: "off", folder: null } };
+        default: return { ...base, store: null, folder: null, paired: false, google: { ...google, signedIn: false, email: null }, engine: { state: "off", folder: null } };
     }
 }
 
@@ -91,11 +91,9 @@ export async function previewSyncCall(op, args = {}) {
             return { data: status() };
         case "googleReopen": return { data: true };
         case "googleSignOut": write("sem-conta"); return { data: { ...status(), revoked: true } };
-        case "useDrive": return { data: status() };
         case "now": return { data: status() };
         case "remove": removed.add(String(args.pc)); return { data: status() };
         case "restore": removed.delete(String(args.pc)); return { data: status() };
-        case "inspect": return { data: null };
         default: return { error: { message: "Disponível no aplicativo do computador.", status: 501 } };
     }
 }
