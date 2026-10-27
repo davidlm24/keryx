@@ -217,11 +217,17 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     const rampAt = playback?.ramp?.at;
     const rampMs = playback?.ramp?.ms;
     useEffect(() => {
-        if (callbacks.current.muted) return undefined;
         const now = keryx.live.now();
         const ends = [fadeUntil, rampAt === undefined ? undefined : rampAt + rampMs].filter((t) => t !== undefined && t > now);
         if (!ends.length) return undefined;
         const end = Math.max(...ends);
+        // Muted (the Programa monitor, the Multiview): no volume to step, but
+        // the pause still waits for the ramp, so sync once when it ends —
+        // without this it waited for the 2 s drift check.
+        if (callbacks.current.muted) {
+            const id = setTimeout(() => syncRef.current(), end - now + 5);
+            return () => clearTimeout(id);
+        }
         const spans = [fadeUntil === undefined ? 0 : fadeUntil - fadeAt, rampMs || 0].filter((ms) => ms > 0);
         const every = Math.max(10, Math.min(40, Math.min(...spans) / 10));
         const step = () => {
