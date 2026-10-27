@@ -32,9 +32,9 @@ test("no secret stops the build, unless a build without Google is asked for", ()
 });
 
 test("electron-builder runs both hooks, the file is packed, and git never keeps it", () => {
-    assert.equal(pkg.build.beforePack, "./scripts/google-secret-before.cjs");
+    assert.equal(pkg.build.beforePack, "./scripts/before-pack.cjs");
     assert.equal(pkg.build.afterPack, "./scripts/google-secret-after.cjs");
-    assert.equal(typeof require("./google-secret-before.cjs"), "function");
+    assert.equal(typeof require("./before-pack.cjs"), "function");
     assert.equal(typeof require("./google-secret-after.cjs"), "function");
     assert.ok(pkg.build.files.includes("electron/**/*"));
     assert.equal(FILE, path.join(__dirname, "..", "electron", "googleSecret.json"));

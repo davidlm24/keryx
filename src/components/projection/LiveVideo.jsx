@@ -78,8 +78,11 @@ function videoStill(el, poster) {
  *   (Transições: a new sound stopped it, Esc took it off): it plays on while
  *   its volume comes down to 0 by `until`. If another player of this window
  *   holds its file (the eye), it shows a still of the frame instead.
+ * onRefused(code): a YouTube link the player will not play (YouTube's error
+ *   number: 101/150 the owner does not let it play outside YouTube, 100
+ *   gone or private). The player stays black, never YouTube's error page.
  */
-export default function LiveVideo({ item, loop = false, muted = false, className = "", onEnded, onDuration, meter = null, fadeOut = null }) {
+export default function LiveVideo({ item, loop = false, muted = false, className = "", onEnded, onDuration, onRefused, meter = null, fadeOut = null }) {
     const isYouTube = item?.kind === "youtube";
     const hideYtTitle = usePrefs().youtube_hide_title;
     const videoRef = useRef(null);
@@ -88,8 +91,11 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     const ytRef = useRef(null);
     const [blocked, setBlocked] = useState(false); // the browser refused to play with sound
     const [needTap, setNeedTap] = useState(false); // fullscreen asked for, the browser wants a tap
-    const callbacks = useRef({ onEnded, onDuration, loop, muted, poster: item?.poster });
-    callbacks.current = { onEnded, onDuration, loop, muted, poster: item?.poster };
+    // A YouTube player is shown once it plays: until then (and after an
+    // error) it is black, so YouTube's own error page never reaches a screen.
+    const [ytPlaying, setYtPlaying] = useState(false);
+    const callbacks = useRef({ onEnded, onDuration, onRefused, loop, muted, poster: item?.poster });
+    callbacks.current = { onEnded, onDuration, onRefused, loop, muted, poster: item?.poster };
     const playback = item?.playback;
     const playbackRef = useRef(playback);
     playbackRef.current = playback;
@@ -256,6 +262,7 @@ export default function LiveVideo({ item, loop = false, muted = false, className
         host.style.width = "100%";
         host.style.height = "100%";
         ytBoxRef.current?.appendChild(host);
+        setYtPlaying(false);
         loadYouTubeApi().then((YT) => {
             if (cancelled) return;
             ytRef.current = new YT.Player(host, {
@@ -269,10 +276,16 @@ export default function LiveVideo({ item, loop = false, muted = false, className
                         syncRef.current();
                     },
                     onStateChange: (e) => {
+                        if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.BUFFERING || e.data === YT.PlayerState.PAUSED) setYtPlaying(true);
                         if (e.data === YT.PlayerState.ENDED) {
                             if (callbacks.current.loop) syncRef.current();
                             else callbacks.current.onEnded?.();
                         }
+                    },
+                    onError: (e) => {
+                        if (cancelled) return;
+                        setYtPlaying(false);
+                        callbacks.current.onRefused?.(Number(e.data) || 0);
                     },
                 },
             });
@@ -307,7 +320,7 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     return (
         <div className={`relative ${className}`}>
             {isYouTube ? (
-                <div className="w-full h-full" style={{ position: "relative", overflow: "hidden" }}>
+                <div className="w-full h-full" style={{ position: "relative", overflow: "hidden", background: "#000", visibility: ytPlaying ? "visible" : "hidden" }}>
                     <div ref={ytBoxRef} style={hideYtTitle ? { position: "absolute", left: 0, right: 0, top: YT_CROP, bottom: YT_CROP } : { width: "100%", height: "100%" }} />
                 </div>
             ) : (

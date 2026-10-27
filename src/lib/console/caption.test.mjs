@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { airSince, airFor, airInPlayer, titleParts, airAnnouncement } from "./caption.js";
+import { airSince, airFor, airInPlayer, titleParts, airAnnouncement, refusedNow } from "./caption.js";
+import { applyOp, emptyState } from "../../../shared/live-state.mjs";
 
 const song = { content: { title: "Hino", slides: [{ text: "a" }], index: 0, startedAt: 10_000 } };
 
@@ -71,4 +72,14 @@ test("what a screen reader hears when the air changes (C-25)", () => {
     assert.equal(airAnnouncement({ screen: "black", content: hino.content }), "No ar: Tela preta");
     assert.equal(airAnnouncement(null), "Nada no ar");
     assert.equal(airAnnouncement({}), "Nada no ar");
+});
+
+test("refusedNow: the pill says the YouTube refusal until anything else happens", () => {
+    const yt = { kind: "youtube", url: "https://youtu.be/aBcDeFgHiJk", title: "Clipe" };
+    const on = applyOp(emptyState(1), "media.show", yt, 10);
+    const off = applyOp(on, "media.clear", { refused: 150, url: yt.url }, 20);
+    assert.equal(refusedNow(off), "YouTube recusou o vídeo");
+    assert.equal(refusedNow(applyOp(off, "screen.set", { mode: "black" }, 30)), null, "something else happened since");
+    assert.equal(refusedNow(applyOp(on, "media.clear", {}, 20)), null, "Parar");
+    assert.equal(refusedNow(null), null);
 });

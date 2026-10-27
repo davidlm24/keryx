@@ -22,6 +22,8 @@ const { createRunMarker } = require("./runMarker.cjs");
 const { startWatchdog } = require("./watchdog.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
+const { createYouTube } = require("./youtube.cjs");
+const { importMedia } = require("./mediaImport.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const { createGoogleAuth } = require("./googleAuth.cjs");
 const { installedVersions } = require("./bible.cjs");
@@ -105,6 +107,7 @@ let system = null;
 let network = null;
 let live = null;
 let sync = null;
+let youtube = null;
 // running.json while KERYX runs (electron/runMarker.cjs): found at start, the
 // last run died instead of quitting.
 let runMarker = null;
@@ -783,6 +786,21 @@ app.whenReady().then(async () => {
         },
     });
 
+    // Baixar para a Mídia (electron/youtube.cjs): the installer's yt-dlp and
+    // ffmpeg (resources/youtube; vendor/youtube in development), a copy of
+    // yt-dlp that updates itself in the data folder, and KERYX itself in Node
+    // mode as the JavaScript runtime yt-dlp needs for YouTube.
+    youtube = createYouTube({
+        toolsDir: app.isPackaged ? path.join(process.resourcesPath, "youtube") : path.join(__dirname, "..", "vendor", "youtube"),
+        workDir: path.join(dataDir, "youtube"),
+        mediaDir,
+        importMedia,
+        store,
+        runtime: { path: process.execPath, env: { ELECTRON_RUN_AS_NODE: "1" } },
+        emit: (job) => broadcast("keryx:youtube", job),
+        log: (m) => logger.warn(m),
+    });
+
     registerDataIpc({
         store,
         outputs,
@@ -791,6 +809,7 @@ app.whenReady().then(async () => {
         sync,
         live,
         lyrics: createLyrics(),
+        youtube,
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
@@ -824,6 +843,7 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
     if (sync) sync.stop();
+    if (youtube) youtube.stop();
     if (network) network.stop();
     if (live) live.flush();
     // A normal quit: nothing to recover, and the watchdog lets it go.

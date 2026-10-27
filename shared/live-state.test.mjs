@@ -1267,3 +1267,26 @@ test("ended: a medium that played out is marked, a medium taken off is not", () 
     assert.ok(WHILE_LOCKED.has("audio.ended"));
     assert.equal(applyOp(applyOp(one, "screens.lock", { locked: true }, T0), "audio.ended", { url: MUSIC.url }, T0 + 4).ended.layer, "audio");
 });
+
+// A YouTube link the player refused (owner 2026-10-27, Y4 = A): the output
+// takes it off and marks it; the console says why.
+test("refused: a YouTube link the player refused leaves and is marked, only that link", () => {
+    assert.equal(emptyState(T0).refused, null);
+    const yt = { kind: "youtube", url: "https://youtu.be/aBcDeFgHiJk", title: "Clipe", id: "y1" };
+    const media = run([["media.show", yt, T0]]);
+    const out = applyOp(media, "media.clear", { refused: 150, url: yt.url }, T0 + 40);
+    assert.equal(out.media, null);
+    assert.equal(out.fade, null, "a cut");
+    assert.deepEqual(out.refused, { layer: "media", id: "y1", url: yt.url, title: "Clipe", code: 150, at: T0 + 40 });
+    assert.equal(out.ended, null, "refused is not ended (the Setlist automática does not move on)");
+    assert.equal(applyOp(media, "media.clear", { refused: 150, url: "https://youtu.be/zzzzzzzzzzz" }, T0 + 40), media, "a late report about another link");
+    assert.equal(applyOp(run([["media.show", { ...CLIP, id: "m1" }, T0]]), "media.clear", { refused: 150, url: CLIP.url }, T0 + 1).media.id, "m1", "only a YouTube link is refused");
+    assert.equal(applyOp(media, "media.clear", {}, T0 + 40).refused, null, "Parar marks nothing");
+    // The video channel, and a list skips the refused link.
+    assert.equal(applyOp(run([["video.show", yt, T0]]), "video.clear", { refused: 101, url: yt.url }, T0 + 2).refused.layer, "video");
+    const list = run([["media.playlist", { items: [yt, { kind: "image", url: "keryx-media://b.jpg", id: "b" }] }, T0]]);
+    const next = applyOp(list, "media.advance", { fromIndex: 0, refused: 150, url: yt.url }, T0 + 3);
+    assert.deepEqual([next.media.id, next.refused.id, next.refused.code], ["b", "y1", 150]);
+    // It works locked: it only takes something off.
+    assert.equal(applyOp(applyOp(media, "screens.lock", { locked: true }, T0), "media.clear", { refused: 150, url: yt.url }, T0 + 5).refused.id, "y1");
+});

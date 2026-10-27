@@ -13,6 +13,9 @@
 //   keryx:network       invoke  { op, args } screens on the church network
 //   keryx:sync          invoke  { op, args } sync between the church's computers (syncControl.cjs)
 //   keryx:lyrics        invoke  { op: search | get | recordings, args } lyrics from the web
+//   keryx:youtube       invoke  { op: check | status | update | download | cancel | list, args } YouTube links:
+//                               may it play here, Baixar para a Mídia (youtube.cjs); each job's
+//                               progress comes to every window as the event keryx:youtube
 //   keryx:live:get      invoke  -> live state snapshot (shared/live-state.mjs)
 //   keryx:live:call     invoke  { op, args } -> the new snapshot | { error }
 //   keryx:live-change   event   the whole snapshot, sent to every window after each change
@@ -30,7 +33,7 @@ const { createSystemFonts } = require("./systemFonts.cjs");
 const { importMedia, MAX_IMPORT_BYTES } = require("./mediaImport.cjs");
 const { createPackages } = require("./keryxPackage.cjs");
 
-function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, youtube, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -240,6 +243,19 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
         } catch (err) {
             if (!err.status) log(`[keryx-lyrics] ${op}: ${err && err.stack}`);
             return { error: { message: err.message || "Falha na busca de letras.", status: err.status || 500 } };
+        }
+    });
+
+    // YouTube links (electron/youtube.cjs): check, Baixar para a Mídia.
+    ipcMain.handle("keryx:youtube", async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const { op, args } = payload || {};
+        if (!youtube || !Object.prototype.hasOwnProperty.call(youtube.ops, op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
+        try {
+            return { data: await youtube.ops[op](args || {}) };
+        } catch (err) {
+            if (!err.status) log(`[keryx-youtube] ${op}: ${err && err.stack}`);
+            return { error: { message: err.message || "Falha na operação.", status: err.status || 500 } };
         }
     });
 

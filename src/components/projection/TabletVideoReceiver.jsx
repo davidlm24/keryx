@@ -25,7 +25,7 @@ export default function TabletVideoReceiver() {
             {video && (
                 <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
                     <ClipTitle title={video.title} />
-                    <LiveVideo item={video} meter="video" className="w-full h-full" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} />
+                    <LiveVideo item={video} meter="video" className="w-full h-full" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
                 </div>
             )}
             {leaving && (

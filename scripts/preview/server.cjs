@@ -17,6 +17,9 @@
 //   POST /__keryx/bible-own-read?name= (bytes) reads a file for an edition of the church's own
 //   POST /__keryx/bible-own { op: install|remove, … } installs that reading, or deletes one
 //   POST /__keryx/lyrics       { op: search | get | recordings, args } lyrics from the web (electron/lyrics.cjs)
+//   POST /__keryx/youtube      { op, args } YouTube links: check, Baixar para a Mídia (electron/youtube.cjs,
+//                              with vendor/youtube and this Node as the runtime); jobs on the
+//                              event stream as "youtube" events
 //   GET  /__keryx/fonts        this PC's installed fonts (electron/systemFonts.cjs)
 //   GET  /__keryx/font?id=     one face's file (a collection's face cut out)
 //   POST /__keryx/media?name=  the file's bytes -> { data: { fileName } }
@@ -58,6 +61,7 @@ const { seed } = require("./fixtures.cjs");
 const bible = require("../../electron/bible.cjs");
 const { createSystemFonts } = require("../../electron/systemFonts.cjs");
 const { createLyrics } = require("../../electron/lyrics.cjs");
+const { createYouTube } = require("../../electron/youtube.cjs");
 const { createPackages } = require("../../electron/keryxPackage.cjs");
 const { importMedia } = require("../../electron/mediaImport.cjs");
 
@@ -128,6 +132,18 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
     const broadcast = (frame) => { for (const res of clients) res.write(frame); };
     const offStore = store.onChange((change) => broadcast(`data: ${JSON.stringify(change)}\n\n`));
     const offLive = live.onChange((snap) => broadcast(`event: live\ndata: ${JSON.stringify(snap)}\n\n`));
+    // Baixar para a Mídia with the app's own module: the tools of
+    // `npm run youtube:tools` and this Node as yt-dlp's JavaScript runtime.
+    const youtube = createYouTube({
+        toolsDir: path.join(ROOT, "vendor", "youtube"),
+        workDir: path.join(dir, "youtube"),
+        mediaDir,
+        importMedia,
+        store,
+        runtime: { path: process.execPath, env: {} },
+        emit: (job) => broadcast(`event: youtube\ndata: ${JSON.stringify(job)}\n\n`),
+        log,
+    });
     const ping = setInterval(() => broadcast(": ping\n\n"), KEEPALIVE_MS);
     ping.unref?.();
 
@@ -215,6 +231,11 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
                 const { op, args } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
                 if (!["search", "get", "recordings"].includes(op)) return json(res, 200, failure({ message: `Operação desconhecida: ${op}.`, status: 400 }));
                 try { return json(res, 200, { data: await lyrics[op](args) }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "youtube" && req.method === "POST") {
+                const { op, args } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                if (!Object.prototype.hasOwnProperty.call(youtube.ops, op)) return json(res, 200, failure({ message: `Operação desconhecida: ${op}.`, status: 400 }));
+                try { return json(res, 200, { data: await youtube.ops[op](args || {}) }); } catch (err) { return json(res, 200, failure(err)); }
             }
             // The Bíblia's online chapters and Instalar, as the desktop's main process does them.
             if (route === "bible-online" && req.method === "POST") {
@@ -323,6 +344,7 @@ async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = pa
         live,
         dataDir: dir,
         close() {
+            youtube.stop();
             clearInterval(ping);
             offStore();
             offLive();

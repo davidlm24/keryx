@@ -27,6 +27,15 @@
       "type": "string",
       "description": "URL da miniatura"
     },
+    "source_url": {
+      "type": "string",
+      "description": "O link do YouTube de onde o arquivo foi baixado (Baixar para a Mídia, 2026-10-27); vazio = veio do computador"
+    },
+    "youtube_state": {
+      "type": "string",
+      "enum": ["ok", "blocked", "missing"],
+      "description": "Um link do YouTube: ok = toca fora do YouTube, blocked = o dono não deixa (só baixado), missing = privado ou apagado; vazio = ainda não conferido"
+    },
     "video_codec": {
       "type": "string",
       "enum": ["avc1", "hvc1", "hev1", "av01", "vp09", "webm", "other"],

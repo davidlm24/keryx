@@ -1768,6 +1768,26 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .report-dialog .rp-line > .kx-meta { width: 56px; flex: none; }
 .console .report-dialog .rp-line b { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
 .console .report-dialog .rp-addr { user-select: all; }
+/* Link do YouTube… and the Terms question before the first download
+   (YouTubeDialog.jsx; owner 2026-10-27, mockup boards 1–3). */
+.console .dialog.confirm-dialog.yt-dialog { width: min(540px, calc(100% - 32px)); }
+.console .yt-dialog .yt-field { display: flex; flex-direction: column; gap: var(--space-1); color: var(--fg-2); }
+.console .yt-dialog .yt-card { display: flex; gap: var(--space-3); padding: var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); }
+.console .yt-dialog .yt-card.is-warn { box-shadow: inset 0 0 0 1px var(--warn); }
+.console .yt-dialog .yt-thumb { width: 128px; height: 72px; flex: none; border-radius: var(--radius-control); object-fit: cover; background: var(--bg-4); }
+.console .yt-dialog .yt-card-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.console .yt-dialog .yt-card-t b { font-weight: 500; overflow-wrap: anywhere; }
+.console .yt-dialog .yt-state { display: flex; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-1); color: var(--fg-2); }
+.console .yt-dialog .yt-state.is-warn { color: var(--warn-fg); }
+.console .yt-dialog .yt-dot { width: 8px; height: 8px; margin-top: 5px; flex: none; border-radius: 50%; background: var(--fg-3); }
+.console .yt-dialog .yt-state.is-ok .yt-dot { background: var(--ok); }
+.console .yt-dialog .yt-state.is-warn .yt-dot { background: var(--warn); }
+.console .yt-dialog .yt-hint { line-height: 1.45; }
+.console .yt-dialog .yt-actions { display: flex; gap: var(--space-2); justify-content: flex-end; flex-wrap: wrap; }
+.console .yt-dialog .yt-terms { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); line-height: 1.5; }
+.console .yt-dialog .yt-terms p { margin: 0; }
+.console .yt-dialog .yt-check { display: flex; align-items: flex-start; gap: var(--space-2); cursor: pointer; }
+.console .yt-dialog .yt-check input { margin: 2px 0 0; width: 14px; height: 14px; flex: none; accent-color: var(--brand); }
 .console .report-dialog .rp-body { resize: vertical; font-size: var(--fs-ui); line-height: 17px; }
 .console .report-dialog input.ed-text { height: 28px; }
 .console .cfg .cfg-queue { color: var(--warn-fg); font-size: var(--fs-ui); }
@@ -2253,6 +2273,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
 @media (forced-colors: active) {
   .console .confirm-warn { outline: 1px solid CanvasText; outline-offset: -1px; }
+  /* Link do YouTube…: the check's dot and the card that warns. */
+  .console .yt-dialog .yt-dot { background: CanvasText; }
+  .console .yt-dialog .yt-card.is-warn { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* Planejar o culto's tabs: the one in front is chosen (a solid ring); the
      console's culto dot keeps a colour of the system. */
   .console .tabrow-close .kx-tc.is-on { outline: 2px solid Highlight; outline-offset: -2px; }

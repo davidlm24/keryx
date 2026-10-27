@@ -43,6 +43,12 @@ ipcRenderer.on("keryx:janela", (_event, msg) => {
         try { listener(msg); } catch (err) { console.error("[keryx] janela listener failed:", err); }
     }
 });
+const youtubeListeners = new Set();
+ipcRenderer.on("keryx:youtube", (_event, job) => {
+    for (const listener of youtubeListeners) {
+        try { listener(job); } catch (err) { console.error("[keryx] youtube listener failed:", err); }
+    }
+});
 const updateListeners = new Set();
 ipcRenderer.on("keryx:update", (_event, state) => {
     for (const listener of updateListeners) {
@@ -184,6 +190,14 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     // Lyrics from the web (LRCLIB + letras.mus.br search), main process.
     lyrics: {
         call: (op, args) => ipcRenderer.invoke("keryx:lyrics", { op, args }),
+    },
+    // YouTube links: may it play here, Baixar para a Mídia (electron/youtube.cjs).
+    youtube: {
+        call: (op, args) => ipcRenderer.invoke("keryx:youtube", { op, args }),
+        onJob(listener) {
+            youtubeListeners.add(listener);
+            return () => youtubeListeners.delete(listener);
+        },
     },
     // Audio levels: outputs report where the sound plays, the console listens.
     meters: {

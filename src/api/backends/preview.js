@@ -80,6 +80,7 @@ async function request(route, { method = "GET", body, raw } = {}) {
 export function createPreviewBridge() {
     const changeListeners = new Set();
     const liveListeners = new Set();
+    const youtubeListeners = new Set();
     const remoteListeners = new Set();
     let source = null;
     let remoteSource = null;
@@ -93,6 +94,7 @@ export function createPreviewBridge() {
         source = new EventSource(`${API}events`);
         source.onmessage = (event) => { try { emit(changeListeners, JSON.parse(event.data)); } catch { /* a torn frame */ } };
         source.addEventListener("live", (event) => { try { emit(liveListeners, JSON.parse(event.data)); } catch { /* the next frame carries it all */ } });
+        source.addEventListener("youtube", (event) => { try { emit(youtubeListeners, JSON.parse(event.data)); } catch { /* the next frame carries it */ } });
     }
 
     // Output pages open as browser tabs; the console sees which are open.
@@ -223,6 +225,16 @@ export function createPreviewBridge() {
         // Procurar letra na internet: the preview server asks LRCLIB and
         // letras.mus.br with the app's own module (electron/lyrics.cjs).
         lyrics: { call: (op, args) => request("lyrics", { method: "POST", body: { op, args } }) },
+        // YouTube links: the preview server runs the app's module
+        // (electron/youtube.cjs) with the tools of `npm run youtube:tools`.
+        youtube: {
+            call: (op, args) => request("youtube", { method: "POST", body: { op, args } }),
+            onJob(listener) {
+                connect();
+                youtubeListeners.add(listener);
+                return () => youtubeListeners.delete(listener);
+            },
+        },
         meters: { report() {}, onLevel: () => () => {}, sendLevel() {}, onSystemLevel: () => () => {} },
         system: { call: previewSystem },
         // This PC's fonts, read by the preview server with the app's own

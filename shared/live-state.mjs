@@ -213,6 +213,12 @@ export function emptyState(now = Date.now()) {
         // single audio file played out. Esc, Limpar and Parar never set it,
         // so the console tells "it ended" from "someone took it off".
         ended: null,
+        // The last YouTube link the player refused (its owner does not let
+        // it play outside YouTube, or it is gone), as an output reported it
+        // when it took it off the screens: { layer, id, url, title, code, at }
+        // (`code` YouTube's error number). The console says so and offers
+        // to download it to the Mídia.
+        refused: null,
     };
 }
 
@@ -441,6 +447,12 @@ function audioItem(value) {
 
 // The `ended` mark (emptyState) of an item that reached its end now.
 const endedMark = (layer, item, now) => ({ ended: { layer, id: item?.id || null, url: item?.url || null, at: now } });
+// The `refused` mark (emptyState): `code` as the player reported it.
+const refusedMark = (layer, item, code, now) => ({ refused: { layer, id: item?.id || null, url: item?.url || null, title: item?.title || "", code: Number.isInteger(code) ? code : 0, at: now } });
+// A refusal names the url it is about: one that arrives after the item
+// changed (a late report, another screen's) changes nothing.
+const refusedHere = (item, a) => a.refused === undefined || (item?.kind === "youtube" && item.url === a.url);
+const refusedPatch = (layer, item, a, now) => (a.refused !== undefined ? refusedMark(layer, item, a.refused, now) : {});
 
 // A playback that starts now: from the top and playing, or (Desfazer of
 // Esc, Rodada G3) from `position`, paused or not, its volume rising from 0
@@ -800,18 +812,23 @@ const OPS = {
     },
     // Reported by the output when an item ends. Several outputs may report
     // the same end: only the first one (fromIndex still current) advances.
-    "media.advance": (s, { fromIndex, fade }, now) => {
+    // A YouTube link the player refused (`refused`: its code, with `url`)
+    // is skipped the same way, and marked.
+    "media.advance": (s, a, now) => {
+        const { fromIndex, fade } = a;
         const media = need(s.media, "em reprodução");
-        if (!media.playlist || Number(fromIndex) !== media.playlistIndex) return null;
+        if (!media.playlist || Number(fromIndex) !== media.playlistIndex || !refusedHere(media, a)) return null;
         const i = (media.playlistIndex + 1) % media.playlist.length;
         // Back to the first: the list went past its last item (ended).
-        return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) }, fade: exitFade(fade, now), ...(i === 0 ? endedMark("media", media, now) : {}) };
+        return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) }, fade: exitFade(fade, now), ...(i === 0 ? endedMark("media", media, now) : {}), ...refusedPatch("media", media, a, now) };
     },
     // Parar in the player: `fade` as Esc's (Ao tirar do ar, Rodada G3); a
     // single video that ends by itself is cleared by the projector with the
     // same fade (LiveMediaView, Rodada G4) and says so (`ended`: the
-    // Setlist automática's "it ended", never Parar's).
-    "media.clear": (s, a, now) => (s.media ? { ...remember(s, now, "media"), media: null, fade: exitFade(a.fade, now), ...(a.ended === true ? endedMark("media", s.media, now) : {}) } : null),
+    // Setlist automática's "it ended", never Parar's). A YouTube link the
+    // player refused leaves the same way, with `refused` (its code) and
+    // `url`: the screens show what is under it, never YouTube's error page.
+    "media.clear": (s, a, now) => (s.media && refusedHere(s.media, a) ? { ...remember(s, now, "media"), media: null, fade: exitFade(a.fade, now), ...(a.ended === true ? endedMark("media", s.media, now) : {}), ...refusedPatch("media", s.media, a, now) } : null),
 
     // The video channel: video screens and tablets (VideoProjection). It does
     // not cover the main projector.
@@ -819,7 +836,7 @@ const OPS = {
         const video = { ...mediaItem(a), shownAt: now, playback: playbackFor(a, now) };
         return { ...hush(s, "video", video, a.transition, now), video, fade: exitFade(a.fade, now) };
     },
-    "video.clear": (s, a, now) => (s.video ? { video: null, fade: exitFade(a.fade, now), ...(a.ended === true ? endedMark("video", s.video, now) : {}) } : null),
+    "video.clear": (s, a, now) => (s.video && refusedHere(s.video, a) ? { video: null, fade: exitFade(a.fade, now), ...(a.ended === true ? endedMark("video", s.video, now) : {}), ...refusedPatch("video", s.video, a, now) } : null),
 
     // The audio channel (see emptyState): one file or a list, a video file
     // used for its sound included. `position`, `paused`, `fadeIn`: where and

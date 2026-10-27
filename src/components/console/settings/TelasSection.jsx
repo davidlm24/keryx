@@ -40,8 +40,45 @@ function SomBlock({ c }) {
                     <Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título que o YouTube põe sobre o vídeo" />
                     <span className="kx-meta">a faixa que o YouTube põe sobre o vídeo, em todas as telas</span>
                 </FormRow>
+                <YouTubeToolsRow c={c} />
             </div>
         </CfgGroup>
+    );
+}
+
+// Download do YouTube (owner 2026-10-27): the tools of Baixar para a Mídia
+// (electron/youtube.cjs status / update). yt-dlp updates itself once a week
+// before a download; Atualizar agora is for a download that failed because
+// YouTube changed.
+function YouTubeToolsRow({ c }) {
+    const bridge = React.useRef(window.keryxDesktop?.youtube || null);
+    const [st, setSt] = useState(null);
+    const [busy, setBusy] = useState(false);
+    React.useEffect(() => {
+        let alive = true;
+        bridge.current?.call("status").then((r) => { if (alive) setSt(r?.data || { ready: false }); });
+        return () => { alive = false; };
+    }, []);
+    const update = async () => {
+        setBusy(true);
+        const r = await bridge.current.call("update");
+        setBusy(false);
+        if (r?.error) { c.say(r.error.message); return; }
+        setSt((s) => ({ ...(s || {}), ytdlp: r.data.ytdlp || s?.ytdlp, updatedAt: Date.now() }));
+        c.say(r.data.changed ? `Ferramentas do YouTube atualizadas: yt-dlp ${r.data.ytdlp}.` : "As ferramentas do YouTube já estavam em dia.");
+    };
+    const when = st?.updatedAt ? ` · conferido em ${new Date(st.updatedAt).toLocaleDateString("pt-BR")}` : "";
+    return (
+        <FormRow k="Download do YouTube">
+            {!bridge.current ? <span className="kx-meta">só no KERYX do computador</span>
+                : !st ? <span className="kx-meta">Conferindo…</span>
+                : st.ready ? <>
+                    <span>Pronto</span>
+                    <Btn small disabled={busy} onClick={update} title="Busca a versão nova do yt-dlp na internet">{busy ? "Atualizando…" : "Atualizar agora"}</Btn>
+                    <span className="kx-meta">yt-dlp {st.ytdlp || "?"} · ffmpeg {st.ffmpeg || "?"}{when}</span>
+                </>
+                : <span className="kx-meta kx-warn">as ferramentas não vieram neste KERYX: instale a versão completa</span>}
+        </FormRow>
     );
 }
 

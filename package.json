@@ -18,6 +18,7 @@
     "test": "node --test electron/**/*.test.cjs scripts/**/*.test.cjs src/**/*.test.mjs shared/**/*.test.mjs",
     "db:schema": "node scripts/gen-sqlite-schema.mjs",
     "ds:tokens": "node scripts/ds-tokens.cjs",
+    "youtube:tools": "node scripts/youtube-tools.cjs",
     "dist": "vite build && electron-builder --win --publish never",
     "dist:dir": "vite build && electron-builder --win --dir --publish never"
   },
@@ -103,7 +104,7 @@
   "build": {
     "appId": "br.keryx.app",
     "productName": "KERYX",
-    "beforePack": "./scripts/google-secret-before.cjs",
+    "beforePack": "./scripts/before-pack.cjs",
     "afterPack": "./scripts/google-secret-after.cjs",
     "artifactName": "KERYX-Setup-${version}.${ext}",
     "directories": {
@@ -147,6 +148,19 @@
         "owner": "comunidadegerar",
         "repo": "keryx-releases",
         "releaseType": "draft"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/youtube",
+        "to": "youtube",
+        "filter": [
+          "yt-dlp.exe",
+          "ffmpeg.exe",
+          "ffmpeg-LICENSE.txt",
+          "SOURCE.txt",
+          "version.json"
+        ]
       }
     ]
   }

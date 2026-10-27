@@ -1164,6 +1164,7 @@ const NOT_A_FILE = {
     "CommunicationVideo.logo_position": "a corner",
     "ProjectionTheme.background_fit": "cover or contain",
     "ProjectionTheme.background_generator": "a generated background's numbers (shared/generators.mjs)",
+    "Media.source_url": "the YouTube link a downloaded file came from (https), never a keryx-media file",
     "User.background_categories": "the categories' names",
     "User.media_categories": "the categories' names",
     "User.logo_corner": "a corner",
