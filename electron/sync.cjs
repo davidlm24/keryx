@@ -43,13 +43,17 @@
 // no longer the store's (it changed) neither, and the outbox waits; the same
 // for a computer another one took out ("Tirar": the code file's removed
 // list), whose changes the others skip until the code is typed on it again.
+// On Drive there is no code: the key is in the store's own pairing file
+// (getPairing() gives { id, key, share: true }, syncPairing.cjs joinDrive),
+// this computer writes it back when it is missing or damaged, and a
+// "mismatch" there is syncControl's to join again by itself.
 //
 // Pure Node over the store and a sync store, so it runs under node --test.
 
 const fs = require("node:fs");
 const path = require("node:path");
 const { isSynced, SYNC_ENTITIES } = require("./db/syncScope.cjs");
-const { keysFor, readPairing, writePairing, matches, pairingFile, removedOf } = require("./syncPairing.cjs");
+const { keysFor, readPairing, writePairing, matches, pairingFile, removedOf, secretOf } = require("./syncPairing.cjs");
 const { createFolderStore, changesName, parseChanges, PC_DIR } = require("./syncStore/index.cjs");
 
 const fsp = fs.promises;
@@ -1139,27 +1143,42 @@ function createSyncEngine({
             // missing (any computer with the code can), or another code's —
             // then this computer neither reads nor writes until the new code
             // is typed here.
+            // On Drive (pairing.share: the account's key, no code) the file
+            // carries the key, and a computer that has it writes back a
+            // damaged one too, with the same key and the list it kept.
+            const share = Boolean(pairing.share);
             const code = await readPairing(shared);
-            if (code.state === "bad") {
-                setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: "O arquivo do código da igreja ainda está chegando pela pasta." });
+            if (code.state === "bad" && !(share && code.reason === "content")) {
+                setStatus({ ...status, state: "offline", folder: where, lastPass: at, error: share ? "O Google Drive não entregou o arquivo da sincronização. Tentando de novo." : "O arquivo do código da igreja ainda está chegando pela pasta." });
                 return;
             }
             let state = null;
-            if (code.state === "missing") {
+            if (code.state !== "ok" || (share && matches(code.file, keys) && !secretOf(code.file)?.equals(pairing.key))) {
                 state = loadState(shared.key, pairing.id);
-                await writePairing(shared, pairingFile(keys, pc, now(), state.removed));
-                logOnce("arquivo do código refeito");
+                if (code.state === "ok") state.removed = removedOf(code.file, keys) || state.removed;
+                const file = pairingFile(keys, pc, now(), state.removed, code.state === "ok" ? code.file.made : null, share ? pairing.key : null);
+                if (code.state === "missing") await writePairing(shared, file);
+                else await writePairing(shared, file, { replace: true });
+                logOnce(code.state === "missing" ? "arquivo do código refeito" : "arquivo da sincronização danificado: refeito");
             } else if (!matches(code.file, keys)) {
-                setStatus({ ...status, state: "mismatch", folder: where, lastPass: at, error: "O código da igreja mudou nesta pasta. Digite o código novo para voltar a sincronizar." });
+                const error = share
+                    ? "A chave da sincronização mudou nesta conta. Entrando de novo com ela."
+                    : "O código da igreja mudou nesta pasta. Digite o código novo para voltar a sincronizar.";
+                setStatus({ ...status, state: "mismatch", folder: where, lastPass: at, error });
                 logOnce("o código da pasta não é o deste computador");
                 return;
             }
-            state = state || loadState(shared.key, pairing.id);
-            if (code.state === "ok") state.removed = removedOf(code.file, keys) || [];
+            if (!state) {
+                state = loadState(shared.key, pairing.id);
+                state.removed = removedOf(code.file, keys) || [];
+            }
             const me = state.removed.find((r) => r.pc === pc);
             if (me) {
                 saveState(state);
-                setStatus({ ...status, state: "removed", folder: where, lastPass: at, removed: { at: me.at, by: me.by }, error: "Este computador foi tirado da sincronização. Digite o código da igreja para voltar." });
+                const error = share
+                    ? "Este computador foi desconectado da sincronização. Entre com a conta da igreja nele para voltar."
+                    : "Este computador foi tirado da sincronização. Digite o código da igreja para voltar.";
+                setStatus({ ...status, state: "removed", folder: where, lastPass: at, removed: { at: me.at, by: me.by }, error });
                 logOnce("este computador foi tirado da sincronização");
                 return;
             }

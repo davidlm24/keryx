@@ -263,6 +263,25 @@ test("the person never comes back: the sign-in gives up and the port closes", as
     assert.equal(a.status().signingIn, false);
 });
 
+test("Abrir de novo opens the same page again; Cancelar ends the sign-in waiting", async () => {
+    const { a, seen, google } = auth({ answer: () => null });
+    await assert.rejects(a.reopen(), { code: "canceled" }, "nothing waiting");
+    const pending = a.signIn();
+    pending.catch(() => {});
+    while (!seen.url) await new Promise((r) => setTimeout(r, 2));
+    const first = seen.url.href;
+    seen.url = null;
+    assert.equal(a.status().signingIn, true);
+    await a.reopen();
+    assert.equal(seen.url.href, first, "the same Google page, the same state and challenge");
+    const st = a.cancel();
+    await assert.rejects(pending, { code: "canceled" });
+    await closed(seen.redirect);
+    assert.equal(a.status().signingIn, false);
+    assert.equal(st.signedIn, false);
+    assert.equal(google.calls.length, 0, "nothing exchanged");
+});
+
 test("refused on Google's page, or the code refused at the exchange", async () => {
     const denied = auth({ answer: (p) => ({ error: "access_denied", state: p.get("state") }) });
     await assert.rejects(denied.a.signIn(), { code: "denied" });
