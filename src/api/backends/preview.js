@@ -11,6 +11,7 @@
 // `import.meta.env.DEV`).
 
 import { reportCode, reportMail } from "@shared/support.mjs";
+import { previewSyncCall } from "./previewSync";
 
 const API = "/__keryx/";
 const ONLY_DESKTOP = "Disponível no aplicativo do computador.";
@@ -198,14 +199,10 @@ export function createPreviewBridge() {
                 return unavailable();
             },
         },
-        // Configurações › Sincronização: no main process here, so the section
-        // shows its first step and every action says where it works.
-        sync: {
-            async call(op) {
-                if (op === "status") return { data: { available: false, preview: true, folder: null, paused: false, paired: false, keyLost: false, canShowCode: false, pc: null, name: "Navegador (prévia)", version: null, since: { sent: 0, applied: 0, skipped: 0, failed: 0, rejected: 0, collected: 0 }, engine: { state: "off", folder: null } } };
-                return unavailable();
-            },
-        },
+        // Configurações › Sincronização: no main process and never a Google
+        // sign-in here, so made-up states, one per board of the mockup
+        // (previewSync.js; localStorage keryx.preview.sync picks one).
+        sync: { call: previewSyncCall },
         // The controle remoto (the /Remote tab posts to /api/remote): the
         // console tab hears its commands as the desktop console hears
         // keryx:remote, and answers (scripts/preview/server.cjs).

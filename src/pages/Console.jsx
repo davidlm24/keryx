@@ -58,6 +58,9 @@ import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as
 import { setIdleMode } from "@/lib/console/idle";
 import { resolveSection } from "@/lib/console/settings";
 import { useSyncStatusSelect } from "@/hooks/useSyncStatus";
+import { useSyncJoinNote } from "@/hooks/useGoogleSync";
+import { syncsHere } from "@/lib/console/syncView";
+import SyncPop from "@/components/console/SyncPop";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
@@ -352,11 +355,13 @@ export default function Console() {
     // The sync (Configurações › Sincronização): the songs that look repeated,
     // only on a computer that syncs. Only the folder is read here, so the
     // poll's answers never re-render the console; the top bar's cloud reads
-    // the rest itself (SyncCloud in TopBar.jsx).
-    const syncFolder = useSyncStatusSelect((st) => st?.folder || null);
-    const dupIds = useMemo(() => (syncFolder
+    // the rest itself (SyncCloud in TopBar.jsx). After an entry with the
+    // Google account, one toast says how many songs came and went (G1 = A).
+    const syncing = useSyncStatusSelect(syncsHere);
+    const dupIds = useMemo(() => (syncing
         ? new Set(duplicateSongs(data.songs, prefs.song_duplicates_kept).flatMap((g) => g.songs.map((s) => s.id)))
-        : null), [syncFolder, data.songs, prefs.song_duplicates_kept]);
+        : null), [syncing, data.songs, prefs.song_duplicates_kept]);
+    useSyncJoinNote(c.say, data.songs.length);
     const layout = useMemo(() => ({ ...localLayout, density: prefs.console_density, hidden: hiddenMap(prefs.console_hidden_modules) }),
         [localLayout, prefs.console_density, prefs.console_hidden_modules]);
     // ?planner=<id> (the old /Services/:id) opens on that culto.
@@ -1525,7 +1530,7 @@ export default function Console() {
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} verDot={pedidosUnread && !pedidosReachable} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
-                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq)} />
+                menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1620,6 +1625,7 @@ export default function Console() {
             <FirstSteps open={open} setOpen={setOpen} onGo={(id) => { if (id === "planner") openPlanner(serviceId); else if (id === "search") setOpen("palette"); else if (id === "verify") setOpen("verificar"); else if (id === "outs") setOpen("outs"); }} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
+            <SyncPop open={open} setOpen={setOpen} onSettings={openSettings} say={c.say} songsHere={data.songs.length} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} />

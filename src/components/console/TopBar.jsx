@@ -6,21 +6,22 @@ import { keyHint } from "@/lib/console/keys";
 import { usePrefs } from "@/hooks/useUser";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
-import { syncState } from "@/lib/console/syncView";
+import { cloudView } from "@/lib/console/syncView";
 
-// The sync's cloud, only on a computer that syncs. It reads the status
-// itself, so a change of the status re-renders this button and nothing else
-// of the console; its tooltip's "há 12 s" counts with the bar's clock (the
-// same tick as Clocks, re-rendering only this button).
-function SyncCloud({ onSync }) {
+// The sync's cloud (Google Drive direto, PR 3; G5 = A: always in the bar,
+// grey with no account, a click invites to enter). Its dot: green em dia,
+// amber esperando or sem internet, red precisa de você. A click drops the
+// summary (SyncPop.jsx, open "sync"). It reads the status itself, so a
+// change of the status re-renders this button and nothing else of the
+// console.
+function SyncCloud({ open, onToggle }) {
     const st = useSyncStatus();
-    const now = useLiveNow(1000, Boolean(st?.folder));
-    if (!st?.folder) return null;
-    const sync = syncState(st, now);
+    const sync = cloudView(st);
+    const title = `Sincronização · ${sync.label}`;
     return (
         <span className="tb-sync">
-            <IconBtn name="cloud" title={`Sincronização · ${sync.label}${sync.detail ? ` · ${sync.detail}` : ""}`} onClick={onSync} />
-            <i className={`tb-sync-dot is-${sync.tone}`} aria-hidden="true" />
+            <IconBtn name="cloud" title={title} on={open} onClick={onToggle} aria-haspopup="dialog" aria-expanded={open} />
+            {!open && <i className={`tb-sync-dot is-${sync.tone}`} aria-hidden="true" />}
         </span>
     );
 }
@@ -55,12 +56,13 @@ function Clocks({ svcAt, onPlanner }) {
 // form ("◷ 19:00 · 9h46", the whole sentence in its tooltip: serviceClock in
 // src/lib/console/timeline.js; a click opens Planejar o culto), the clock,
 // the outputs status ("2 telas", the full label in its tooltip), the sync's
-// cloud (only on a computer that syncs: green in step, amber when something
-// waits, grey paused; owner's pick, 2026-10-16), Ver (the panels glyph) and the bell. The screen actions (Tela preta, Logo, Limpar,
+// cloud (always, G5 = A: its dot green em dia, amber esperando or sem
+// internet, red precisa de você, grey without an account; a click drops its
+// summary), Ver (the panels glyph) and the bell. The screen actions (Tela preta, Logo, Limpar,
 // Encerrar) live in the Programa's pill since Rodada E1 (owner's pick B).
 // Nothing wraps: as the window narrows the bar drops the service's end,
 // then the clock, then shortens the search (container queries in console.css).
-export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, verDot = false, svcAt, onPlanner, onSync, menuKeysOff = false, inert = false }) {
+export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, verDot = false, svcAt, onPlanner, menuKeysOff = false, inert = false }) {
     const searchKey = keyHint("search", usePrefs().letter_keys);
     const toggle = (name) => setOpen(open === name ? null : name);
     const envTab = (value, label, title) => (
@@ -95,7 +97,7 @@ export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLab
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-label={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>
                     <i className="kx-dot" /><span className="tb-outs-l">{outsCompact}</span>
                 </button>
-                <SyncCloud onSync={onSync} />
+                <SyncCloud open={open === "sync"} onToggle={() => toggle("sync")} />
                 {/* Ver: the modules, the density and the arrangements; beside the bell.
                     Its gold dot: pedidos not seen while the Painel is in the tray (Rodada Q, S9 = B). */}
                 <span className="tb-bell">

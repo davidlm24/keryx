@@ -307,7 +307,9 @@ test("Google Drive direto, no code: entering with the account joins (or starts) 
     const entered = await a.call("googleSignIn");
     assert.equal(entered.store, "drive");
     assert.equal(entered.google.signedIn, true);
-    assert.deepEqual(entered.google.quota, { used: 524288, total: 16106127360 });
+    const { mine, ...quota } = entered.google.quota;
+    assert.deepEqual(quota, { used: 524288, total: 16106127360 });
+    assert.ok(mine > 0, "the hidden folder holds the key file already");
     assert.equal(entered.joined.created, true);
     assert.ok(entered.joined.sent > 0, "everything here goes");
     assert.equal(entered.paired, true);
@@ -437,4 +439,43 @@ test("Google sign-in: Cancelar and Abrir de novo reach the browser's sign-in", a
     await assert.rejects(none.call("googleCancel"), /não está disponível/);
     a.close();
     none.close();
+});
+
+test("Google Drive direto, PR 3: the folder computer's one bell, the changes waiting, the KERYX space", async (t) => {
+    const srv = await fakeDriveServer({ page: 50 });
+    t.after(() => srv.close());
+    const driveOptions = { api: srv.api, upload: srv.upload, freshMs: 0 };
+    const settings = memorySettings();
+    const a = computer(tmp(), "IGREJA-SOM", { google: fakeGoogle(srv), driveOptions, settings });
+    // No folder yet: no bell (a new computer goes straight to the account).
+    a.control.start({ intervalMs: 60000 });
+    a.control.stop();
+    assert.equal(a.bell.filter((n) => n.key === "sync-google").length, 0);
+
+    await a.call("choose");
+    await a.call("create");
+    a.store.call("Song", "create", [{ title: "Esperando" }]);
+    const waiting = await a.call("status");
+    assert.ok(waiting.waiting > 0, "the outbox count");
+    assert.equal(waiting.arriving, null);
+
+    // On the folder: the bell once, never again after a restart.
+    for (let i = 0; i < 2; i++) {
+        a.control.start({ intervalMs: 60000 });
+        a.control.stop();
+    }
+    const notes = a.bell.filter((n) => n.key === "sync-google");
+    assert.equal(notes.length, 1);
+    assert.equal(notes[0].title, "A sincronização agora é pela conta Google");
+    assert.equal(notes[0].action, "settings:sincronizacao");
+
+    // Entered and on Drive: the notice goes, the space counts the KERYX folder.
+    await a.call("googleSignIn");
+    await a.call("useDrive", { on: true });
+    assert.ok(a.bell.some((n) => n.dismissed === "sync-google"));
+    await a.call("now");
+    assert.equal((await a.call("status")).waiting, 0, "sent");
+    const q = (await a.call("googleStatus")).quota;
+    assert.ok(q.mine > 0 && q.mine <= q.used + 1e12, "bytes in the hidden folder");
+    a.close();
 });

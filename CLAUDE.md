@@ -257,8 +257,34 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Configurações › Sincronização's main side
   `electron/syncControl.cjs` (`keryx:sync`; the key and code sealed with
   safeStorage), the section `settings/SyncSection.jsx` (pt-BR status in
-  `src/lib/console/syncView.js`, one poll in `useSyncStatus`), the cloud
-  beside Ver only on a computer that syncs. Joining merges
+  `src/lib/console/syncView.js`, one poll in `useSyncStatus`). **PR 3, the
+  page around the church's Google account** (owner's mockup "Sincronização ·
+  conta Google", 2026-10-26, G1–G5 = A): `googlePage` picks one of Entrar
+  com Google (no account), "Termine a entrada no navegador" (Cancelar,
+  Abrir de novo; Google's 5 minutes), the account (Conta, Andamento with
+  Sincronizar agora, **Espaço da conta always on screen**, G2, from
+  `googleStatus().quota` with `mine` = the hidden folder's bytes;
+  **Dispositivos conectados** with Desconectar… — G3: that computer stops
+  until someone enters on it again, the `removed` list —, a computer not
+  seen for `HOLD_DAYS` marked "segura a limpeza de arquivos antigos", O que
+  vai e o que fica, Músicas repetidas, Sair da conta…), board 4's problems
+  on top (`pageProblems`: Entre de novo, desconectado, an account with no
+  KERYX data yet — Trocar de conta / É esta mesmo, kept per e-mail in
+  localStorage `keryx.sync.accountOk` —, the space above 90 %), and a
+  computer still on the folder (G4: the banner with its path and 3 steps on
+  top of the old folder rows, `SyncFolderSteps.jsx`, until it enters; the
+  bell once, `googleNoticed` in its settings). Entering is
+  `signInWithGoogle` (`src/hooks/useGoogleSync.js`), the same from the page
+  and the cloud; G1: a computer with songs merges at once and one toast
+  (`joinNote`) says how many came and went. **The cloud beside Ver is always
+  there** (G5, `SyncCloud` in TopBar.jsx): its dot green em dia, amber
+  esperando or sem internet, red precisa de você, grey without an account
+  (`cloudView`); a click drops `SyncPop.jsx` (open "sync"; the state and
+  its age, Conta, Internet, Esperando = `status().waiting`, the outbox,
+  Chegando = `status().arriving` with a bar, Computadores; Sincronizar
+  agora, or Tentar agora / Entrar com Google, and Ver tudo). The browser
+  preview fakes every state (`src/api/backends/previewSync.js`,
+  localStorage `keryx.preview.sync`); never a real sign-in. Joining merges
   (`store.snapshot`), never replaces; likely duplicate songs are
   `shared/syncDuplicates.mjs` (Juntar em uma / Manter as duas,
   `User.song_duplicates_kept`; "parece repetida" in the Biblioteca).

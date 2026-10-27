@@ -51,6 +51,8 @@ const OFFLINE_BELL_MS = 10 * 60 * 1000;
 // other computers' songs arrive over a few passes); the bell says so once.
 const DUPLICATES_BELL = "sync-dups";
 const DUPLICATES_WATCH_MS = 15 * 60 * 1000;
+// The one notice for a computer still on the folder (G4).
+const GOOGLE_BELL = "sync-google";
 // A join with the account's key that failed (Drive not answering) is tried
 // again by the passes, at most this often.
 const DRIVE_JOIN_RETRY_MS = 60 * 1000;
@@ -389,10 +391,13 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         let quota = null;
         if (st.signedIn) {
             try {
-                quota = await drive().about();
+                const d = drive();
+                quota = await d.about();
+                // What the KERYX hidden folder holds (Espaço da conta, G2).
+                quota.mine = (await d.list("")).reduce((sum, o) => sum + (Number(o.size) || 0), 0);
             } catch { /* offline: the space shows next time */ }
         }
-        return { available: true, ...st, quota: quota && { used: quota.used, total: quota.total } };
+        return { available: true, ...st, quota: quota && { used: quota.used, total: quota.total, mine: quota.mine ?? null } };
     }
 
     function status() {
@@ -426,8 +431,28 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             name: me.name || null,
             version: me.version || null,
             since: { ...since },
+            // The changes here still to go, and the media file coming now
+            // ({ name, size, got }): the cloud's Esperando and Chegando.
+            waiting: store.outboxCount ? store.outboxCount() : 0,
+            arriving: engine.arriving ? engine.arriving() : null,
             engine: eng,
         };
+    }
+
+    // G4 = A (the owner's mark, 2026-10-26): a computer that syncs by the
+    // folder hears once, in the bell, that the sync is the Google account's
+    // now; Configurações › Sincronização keeps the banner until it enters.
+    function noticeGoogle() {
+        const cur = config();
+        if (!notify || !google || !cur.folder || cur.store === "drive" || cur.googleNoticed) return;
+        notify({
+            key: GOOGLE_BELL,
+            kind: "info",
+            title: "A sincronização agora é pela conta Google",
+            body: "Entre com a conta da igreja em Configurações › Sincronização. Até entrar, este computador continua pela pasta.",
+            action: "settings:sincronizacao",
+        });
+        save({ ...cur, googleNoticed: true });
     }
 
     // Google's sign-in, then this computer on Drive with the account's key
@@ -436,6 +461,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
     // to the passes; the sign-in itself stands. -> status + { joined }.
     async function enterDrive({ readmit }) {
         save({ ...config(), store: "drive", paused: false });
+        if (dismiss) dismiss(GOOGLE_BELL);
         forgetPairing();
         store.setRecording(syncing());
         let joined = null;
@@ -635,7 +661,10 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         ops,
         status,
         afterImport,
-        start: (opts) => engine.start(opts),
+        start: (opts) => {
+            noticeGoogle();
+            return engine.start(opts);
+        },
         stop: () => engine.stop(),
         poke: () => engine.poke(),
         missing: () => engine.missing(),

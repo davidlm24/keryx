@@ -28,6 +28,8 @@ const FILES = {
     "ConsoleSection.jsx": "console",
     "DadosSection.jsx": "backup",
     "SyncSection.jsx": "sincronizacao",
+    "SyncFolderSteps.jsx": "sincronizacao",
+    "SyncDuplicates.jsx": "sincronizacao",
     "SobreSection.jsx": "sobre",
 };
 // A FormRow's label, a CfgKey's and a CfgGroup's (Rodada H0: a group's
