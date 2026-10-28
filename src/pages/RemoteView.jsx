@@ -6,13 +6,13 @@ import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
 import { airHeader, bannerOf, canRun, capsOf, nowBarInfo, roleOf, tabsFor } from "@/lib/network/remoteView";
 import { useCommands, useKeepAwake, usePhoneState, useStale } from "@/components/network/remote/usePhone";
 import { Cmd, HoldButton, Toast } from "@/components/network/remote/parts";
-import LiveTab from "@/components/network/remote/LiveTab";
-import NowBar from "@/components/network/remote/NowBar";
+import MediaTab from "@/components/network/remote/MediaTab";
+import ControlDock from "@/components/network/remote/ControlDock";
 
-// Ao vivo draws at once; the other tabs load when first opened, so the
-// page stays inside the outputs' budget (scripts/bundle-budget.cjs).
+// The Biblioteca and the dock draw at once; the other tabs load when first
+// opened, so the page stays inside the outputs' budget (scripts/bundle-budget.cjs).
+const PresentTab = lazy(() => import("@/components/network/remote/PresentTab"));
 const SetlistTab = lazy(() => import("@/components/network/remote/SetlistTab"));
-const MediaTab = lazy(() => import("@/components/network/remote/MediaTab"));
 const BibleTab = lazy(() => import("@/components/network/remote/BibleTab"));
 const MoreTab = lazy(() => import("@/components/network/remote/MoreTab"));
 // The Equipe (Rodada Q PR4): a phone signed in with the Equipe's code.
@@ -25,7 +25,10 @@ const EquipeView = lazy(() => import("@/components/network/remote/EquipeView"));
 // what is on air comes from the live state, like the screens. Tabs at the
 // bottom, in reach of the thumb (owner's pick); a left rail in landscape and
 // on a tablet (remote.css). Sections the console does not run (its `caps`)
-// are not shown. Under every tab but Ao vivo, the No ar bar (Rodada Q).
+// are not shown. It opens on the Biblioteca and stays there after a send
+// (owner 2026-10-28, M1 = A); Apresentar is what is on air, big (M3), and
+// the controls are the dock at the bottom (M2): open on Apresentar, folded
+// to one line on the other tabs.
 // The code that signed the phone in decides which page it is (state.role):
 // the Controle, or the Equipe's (EquipeView, Rodada Q PR4). The role last
 // seen is kept on the phone, so a reload draws the right one at once; a
@@ -42,15 +45,20 @@ export default function RemoteView() {
     const { state, gate, setGate, refresh } = usePhoneState(live);
     const cmd = useCommands({ setGate });
     const awake = useKeepAwake();
-    const [tab, setTab] = useState("live");
+    const [tab, setTab] = useState("library");
     const [touchLocked, setTouchLocked] = useState(false);
+    // The dock on Apresentar (open unless folded there) and its side, Letra
+    // or Player, when the operator picked one.
+    const [dockOpen, setDockOpen] = useState(true);
+    const [dockMode, setDockMode] = useState(null);
     const caps = useMemo(() => capsOf(state), [state]);
     const locked = Boolean(live?.locked);
     const c = { busy: cmd.busy, run: cmd.run, flags: { stale, locked } };
     const tabs = tabsFor(state);
-    const shown = tabs.some(([k]) => k === tab) ? tab : "live";
+    const shown = tabs.some(([k]) => k === tab) ? tab : tabs[0]?.[0] || "more";
     const banner = bannerOf({ stale, unknown: cmd.unknown, locked, canUnlock: caps.has("lock") });
-    const hasNow = shown !== "live" && Boolean(nowBarInfo(live));
+    const docked = shown === "present" && dockOpen;
+    const hasNow = !docked && Boolean(nowBarInfo(live));
     const again = () => { cmd.clearUnknown(); setGate(null); refresh(); };
     const [kept] = useState(storedRole);
     const [waited, setWaited] = useState(false);
@@ -81,7 +89,7 @@ export default function RemoteView() {
     }
 
     return (
-        <div className={`net rm ${hasNow ? "has-now" : ""}`}>
+        <div className={`net rm ${docked ? "has-dock" : hasNow ? "has-now" : ""}`}>
             <Header live={live} stale={stale} c={c} church={church.name} />
             {banner && (
                 <div className={`rm-ban is-${banner.tone}`} role="status">
@@ -91,14 +99,17 @@ export default function RemoteView() {
             )}
             <div className="rm-body">
                 <div className="rm-pane">
-                    {shown === "live" && <LiveTab live={live} state={state} caps={caps} c={c} />}
+                    {shown === "library" && <MediaTab caps={caps} c={c} setGate={setGate} />}
                     <Suspense fallback={<div className="rm-main" aria-busy="true" />}>
+                        {shown === "present" && <PresentTab live={live} state={state} caps={caps} c={c} onLibrary={() => setTab("library")} />}
                         {shown === "setlist" && <SetlistTab live={live} state={state} c={c} onRefresh={refresh} />}
-                        {shown === "media" && <MediaTab caps={caps} c={c} setGate={setGate} />}
                         {shown === "bible" && <BibleTab state={state} caps={caps} c={c} />}
                         {shown === "more" && <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />}
                     </Suspense>
-                    {shown !== "live" && <NowBar live={live} state={state} caps={caps} c={c} />}
+                    <ControlDock live={live} state={state} caps={caps} c={c}
+                        open={docked} onFold={shown === "present" ? () => setDockOpen((v) => !v) : undefined}
+                        mode={dockMode} setMode={setDockMode}
+                        ended={cmd.ended} onUndo={() => cmd.run("undo", "undo")} onShort={() => cmd.say("Segure para encerrar tudo.")} />
                 </div>
                 <nav className="rm-tabs" role="tablist" aria-label="Seções do controle remoto">
                     {tabs.map(([k, label, icon]) => (

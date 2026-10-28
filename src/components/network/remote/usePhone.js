@@ -68,6 +68,8 @@ export function useCommands({ setGate }) {
     const [busy, setBusy] = useState(() => new Set());
     const [toast, setToast] = useState(null);
     const [unknown, setUnknown] = useState(false);
+    // The phone's last Encerrar tudo: its Desfazer stays on the button (M5).
+    const [ended, setEnded] = useState(null);
     const timer = useRef(null);
     const say = useCallback((text, { bad = false, undo = false } = {}) => {
         clearTimeout(timer.current);
@@ -94,11 +96,12 @@ export function useCommands({ setGate }) {
         if (navigator.vibrate && navigator.userActivation?.hasBeenActive !== false) try { navigator.vibrate(r.ok ? 15 : [30, 40, 30]); } catch { /* no vibration */ }
         // An unknown outcome is the banner's ("Não sei se foi"), not a toast too.
         if (!r.ok) { if (!r.unknown) say(r.message, { bad: true }); else setToast(null); }
-        else if (action === "end") say("Projeção encerrada.", { undo: Boolean(r.result?.undo) });
+        else if (action === "end") { say("Projeção encerrada."); setEnded({ at: Date.now(), undo: Boolean(r.result?.undo) }); }
         else if (!quiet) say(sayOf(r));
+        if (r.ok && action !== "end") setEnded(null);
         return r;
     }, [say, setGate]);
-    return { busy, run, say, toast, closeToast: () => setToast(null), unknown, clearUnknown: () => setUnknown(false) };
+    return { busy, run, say, toast, closeToast: () => setToast(null), unknown, clearUnknown: () => setUnknown(false), ended };
 }
 
 // "Manter a tela ligada" (owner's pick: opt-in). The Wake Lock API needs

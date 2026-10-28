@@ -48,7 +48,6 @@
 .rm-b { position: relative; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 52px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--bg-2); color: var(--fg-1); font-size: 14px; font-weight: 600; line-height: 1.15; text-align: center; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 .rm-b:active:not(:disabled) { background: var(--bg-3); }
 .rm-b:disabled { opacity: .38; }
-.rm-b.is-big { min-height: 96px; flex-direction: column; gap: 4px; font-size: 17px; }
 .rm-b.is-sm { min-height: 48px; border-radius: 12px; font-size: 13px; font-weight: 500; }
 .rm-b.is-go { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
 .rm-b.is-go:active:not(:disabled) { background: var(--brand-pressed); }
@@ -65,7 +64,6 @@
 .rm-pair { display: flex; gap: 8px; }
 .rm-pair > * { flex: 1 1 0; }
 .rm-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.rm-trio.is-compact > .rm-b { min-height: 44px; padding: 0 6px; }
 .rm-trio > .rm-b:not(.is-sm) { flex-direction: column; gap: 4px; min-height: 64px; font-size: 13px; }
 .rm-row { display: flex; gap: 6px; }
 .rm-row > .rm-b { flex: 1 1 0; padding: 0 4px; }
@@ -132,8 +130,10 @@
 .rm-sendrow > .rm-b.is-go { flex: 1 1 auto; min-width: 0; }
 .rm-b.is-plan { flex: none; padding: 0 14px; }
 .rm-foot .rm-b.is-go, .rm-sticky .rm-b.is-go { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 52px; padding: 0 16px; }
-/* The No ar bar (Rodada Q, S5 = A): ⏮ · the slide on air and the next · ⏭;
-   the middle opens Ao vivo's controls. */
+.rm-foot .rm-b.is-go > .kx-i, .rm-sticky .rm-b.is-go > .kx-i { display: inline-block; margin-right: 8px; vertical-align: -3px; }
+/* The dock folded (owner 2026-10-28, M2 = A; was the No ar bar, Rodada Q):
+   ⏮ · the slide on air and the next · ⏭ · ⌃; the middle and ⌃ open the
+   controls (a sheet, or the dock itself on Apresentar). */
 .rm-now { flex: none; display: flex; align-items: center; gap: 2px; min-height: 58px; padding: 0 max(4px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left)); border-top: 1px solid var(--line); background: var(--bg-1); }
 .rm-b.rm-now-arr { flex: none; width: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 12px; background: none; }
 .rm-now-mid { font-family: inherit; flex: 1 1 auto; min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 4px 8px; border: 0; border-radius: 12px; background: none; color: var(--fg-1); text-align: left; touch-action: manipulation; }
@@ -145,6 +145,63 @@
 .rm-now-t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rm-now-a em { flex: none; font-style: normal; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; font-weight: 500; color: var(--fg-2); }
 .rm-now-b { max-width: 100%; font-size: 12px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-fold { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--fg-3); touch-action: manipulation; }
+.rm-fold:active { background: var(--bg-3); }
+
+/* The dock open (M2 = A, on Apresentar): Letra | Player, then the arrows or
+   the player, then Tela preta · Logo · Limpar · Encerrar. In a sheet (the
+   other tabs) the same body without its own frame. */
+.rm-dock { flex: none; padding: 8px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); background: var(--bg-1); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; }
+.rm-dockb { display: flex; flex-direction: column; gap: 8px; }
+.rm-dock-top { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.rm-dseg { flex: none; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 3px; border-radius: 11px; border: 1px solid var(--line); background: var(--bg-0); }
+.rm-dseg button { font-family: inherit; min-height: 34px; padding: 0 16px; border: 0; border-radius: 8px; background: none; color: var(--fg-3); font-size: 13px; font-weight: 600; touch-action: manipulation; }
+.rm-dseg button[aria-pressed="true"] { background: var(--bg-4); color: var(--fg-1); }
+.rm-dseg button:disabled { opacity: .38; }
+.rm-dock-what { flex: 1 1 auto; min-width: 0; text-align: right; font-size: 12px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-arrows { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rm-b.rm-arr { min-height: 64px; font-size: 16px; }
+.rm-acts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.rm-b.rm-act { min-height: 56px; flex-direction: column; gap: 3px; padding: 0 4px; border-radius: 12px; font-size: 11.5px; font-weight: 500; }
+.rm-b.rm-act > span { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
+.rm-b.rm-act.is-end { color: var(--danger-fg); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.rm-b.rm-act.is-end.is-off { color: var(--fg-3); border-color: var(--line); }
+.rm-b.rm-act.is-end.is-holding { color: var(--fg-1); border-color: var(--danger); }
+.rm-b.rm-act.is-end .rm-hold-fill { background: color-mix(in srgb, var(--danger) 55%, var(--bg-2)); }
+.rm-b.rm-act.is-done { background: var(--bg-3); }
+.rm-b.rm-act.is-done em { font-style: normal; font-family: var(--font-mono, ui-monospace, monospace); color: var(--fg-3); }
+.rm-b.rm-act.is-done > span { flex-direction: row; gap: 4px; }
+/* The player in the dock. */
+.rm-pad { display: flex; flex-direction: column; gap: 8px; }
+.rm-prog { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; color: var(--fg-3); }
+.rm-prog .rm-bar { flex: 1 1 auto; }
+.rm-ctl { display: grid; grid-template-columns: 1fr 1fr 1.4fr 1fr 1fr; gap: 6px; }
+.rm-ctl.is-one { grid-template-columns: 1fr; }
+.rm-ctl > .rm-b { min-height: 56px; padding: 0; font-size: 13px; }
+.rm-ctl > .rm-b.is-play { background: var(--fg-1); border-color: var(--fg-1); color: var(--bg-0); }
+.rm-vol2 { display: grid; grid-template-columns: 52px 1fr 52px 52px 52px; gap: 6px; align-items: center; }
+.rm-vol2 > .rm-b { min-height: 44px; padding: 0; border-radius: 12px; font-size: 17px; }
+
+/* Apresentar (M3 = A): every slide of the item on air, a big card each. */
+.rm-present { gap: 8px; }
+.rm-pttl { display: flex; align-items: baseline; gap: 8px; padding: 0 2px; }
+.rm-pttl b { flex: 1 1 auto; min-width: 0; color: var(--fg-1); font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-pttl small { flex: none; font-size: 12px; color: var(--fg-3); }
+.rm-slides { display: flex; flex-direction: column; gap: 8px; }
+.rm-b.rm-slide { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; min-height: 0; padding: 12px 14px 14px; border: 0; border-radius: 14px; background: var(--bg-1); text-align: left; font-weight: 500; content-visibility: auto; contain-intrinsic-size: auto 96px; }
+.rm-slide-k { display: flex; align-items: center; gap: 8px; font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-3); }
+.rm-slide-k > span { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-slide-t { color: var(--fg-1); font-size: 17px; line-height: 1.38; white-space: pre-line; overflow-wrap: anywhere; }
+.rm-b.rm-slide.is-past .rm-slide-t { color: var(--fg-2); }
+.rm-b.rm-slide.is-air { background: var(--live-bg); box-shadow: var(--live-ring); }
+.rm-b.rm-slide.is-air .rm-slide-k { color: var(--air-fg); }
+.rm-b.rm-slide.is-next { box-shadow: var(--next-ring); }
+.rm-b.rm-slide:disabled { opacity: 1; }
+.rm-pempty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.rm-pempty > b { color: var(--fg-1); font-size: 17px; }
+.rm-pempty > span { max-width: 30ch; font-size: 13.5px; line-height: 1.45; color: var(--fg-3); }
+.rm-pring { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%; background: var(--bg-2); color: var(--fg-3); }
+.rm-pstack { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 320px; margin-top: 8px; }
 .rm-hint { margin: 0; font-size: 12px; color: var(--fg-3); text-align: center; }
 .rm-empty { margin: 24px 0; font-size: 14px; color: var(--fg-3); text-align: center; }
 
@@ -152,7 +209,7 @@
 .rm-chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
 .rm-chips::-webkit-scrollbar { display: none; }
 .rm-chips.is-wrap { flex-wrap: wrap; overflow: visible; }
-.rm-chip, .rm-b.rm-chip { font-family: inherit; flex: none; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--bg-1); color: var(--fg-2); font-size: 13px; font-weight: 500; }
+.rm-chip, .rm-b.rm-chip { font-family: inherit; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--bg-1); color: var(--fg-2); font-size: 13px; font-weight: 500; }
 .rm-chip[aria-pressed="true"] { background: var(--bg-3); color: var(--fg-1); border-color: var(--fg-3); }
 .rm-field { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-2); color: var(--fg-1); }
 .rm-field:focus-within { border-color: var(--rh); }
@@ -172,12 +229,30 @@
 .rm-empty p { margin: 0 0 10px; }
 .rm-v.is-bad { color: var(--warn-fg); }
 
-/* Bíblia: where the picker is, then its grid (books, chapters, verses). */
-.rm-crumbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
-.rm-crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-width: 0; font-size: 13px; color: var(--fg-3); }
-.rm-crumb button { min-height: 40px; padding: 0 6px; border: 0; background: none; color: var(--brand); font-family: inherit; font-size: 13px; }
-.rm-crumb button[aria-current] { color: var(--fg-1); font-weight: 600; }
-.rm-crumb span { padding: 0 6px; color: var(--fg-1); font-weight: 600; }
+/* Bíblia (owner 2026-10-28, M4 = A): the chapter verse by verse, a tap marks
+   it (gold, selecionado); the compact bar at the bottom; the passage sheet's
+   cells, eight across. The number grid is an older console's fallback. */
+.rm-vlist { display: flex; flex-direction: column; gap: 2px; }
+.rm-vrow { font-family: inherit; display: flex; gap: 10px; width: 100%; margin: 0; padding: 9px 10px; border: 0; border-radius: 10px; background: none; color: var(--fg-1); text-align: left; touch-action: manipulation; content-visibility: auto; contain-intrinsic-size: auto 52px; }
+.rm-vn { flex: none; width: 24px; padding-top: 3px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--fg-3); text-align: right; }
+.rm-vt { flex: 1 1 auto; min-width: 0; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+button.rm-vrow:active { background: var(--bg-2); }
+.rm-vrow.is-sel { background: var(--prev-bg); box-shadow: var(--prev-ring); }
+.rm-vrow.is-in { background: color-mix(in srgb, var(--prev) 16%, var(--bg-1)); }
+.rm-vrow.is-sel .rm-vn, .rm-vrow.is-in .rm-vn { color: var(--prev-fg); }
+.rm-bbar { flex: none; display: flex; gap: 6px; padding: 8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); border-top: 1px solid var(--line); background: var(--bg-1); }
+.rm-pick { font-family: inherit; flex: none; display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; min-height: 46px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-2); color: var(--fg-1); font-size: 15px; font-weight: 600; touch-action: manipulation; }
+.rm-pick > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-pick .kx-i { flex: none; color: var(--fg-3); }
+.rm-pick.is-grow { flex: 1 1 auto; }
+.rm-pick.is-icon { width: 46px; padding: 0; justify-content: center; }
+.rm-pick:disabled { opacity: .38; }
+.rm-bsec { display: flex; flex-direction: column; gap: 6px; }
+.rm-cells { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }
+.rm-cells button { font-family: inherit; min-width: 0; min-height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-1); color: var(--fg-1); font-size: 13px; font-weight: 600; touch-action: manipulation; }
+.rm-cells button:active { background: var(--bg-3); }
+.rm-cells button.is-sel { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.rm-chip:disabled { opacity: .38; }
 .rm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
 .rm-grid button { min-height: 48px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg-1); color: var(--fg-1); font-family: inherit; font-size: 14px; font-weight: 500; touch-action: manipulation; content-visibility: auto; contain-intrinsic-size: auto 48px; }
 .rm-grid button:active { background: var(--bg-3); }
@@ -199,6 +274,8 @@
 /* What the last command said, over the tab bar. */
 .rm-toast { position: fixed; z-index: 25; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(68px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; min-height: 52px; border-radius: 12px; background: var(--bg-3); box-shadow: 0 0 0 1px var(--line-strong), 0 10px 28px #000a; color: var(--fg-1); font-size: 13.5px; line-height: 1.3; }
 .rm.has-now .rm-toast { bottom: calc(128px + env(safe-area-inset-bottom)); }
+/* With the dock open the answer comes under the header, never over the controls. */
+.rm.has-dock .rm-toast { top: calc(60px + env(safe-area-inset-top)); bottom: auto; }
 .rm-toast.is-bad { color: var(--warn-fg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 50%, transparent), 0 10px 28px #000a; }
 .rm-toast > span { flex: 1 1 auto; min-width: 0; }
 .rm-toast-act { font-family: inherit; flex: none; min-height: 40px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--brand); color: var(--on-brand); font-weight: 600; }
@@ -322,6 +399,11 @@
 .rm-ch { color: var(--brand); font-size: 12px; font-weight: 600; white-space: pre; }
 .rm-lyrics.is-big .rm-ch { font-size: 15px; }
 
+/* A video or an audio of the Mídia (Músicas, owner 2026-10-28, M6). */
+.rm-poster { flex: none; aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-2); color: var(--fg-3); }
+.rm-poster img { width: 100%; height: 100%; object-fit: cover; }
+.rm-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--bg-1); color: var(--fg-3); font-size: 13px; line-height: 1.45; }
+
 /* The Setlist to read: an item that is not a song is not a button. */
 .rm-item.is-read { cursor: default; }
 .is-team .rm-item.is-air { border-color: color-mix(in srgb, var(--air) 45%, transparent); }
@@ -329,20 +411,21 @@
 .rm-v.is-read { -webkit-line-clamp: unset; display: block; }
 /* The answer under the strip, never over the composer. */
 .rm.is-team .rm-toast { top: calc(48px + env(safe-area-inset-top)); bottom: auto; }
-/* Landscape and a tablet: the tabs as a rail on the left, Ao vivo in two
-   columns (the mockup's frame at 812 × 375). */
+/* Landscape and a tablet: the tabs as a rail on the left, Apresentar's
+   slides as many columns as fit (the mockup's frame at 812 × 375). */
 @container rm (min-width: 600px) {
     .rm-body { flex-direction: row; }
     .rm-tabs { order: -1; flex-direction: column; width: calc(76px + env(safe-area-inset-left)); padding: 0 0 env(safe-area-inset-bottom) env(safe-area-inset-left); border-top: 0; border-right: 1px solid var(--line); }
     .rm-tab { flex: 1 1 0; max-height: 84px; min-height: 52px; }
     .rm-tab[aria-selected="true"]::after { top: 22%; bottom: 22%; left: 0; right: auto; width: 2px; height: auto; border-radius: 0 2px 2px 0; }
     .rm-main { padding-left: 12px; }
-    .rm-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-content: start; }
     .rm-sticky { margin-left: -12px; padding-left: 12px; }
     .rm-sheet { left: 50%; right: auto; width: min(560px, 100%); transform: translateX(-50%); }
     .rm-toast { left: calc(88px + env(safe-area-inset-left)); bottom: calc(12px + env(safe-area-inset-bottom)); max-width: 560px; }
     .rm.has-now .rm-toast { bottom: calc(70px + env(safe-area-inset-bottom)); }
     .rm-main.is-split { padding: 0; }
+    .rm-slides { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    .rm-dock { border-radius: 0; }
 }
 /* A phone on its side: the header and the big arrows give room. */
 @container rm (min-width: 600px) and (max-height: 480px) {
@@ -350,12 +433,13 @@
     .rm-air { flex: 1 1 auto; }
     .rm-chiprow { flex: 0 1 auto; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
     .rm-lchip { flex: none; min-height: 34px; }
-    .rm-b.is-big { min-height: 80px; }
     .rm-sticky { padding-top: 10px; padding-bottom: 8px; }
     .rm-sticky .rm-b.is-go { min-height: 44px; line-height: 44px; }
     .rm-sticky .rm-b + .rm-hint, .rm-sticky .rm-sendrow + .rm-hint { display: none; }
     .rm-foot .rm-b.is-go, .rm-sendrow > .rm-b { min-height: 44px; line-height: 44px; }
     .rm-now { min-height: 48px; }
+    .rm-b.rm-arr { min-height: 52px; }
+    .rm-b.rm-act { min-height: 48px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -373,4 +457,13 @@
     .rm-new { background: LinkText; }
     .rm-msg.is-op .rm-msg-t { outline: 2px solid Highlight; outline-offset: -2px; }
     .rm-badge, .rm-who { outline: 1px solid CanvasText; outline-offset: -1px; }
+    /* Apresentar, the dock and the Bíblia (owner 2026-10-28): on air fills
+       with Highlight, the next a dotted ring, a marked verse a solid one;
+       Encerrar armed keeps its edge, its fill is Highlight while held. */
+    .rm-b.rm-slide.is-air { background: Highlight; color: HighlightText; forced-color-adjust: none; }
+    .rm-b.rm-slide.is-air .rm-slide-k, .rm-b.rm-slide.is-air .rm-slide-t { color: HighlightText; }
+    .rm-b.rm-slide.is-next { outline: 2px dotted CanvasText; outline-offset: -2px; }
+    .rm-vrow.is-sel, .rm-vrow.is-in, .rm-cells button.is-sel, .rm-dseg button[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+    .rm-b.rm-act.is-end:not(.is-off) { border: 2px solid ButtonText; }
+    .rm-b.rm-act.is-end .rm-hold-fill { background: Highlight; }
 }

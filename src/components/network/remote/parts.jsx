@@ -30,18 +30,27 @@ export function Cmd({ c, k, action, args = {}, className = "", disabled = false,
 }
 
 // A button that must be held (a touch by accident never does it): a fill
-// runs across while it is held; letting go before stops it.
-export function HoldButton({ ms, label, holding: holdingLabel = "Continue segurando…", icon, onDone, disabled = false, className = "", aria }) {
+// runs across while it is held; letting go before stops it, and a tap that
+// let go at once calls onShort (Encerrar says to hold it).
+const SHORT_TAP_MS = 400;
+export function HoldButton({ ms, label, holding: holdingLabel = "Continue segurando…", icon, onDone, onShort, disabled = false, className = "", aria }) {
     const [holding, setHolding] = useState(false);
     const timer = useRef(null);
+    const since = useRef(0);
     const start = (e) => {
         if (disabled) return;
         e.preventDefault();
         setHolding(true);
+        since.current = Date.now();
         clearTimeout(timer.current);
-        timer.current = setTimeout(() => { setHolding(false); onDone(); }, ms);
+        timer.current = setTimeout(() => { since.current = 0; setHolding(false); onDone(); }, ms);
     };
-    const stop = () => { clearTimeout(timer.current); setHolding(false); };
+    const stop = () => {
+        clearTimeout(timer.current);
+        setHolding(false);
+        if (since.current && Date.now() - since.current < SHORT_TAP_MS) onShort?.();
+        since.current = 0;
+    };
     useEffect(() => () => clearTimeout(timer.current), []);
     return (
         <button

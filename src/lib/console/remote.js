@@ -176,12 +176,24 @@ export function remoteState({
 }
 
 // A passage for the phone to check before sending: the start of its text,
-// verse numbers in (a chapter alone: from verse 1).
-export function passagePreview(reference, verses, nums, version = "") {
+// verse numbers in (a chapter alone: from verse 1). whole (the phone's
+// Bíblia, read verse by verse): the whole chapter too, each verse at most
+// limits.verseText, at most limits.chapterText in all (truncated past it).
+export function passagePreview(reference, verses, nums, version = "", { whole = false } = {}) {
     const chosen = nums.length ? verses.filter((v) => nums.includes(v.number)) : verses;
     const text = chosen.map((v) => `${v.number} ${v.text}`).join(" ");
     const max = limits.passageText;
-    return { reference, text: text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text, version };
+    const out = { reference, text: text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text, version };
+    if (!whole) return out;
+    out.verses = [];
+    let size = 0;
+    for (const v of verses) {
+        const t = cleanText(v.text, limits.verseText);
+        size += t.length;
+        if (size > limits.chapterText) { out.truncated = true; break; }
+        out.verses.push({ n: v.number, text: t });
+    }
+    return out;
 }
 
 // The phone's Bíblia args as a reference: { ref } typed by hand ("jo 3 16",

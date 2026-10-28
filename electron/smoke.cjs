@@ -3262,14 +3262,17 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             const [name, value] = cookie.split("=");
             await phone.webContents.session.cookies.set({ url: base, name, value });
             await phone.loadURL(`${base}/Remote`);
-            result.remote.page = await waitFor(phone, "Segure para encerrar tudo", 8000);
-            // The page itself (Rodada G6 PR3): its tab bar, and its Tela preta
-            // reaching the live state through the console.
+            result.remote.page = await waitFor(phone, "Biblioteca", 8000);
+            // The page itself (Rodada G6 PR3; the redesign of 2026-10-28): it
+            // opens on the Biblioteca, and Tela preta in Apresentar's dock
+            // reaches the live state through the console.
             const pageJs = (code) => phone.webContents.executeJavaScript(code).catch(() => null);
             const tabs = (await pageJs(`[...document.querySelectorAll(".rm-tab")].map((b) => b.textContent.trim()).join("|")`)) || "";
-            result.remote.tabs = tabs.startsWith("Ao vivo") && tabs.includes("Setlist") && tabs.includes("Mais");
+            result.remote.tabs = tabs.startsWith("Biblioteca") && tabs.includes("Apresentar") && tabs.includes("Setlist") && tabs.includes("Mais");
             live.call("screen.set", { mode: "show" });
-            await pageJs(`[...document.querySelectorAll(".rm-trio .rm-b")].find((b) => b.textContent.includes("Tela preta"))?.click()`);
+            await pageJs(`[...document.querySelectorAll(".rm-tab")].find((b) => b.textContent.includes("Apresentar"))?.click()`);
+            await waitFor(phone, "Encerrar", 8000);
+            await pageJs(`[...document.querySelectorAll(".rm-acts .rm-b")].find((b) => b.textContent.includes("Tela preta"))?.click()`);
             const blackUntil = Date.now() + 5000;
             while (Date.now() < blackUntil && live.get().screen !== "black") await sleep(150);
             result.remote.pageBlack = live.get().screen === "black";

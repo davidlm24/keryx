@@ -135,6 +135,59 @@ export function nowBarInfo(live) {
         reveal: s.reveal,
     };
 }
+// Whether anything is on air (a layer, Tela preta, the Logo): the dock's
+// arrows, Limpar and Encerrar only mean something then.
+export const onAirNow = (live) => airHeader(live).chips.length > 0;
+
+// Apresentar (owner 2026-10-28, M3 = A): every slide of the item on air as a
+// big card, its whole text; the one on air, the next, those already shown.
+//   -> [{ i, label, text, state: "air" | "next" | "past" | "" }]
+export function presentRows(content) {
+    const slides = content?.slides || [];
+    const at = content?.index || 0;
+    return slides.map((s, i) => ({
+        i,
+        label: [String(s.label || "").trim(), String(i + 1)].filter(Boolean).join(" · "),
+        text: slideText(s) || `Slide ${i + 1}`,
+        state: i === at ? "air" : i === at + 1 ? "next" : i < at ? "past" : "",
+    }));
+}
+
+// The dock's two sides (M2 = A): Letra while slides are on air, Player while
+// the console's player has something. The side the operator chose stays
+// while it still means something; else slides first, then the player.
+//   -> { letra, player, mode: "letra" | "player" }
+export function dockModes(live, chosen = null) {
+    const letra = slideInfo(live?.content).has && live?.screen !== "black" && live?.screen !== "logo";
+    const player = Boolean(playerLayer(live) && live[playerLayer(live)]);
+    const can = { letra, player };
+    const mode = chosen && can[chosen] ? chosen : letra ? "letra" : player ? "player" : "letra";
+    return { letra, player, mode };
+}
+
+// Encerrar's state on the phone (M5): "off" with nothing on air, "arm" while
+// something is, "done" for the UNDO_MS after the phone's own Encerrar tudo
+// when the console can put it back (left: the seconds of Desfazer).
+//   ended: { at, undo } of the last Encerrar this phone ran, or null.
+export function endState({ live, ended = null, now = Date.now(), canUndo = false }) {
+    const left = ended?.undo && canUndo ? Math.ceil((ended.at + UNDO_MS - now) / 1000) : 0;
+    if (left > 0) return { state: "done", left };
+    return { state: live && onAirNow(live) ? "arm" : "off", left: 0 };
+}
+
+// The Bíblia verse by verse (M4 = A): each verse of the chapter with how it
+// is marked, the ends of the range "sel", inside it "in".
+//   verses: the chapter from bibleFind { whole: true }, [{ n, text }]
+export function verseRows(verses, ref) {
+    const s = ref?.verseStart ?? null;
+    const e = ref?.verseEnd ?? s;
+    return (verses || []).map((v) => ({
+        n: v.n,
+        text: v.text,
+        mark: s == null || v.n < s || v.n > e ? "" : v.n === s || v.n === e ? "sel" : "in",
+    }));
+}
+
 // The slides sheet: one row per slide, the first line as its title.
 export function slideRows(content) {
     return (content?.slides || []).map((s, i) => {
@@ -327,6 +380,13 @@ export function bibleArgs(ref, version = "") {
     if (version) args.version = version;
     return args;
 }
+// bibleFind for the chapter read verse by verse (M4 = A): the marks are the
+// phone's, so the chapter is asked once, whatever is marked.
+export function chapterArgs(ref, version = "") {
+    const args = { book: ref.book, chapter: ref.chapter, whole: true };
+    if (version) args.version = version;
+    return args;
+}
 // + Setlist for a passage: only with its verses (a chapter alone is 400:
 // it would be the whole chapter).
 export function biblePlanArgs(ref, version = "") {
@@ -353,14 +413,15 @@ export function bibleVersions(bible) {
 // waits a moment for it (RemoteView), then draws the Controle.
 export const roleOf = (state) => (!state ? null : state.role === "team" ? "team" : "control");
 
-// The tabs of each environment: [key, label, icon, cap]. The Controle keeps
-// its five (Rodada Q PR3); the Equipe has four (the owner's mockup:
+// The tabs of each environment: [key, label, icon, cap]. The Controle opens
+// on the Biblioteca (owner 2026-10-28, M1 = A: it never leaves it by itself),
+// what is on air is Apresentar; the Equipe has four (the owner's mockup:
 // Pedidos, Músicas, Bíblia, Setlist) and never a projection.
 export const CONTROL_TABS = [
-    ["live", "Ao vivo", "monitor", "live"],
-    ["setlist", "Setlist", "list", "setlist"],
-    ["media", "Mídia", "media", "library"],
+    ["library", "Biblioteca", "media", "library"],
+    ["present", "Apresentar", "monitor", "live"],
     ["bible", "Bíblia", "book", "bible"],
+    ["setlist", "Setlist", "list", "setlist"],
     ["more", "Mais", "more", null],
 ];
 export const TEAM_TABS = [
