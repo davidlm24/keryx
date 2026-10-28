@@ -286,6 +286,7 @@ test("Encerrar: off with nothing on air, armed on air, Desfazer for 8 s after th
     assert.deepEqual(endState({ live: song() }), { state: "arm", left: 0 });
     const ended = { at: T, undo: true };
     assert.deepEqual(endState({ live: emptyState(T), ended, now: T + 500, canUndo: true }), { state: "done", left: 8 });
+    assert.equal(endState({ live: emptyState(T), ended, now: T - 900, canUndo: true }).left, 8, "never more than the 8 s");
     assert.equal(endState({ live: emptyState(T), ended, now: T + UNDO_MS, canUndo: true }).state, "off", "after 8 s it goes back");
     assert.equal(endState({ live: emptyState(T), ended, now: T + 500, canUndo: false }).state, "off", "a console without Desfazer");
     assert.equal(endState({ live: emptyState(T), ended: { at: T, undo: false }, now: T + 500, canUndo: true }).state, "off", "nothing to put back");

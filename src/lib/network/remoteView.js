@@ -170,7 +170,7 @@ export function dockModes(live, chosen = null) {
 // when the console can put it back (left: the seconds of Desfazer).
 //   ended: { at, undo } of the last Encerrar this phone ran, or null.
 export function endState({ live, ended = null, now = Date.now(), canUndo = false }) {
-    const left = ended?.undo && canUndo ? Math.ceil((ended.at + UNDO_MS - now) / 1000) : 0;
+    const left = ended?.undo && canUndo ? Math.min(UNDO_MS / 1000, Math.ceil((ended.at + UNDO_MS - now) / 1000)) : 0;
     if (left > 0) return { state: "done", left };
     return { state: live && onAirNow(live) ? "arm" : "off", left: 0 };
 }

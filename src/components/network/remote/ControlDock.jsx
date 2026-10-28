@@ -132,8 +132,10 @@ function PlayerPad({ p, state, caps, c }) {
 // while something is (held 1,5 s; a short tap only says to hold it), and for
 // 8 s after this phone ended it is Desfazer with its count.
 function EndButton({ live, caps, c, ended, onUndo, onShort }) {
-    const now = useLiveNow(1000, Boolean(ended));
-    const e = endState({ live, ended, now, canUndo: canRun(caps, "undo") });
+    // Ticks each second while a Desfazer counts; ended.at is this phone's own
+    // clock, so the count is too (the live clock follows the computer's).
+    useLiveNow(1000, Boolean(ended));
+    const e = endState({ live, ended, now: Date.now(), canUndo: canRun(caps, "undo") });
     if (e.state === "done") {
         return (
             <button type="button" className={`rm-b rm-act is-done ${c.busy.has("undo") ? "is-busy" : ""}`} onClick={onUndo} aria-label={`Desfazer o encerramento, ${e.left} segundos`}>
