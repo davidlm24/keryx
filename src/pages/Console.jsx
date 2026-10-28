@@ -1295,11 +1295,11 @@ export default function Console() {
         const ovFull = (c.cur?.overlays?.length || 0) >= OVERLAY_LIMIT;
         openMenu(e, { title: "Adicionar camada", items: [
             { label: ovFull ? `Sobreposição de texto · máx. ${OVERLAY_LIMIT}` : "Sobreposição de texto", icon: "text", disabled: ovFull, onSelect: () => addOverlayRef.current?.() },
-            { label: logoOn ? "Logo da igreja · no ar" : "Logo da igreja", icon: "logo", disabled: logoOn, onSelect: () => c.callOp("logo.set", { visible: true }).catch((err) => c.say(err?.message || "Não foi possível mostrar o logo.")) },
+            { label: logoOn ? "Logo no canto · no ar" : "Logo no canto", icon: "logo", disabled: logoOn, onSelect: () => c.callOp("logo.set", { visible: true }).catch((err) => c.say(err?.message || "Não foi possível mostrar o logo.")) },
         ] });
     };
     const camadasPanel = (
-        <Panel title="Camadas" count="o que está no ar" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo da igreja" small onClick={camadasMenu} />}>
+        <Panel title="Camadas" count="o que está no ar" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={camadasMenu} />}>
             <Measure onHeight={setCamadasFitH}>{layers}</Measure>
         </Panel>
     );
@@ -1686,7 +1686,7 @@ export default function Console() {
                 const right = roomR > roomL;
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
-                    <Panel title="Camadas" actions={<><IconBtn name="plus" title="Adicionar: sobreposição de texto, logo da igreja" small onClick={camadasMenu} /><IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} /></>}>
+                    <Panel title="Camadas" actions={<><IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={camadasMenu} /><IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} /></>}>
                         {layers}
                     </Panel>
                 </div>

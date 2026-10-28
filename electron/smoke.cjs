@@ -1848,32 +1848,21 @@ async function checkConsole(webContents, { live, outputs }) {
         const tabsClosed = await waitFor(() => js(`!document.querySelector(".tabs-menu")`), 3000);
         result.tabsMenu = tabsMenuOpen && tabsHidden && tabsLastStays && tabsRestored && tabsClosed;
         if (!result.tabsMenu) result.tabsMenuDiag = { tabsMenuOpen, tabsHidden, tabsLastStays, tabsRestored, tabsClosed, now: await panelTabs() };
-        result.layersBefore = (live.get().layerOrder || []).join(",");
         // Camadas: in the dock (over the Setlist by default), else (in the
-        // tray) a drawer opened from the Programa's pill (or its "…").
+        // tray) a drawer opened from the Programa's pill (or its "…"). The
+        // order is the program's (owner 2026-10-28, K1/K2 = A): the rows in
+        // that order, nothing to drag, one padlock (the Fundo's).
         const camadasDrawer = await js("Boolean(document.querySelector('.prog-pill:not(.prev-pill) button[aria-label=\"Camadas\"]'))") && await pillClick("Camadas", "Camadas");
         result.camadasWhere = camadasDrawer ? "drawer" : "section";
         await waitFor(() => js("Boolean(document.querySelector('.kx-layer'))"), 4000);
-        result.layerDrag = await js(`(async () => {
-            const rows = [...document.querySelectorAll(".kx-layer")];
-            const from = rows.find((n) => n.textContent.includes("Logo"));
-            const to = rows.find((n) => n.textContent.includes("Texto principal"));
-            if (!from || !to) return "faltou camada";
-            const wait = () => new Promise((r) => setTimeout(r, 80));
-            const dt = new DataTransfer();
-            const r = to.getBoundingClientRect();
-            from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
-            await wait();
-            to.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.bottom - 2 }));
-            await wait();
-            to.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.bottom - 2 }));
-            await wait();
-            from.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
-            return true;
+        result.layersFixed = await js(`(() => {
+            const rows = [...document.querySelectorAll(".kx-layers > .kx-layer, .kx-layers > .kx-ovgroup")].map((n) => n.getAttribute("aria-label") || "");
+            const want = ["Logo no canto", "Sobrepos", "Texto principal", "Fundo"];
+            if (rows.length !== 4 || !want.every((w, i) => rows[i].startsWith(w))) return "ordem: " + rows.join(" | ");
+            if (document.querySelector(".kx-layers [draggable=true]")) return "ainda arrasta";
+            const locks = document.querySelectorAll(".kx-layers button[aria-label^='Travar'], .kx-layers button[aria-label^='Destravar']").length;
+            return locks === 1 ? true : "cadeados: " + locks;
         })()`);
-        result.layersMoved = await waitFor(() => (live.get().layerOrder || []).join(",") === "overlays,content,logo,background");
-        result.layersAfter = (live.get().layerOrder || []).join(",");
-        live.call("layers.order", { order: ["logo", "overlays", "content", "background"] });
         if (camadasDrawer) await click(".drawer .kx-btn", "Fechar");
 
         // The song editor: "+ › Nova música" opens it as a floating dialog
@@ -3034,7 +3023,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && (result.bibleSplit === true || typeof result.bibleSplit === "string")
         && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
-        && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
+        && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layersFixed === true
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.cfgSaidasGrid && result.cfgFileGroup && result.cardTrimmed && result.screenBlocks && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk

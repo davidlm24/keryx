@@ -6,7 +6,8 @@
 //
 // Layers, top to bottom on the main projector (mainLayer):
 //   screen black/logo > tool > communication > media > content
-// with background under everything and overlays + alert over everything.
+// with background under everything and the corner logo, the overlays and the
+// alert over it all (LAYER_ORDER, fixed).
 // Other outputs pick the layers they need (stage: content; video: video;
 // avisos: communication).
 //
@@ -17,7 +18,10 @@
 import { GENERATOR_IDS, normalizeGenerator } from "./generators.mjs";
 import { checkIdleLook, idleLookOf, isDefaultIdleLook } from "./idleLook.mjs";
 export const LIVE_VERSION = 1;
-// The look layers the operator can stack (live.layerOrder), top first.
+// The look layers, top first: the program's stack, never the operator's
+// (owner 2026-10-28, Camadas K1 = A, as in ProPresenter and Holyrics: the
+// operator shows, hides and holds layers, never reorders them; a Fundo
+// dragged above the text had hidden a video that played on, 2026-10-27).
 export const LAYER_ORDER = ["logo", "overlays", "content", "background"];
 // Tela ociosa: the church logo, plain black, or a wallpaper the operator chose.
 export const IDLE_MODES = ["logo", "black", "background"];
@@ -35,15 +39,6 @@ export const LOCKABLE_LAYERS = ["background"];
 const lockedOf = (value) => (Array.isArray(value) ? LOCKABLE_LAYERS.filter((k) => value.includes(k)) : []);
 export const layerLocked = (state, layer) => Boolean(state?.lockedLayers?.includes(layer));
 const LAYER_OPS = { background: ["background.set", "background.clear"] };
-// The Fundo is what lies under everything: whatever order comes in (any
-// sender, an old save) it ends last (owner 2026-10-27: dragged above Texto
-// principal, its box covered a video that went on playing, sound only).
-const layerOrderOf = (value) => {
-    if (!Array.isArray(value) || value.length !== LAYER_ORDER.length || !LAYER_ORDER.every((k) => value.includes(k))) return null;
-    return [...value.filter((k) => k !== "background"), "background"];
-};
-// The order a renderer stacks by: the state's, the Fundo last, else the default.
-export const stackOrder = (value) => layerOrderOf(value) || [...LAYER_ORDER];
 
 export const SCREEN_MODES = ["show", "black", "logo"];
 // "presentation" (Rodada F3, owner 2026-10-16): a PDF's pages, one picture
@@ -181,10 +176,6 @@ export function emptyState(now = Date.now()) {
         // logo size, the words under it); null: the KERYX gradient and the
         // logo as they always were (owner 2026-10-19).
         idleLook: null,
-        // The stacking of the look layers, top first (Camadas, drag to
-        // reorder). The alert, a video-channel clip and the black/logo
-        // screens always stay above all of them.
-        layerOrder: [...LAYER_ORDER],
         // Layers hidden by Camadas' eye (HIDEABLE_LAYERS). Sending a new item
         // shows its text again; choosing a Fundo shows the Fundo again.
         hiddenLayers: [],
@@ -800,7 +791,8 @@ const OPS = {
         if (revealStep(current) > 0) return OPS["content.reveal"](s, { by: -1 }, now);
         return OPS["content.goTo"](s, { index: current.index - 1 }, now);
     },
-    "content.clear": (s, a, now) => (s.content ? { ...remember(s, now, "content"), content: null, fade: exitFade(a.fade, now) } : null),
+    // The text's hidden flag goes with the text (nothing left to hide).
+    "content.clear": (s, a, now) => (s.content ? { ...remember(s, now, "content"), ...without(s, "content"), content: null, fade: exitFade(a.fade, now) } : null),
 
     // `transition` ({ mode, ms }, SOUND_MODES): how the sound already
     // playing gives way to this one; `volume` / `muted`: how it starts.
@@ -1017,20 +1009,13 @@ const OPS = {
             if (cur[layer]) cur = { ...cur, ...remember(cur, now, layer), [layer]: null };
         }
         if (cur === s) return null;
-        return { ...(cur.history !== s.history ? { history: cur.history } : {}), tool: null, communication: null, content: null, fade: exitFade(a.fade, now) };
+        return { ...(cur.history !== s.history ? { history: cur.history } : {}), ...(s.content ? without(s, "content") : {}), tool: null, communication: null, content: null, fade: exitFade(a.fade, now) };
     },
 
     "overlays.set": (_s, { overlays }) => ({
         overlays: list(overlays ?? [], "Sobreposições", 50).map((o) => loose(o, "Sobreposição")).filter(isPlainObject),
     }),
 
-    // The idle look of the screens: part of the document, so every output
-    // (local windows and network screens) renders the same emptiness.
-    "layers.order": (s, { order }) => {
-        const next = layerOrderOf(order);
-        if (!next) throw new LiveError("Ordem de camadas inválida.");
-        return next.join() === (s.layerOrder || LAYER_ORDER).join() ? null : { layerOrder: next };
-    },
     // Camadas' eye: hide a layer and keep it (hiding works locked, like
     // anything that comes off the air; showing it again does not).
     "layers.hide": (s, { layer }) => {
@@ -1144,7 +1129,6 @@ export function restoreState(saved, now = Date.now(), { afterCrash = false } = {
         alert: layer(saved.alert),
         logo: { ...base.logo, ...(layer(saved.logo) || {}) },
         ...restoreIdle(saved),
-        layerOrder: layerOrderOf(saved.layerOrder) || [...LAYER_ORDER],
         hiddenLayers: hiddenOf(saved.hiddenLayers),
         lockedLayers: lockedOf(saved.lockedLayers),
         defaultBackground: savedBackground(saved.defaultBackground),

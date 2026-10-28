@@ -310,6 +310,10 @@ test("layer: hiding works locked, showing does not; the corner logo is refused l
     const open = fakeConsole();
     await run(open, "layer", { which: "corner", on: true });
     assert.deepEqual(open.calls.at(-1), ["callOp", "logo.set", { visible: true }]);
+    assert.equal((await run(open, "layer", { which: "corner", on: false })).message, "Celular: Logo no canto escondido.");
+    // The Fundo's switch (K5 = A, 2026-10-28): only while there is a Fundo.
+    assert.equal((await run(open, "layer", { which: "bg", on: false })).code, "nothing");
+    open.cur = { ...open.cur, background: { kind: "color", value: "#123456" } };
     await run(open, "layer", { which: "bg", on: true });
     assert.deepEqual(open.calls.at(-1), ["callOp", "layers.show", { layer: "background" }]);
     assert.equal((await run(open, "layer", { which: "video", on: false })).code, "nothing");

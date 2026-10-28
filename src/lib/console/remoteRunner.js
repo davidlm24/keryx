@@ -35,7 +35,7 @@ const ok = (message, data) => ({ ok: true, message, ...(data !== undefined ? { d
 
 // Where the phone's Camadas switches go.
 const LAYER_OF = { text: "content", bg: "background" };
-const LAYER_WORD = { text: "Texto", bg: "Fundo", corner: "Logo" };
+const LAYER_WORD = { text: "Texto", bg: "Fundo", corner: "Logo no canto" };
 const OFF_WORD = { tool: "relógio / timer", communication: "aviso", media: "mídia", video: "vídeo", audio: "som", content: "texto" };
 const TOOL_WORD = { clock: "o relógio", stopwatch: "o cronômetro" };
 const FOLLOW_WORD = { start: "letra automática iniciada", pause: "letra automática pausada", resume: "letra automática retomada" };
@@ -224,8 +224,10 @@ export const REMOTE_HANDLERS = {
     layer: {
         // The corner logo is logo.set, which the live state refuses while locked either way.
         locks: ({ args }) => args.which === "corner",
-        run: async ({ d, args }) => {
+        run: async ({ d, live, args }) => {
+            // "video" stays in the contract (additive only) but no page sends it since 2026-10-28.
             if (args.which === "video") return fail("nothing", "O celular ainda não controla a camada de vídeo.");
+            if (args.which === "bg" && !live?.background) return fail("nothing", "Nada no Fundo.");
             if (args.which === "corner") await d.callOp("logo.set", { visible: args.on });
             else await d.callOp(args.on ? "layers.show" : "layers.hide", { layer: LAYER_OF[args.which] });
             return ok(remoteSay("layer", `${LAYER_WORD[args.which]} ${args.on ? "mostrado" : "escondido"}`));

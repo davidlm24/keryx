@@ -10,13 +10,16 @@ test("an empty live state takes the church's logo look and idle screen", () => {
     assert.deepEqual(seedOps({ idle_mode: "background", standby_background: "keryx-media://a.png" }), [["idle.set", { mode: "background", url: "keryx-media://a.png" }]]);
     assert.deepEqual(seedOps({ idle_mode: "background" }), [], "no picture: the logo stays");
     assert.deepEqual(seedOps({ logo_corner: "middle", logo_opacity: 1, idle_mode: "logo" }), [], "bad or default values add nothing");
+    // The free width and the distance from the corner (Configurações › Igreja since K4).
+    assert.deepEqual(seedOps({ logo_width: 12, logo_margin: 6 }), [["logo.set", { width: 12, margin: 6 }]]);
+    assert.deepEqual(seedOps({ logo_width: 40, logo_margin: 3 }), [], "out of range, or the default margin, add nothing");
 });
 
 test("the seed is valid for the live-state rules", async () => {
     const rules = await loadLiveRules();
     let s = rules.emptyState(1);
-    for (const [op, args] of seedOps({ logo_corner: "top-right", logo_size: "small", logo_opacity: 0.4, idle_mode: "black" })) s = rules.applyOp(s, op, args, 1);
-    assert.deepEqual([s.logo.corner, s.logo.size, s.logo.opacity, s.idle], ["top-right", "small", 0.4, "black"]);
+    for (const [op, args] of seedOps({ logo_corner: "top-right", logo_size: "small", logo_opacity: 0.4, logo_width: 10, logo_margin: 1.5, idle_mode: "black" })) s = rules.applyOp(s, op, args, 1);
+    assert.deepEqual([s.logo.corner, s.logo.size, s.logo.opacity, s.logo.width, s.logo.margin, s.idle], ["top-right", "small", 0.4, 10, 1.5, "black"]);
     assert.equal(s.logo.visible, false, "the logo is not put on air");
 });
 

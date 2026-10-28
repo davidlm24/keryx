@@ -7,7 +7,8 @@ import { SendLaunchers } from "./liveParts";
 
 // Mais: Enviar (Slides, Aviso, Timer: Rodada Q moved them from Ao vivo),
 // Travar telas (a tap; destravar is held, owner's pick "segurar"),
-// Camadas (the main text, the logo in the corner, the video screens), and
+// Camadas (the main text, the logo in the corner, the Fundo while there is
+// one; owner 2026-10-28, K5 = A: the Vídeo switch never worked), and
 // this phone's own: Travar toques, Manter a tela ligada, the version.
 export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefresh }) {
     const locked = Boolean(live?.locked);
@@ -42,7 +43,7 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
                     <h2 className="rm-sec">Camadas</h2>
                     <Toggle title="Texto principal" sub="A letra ou o versículo no ar" {...layer("text", !hidden.includes("content"))} />
                     <Toggle title="Logo no canto" sub="O logo da igreja sobre a tela" {...layer("corner", Boolean(live?.logo?.visible))} />
-                    {live?.video && <Toggle title="Vídeo" sub="O vídeo nas telas de vídeo" {...layer("video", !hidden.includes("video"))} />}
+                    {live?.background && <Toggle title="Fundo" sub="O papel de parede ou o fundo do item" {...layer("bg", !hidden.includes("background"))} />}
                 </>
             )}
 

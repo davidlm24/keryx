@@ -6,6 +6,8 @@ import { Btn, Field, Seg } from "../kx";
 import { FormRow } from "./parts";
 
 const CORNERS = [["bottom-right", "Baixo dir."], ["bottom-left", "Baixo esq."], ["top-right", "Alto dir."], ["top-left", "Alto esq."]];
+// The width each size draws (% of the screen), where the slider starts.
+const WIDTH_OF = { small: 5, medium: 8, large: 12 };
 
 // Igreja: the name, the city and the logo (the corner of the screens, the
 // idle screen and Mostrar logo). On the local profile (User).
@@ -50,6 +52,16 @@ export default function IgrejaSection({ c }) {
         if (c.locked) { c.say("Salvo. As telas estão travadas: o logo muda quando destravar e mudar de novo."); return; }
         c.liveOp("logo.set", op).then(() => c.say("Logo das telas atualizado."), () => {});
     };
+    // The free width: the slider moves a local value and saves once, when the
+    // hand lets go (a save and a toast per step would flood both).
+    const [draftWidth, setWidth] = useState(null);
+    const width = draftWidth ?? prefs.logo_width;
+    const commitWidth = () => {
+        if (draftWidth == null) return;
+        const w = draftWidth;
+        setWidth(null);
+        if (w !== prefs.logo_width) setLogo({ logo_width: w }, { width: w });
+    };
     const pickLogo = async (file) => {
         if (!file) return;
         setBusy(true);
@@ -79,9 +91,16 @@ export default function IgrejaSection({ c }) {
                 <select className="cfg-select" value={prefs.logo_corner} aria-label="Canto do logo" onChange={(e) => setLogo({ logo_corner: e.target.value }, { corner: e.target.value })}>
                     {CORNERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
-                <Seg small label="Tamanho do logo" value={prefs.logo_size} options={[["small", "P"], ["medium", "M"], ["large", "G"]]} onChange={(v) => setLogo({ logo_size: v }, { size: v })} />
+                <Seg small label="Tamanho do logo" value={prefs.logo_width ? "" : prefs.logo_size} options={[["small", "P"], ["medium", "M"], ["large", "G"]]} onChange={(v) => setLogo({ logo_size: v, logo_width: null }, { size: v, width: null })} />
                 <Seg small label="Opacidade do logo" value={String(prefs.logo_opacity)} options={[["1", "100%"], ["0.7", "70%"], ["0.4", "40%"]]} onChange={(v) => setLogo({ logo_opacity: Number(v) }, { opacity: Number(v) === 1 ? null : Number(v) })} />
-                <span className="kx-meta">vale já nas telas; Camadas muda só por agora</span>
+                <span className="kx-meta">vale já nas telas; Camadas troca só o canto, por agora</span>
+            </FormRow>
+            {/* The logo's whole look lives here (owner 2026-10-28, Camadas K4 = A). */}
+            <FormRow k="Largura e margem do logo">
+                <input type="range" min={4} max={30} step={1} value={width ?? WIDTH_OF[prefs.logo_size] ?? 8} aria-label="Largura do logo (% da tela)"
+                    onChange={(e) => setWidth(Number(e.target.value))} onPointerUp={commitWidth} onKeyUp={commitWidth} onBlur={commitWidth} style={{ width: 140 }} />
+                <span className="kx-meta" style={{ minWidth: 34 }}>{width != null ? `${width}%` : "pelo tamanho"}</span>
+                <Seg small label="Margem do logo" value={String(prefs.logo_margin)} options={[["1.5", "Junto"], ["3", "Normal"], ["6", "Afastado"]]} onChange={(v) => setLogo({ logo_margin: Number(v) }, { margin: Number(v) === 3 ? null : Number(v) })} />
             </FormRow>
         </div>
     );

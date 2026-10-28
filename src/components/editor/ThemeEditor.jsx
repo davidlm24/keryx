@@ -423,7 +423,7 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                         </div>
                     </div>
                     <div className="listhead nv-note">
-                        <span className="kx-meta">A caixa é onde a letra se encaixa: arraste para as 9 posições; as alças mudam a largura. No ar, o ajuste feito em Camadas continua valendo por cima do tema.</span>
+                        <span className="kx-meta">A caixa é onde a letra se encaixa: arraste para as 9 posições; as alças mudam a largura.</span>
                     </div>
                 </Panel>
             </div>

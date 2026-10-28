@@ -116,7 +116,7 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
             <span className="pp-sep kx-pill-sep pp-full" aria-hidden="true" />
             <span className="pp-btns kx-pill-btns pp-full">
                 {btn({ className: `pp-hist ${histOpen ? "is-on" : ""}`, onClick: onHist, "aria-label": "Voltar ao anterior", "aria-expanded": histOpen, title: "Voltar ao anterior · o que esteve no ar há pouco" }, "undo")}
-                {camadas && btn({ className: `pp-camadas ${camadas.open ? "is-on" : ""}`, onClick: camadas.onToggle, "aria-label": "Camadas", "aria-expanded": camadas.open, title: "Camadas: tema, papel de parede, logo e sobreposições do que está no ar" }, "layers")}
+                {camadas && btn({ className: `pp-camadas ${camadas.open ? "is-on" : ""}`, onClick: camadas.onToggle, "aria-label": "Camadas", "aria-expanded": camadas.open, title: "Camadas: o fundo, o texto, o logo no canto e as sobreposições do que está no ar" }, "layers")}
             </span>
             {btn({ className: "pp-more", onClick: onMore, "aria-label": "Mais ações do Programa", "aria-haspopup": "menu", title: "Tela preta, logo, limpar, voltar ao anterior, Camadas e encerrar" }, "more")}
             {btn({ className: `mx-toggle ${multiviewOn ? "is-on" : ""}`, onClick: onMultiview, "aria-label": "Multiview", "aria-pressed": multiviewOn, title: multiviewOn ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar" }, "grid")}
