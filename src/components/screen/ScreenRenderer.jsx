@@ -3,7 +3,7 @@ import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
 import VideoStill from "./VideoStill";
 import AlertBar from "./AlertBar";
-import { mainLayer, currentSlide, nextSlide, toolTime, layerHidden, layerLocked, stackOrder } from "@shared/live-state.mjs";
+import { mainLayer, currentSlide, nextSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect, typography } from "@/lib/deviceStyles";
 import { sizeCqw } from "@/lib/textSize";
 import { fontStack } from "@/lib/fonts";
@@ -93,9 +93,8 @@ function Screen({ state, now, logoUrl = "", preview = false, motion = false, aud
     const covered = underLayer === "black" || underLayer === "logo";
     const sameFundo = Boolean(ghost) && !covered && bgKey(state, layer) === bgKey(under, underLayer);
     const fadeOut = ghost ? { at: ghost.at, until: ghost.until } : null;
-    // The look layers stack as the operator ordered them (Camadas): top first.
-    const order = stackOrder(state.layerOrder);
-    const z = (k) => 10 * (order.length - order.indexOf(k));
+    // The look layers stack in the program's one order, top first (LAYER_ORDER).
+    const z = (k) => 10 * (LAYER_ORDER.length - LAYER_ORDER.indexOf(k));
     // Nothing on air: the Fundo layer stays on screen (Esc takes the text
     // and the media, not the Fundo); the idle look only when there is none.
     const fundo = Boolean(state.background) && !layerHidden(state, "background");

@@ -15,6 +15,10 @@ function seedOps(user) {
     if (SIZES.includes(user?.logo_size)) logo.size = user.logo_size;
     const opacity = Number(user?.logo_opacity);
     if (user?.logo_opacity != null && Number.isFinite(opacity) && opacity >= 0.2 && opacity < 1) logo.opacity = opacity;
+    const width = Number(user?.logo_width);
+    if (user?.logo_width != null && Number.isFinite(width) && width >= 4 && width <= 30) logo.width = Math.round(width);
+    const margin = Number(user?.logo_margin);
+    if (user?.logo_margin != null && Number.isFinite(margin) && margin >= 1 && margin <= 10 && margin !== 3) logo.margin = margin;
     if (Object.keys(logo).length) ops.push(["logo.set", logo]);
     // A background idle screen needs its picture: the church's standby one.
     if (user?.idle_mode === "background" && user?.standby_background) ops.push(["idle.set", { mode: "background", url: user.standby_background }]);

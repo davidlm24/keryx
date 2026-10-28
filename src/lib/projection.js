@@ -66,16 +66,8 @@ export const projection = {
     clearCommunication: op("communication.clear"),
 
 
-    // Under everything: { kind: "image" | "video" | "color", value }.
-    setBackground: op("background.set"),
-    clearBackground: op("background.clear"),
-    setOverlays: (overlays) => keryx.live.call("overlays.set", { overlays }),
     alert: (message, type = "alert") => keryx.live.call("alert.show", { message, type }),
     clearAlert: op("alert.clear"),
-
-    // The church logo as a corner mark over the content:
-    // { visible, corner: "top-left" | "top-right" | "bottom-left" | "bottom-right", size: "small" | "medium" | "large" }
-    setLogo: op("logo.set"),
 
     // "show" | "black" | "logo"; `fade` (ms): it comes and goes with the exit fade.
     setScreen: (mode, { fade } = {}) => keryx.live.call("screen.set", { mode, fade }),

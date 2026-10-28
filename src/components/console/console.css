@@ -486,16 +486,19 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The tiles are cards: 4 px in from the column (2 px here and the grid's
    own 2 px, which keeps the ring of the theme in use whole). */
 .console :is(.temas-panel, .layer-temas) .tm { padding: 0 2px 2px; }
-/* The pencil on a layer: where it is edited; shown on hover or focus. */
-.console .kx-layer { grid-template-columns: 16px 20px 20px minmax(0, 1fr) 24px; }
+/* A layer row (owner 2026-10-28, Camadas K1/K2 = A: no grip, the order is
+   the program's): the eye, the Fundo's padlock (an empty slot on the other
+   rows, so the names line up), the name, the pencil — where it is edited,
+   shown on hover or focus. */
+.console .kx-layer { grid-template-columns: 20px 20px minmax(0, 1fr) 24px; }
+.console .kx-layer .kx-btn.is-locked { color: var(--fg-1); }
 /* Camadas › Sobreposições (owner 2026-10-14): one row per overlay, its text
-   as the name; with 2+ they join under a thin heading — the group's handle in
-   the layer order — behind an inset bar. The top row draws on top on screen. */
-.console .kx-ovhead { display: flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-3); cursor: grab; }
-.console .kx-ovhead .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; width: 16px; }
+   as the name; with 2+ they join under a thin heading behind an inset bar.
+   The top row draws on top on screen. */
+.console .kx-ovhead { display: flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-3); }
 .console .kx-ovhead .kx-section { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .kx-ovhead .kx-count { font-weight: 400; color: var(--fg-3); }
-.console .kx-layer.is-ov { grid-template-columns: 10px 20px 20px minmax(0, 1fr) 24px; width: auto; margin-left: 14px; padding-left: 6px; border-left: 2px solid var(--line-strong); }
+.console .kx-layer.is-ov { width: auto; margin-left: 14px; padding-left: 6px; border-left: 2px solid var(--line-strong); }
 .console .kx-layer .kx-layer-name.is-ph { color: var(--fg-3); }
 .console .kx-layer .layer-edit { opacity: 0; transition: opacity .12s; }
 .console .kx-layer:hover .layer-edit, .console .kx-layer .layer-edit:focus-visible { opacity: 1; }
@@ -742,8 +745,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .is-sorting > [data-sort-row][data-sort-slot]::before { opacity: 0; }
 .console .is-sorting > [data-sort-row][data-sort-slot]::after,
 .console .kx-sort-slot { content: ""; position: absolute; inset: 1px var(--space-1); z-index: var(--z-screen); border-radius: var(--radius-control); background: color-mix(in srgb, var(--brand) 16%, var(--bg-1)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 60%, transparent); pointer-events: none; }
-/* A card row (Setlist, Camadas) is the slot itself: its margins are the inset. */
-.console .is-sorting > :is(.kx-row, .kx-layer)[data-sort-row][data-sort-slot]::after { inset: 0; }
+/* A card row (Setlist) is the slot itself: its margins are the inset. */
+.console .is-sorting > .kx-row[data-sort-row][data-sort-slot]::after { inset: 0; }
 .console .kx-sort-slot { inset: auto var(--space-1); transition: top 180ms var(--ease-out); animation: kx-slot-in 120ms var(--ease-out); }
 @keyframes kx-slot-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .console .is-sorting > [data-sort-row], .console .kx-sort-slot { transition: none; animation: none; } }

@@ -447,11 +447,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   ticking clock (it replayed the transition every second).
   Camadas' padlock on the Fundo is the live state's (`layers.lock`,
   `lockedLayers`; refuses `background.set`/`.clear` from anyone, and the
-  renderer leaves a song's own picture out). **The Fundo is always the
-  bottom layer** (2026-10-27: dragged above Texto principal, its box hid a
-  video that played on, sound only): `layers.order` and `restoreState`
-  put `background` last whatever comes in, renderers stack by
-  `stackOrder`, and Camadas' Fundo row neither drags nor has Subir/Descer.
+  renderer leaves a song's own picture out). **The layer order is the
+  program's, fixed** (owner 2026-10-28, Camadas K1 = A, as in ProPresenter
+  and Holyrics; on 27/10 a Fundo dragged above Texto principal hid a video
+  that played on, sound only): `LAYER_ORDER` in shared/live-state.mjs —
+  Logo no canto, Sobreposições, Texto principal, Fundo — stacks every
+  screen; there is no `layers.order` op or `live.layerOrder` any more (an
+  old saved order is dropped by `restoreState`), and Camadas has no grips,
+  no drag and no Subir/Descer. **Only the Fundo has a padlock** (K2 = A):
+  the others only greyed a form on one computer. Don't bring reordering or
+  per-computer padlocks back.
   A background is one spec
   everywhere, `{ kind: image|video|generator|color, value, gen?, dim?, blur?, fit? }`
   (`bgSpec` reads `Song.background`/`ProjectionTheme.background` and the
@@ -529,9 +534,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Nothing else in the body: no "tema do culto" line, no buttons.
   **Camadas edits no look**: the layers come first, each with a pencil on
   hover; **the settings under the list stay folded until a pencil opens
-  them** (owner 2026-10-14; a click on the row only selects it) — Logo
-  (with "Logo da igreja…", Configurações › Igreja), Sobreposição (its text
-  field), Texto principal (the item's Título and "Editar tema…", the theme
+  them** (owner 2026-10-14; a click on the row only selects it) — **Logo
+  no canto** (K4 = A, 2026-10-28; named so beside the full-screen Logo, the
+  L key): only its Canto and "Logo da igreja…" — its size, free width,
+  opacity and margin live in Configurações › Igreja alone (`User.logo_size`,
+  `logo_width`, `logo_opacity`, `logo_margin`; `seedOps` in
+  electron/liveSeed.cjs) —, Sobreposição (its text field), Texto principal (the item's Título and "Editar tema…", the theme
   in use in the Editor de temas); the Fundo's pencil (and the row's right
   click) opens a menu, never the library blind: its title names whose
   background the screen shows now — the culto's papel de parede, the
@@ -541,12 +549,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   2026-10-14 — the Programa's header button is gone; in the medium/narrow
   tiers the Camadas drawer of the Programa's pill keeps the pencil reachable)
   and "Qualquer outro culto…" (Configurações › Culto); the Fundo layer
-  still has no options (the row keeps its eye, padlock and place). The text look is edited only in the Editor de
+  still has no options (the row keeps its eye and padlock). The text look is edited only in the Editor de
   temas; when the text on air looks otherwise (a song's own look) Texto
   principal says so and offers Restaurar (`applyThemeOnAir`) and Salvar
   como novo (an unnamed theme). Camadas' header **+** is a menu with TWO items only
-  (owner 2026-10-14, "Frente 2 = A"): Sobreposição de texto and Logo da
-  igreja. Principle: *Camadas put or take elements over the projection
+  (owner 2026-10-14, "Frente 2 = A"): Sobreposição de texto and Logo no
+  canto. Principle: *Camadas put or take elements over the projection
   that are not in the themes; the Editor de telas is the permanent design
   of one type of screen.* Relógio, Cronômetro, Timer, Texto livre and
   Aviso rápido are not layers' business: they stay in the tabs panel
@@ -554,14 +562,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   them back in Camadas' +. **Sobreposição de texto always makes a NEW
   overlay** (owner 2026-10-14, "adicionar camadas a mais"), up to 5
   (`OVERLAY_LIMIT` in `src/lib/console/overlays.js`, tested; the menu item
-  disables at the limit). Each overlay is its own row named by its text
-  ("Sobreposição", muted, while empty), with eye, local padlock, pencil
-  (Texto, Posição) and Excluir… via `useConfirm`; with 2+ the rows join
-  under a thin "Sobreposições · n" heading (`.kx-ovhead`) — the group's one
-  handle in `live.layerOrder` (the "overlays" key stays one entry; never
-  put single overlays in the order) — and dragging a row inside the group
-  only changes who draws on top among them (the top row is the END of
-  `live.overlays`: the renderer draws the list in order). Esc and Limpar
+  disables at the limit). **Prepared, then put on air** (owner 2026-10-28,
+  K3 = A, as ProPresenter's Props): a new one is born OFF the air with no
+  text (`newOverlay`: `enabled: false`, `content: ""`), its field is a
+  draft the screens never see being typed — Enter puts it on air (or
+  updates it), leaving the field saves it; one with no text never goes on
+  air. Each overlay is its own row named by its text ("Sobreposição ·
+  sem texto", muted, while empty), with eye, pencil (Texto; Altura Alto |
+  Baixo and Lado Esq. | Centro | Dir., six places, `overlayPlace`/`placeAt`)
+  and Excluir… via `useConfirm`; with 2+ the rows join under a thin
+  "Sobreposições · n" heading (`.kx-ovhead`), the newest on top (the top
+  row is the END of `live.overlays`: the renderer draws the list in
+  order); nothing drags. Esc and Limpar
   leave overlays alone (their own controls, like the Logo). The tools
   of the tabs panel are prepared in the Prévia (`stageFromTool`), the aviso
   goes to the screens at once (`alert.show`); a text is asked with
@@ -1311,7 +1323,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Enter, a **double click** or the Prévia's menu "Enviar ao ar" sends it
   (user decision 2026-10-07; dragging a library row onto the Prévia prepares, onto the
   Programa sends, onto the Setlist adds a ServiceItem). **Dragging in a
-  list** (the Setlist, the planner, Camadas, the Editor's elements; Rodada
+  list** (the Setlist, the planner, the Editor's elements; Rodada
   E2, owner 2026-10-16) is `useSortable` + `dragGhost.js`: a card of the
   row's size (icon, title, time) follows the pointer — the browser gets a
   transparent drag image, the card lives on `<body>` — a gold slot lights

@@ -2040,6 +2040,12 @@
         "logo_opacity": {
           "type": "real"
         },
+        "logo_width": {
+          "type": "real"
+        },
+        "logo_margin": {
+          "type": "real"
+        },
         "idle_mode": {
           "type": "text"
         },

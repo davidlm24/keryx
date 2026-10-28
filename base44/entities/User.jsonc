@@ -143,6 +143,14 @@
       "type": "number",
       "description": "Logo nas telas: opacidade, 0.2 a 1. Nulo = 1"
     },
+    "logo_width": {
+      "type": "number",
+      "description": "Logo nas telas: largura livre, 4 a 30 (% da largura da tela), no lugar do tamanho. Nulo = pelo tamanho"
+    },
+    "logo_margin": {
+      "type": "number",
+      "description": "Logo nas telas: distancia do canto, 1 a 10 (% da largura). Nulo = 3"
+    },
     "idle_mode": {
       "type": "string",
       "enum": ["logo", "black", "background"],

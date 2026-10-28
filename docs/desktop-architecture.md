@@ -379,9 +379,10 @@ the times; the top bar's service clock stays.)
   carries its own reference, `slide.ref` in the live state), so ←/→ keep
   walking the chapter; a range picked on purpose goes out as that passage.
   The Bible column shows "No ar agora" only (no Prévia).
-- **Layer order:** `live.layerOrder` (top first: logo, overlays, content,
-  background; op `layers.order`) stacks the look layers on every screen;
-  Camadas reorders them by dragging. Alert, video-channel cover and
+- **Layer order:** fixed, the program's (`LAYER_ORDER`, top first: logo,
+  overlays, content, background) on every screen; nobody reorders it (owner
+  2026-10-28, Camadas K1 = A — the `layers.order` op and `live.layerOrder`
+  are gone, an old saved order is dropped). Alert, video-channel cover and
   black/logo stay above all.
 - **Editor de música** is a view inside the console (`SongEditor.jsx`,
   canvas artboard 16), opened from Biblioteca › Letras (Editar, "+ › Nova

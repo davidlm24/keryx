@@ -45,6 +45,11 @@ export const PREF_FIELDS = {
     logo_corner: { default: "bottom-right", normalize: oneOf(["top-left", "top-right", "bottom-left", "bottom-right"], "bottom-right") },
     logo_size: { default: "medium", normalize: oneOf(["small", "medium", "large"], "medium") },
     logo_opacity: { default: 1, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) && n >= 0.2 && n <= 1 ? n : 1; } },
+    // Camadas K4 = A (owner 2026-10-28): the logo's whole look lives here,
+    // Camadas keeps only its eye and corner. A free width (% of the screen's
+    // width, over the size; null = by the size) and the distance from the corner.
+    logo_width: { default: null, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) && n >= 4 && n <= 30 ? Math.round(n) : null; } },
+    logo_margin: { default: 3, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) && n >= 1 && n <= 10 ? n : 3; } },
     idle_mode: { default: "logo", normalize: oneOf(["logo", "black", "background"], "logo") },
     // The Tela ociosa's look (shared/idleLook.mjs); null = as it always was.
     idle_look: { default: null, normalize: (v) => { const l = idleLookOf(v); return l && !isDefaultIdleLook(l) ? l : null; } },

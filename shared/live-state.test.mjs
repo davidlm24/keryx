@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
     applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, playbackGain, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, FOLLOW_SOURCES,
-    activitySteps, revealStep, revealOf, stackOrder,
+    activitySteps, revealStep, revealOf, LAYER_ORDER, layerHidden,
 } from "./live-state.mjs";
 
 const T0 = 1_000_000;
@@ -343,30 +343,26 @@ test("the Fundo padrão: Esc puts it on the Fundo; none, the Fundo stays", () =>
     assert.throws(() => applyOp(s, "background.default", { background: { kind: "image" } }, T0), LiveError);
 });
 
-test("layer order: the operator stacks the look layers", () => {
-    let s = emptyState(T0);
-    assert.deepEqual(s.layerOrder, ["logo", "overlays", "content", "background"]);
-    s = applyOp(s, "layers.order", { order: ["content", "logo", "overlays", "background"] }, T0);
-    assert.deepEqual(s.layerOrder, ["content", "logo", "overlays", "background"]);
-    assert.equal(applyOp(s, "layers.order", { order: [...s.layerOrder] }, T0), s, "same order: no change");
-    assert.throws(() => applyOp(s, "layers.order", { order: ["logo", "content"] }, T0), LiveError);
-    assert.throws(() => applyOp(s, "layers.order", { order: ["logo", "logo", "content", "background"] }, T0), LiveError);
-    assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0).layerOrder, s.layerOrder, "survives a restart");
+test("layer order: the program's, fixed, the Fundo under everything", () => {
+    // Owner 2026-10-28 (Camadas K1 = A): nobody reorders the layers any more.
+    assert.deepEqual(LAYER_ORDER, ["logo", "overlays", "content", "background"]);
+    assert.ok(!OP_NAMES.includes("layers.order"), "the op is gone");
+    assert.throws(() => applyOp(emptyState(T0), "layers.order", { order: [...LAYER_ORDER] }, T0), LiveError);
+    assert.equal("layerOrder" in emptyState(T0), false);
+    // A state saved with an order of its own (before 2026-10-28) drops it.
+    const old = { ...JSON.parse(JSON.stringify(emptyState(T0))), layerOrder: ["logo", "background", "overlays", "content"] };
+    assert.equal("layerOrder" in restoreState(old, T0), false);
 });
 
-test("layer order: the Fundo always stays under everything", () => {
-    // Above Texto principal its box covered a video that played on, sound only.
-    let s = applyOp(emptyState(T0), "layers.order", { order: ["logo", "background", "overlays", "content"] }, T0);
-    assert.deepEqual(s.layerOrder, ["logo", "overlays", "content", "background"]);
-    s = applyOp(s, "layers.order", { order: ["background", "content", "logo", "overlays"] }, T0);
-    assert.deepEqual(s.layerOrder, ["content", "logo", "overlays", "background"]);
-    // A state saved before the rule comes back with the Fundo last.
-    const old = { ...JSON.parse(JSON.stringify(s)), layerOrder: ["logo", "overlays", "background", "content"] };
-    assert.deepEqual(restoreState(old, T0).layerOrder, ["logo", "overlays", "content", "background"]);
-    // What a renderer stacks by: the same, and the default for anything else.
-    assert.deepEqual(stackOrder(["background", "logo", "content", "overlays"]), ["logo", "content", "overlays", "background"]);
-    assert.deepEqual(stackOrder(undefined), ["logo", "overlays", "content", "background"]);
-    assert.deepEqual(stackOrder(["logo"]), ["logo", "overlays", "content", "background"]);
+test("hidden text: the flag goes with the text", () => {
+    // Hidden, then cleared (Limpar or a single clear): nothing stays hidden.
+    const hidden = run([["content.show", song], ["layers.hide", { layer: "content" }]]);
+    assert.ok(layerHidden(hidden, "content"));
+    assert.equal(layerHidden(applyOp(hidden, "text.clear", {}, T0), "content"), false);
+    assert.equal(layerHidden(applyOp(hidden, "content.clear", {}, T0), "content"), false);
+    // The Fundo's hidden flag is not the text's.
+    const both = applyOp(run([["background.set", { kind: "color", value: "#123456" }]], hidden), "layers.hide", { layer: "background" }, T0);
+    assert.deepEqual(applyOp(both, "text.clear", {}, T0).hiddenLayers, ["background"]);
 });
 
 test("Travar telas: nothing new goes on while locked, anything can come off", () => {

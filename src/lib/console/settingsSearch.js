@@ -18,7 +18,8 @@ export const SETTINGS_INDEX = [
     e("igreja", "Nome", "o nome da igreja", ["igreja", "título"]),
     e("igreja", "Cidade", "a cidade da igreja"),
     e("igreja", "Logo", "no canto das telas, na tela ociosa e em Mostrar logo", ["logotipo", "marca", "imagem"]),
-    e("igreja", "Logo nas telas", "o canto, o tamanho e a opacidade do logo", ["canto", "tamanho", "opacidade", "transparente", "mostrar logo"]),
+    e("igreja", "Logo nas telas", "o canto, o tamanho e a opacidade do logo", ["canto", "tamanho", "opacidade", "transparente", "mostrar logo", "logo no canto", "marca d'água"]),
+    e("igreja", "Largura e margem do logo", "uma largura livre no lugar do tamanho, e a distância do canto", ["largura", "margem", "distância", "logo no canto", "Junto", "Afastado"]),
 
     e("telas", "Identificar telas", "os monitores ligados e o número de cada um", ["Telas", "monitores", "monitor", "projetor", "tv", "número"]),
     e("telas", "Saídas", "as saídas, uma a uma: abrir e fechar aqui; a tela onde cada uma abre fica no Editor, em Destino", ["projeção", "letras", "vídeo", "comunicação", "palco", "pastor", "tela cheia", "janela", "trazer para a frente", "fechar", "abrir"]),
