@@ -5,8 +5,9 @@
 // imported, so the bundle carries these and no others.
 //
 // A new icon is one import and one entry in ICON_NODES, never an inline SVG.
-// Three are our own (Lucide has no twin): black (Tela preta), logo (the Logo
-// on screen) and synced (a song synced to its media), drawn in the same
+// Our own: black (Tela preta), logo (the Logo
+// on screen) and synced (a song synced to its media), which Lucide lacks,
+// and prev and planner, two of Lucide's packed into one path; drawn in the same
 // format and box as Lucide's.
 import {
     AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Bell, Book, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight,
@@ -37,6 +38,15 @@ const Synced = [
     ["path", { d: "M3 6h12M3 11h8M3 16h5" }],
     ["circle", { cx: "17", cy: "16", r: "5" }],
     ["path", { d: "M17 13.5V16l1.5 1" }],
+];
+
+// The Prévia (owner 2026-10-28, P1 = A): Lucide's scan, a viewfinder's
+// four corners, as one path (the outputs' budget counts every byte).
+const Prev = [["path", { d: "M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" }]];
+// Planejar o culto (I4 = A): Lucide's clipboard-list, the same way.
+const Planner = [
+    ["rect", { x: "8", y: "2", width: "8", height: "4", rx: "1" }],
+    ["path", { d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11h4M12 16h4M8 11h.01M8 16h.01" }],
 ];
 
 export const ICON_NODES = {
@@ -131,6 +141,11 @@ export const ICON_NODES = {
     alignCenter: AlignCenter,
     alignRight: AlignRight,
     alignJustify: AlignJustify,
+    // One glyph per thing (owner 2026-10-28, marks P1 = A, I4 = A): the
+    // Prévia — a camera's viewfinder: what goes out, framed; never the eye,
+    // which only shows or hides — and Planejar o culto, the culto's roteiro.
+    prev: Prev,
+    planner: Planner,
 };
 
 export const ICON_NAMES = Object.keys(ICON_NODES);

@@ -268,7 +268,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             head = (
                 <div className="dock-tabs" role="tablist" onKeyDown={onTabsKey}>
                     {f.tabs.map((id) => (
-                        <button key={id} type="button" role="tab" aria-selected={id === active} tabIndex={id === active ? 0 : -1} className={`dock-tab ${id === active ? "is-on" : ""}`} onClick={() => pick(id)}>{nameOf(id)}</button>
+                        <button key={id} type="button" role="tab" aria-selected={id === active} tabIndex={id === active ? 0 : -1} className={`dock-tab ${id === active ? "is-on" : ""}`} onClick={() => pick(id)}>{MODULES[id]?.icon && <Icon name={MODULES[id].icon} className="dock-tab-i" />}{nameOf(id)}</button>
                     ))}
                 </div>
             );

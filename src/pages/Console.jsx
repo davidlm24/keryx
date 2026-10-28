@@ -349,6 +349,8 @@ export default function Console() {
     // "Selecionar vários" in the Biblioteca (its button is the header's; the
     // selection itself is Library.jsx's, useMultiSelect).
     const [libPicking, setLibPicking] = useState(false);
+    // The header slot the Biblioteca's + is drawn into (Library, a portal; I2 = A).
+    const [libAddSlot, setLibAddSlot] = useState(null);
     const [setlistPicking, setSetlistPicking] = useState(false);
     const [libTab, setLibTab] = useState(() => {
         try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "letras"; } catch { return "letras"; }
@@ -1261,7 +1263,7 @@ export default function Console() {
         // The count is only "n itens · tempo" (Rodada O3): the culto's name is
         // the header's tooltip (with no items too), and Planejar o culto's.
         <Panel title="Setlist" className={`setlist-panel ${coverCls}`} tip={service?.title} count={!service ? "nenhum culto" : setPlan.count ? `${setPlan.count} ${setPlan.count === 1 ? "item" : "itens"} · ${total(setPlan.seconds)}` : null}
-            actions={<>{coverTag}<SelectManyBtn on={setlistPicking} onToggle={setSetlistPicking} /><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+            actions={<>{coverTag}{setlistPicking && <SelectManyBtn on onToggle={setSetlistPicking} />}<IconBtn name="planner" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} media={data.media} askText={askText} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
             <SetlistFooter autoplay={{ on: Boolean(service?.autoplay), onChange: setAutoplay }} prev={stepNb.prev} next={stepNb.next} onStep={stepSetlist} />
@@ -1320,15 +1322,18 @@ export default function Console() {
         <Panel title="Biblioteca" actions={<>
             {/* The header holds the doors (owner's pick, Rodada H, H1): the
                 media library, a page of its own, one click away on every tab,
-                then the chooser of what shows here (the eye). The search row
-                keeps Buscar, ☆ and the + that adds. */}
-            <SelectManyBtn on={libPicking} onToggle={setLibPicking} />
+                then the + (the Library's menu, through this slot) and the
+                chooser of what shows here (the eye) — every header's order:
+                its own actions, +, eye, fold (owner 2026-10-28, I2 = A).
+                "Selecionar vários" shows only while it is on (I3 = A). */}
+            {libPicking && <SelectManyBtn on onToggle={setLibPicking} />}
             <IconBtn name="media" small title="Abrir a Biblioteca de mídia" aria-label="Abrir a Biblioteca de mídia" onClick={() => openMedia()} />
+            <span className="lib-add-slot" ref={setLibAddSlot} />
             <TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />
         </>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Library c={c} data={data} askText={askText} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
                 onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
-                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} picking={libPicking} setPicking={setLibPicking} />
+                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} picking={libPicking} setPicking={setLibPicking} addSlot={libAddSlot} />
         </Panel>
     );
     const slidesPanel = (

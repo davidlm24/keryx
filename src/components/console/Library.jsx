@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { tileUrl } from "@/lib/mediaPoster";
 import { libMediaKinds } from "@/lib/console/panelTabs";
 import { keryx } from "@/api/keryxClient";
@@ -136,7 +137,7 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // (the header's (+) › Mostrar o artista / o tom / a duração) — and its
 // flags as badges that the hover buttons replace.
 const NONE = [];
-export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {}, picking, setPicking, askText = null }) {
+export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {}, picking, setPicking, askText = null, addSlot = null }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -183,12 +184,13 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const allRows = tab === "letras" ? data.songs : mediaKinds ? data.media : tab === "avisos" ? data.pieces : NONE;
 
     // Selecting several (multiSelect.js, owner 2026-10-21): Ctrl/Shift +
-    // click and "Selecionar vários" (its button is the panel header's,
-    // Console.jsx) mark; a plain click still prepares (M1 = A). One tab at a
-    // time: changing tab clears it.
+    // click and the row menu's "Selecionar vários" mark; a plain click still
+    // prepares (M1 = A). The header's button shows only while it is on
+    // (owner 2026-10-28, I3 = A: autoPick). One tab at a time: changing tab
+    // clears it.
     const order = useMemo(() => listRows.map((r) => r.id), [listRows]);
     const existing = useMemo(() => allRows.map((r) => r.id), [allRows]);
-    const ms = useMultiSelect({ order, existing, mode: "air", picking, onPicking: setPicking });
+    const ms = useMultiSelect({ order, existing, mode: "air", picking, onPicking: setPicking, autoPick: true });
     const clearSel = ms.clear;
     useEffect(() => { clearSel(); }, [tab, clearSel]);
     const picked = pickedOf(ms.sel, listRows);
@@ -259,12 +261,14 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
 
     return (
         <>
+            {/* The + lives in the panel's header, with every module's (owner
+                2026-10-28, I2 = A): the header's slot, a portal. */}
+            {addSlot && createPortal(<AddMenu small title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />, addSlot)}
             <TabRow tabs={tabs} active={tab} onPick={setTab} />
 
             <div className="searchrow">
                 <Field value={q} onChange={setQ} placeholder="Buscar…" />
                 {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} aria-label="Só favoritas" onClick={() => setFavOnly((f) => !f)} />}
-                <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
             </div>
 
             {tab === "letras" && (() => {
@@ -288,6 +292,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                     onEditSong && menuItem("editar", { onSelect: () => onEditSong(s.id) }),
                                     menuItem(s.is_favorite ? "tirarDosFavoritos" : "favoritar", { onSelect: () => toggleFav(s) }),
                                     dupIds?.has(s.id) && onDuplicates && { label: "Ver as repetidas…", icon: "copy", onSelect: onDuplicates },
+                                    menuItem("selecionarVarios", { onSelect: () => ms.pickFrom(s.id) }),
                                     menuItem("exportar", { onSelect: () => exportRows([s]) }),
                                     menuItem("excluir", { onSelect: () => removeRows([s]) }),
                                     onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) }),
@@ -340,6 +345,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
                             onOpenMedia && { label: "Abrir a Mídia", icon: "media", onSelect: () => onOpenMedia() },
                             isYouTubeRow(m) && menuItem("baixarParaMidia", { onSelect: () => downloadToMedia(m, { askText, say: c.say }) }),
+                            menuItem("selecionarVarios", { onSelect: () => ms.pickFrom(m.id) }),
                             menuItem("exportar", { onSelect: () => exportRows([m]) }),
                             menuItem("excluir", { onSelect: () => removeRows([m]) }),
                             onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromMedia(m)) }),
@@ -394,6 +400,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                     onContextMenu={rowMenu(p.id, (e) => menu(e, { title: p.title || p.text, items: [
                                         menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromPiece(p)) }),
                                         onEditNotice && menuItem("editar", { onSelect: () => onEditNotice(p.id) }),
+                                        menuItem("selecionarVarios", { onSelect: () => ms.pickFrom(p.id) }),
                                         menuItem("exportar", { onSelect: () => exportRows([p]) }),
                                         menuItem("excluir", { onSelect: () => removeRows([p]) }),
                                         onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromPiece(p)) }),

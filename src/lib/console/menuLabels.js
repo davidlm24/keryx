@@ -18,7 +18,7 @@ import { keyHint } from "./keys.js";
 
 export const MENU_LABELS = {
     // Culto
-    planejar: { label: "Planejar o culto", icon: "list" },
+    planejar: { label: "Planejar o culto", icon: "planner" },
     novoCulto: { label: "Novo culto", icon: "plus" },
     // Opening an editor (a page of the window: no "…")
     novaMusica: { label: "Nova música", icon: "plus" },
@@ -48,7 +48,10 @@ export const MENU_LABELS = {
     // Ajuda and Configurações › Dados › Suporte (it asks what happened first)
     relatar: { label: "Relatar um problema…", icon: "help" },
     // Rows and slides
-    porNaPrevia: { label: "Pôr na prévia", icon: "eye" },
+    porNaPrevia: { label: "Pôr na prévia", icon: "prev" },
+    // Starts the selection with that row marked (owner 2026-10-28, I3 = A:
+    // the header's button shows only once a selection is on).
+    selecionarVarios: { label: "Selecionar vários", icon: "listChecks" },
     enviarAoAr: { label: "Enviar ao ar", icon: "play", key: "send" },
     adicionarSetlist: { label: "Adicionar à setlist", icon: "plus" },
     favoritar: { label: "Favoritar", icon: "star" },

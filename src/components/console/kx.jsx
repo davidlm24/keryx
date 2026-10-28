@@ -339,15 +339,18 @@ export function stateWords(cls = "") {
 }
 
 // Selecting several (src/lib/console/multiSelect.js, useMultiSelect): the
-// header button that turns "Selecionar vários" on (M2 = A), the box a row or
+// header button that turns "Selecionar vários" on (M2 = A; in the console's
+// Biblioteca and Setlist it shows only while on, owner 2026-10-28, I3 = A:
+// a Ctrl/Shift + click or the row menu starts it), the box a row or
 // a tile shows while it is on, and the bar with the count and what to do
 // with the marked items (the × clears, as Esc does).
 export function SelectManyBtn({ on, onToggle }) {
     return <IconBtn name={SELECT_MANY.icon} small on={on} title={on ? `${SELECT_MANY.label} · Esc desliga` : SELECT_MANY.label} onClick={() => onToggle(!on)} />;
 }
 // Who sings, on a Setlist or planner row of an item that came from a pedido
-// (Rodada Q, S13 = A; ServiceItem.requested_by): a gold tag, the name cut
-// with "…", the whole in the tooltip. Nothing for an item without one.
+// (Rodada Q, S13 = A; ServiceItem.requested_by): a gold tag, always whole
+// (owner 2026-10-28: the title gives way, never the name). Nothing for an
+// item without one.
 export function SingerTag({ name }) {
     if (!name) return null;
     return <span className="rund-who" title={`Pedido de ${name}`}><Icon name="user" /><span>{name}</span></span>;
