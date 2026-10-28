@@ -6,11 +6,12 @@ import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
 import { airHeader, bannerOf, canRun, capsOf, nowBarInfo, roleOf, tabsFor } from "@/lib/network/remoteView";
 import { useCommands, useKeepAwake, usePhoneState, useStale } from "@/components/network/remote/usePhone";
 import { Cmd, HoldButton, Toast } from "@/components/network/remote/parts";
-import MediaTab from "@/components/network/remote/MediaTab";
 import ControlDock from "@/components/network/remote/ControlDock";
 
-// The Biblioteca and the dock draw at once; the other tabs load when first
-// opened, so the page stays inside the outputs' budget (scripts/bundle-budget.cjs).
+// Only the dock draws at once; every tab, the Biblioteca the phone opens on
+// included, loads when first shown, so the page stays inside the outputs'
+// budget (scripts/bundle-budget.cjs).
+const MediaTab = lazy(() => import("@/components/network/remote/MediaTab"));
 const PresentTab = lazy(() => import("@/components/network/remote/PresentTab"));
 const SetlistTab = lazy(() => import("@/components/network/remote/SetlistTab"));
 const BibleTab = lazy(() => import("@/components/network/remote/BibleTab"));
@@ -99,8 +100,8 @@ export default function RemoteView() {
             )}
             <div className="rm-body">
                 <div className="rm-pane">
-                    {shown === "library" && <MediaTab caps={caps} c={c} setGate={setGate} />}
                     <Suspense fallback={<div className="rm-main" aria-busy="true" />}>
+                        {shown === "library" && <MediaTab caps={caps} c={c} setGate={setGate} />}
                         {shown === "present" && <PresentTab live={live} state={state} caps={caps} c={c} onLibrary={() => setTab("library")} />}
                         {shown === "setlist" && <SetlistTab live={live} state={state} c={c} onRefresh={refresh} />}
                         {shown === "bible" && <BibleTab state={state} caps={caps} c={c} />}
