@@ -1951,8 +1951,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Biblioteca (`addToSetlistArgs`: never an aviso) and the Bíblia
   (`biblePlanArgs`: only with verses) runs `setlist.add`, shown only with
   the `plan` cap; it is T, so a row can be picked for it while locked. Only
-  the Biblioteca and the dock are in the page's first load: the other tabs
-  are lazy chunks (the outputs' budget). The smoke opens on "Biblioteca",
+  the dock is in the page's first load: every tab, the Biblioteca included,
+  is a lazy chunk (the outputs' budget: with the Biblioteca in it, CI
+  measured /Remote at 400.0 kB). The smoke opens on "Biblioteca",
   then presses Tela preta in Apresentar's dock. **The Equipe's page** (Rodada Q PR4, the owner's mockup, S8 = A)
   is the same `/Remote` signed in with the Equipe's code: `state.role`
   "team" draws `remote/EquipeView.jsx` (a lazy chunk) instead (`roleOf`;
