@@ -1871,7 +1871,8 @@ async function checkConsole(webContents, { live, outputs }) {
         // it with the song.
         await click(".envtabs button", "KERYX");
         await click(".kx-tabs button", "Letras");
-        await click(".searchrow .addmenu button", "");
+        // The Biblioteca's + is in its header since 2026-10-28 (I2 = A).
+        await click(".lib-add-slot .addmenu button", "");
         // The + menu must be fully on screen to be clicked: with the
         // Biblioteca as the first column it once hung past the window's left
         // edge (right-anchored pop), and the real click at its negative

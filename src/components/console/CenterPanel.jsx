@@ -284,6 +284,7 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, onSho
     const capPos = prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "";
     const prevCap = (
         <span className={`kx-mon-badge kx-prog-cap ${locked ? "is-rh" : prev ? "is-prevcap" : "is-idle"}`}>
+            <Icon name="prev" className="kx-prev-glyph" />
             <span className="kx-live-cap">{locked ? "Prévia · travado" : "Prévia"}</span>
             <span className="kx-mon-t" title={capTitle}>{capTitle}</span>
             {capPos && <span className="kx-meta">{capPos}</span>}

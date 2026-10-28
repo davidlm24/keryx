@@ -327,7 +327,7 @@ export function EndDialog({ open, setOpen, onEnd }) {
 // The palette's hover buttons are glyphs (Rodada G1, CLAUDE.md "Hover
 // buttons are glyphs only"): the word stays inside as screen-reader text
 // and in the tooltip. Pôr na prévia is the eye, as in every menu.
-const ACT_ICON = { "Pôr na prévia": "eye", Abrir: "book", Buscar: "search" };
+const ACT_ICON = { "Pôr na prévia": "prev", Abrir: "book", Buscar: "search" };
 
 export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, openReference, onPrepareReference, onAddReference, onBibleSearch, env, style }) {
     const [q, setQ] = useState("");
@@ -375,7 +375,7 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
                     <React.Fragment key={g.name}>
                         <div className="kx-menu-h"><span className="kx-section">{g.name}</span></div>
                         {g.list.map((r) => { n += 1; const i = n; return (
-                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title={`${r.act || "Pôr na prévia"} · Enter`} aria-label={`${r.act || "Pôr na prévia"}: ${r.title}`}><span className="kx-act-i"><Icon name={ACT_ICON[r.act] || "eye"} /></span><span className="kx-act-l">{r.act || "Pôr na prévia"}</span></Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar à setlist · Shift+Enter" aria-label={`Adicionar ${r.title} à setlist`}><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar à setlist</span></Btn>}</>} />
+                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title={`${r.act || "Pôr na prévia"} · Enter`} aria-label={`${r.act || "Pôr na prévia"}: ${r.title}`}><span className="kx-act-i"><Icon name={ACT_ICON[r.act] || "prev"} /></span><span className="kx-act-l">{r.act || "Pôr na prévia"}</span></Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar à setlist · Shift+Enter" aria-label={`Adicionar ${r.title} à setlist`}><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar à setlist</span></Btn>}</>} />
                         ); })}
                     </React.Fragment>
                 ))}

@@ -80,7 +80,7 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
                         <span className="slides-dot is-air" aria-hidden="true" /><span className="slides-tab-w" aria-hidden="true">No ar</span><ClipTitle className="slides-tab-t" text={air.title || "Sem título"} /><span className="slides-tab-n">{air.index + 1}/{air.slides.length}</span>
                     </button>
                     <button type="button" role="tab" aria-selected={!showAir} tabIndex={showAir ? -1 : 0} className={`dock-tab ${showAir ? "" : "is-on"}`} onClick={() => setSide("prev")} title={`Na prévia: ${prev.title || "Sem título"}`} aria-label={`Na prévia: ${prev.title || "Sem título"}`}>
-                        <span className="slides-dot is-prev" aria-hidden="true" /><span className="slides-tab-w" aria-hidden="true">Prévia</span><ClipTitle className="slides-tab-t" text={prev.title || "Sem título"} />
+                        <Icon name="prev" className="slides-prev-i" /><span className="slides-tab-w" aria-hidden="true">Prévia</span><ClipTitle className="slides-tab-t" text={prev.title || "Sem título"} />
                     </button>
                 </div>
             )}
