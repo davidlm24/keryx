@@ -190,6 +190,18 @@ test("the songs' second line (Rodada G1): the artist off, the key and length on,
     assert.equal(withStore({ libShowArtist: "yes" }, () => loadLayout("x")).libShowArtist, false);
 });
 
+test("the Biblioteca's folders (Rodada R): each tab its own mode, each folder open or closed, until saved otherwise", () => {
+    assert.deepEqual(DEFAULT_LAYOUT.libGroup, {});
+    assert.deepEqual(DEFAULT_LAYOUT.libFoldersOpen, {});
+    const old = withStore({ libW: 300 }, () => loadLayout("x"));
+    assert.deepEqual(old.libGroup, {}, "a save from before the folders");
+    assert.deepEqual(old.libFoldersOpen, {});
+    const on = withStore({ libGroup: { letras: true, avisos: true }, libFoldersOpen: { letras: { "a:x": true, "a:y": "no" } } }, () => loadLayout("x"));
+    assert.deepEqual(on.libGroup, { letras: true });
+    assert.deepEqual(on.libFoldersOpen, { letras: { "a:x": true } });
+    assert.deepEqual(withStore({ libGroup: "yes", libFoldersOpen: [] }, () => loadLayout("x")).libGroup, {});
+});
+
 test("Travar fora da edição is the culto's, across the tiers (Rodada P4-1)", () => {
     const big = { tree: { tabs: ["programa"], active: "programa" }, hidden: [], lock: true };
     const small = { tree: { tabs: ["previa"], active: "previa" }, hidden: [] };
