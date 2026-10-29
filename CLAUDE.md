@@ -1549,6 +1549,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.
+- **The opening window** (owner 2026-10-29, mockup "Tela de abertura do
+  KERYX", A1-A · A2-A · A3-C): `electron/splash.cjs` + `splash.html`
+  (tested), a 520 × 320 frameless window centred where the console will
+  open, made FIRST in `app.whenReady` (settings.json is read before the
+  store for its place): the gold K and KERYX on `brand-gradient` (the gold
+  glow, tokens.json; the page copies its tokens, the test holds them), the
+  version and a step line over a thin bar (`STEPS`: Abrindo os dados…,
+  Fazendo o backup…, Preparando as telas…, Ligando a rede…, Conferindo a
+  sincronização…, Abrindo o console…). `step()` waits for the paint (two
+  frames, 250 ms at most) because main's long steps block. It goes on the
+  console's `ready-to-show`, after its `show()`, and before a fatal
+  dialog; it gives up after 60 s. Never always on top, never in a smoke
+  run, off with `KERYX_NO_SPLASH=1`. No React, no network: Geist from the
+  source in dev, the built asset installed (`fontFile`).
 - **After a crash the screens come back lit** (owner 2026-10-20; a normal
   start still reopens on Tela preta): `running.json` (`electron/runMarker.cjs`,
   tested) lives in the data folder while KERYX runs, rewritten every 15 s

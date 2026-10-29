@@ -51,6 +51,7 @@
   --brand-hover: #d0a968;
   --brand-pressed: #a47d43;
   --brand-tint: #c199591a;
+  --brand-gradient: radial-gradient(ellipse 62% 70% at 50% 42%, #c1995961, #c1995914 55%, transparent 75%);
   --on-brand: #20180c;
   --screen-bg: #000000;
   --chrome-on-screen: #0d0d0cd9;

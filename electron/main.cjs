@@ -30,6 +30,7 @@ const { installedVersions, installFromSource, SOURCES: BIBLE_SOURCES } = require
 const { createBibleSetup } = require("./bibleSetup.cjs");
 const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
 const windowState = require("./windowState.cjs");
+const { createSplash, splashEnabled } = require("./splash.cjs");
 const schema = require("./db/schema.json");
 
 // A projection window covered by another window is still projecting. Windows
@@ -116,6 +117,9 @@ let runMarker = null;
 // for the close guard (electron/closeGuard.cjs).
 let liveRules = null;
 let appSettings = null;
+// The opening window while KERYX starts (electron/splash.cjs); gone once the
+// console is on screen.
+let splash = null;
 // The console's zoom (Ctrl+= / Ctrl+− / Ctrl+0, electron/consoleZoom.cjs).
 let consoleZoom = null;
 // The bell, set once the notifications exist (a window can crash before then).
@@ -406,6 +410,8 @@ function createMainWindow(settings) {
     mainWindow.once("ready-to-show", () => {
         if (placement.maximized) mainWindow.maximize();
         mainWindow.show();
+        // The console is on screen first, then the opening window goes: no blank in between.
+        if (splash) { splash.close(); splash = null; }
     });
     // Closing the console closes KERYX. The outputs are not in the taskbar, so
     // otherwise the app could keep running unseen (and the network server up).
@@ -446,6 +452,7 @@ function createMainWindow(settings) {
 }
 
 function fatal(title, message) {
+    if (splash) { splash.close(); splash = null; }
     // A dialog would block a test run forever; report instead.
     if (SMOKE) console.log(`SMOKE FAIL ${JSON.stringify({ fatal: title, message })}`);
     else dialog.showErrorBox(title, message);
@@ -466,6 +473,25 @@ app.whenReady().then(async () => {
     logger.info(`KERYX ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
     if (importOutcome && importOutcome.error) {
         dialog.showErrorBox("Importação não aplicada", `Os dados anteriores foram mantidos.\n\n${importOutcome.error}`);
+    }
+
+    // This computer's settings (settings.json): read first, so the opening
+    // window opens where the console will (its saved place, else maximized
+    // on the primary monitor).
+    const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
+    appSettings = settings;
+    if (splashEnabled()) {
+        try {
+            const placement = consolePlacement(settings);
+            const box = placement.maximized ? screen.getDisplayMatching(placement.bounds).workArea : placement.bounds;
+            splash = createSplash({ BrowserWindow, box, version: app.getVersion(), appPath: app.getAppPath(), log: (m) => logger.warn(m) });
+            // On screen before the long steps start (it opens in well under a second).
+            await Promise.race([splash.ready, new Promise((r) => setTimeout(r, 1500))]);
+            await splash.step("data");
+        } catch (err) {
+            logger.warn(`[keryx-abertura] ${err.message}`);
+            if (splash) { splash.close(); splash = null; }
+        }
     }
 
     try {
@@ -526,8 +552,6 @@ app.whenReady().then(async () => {
     session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission !== "local-fonts");
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => callback(permission !== "local-fonts"));
 
-    const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
-    appSettings = settings;
     consoleZoom = createConsoleZoom({
         settings,
         getWindow: () => mainWindow,
@@ -589,6 +613,7 @@ app.whenReady().then(async () => {
         settings.set("pendingNotes", null);
     }
     system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, consoleZoom, net, syncInfo: () => (sync ? sync.status() : null) });
+    if (splash) await splash.step("backup");
     try {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
@@ -627,6 +652,7 @@ app.whenReady().then(async () => {
     if (crash) logger.warn(`[keryx-crash] o KERYX não fechou normalmente (último sinal ${new Date(crash.diedAt).toISOString()}); ${crash.lit ? `voltando como estava, saídas: ${crash.outputs.join(", ") || "nenhuma"}` : "faz tempo: telas pretas, como num início normal"}`);
 
     // What every output shows right now (shared/live-state.mjs).
+    if (splash) await splash.step("live");
     try {
         liveRules = await loadLiveRules();
         live = createLive({ file: path.join(dataDir, "live.json"), rules: liveRules, log: (m) => logger.warn(m), afterCrash: Boolean(crash && crash.lit) });
@@ -722,6 +748,7 @@ app.whenReady().then(async () => {
         }
     });
 
+    if (splash) await splash.step("network");
     // Tablets and TVs on the church network (off until enabled in Settings).
     // KERYX_LAN_PORT=0 lets a smoke run use a free port.
     network = createNetwork({
@@ -767,6 +794,7 @@ app.whenReady().then(async () => {
         }
         return bibles.list;
     };
+    if (splash) await splash.step("sync");
     // The church's account, entered in the system's browser; Chromium's
     // network stack (the system's proxy).
     const protect = sealWith(safeStorage);
@@ -849,6 +877,7 @@ app.whenReady().then(async () => {
     sync.start();
     powerMonitor.on("resume", () => sync.poke());
 
+    if (splash) await splash.step("console");
     const win = createMainWindow(settings);
     // Outputs set to "Abrir ao iniciar" in Telas e saídas.
     // After a recent crash, also the ones that were open then.
