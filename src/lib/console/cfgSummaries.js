@@ -63,9 +63,11 @@ export const fontsSummary = (n) => (n ? count(n, "fonte", "fontes") : "Nenhuma a
 
 // Bíblia e músicas.
 const LINES = (n) => (n ? `${n} ${n === 1 ? "linha" : "linhas"} por slide` : "uma estrofe por slide");
-export function booksSummary(prefs) {
+// The books always show both names since Rodada R (R2a = A): only the import
+// is left in the group.
+export function importSummary(prefs) {
     if (!prefs) return "";
-    return `${prefs.bible_book_names === "full" ? "Nome inteiro" : "Livros abreviados"} · letras: ${LINES(linesLimit(prefs.import_lines))}`;
+    return `Letras: ${LINES(linesLimit(prefs.import_lines))}`;
 }
 export function biblesSummary(version, installed) {
     const n = installed || 0;

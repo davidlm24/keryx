@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
     somSummary, enderecosSummary, phonesSummary, connectedSummary, themesSummary, fundosSummary, idleSummary, fontsSummary,
-    booksSummary, biblesSummary, wallpaperSummary, templatesSummary, teamSummary, shortcutsSummary, machineSummary, dataSummary, updatesSummary,
+    importSummary, biblesSummary, wallpaperSummary, templatesSummary, teamSummary, shortcutsSummary, machineSummary, dataSummary, updatesSummary,
 } from "./cfgSummaries.js";
 
 test("Som e YouTube: the chime's volume and the YouTube bar", () => {
@@ -45,9 +45,9 @@ test("Temas e fundos", () => {
 });
 
 test("Bíblia e músicas", () => {
-    assert.equal(booksSummary({ bible_book_names: "short", import_lines: 0 }), "Livros abreviados · letras: uma estrofe por slide");
-    assert.equal(booksSummary({ bible_book_names: "full", import_lines: 4 }), "Nome inteiro · letras: 4 linhas por slide");
-    assert.equal(booksSummary({ bible_book_names: "short", import_lines: 1 }), "Livros abreviados · letras: 1 linha por slide");
+    assert.equal(importSummary({ import_lines: 0 }), "Letras: uma estrofe por slide");
+    assert.equal(importSummary({ bible_book_names: "full", import_lines: 4 }), "Letras: 4 linhas por slide");
+    assert.equal(importSummary({ import_lines: 1 }), "Letras: 1 linha por slide");
     assert.equal(biblesSummary("NVI", 2), "NVI em uso · 2 instaladas neste computador");
     assert.equal(biblesSummary("ARA", 0), "ARA em uso · nenhuma instalada");
     assert.equal(biblesSummary("", 1), "1 instalada neste computador");

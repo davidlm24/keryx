@@ -75,19 +75,20 @@ export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLab
                 <button type="button" className={`markbtn kx-t ${open === "menu" ? "is-on" : ""}`} onClick={() => toggle("menu")} aria-haspopup="menu" aria-expanded={open === "menu"} title="Menu do KERYX" aria-label="Menu do KERYX">
                     {logoUrl ? <img src={logoUrl} alt="" /> : <span className="kx-mark" />}
                 </button>
-                <div className="kx-tabs envtabs" role="tablist" aria-label="Ambiente" onKeyDown={onTabsKey}>
-                    {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist")}
-                    {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
-                </div>
                 {/* Shown exactly when the bar is hidden (console.css, the same container query): its four menus in one popover. */}
                 {menus.length > 0 && (
                     <button type="button" className={`kx-btn kx-t tb-menubtn ${open === "menus" ? "is-on" : ""}`} onClick={() => toggle("menus")} aria-haspopup="menu" aria-expanded={open === "menus"} aria-controls="tb-menus-pop" title="Menu · Culto, Música, Mídia e Ferramentas">
                         <Icon name="menu" /><span>Menu</span>
                     </button>
                 )}
-                {menus.length > 0 && <><span className="tb-div" aria-hidden="true" /><MenuBarButtons menus={menus} open={open} setOpen={setOpen} blocked={menuKeysOff} /></>}
+                {menus.length > 0 && <MenuBarButtons menus={menus} open={open} setOpen={setOpen} blocked={menuKeysOff} />}
             </div>
             <div className="tb-c">
+                {/* The environments: a segmented pill beside the search (Rodada R, owner's mark R1 = C). */}
+                <div className="envtabs" role="tablist" aria-label="Ambiente" onKeyDown={onTabsKey}>
+                    {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist")}
+                    {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
+                </div>
                 {/* A real button (C-27): Enter and Space open the search; it only looks like a field. */}
                 <button type="button" className="kx-field kx-t tb-search" onClick={() => setOpen("palette")} title={`Buscar ou comandar · ${searchKey}`} aria-label="Buscar em tudo" aria-keyshortcuts={searchKey === "/" ? "/ Control+F" : "Control+F"} aria-haspopup="dialog">
                     <Icon name="search" /><span className="tb-search-ph" aria-hidden="true">Buscar em tudo</span><kbd aria-hidden="true">{searchKey}</kbd>

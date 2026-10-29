@@ -85,17 +85,15 @@
 .console .sync-pop-bar > i { display: block; height: 100%; background: var(--brand); }
 .console .sync-pop-f { display: flex; align-items: center; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--line-soft); }
 .console .topbar .kx-seg > button { white-space: nowrap; }
-/* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
-.console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
-/* KERYX | BÍBLIA are places, not commands (O topo, owner's pick B
-   2026-10-15): both in bold caps (the label stays "Bíblia" in the code), no
-   icons, the gold underline on the one on screen; the menu bar after the
-   divider stays lighter. */
-.console .envtabs > button { font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: var(--fs-content); }
-.console .topbar .tb-div { flex: none; width: 1px; height: 18px; background: var(--line-strong); margin: 0 var(--space-1); }
-.console .envtabs > button { color: var(--fg-2); }
-.console .envtabs > button.is-on { color: var(--fg-1); }
-.console .envtabs > button.is-on::after { bottom: 8px; background: var(--brand); height: 2px; border-radius: 1px; }
+/* The environments: a segmented pill in the centre, right before the search
+   (Rodada R, owner's mark R1 = C 2026-10-29). Places, not commands: bold caps
+   (the label stays "Bíblia" in the code), no icons; the one on screen is
+   filled. Still a tablist. */
+.console .topbar .tb-c { gap: var(--space-2); }
+.console .envtabs { flex: none; display: inline-flex; align-items: center; gap: 2px; height: 30px; padding: 2px; border-radius: var(--radius-round); background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); }
+.console .envtabs > button { height: 26px; padding: 0 var(--space-3); border-radius: var(--radius-round); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: var(--fs-ui); color: var(--fg-2); white-space: nowrap; }
+.console .envtabs > button:hover { color: var(--fg-1); }
+.console .envtabs > button.is-on { background: var(--fg-1); color: var(--bg-0); }
 .console .envtabs > button:disabled { opacity: .4; cursor: default; }
 /* The way back from a full-screen view: first in its header, outlined, never a ghost. */
 .console .markbtn { height: 32px; width: 32px; display: inline-grid; place-items: center; border-radius: var(--radius-round); flex: none; margin-right: var(--space-1); }
@@ -122,7 +120,7 @@
 .console .topbar .tb-menubtn { display: none; height: 28px; padding: 0 10px 0 8px; gap: 6px; border-radius: var(--radius-control); font-size: var(--fs-content); color: var(--fg-2); flex: none; }
 .console .topbar .tb-menubtn:hover, .console .topbar .tb-menubtn.is-on { background: var(--bg-2); color: var(--fg-1); }
 @container topbar (max-width: 1240px) {
-    .console .topbar .tb-menus, .console .topbar .tb-div { display: none; }
+    .console .topbar .tb-menus { display: none; }
     .console .topbar .tb-menubtn { display: inline-flex; align-items: center; }
 }
 /* The Menu button's popover: the four menus stacked, a submenu inline under
@@ -134,6 +132,7 @@
 @container topbar (max-width: 1400px) { .console .topbar .tb-svc-more { display: none; } }
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
 @container topbar (max-width: 1080px) {
+    .console .envtabs > button { padding: 0 var(--space-2); }
     .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }
     .console .topbar .tb-search input, .console .topbar .tb-search .tb-search-ph, .console .topbar .tb-search kbd { display: none; }
     .console .topbar .tb-svc { max-width: 168px; }
@@ -641,11 +640,7 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
-/* Livros' header carries Abrev | Nomes, the install + and the view menu
-   beside its title (the version left for the bar under the No ar screen,
-   Rodada P). Like every header's controls they are 24 px tall and 8 px
-   apart. */
-/* The version selects (the bar under the No ar screen, Rodada P, P3 = A):
+/* The version selects (the band on top of Livros, Rodada R; Rodada P, P3 = A):
    the list says the sigla and the full name in groups, the closed box only
    the sigla — .bver-v laid over the select, whose own text is transparent
    (it stays the control). The edition says nothing while it is installed
@@ -658,34 +653,54 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
 .console .bver.is-none .bver-v { color: var(--fg-2); }
 .console .bver + .bver > select { width: 96px; }
 .console .bver-dot { position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--bg-1); pointer-events: none; }
-.console .bpick-books > .kx-panel-h .kx-seg > button { padding: 0 4px; }
 .console .kx-panel-h .addmenu > .kx-btn-icon { width: var(--control-sm); height: var(--control-sm); }
-/* Livros, Capítulos and Versículos in three cell sizes (owner 2026-10-14:
-   Livros' header menu, layout.bibleGrid — pequenas, médias as they were,
-   or grandes). */
-.console .bpick-books .bgrid.is-small { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 2px; }
-.console .bpick-books .bgrid.is-small .kx-book { height: 22px; font-size: var(--fs-meta); }
-.console .bpick-books .bgrid.is-large { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 4px; }
-.console .bpick-books .bgrid.is-large .kx-book { height: 34px; font-size: var(--fs-content-lg); }
-.console .bpick-books.names-full .bgrid.is-large { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+/* Capítulos and Versículos in three cell sizes (owner 2026-10-14: Livros'   view menu, layout.bibleGrid — pequenas, médias as they were, or grandes). */
 .console .chapters.is-small, .console .verse-cells.is-small { grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 2px; }
 .console .chapters.is-small button, .console .verse-cells.is-small button { height: 22px; font-size: var(--fs-meta); }
 .console .chapters.is-large, .console .verse-cells.is-large { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
 .console .chapters.is-large button, .console .verse-cells.is-large button { height: 34px; font-size: var(--fs-content-lg); }
-.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1); }
-.console .bpick-books.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+/* The books (Rodada R, owner 2026-10-29, R2a = A): every cell shows both
+   names, the abbreviation on top (600, 13 px) and the whole name under it
+   (meta, fg-3, one line, cut with "…"), left-aligned beside the group's
+   colour bar (::before, bundle.css). Pequenas, médias and grandes are
+   densities of that cell (the ⋯ menu, layout.bibleGrid): in the column's
+   default 300 px, four a row, three, two. */
+.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); padding: var(--space-1); }
+.console .bpick-books .bgrid .kx-book { height: 40px; min-width: 0; align-items: stretch; justify-content: center; gap: 1px; padding: 0 6px 0 9px; text-align: left; }
+.console .bpick-books .kx-book-a { font-size: var(--fs-content); font-weight: 600; line-height: 16px; }
+.console .bpick-books .kx-book-n { display: block; font-size: var(--fs-meta); font-weight: 400; line-height: 14px; color: var(--fg-3); letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .bpick-books .kx-book.is-selected .kx-book-n { color: var(--fg-2); }
+.console .bpick-books .bgrid.is-small { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 2px; }
+.console .bpick-books .bgrid.is-small .kx-book { height: 32px; gap: 0; }
+.console .bpick-books .bgrid.is-small .kx-book-a { font-size: var(--fs-ui); line-height: 14px; }
+.console .bpick-books .bgrid.is-small .kx-book-n { line-height: 13px; }
+.console .bpick-books .bgrid.is-large { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 4px; }
+.console .bpick-books .bgrid.is-large .kx-book { height: 48px; gap: 2px; }
+.console .bpick-books .bgrid.is-large .kx-book-a { font-size: var(--fs-content-lg); line-height: 18px; }
+.console .bpick-books .bgrid.is-large .kx-book-n { font-size: var(--fs-ui); line-height: 15px; }
+/* The version band on top of Livros (Rodada R, R2b = C; reverses part of
+   Q5): the version, the 2ª versão ("+ 2ª" while none) and, only with a 2ª,
+   Lado a lado | Empilhadas on the right. A band under a header: 36 px, its
+   controls 28, 4 px in and 4 px apart; it stays while the books scroll.
+   With Livros in the tray the same controls ride the line above the No ar
+   screen (bibleVersionsHome, dock.js). */
+.console .bpick-books > .kx-panel-b { display: flex; flex-direction: column; overflow: hidden; }
+.console .bbooks-scroll { flex: 1; min-height: 0; overflow: auto; }
+.console .bver-band { flex: none; height: var(--band); display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border-bottom: 1px solid var(--line); min-width: 0; container: bver-band / inline-size; }
+.console .bver-band .bb-pair { margin-left: auto; }
+.console .bver-band .bb-pair .kx-t { padding: 0 6px; }
+.console .bver-band .bver > select { height: 28px; width: 72px; }
+.console .bver-band .bver + .bver > select { width: 104px; }
+@container bver-band (width < 260px) {
+    .console .bver-band .bb-2l { display: none; }
+    .console .bver-band .bver + .bver > select { width: 72px; }
+}
 .console .bpick-chapters .bchap { border-top: 0; padding: var(--space-1); }
 .console .bpick-chapters .chapters { max-height: none; overflow: visible; }
 .console .bpick-verses .bverses { padding: var(--space-1); }
-/* The title never gives way (audit C-47: "LIVR…" at 1366): when the
-   header cannot hold it all, Abrev | Nomes leaves it and lives in the view
-   menu (BibleEnv's grid button lists it while the Seg is hidden). The header
-   needs 212 px — title 57, Seg 83, + and grid 24 each, three 8 px gaps —
-   so the column's default 300 px (276 inside) keeps the Seg; a change to
-   those widths changes this number. */
-.console .bpick-books > .kx-panel-h { container: bbooks-h / inline-size; }
+/* Livros' header is its title, the install + and the view menu (Abrev |
+   Nomes is gone, Rodada R, R2a = A): the title never gives way (audit C-47). */
 .console .bpick-books > .kx-panel-h > .kx-section { flex: 1 0 auto; }
-@container bbooks-h (width < 216px) { .console .bpick-books > .kx-panel-h > .kx-seg { display: none; } }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
 /* Its header is one line, like every panel's: the chapter, two icons
@@ -706,7 +721,6 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
 .console .bread-b > .reading { overflow: visible; }
 .console .bunavail-acts { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); margin-top: var(--space-2); }
 .console .bgrid { display: grid; gap: 3px; }
-.console .bgrid .kx-book { height: 26px; font-size: var(--fs-ui); }
 .console .bchap { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
 .console .bchap-name { position: relative; flex: none; min-width: 120px; max-width: 220px; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font-size: var(--fs-content); font-weight: 500; white-space: nowrap; overflow: hidden; }
 .console .bchap-name::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: var(--radius-control) 0 0 var(--radius-control); background: var(--group, var(--line-strong)); }
@@ -726,8 +740,6 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
 .console .verse-cells button:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .verse-cells button.is-prev { background: var(--prev-tint); color: var(--prev-fg); box-shadow: inset 0 0 0 1px var(--prev); }
 .console .verse-cells button.is-air { background: var(--air-tint); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
-/* Nomes: the books with their whole names, left-aligned. */
-.console .bpick-books.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
 /* Recentes, Favoritos and Anotações: three buttons on the left, 4 px in
    (boxes). Their lists open from the button's left edge, inside the
    window (usePlaced, Rodada G1). */
@@ -741,7 +753,6 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
 /* The list's count lives at its top, never on the button (owner 2026-10-16). */
 .console .blist-h { height: 28px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-2); }
 .console .blist-h .kx-section { font-size: var(--fs-meta); }
-.console .reading { max-width: 760px; }
 .console .vgroup { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
 .console .vslide { display: grid; grid-template-columns: 16px 1fr; gap: var(--space-2); padding: 4px 8px 6px; border-radius: var(--radius-control); background: var(--bg-2); font-size: var(--fs-ui); line-height: 16px; color: var(--fg-1); }
 .console .vslide b { font-size: var(--fs-meta); font-weight: 400; color: var(--fg-3); }
@@ -1032,31 +1043,28 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
    selection and the actions below it stay in view on short windows. */
 .console .bible-air-col .kx-panel-b { container: bbar-c / size; }
 .console .bible-air { padding: var(--space-1); flex: none; display: flex; justify-content: center; }
-/* The Bíblia's line above the No ar screen (Rodada Q, Q5; reverses P2-1):
-   how a passage shows on the screens — Tema, Ref., verses per slide, the
-   version, a 2ª versão and where it goes. ONE line that never wraps: it
-   shrinks in steps by the column's width (@container bbar-c) and every
-   control stays reachable at the 300 px minimum. */
+/* The Bíblia's line above the No ar screen (Rodada Q, Q5; Rodada R, R2b = C
+   moved the version out): Tema, Ref. and verses per slide, one line that
+   fits the column's 300 px minimum as it is. With Livros in the tray the
+   version controls come back here (bibleVersionsHome, .has-versions), and
+   the line shrinks in two steps by the column's width (@container bbar-c)
+   so it still never wraps. */
 .console .bbar { flex: none; display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-1) 0; min-width: 0; }
 .console .bbar > * { flex: none; }
 .console .bbar .bb-short { display: none; }
 .console .bbar .bb-pair .kx-t { padding: 0 6px; }
-@container bbar-c (width < 460px) {
-    .console .bbar .bb-full { display: none; }
-    .console .bbar .bb-short { display: inline; }
-    .console .bbar .bb-2l { display: none; }
-    .console .bbar .bver + .bver > select { width: 64px; }
+@container bbar-c (width < 440px) {
+    .console .bbar.has-versions { gap: 2px; padding-inline: 2px; }
+    .console .bbar.has-versions .bb-full, .console .bbar.has-versions .bb-2l { display: none; }
+    .console .bbar.has-versions .bb-short { display: inline; }
+    .console .bbar.has-versions .bver > select { width: 56px; }
+    .console .bbar.has-versions :is(.kx-btn, .kx-seg .kx-t) { min-width: 0; padding-inline: 6px; }
 }
-@container bbar-c (width < 400px) {
-    .console .bbar { gap: 2px; padding-inline: 2px; }
-    .console .bbar .bver > select, .console .bbar .bver + .bver > select { width: 56px; }
-    .console .bbar :is(.kx-btn, .kx-seg .kx-t) { min-width: 0; padding-inline: 6px; }
-}
-@container bbar-c (width < 330px) {
-    .console .bbar { padding-inline: 0; }
-    .console .bbar .bver > select, .console .bbar .bver + .bver > select { width: 46px; }
-    .console .bbar .bver-v { inset-inline: 4px 14px; }
-    .console .bbar :is(.kx-btn, .kx-seg .kx-t) { padding-inline: 4px; }
+@container bbar-c (width < 350px) {
+    .console .bbar.has-versions { padding-inline: 0; }
+    .console .bbar.has-versions .bver > select { width: 46px; }
+    .console .bbar.has-versions .bver-v { inset-inline: 4px 14px; }
+    .console .bbar.has-versions :is(.kx-btn, .kx-seg .kx-t) { padding-inline: 4px; }
 }
 .console .vslide-2 { display: block; margin-top: 2px; color: var(--fg-2); font-size: var(--fs-meta); }
 .console .vslide-2 > b { color: var(--fg-3); font-weight: 600; margin-right: 4px; }
@@ -2411,7 +2419,8 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
   .console .import-dialog .im-row.is-repeated { outline: 1px dashed CanvasText; outline-offset: -1px; }
   /* Chosen or pressed: tabs, chips, cells, tiles, Seg, an open menu… */
   .console :is(.is-on, .is-sel, .is-selected):not(.kx-switch, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
-  .console .envtabs > button.is-on::after { background: Highlight; }
+  .console .envtabs { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .console .envtabs > button.is-on { background: Highlight; color: HighlightText; outline: 0; }
   /* The Bíblia's cells are boxes. */
   .console :is(.bgrid .kx-book, .chapters button, .verse-cells button):not(:focus-visible, .is-on, .is-selected, .is-prev) { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* The rule's shortcuts (Ajustes › Conteúdo) are buttons too; its kinds are kx-check (bundle.css). */
