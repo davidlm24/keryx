@@ -49,7 +49,7 @@ function Clocks({ svcAt, onPlanner }) {
 }
 
 // The top bar, a menu bar: the KERYX menu (the mark), the environments
-// KERYX | BÍBLIA right after it (bold caps, the gold underline: places, not
+// CONSOLE | BÍBLIA right of the search (bold caps, the gold underline: places, not
 // commands — "O topo", owner's pick B 2026-10-15; no icons), then the menu bar (Culto,
 // Música, Mídia, Ferramentas; Rodada D4, no Telas since E0 — on a narrow window
 // it folds away and the Menu button takes its place, console.css; the mark's menu
@@ -84,15 +84,15 @@ export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLab
                 {menus.length > 0 && <MenuBarButtons menus={menus} open={open} setOpen={setOpen} blocked={menuKeysOff} />}
             </div>
             <div className="tb-c">
-                {/* The environments: a segmented pill beside the search (Rodada R, owner's mark R1 = C). */}
-                <div className="envtabs" role="tablist" aria-label="Ambiente" onKeyDown={onTabsKey}>
-                    {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist")}
-                    {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
-                </div>
                 {/* A real button (C-27): Enter and Space open the search; it only looks like a field. */}
                 <button type="button" className="kx-field kx-t tb-search" onClick={() => setOpen("palette")} title={`Buscar ou comandar · ${searchKey}`} aria-label="Buscar em tudo" aria-keyshortcuts={searchKey === "/" ? "/ Control+F" : "Control+F"} aria-haspopup="dialog">
                     <Icon name="search" /><span className="tb-search-ph" aria-hidden="true">Buscar em tudo</span><kbd aria-hidden="true">{searchKey}</kbd>
                 </button>
+                {/* The environments: a segmented pill right of the search (Rodada R, R1 = C; moved after the search and renamed Console, owner 2026-10-29). */}
+                <div className="envtabs" role="tablist" aria-label="Ambiente" onKeyDown={onTabsKey}>
+                    {envTab("culto", "Console", "Console: músicas, mídia, setlist")}
+                    {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
+                </div>
             </div>
             <div className="tb-r">
                 <Clocks svcAt={svcAt} onPlanner={onPlanner} />

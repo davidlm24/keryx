@@ -917,7 +917,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.fullConsole = await js("Boolean(document.querySelector('.console .main .kx-split')) && !document.querySelector('.topbar .kx-seg + .kx-seg')");
 
         // Click a top-bar tab (a control that used to keep the keys), then a song: Enter sends.
-        await click(".envtabs button", "KERYX");
+        await click(".envtabs button", "Console");
         await click(".kx-row", "Canto do console");
         result.prepared = await waitCap(PREV, "Canto do console");
         // When the first click misses, say where it went: the row's box, what
@@ -999,7 +999,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.churchFont = Boolean(fontRow) && await loadsChurchFont(webContents);
         result.churchFontOutput = Boolean(fontRow) && Boolean(main) && await loadsChurchFont(main.webContents);
         // Click a tab again, then the arrow: the slide moves on the projector.
-        await click(".envtabs button", "KERYX");
+        await click(".envtabs button", "Console");
         await press("ArrowRight");
         result.advanced = Boolean(main) && await waitText(main, "Segundo slide do console");
 
@@ -1542,7 +1542,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         await sleep(300);
         result.quickEsc = !(await js("Boolean(document.querySelector('.qj'))")) && Boolean(live.get().content);
-        await click(".envtabs button", "KERYX");
+        await click(".envtabs button", "Console");
         // The song back on air for the player checks below.
         await dblclick(".kx-row", "Canto do console");
         await waitFor(() => live.get().content?.title === "Canto do console");
@@ -1872,7 +1872,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // over the live console (.win-dialog, owner 2026-10-14), lyrics
         // split live into slides, Ctrl+S saves, Esc closes; "Editar" reopens
         // it with the song.
-        await click(".envtabs button", "KERYX");
+        await click(".envtabs button", "Console");
         await click(".kx-tabs button", "Letras");
         // The Biblioteca's + is in its header since 2026-10-28 (I2 = A).
         await click(".lib-add-slot .addmenu button", "");
@@ -2013,7 +2013,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Prévia: the prepared song as Projeção shows it (the picker of
         // other outputs went with the Multiview, 2026-10-12), with its
         // Enviar ao ar pill in the corner (Rodada N5), ready to send.
-        await click(".envtabs button", "KERYX");
+        await click(".envtabs button", "Console");
         await click(".kx-tabs button", "Letras");
         await click(".kx-row", "Canto do console");
         await waitCap(PREV, "Canto do console");
@@ -2718,7 +2718,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         result.nvClosed = await waitFor(() => js("!document.querySelector('.console .nv-l')"));
         for (const n of [1, 2]) nvRows.push((await js(`window.keryxDesktop.db.call("CommunicationVideo", "create", [{ title: "AAA aviso ${n}", type: "announcement", text: "AAA aviso ${n}", duration: 1 }])`)).data);
-        await click(".envtabs button", "KERYX");
+        await click(".envtabs button", "Console");
         await click(".kx-tabs button", "Avisos");
         await waitText(webContents, "AAA aviso 2");
         await click(".kx-panel .listhead button", "Tocar todos");
@@ -2851,7 +2851,7 @@ async function checkConsole(webContents, { live, outputs }) {
         for (const n of [...(await notesOf("note")), ...(await notesOf("favorite"))]) if (/^João 3:16/.test(n.reference)) await js(`window.keryxDesktop.db.call("BibleNote", "delete", ["${n.id}"])`);
         live.call("clear");
         await js("document.activeElement && document.activeElement.blur(); true");
-        await click(".envtabs button", "KERYX");
+        await click(".envtabs button", "Console");
 
         // An unexpected Scripture from the KERYX environment: "/ jo 3 16",
         // Enter puts it in the Prévia without leaving the console (nothing
@@ -2867,7 +2867,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return Math.abs((p.left + p.right) / 2 - innerWidth / 2) <= 1 && p.left >= 0 && p.right <= innerWidth;
         })()`);
         await press("Enter");
-        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.prev-panel .kx-prog-cap, .prev-panel .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
+        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'Console') && [...document.querySelectorAll('.prev-panel .kx-prog-cap, .prev-panel .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
             && JSON.stringify(live.get().content || null) === airBefore;
         await press("/");
         await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));
