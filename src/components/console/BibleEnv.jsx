@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Seg, Empty, Measure, SrState } from "./kx";
+import { OT_COUNT, BOOK_SIZES, booksFit, booksHeight, numGrid, numSize, pagesOf, pageOf, pageCells } from "@/lib/console/bibleFit";
 import DockView from "./Dock";
 import { bibleVersionsHome } from "@/lib/console/dock";
 import { useContextMenu } from "./ContextMenu";
@@ -104,7 +105,38 @@ function VersionSelect({ value, groups, onChange, label, shown, tip, dot, none }
     );
 }
 
-export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid, onChaptersH, onBooksH, onVersesH, readSize = READ_DEFAULT, setReadSize, onSettings }) {
+// A box's size, kept current (ResizeObserver): { w, h, ref } — the border
+// box, padding included, as bibleFit.js counts it.
+function useBox() {
+    const [box, setBox] = useState({ w: 0, h: 0 });
+    const ro = useRef(null);
+    const ref = useCallback((el) => {
+        ro.current?.disconnect();
+        ro.current = null;
+        if (!el || typeof ResizeObserver === "undefined") return;
+        const read = () => setBox((b) => (b.w === el.offsetWidth && b.h === el.offsetHeight ? b : { w: el.offsetWidth, h: el.offsetHeight }));
+        read();
+        ro.current = new ResizeObserver(read);
+        ro.current.observe(el);
+    }, []);
+    return { ...box, ref };
+}
+
+// A page cell of Capítulos or Versículos (mockup R6, B3 = A): "›" ends
+// every page but the last, "‹" starts every page but the first; the
+// numbers it goes to in its tooltip.
+function PageCell({ cell, what, onGo, label = (n) => n }) {
+    const [a, b] = cell.next || cell.prev;
+    const range = `${label(a)}–${label(b)}`;
+    return (
+        <button type="button" className="kx-t bpage" onClick={onGo} title={cell.next ? `Próximos: ${range}` : `Anteriores: ${range}`}
+            aria-label={cell.next ? `Próximos ${what}: ${range}` : `${what[0].toUpperCase()}${what.slice(1)} anteriores: ${range}`}>
+            <Icon name={cell.next ? "chevron-right" : "chevron-left"} />
+        </button>
+    );
+}
+
+export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid, onChaptersH, onBooksH, onVersesH, booksRoom = 0, readSize = READ_DEFAULT, setReadSize, onSettings }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
@@ -239,7 +271,6 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const cellsRef = useRef(null);
     const airKey = airHere ? `${book} ${chapter}:${airVerseNums.join(",")}` : "";
     useKeepInView(readingRef, ".kx-verse.is-air", [airKey, mode]);
-    useKeepInView(cellsRef, "button.is-air", [airKey]);
     // A verse (row or cell) focused with Tab follows the green selection
     // (↑/↓), so Enter acts on the one highlighted.
     const selKey = sel.join(",");
@@ -383,8 +414,6 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             if (r === "removed") c.say("Anotação apagada.");
         } catch (err) { c.say(err?.message || "Não foi possível salvar a anotação."); }
     };
-    // The 66 books: the Livros card of the left column.
-    const gridRef = useRef(null);
     // The verse row in the band: the same selection as clicking the text
     // (Ctrl adds, Shift makes a range, a double click projects), and it
     // brings the verse into view in the reading.
@@ -525,6 +554,48 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         </>
     );
 
+    // Livros, Capítulos and Versículos fit their cells (owner 2026-10-29,
+    // mockup R6; bibleFit.js): each body is measured and what all of its
+    // cells would take is reported to the console (bibleLocks, dock.js).
+    // The books step down in size to fit the room the default column
+    // leaves them (`booksRoom`), else the box they are given.
+    const [warnH, setWarnH] = useState(0);
+    const booksBox = useBox();
+    const booksExtra = (versionsHome === "books" ? VBAND_H : 0) + (ver && ver !== wanted ? warnH : 0);
+    const booksSize = booksFit({ width: booksBox.w, height: booksRoom > 0 ? booksRoom - booksExtra : booksBox.h, pref: grid });
+    const booksReport = booksBox.w ? (booksRoom > 0 ? booksSize.height : booksHeight(BOOK_SIZES.find((s) => s.id === grid) || BOOK_SIZES[1], booksBox.w)) + booksExtra : 0;
+    useEffect(() => { onBooksH?.(booksReport); }, [booksReport, onBooksH]);
+    // Capítulos: one page when the cells fit, else pages; the page shows
+    // the chapter chosen.
+    const chBox = useBox();
+    const chGrid = numGrid({ total: bookRow.chapters, width: chBox.w, height: chBox.h, size: numSize(grid, "chapters") });
+    const chReport = chBox.w ? chGrid.natural : 0;
+    useEffect(() => { onChaptersH?.(chReport); }, [chReport, onChaptersH]);
+    const chPages = useMemo(() => pagesOf(bookRow.chapters, chGrid.perPage), [bookRow.chapters, chGrid.perPage]);
+    const [chPage, setChPage] = useState(0);
+    useEffect(() => { setChPage(pageOf(chPages, chapter)); }, [chPages, chapter, book]);
+    const chPageAt = Math.min(chPage, Math.max(0, chPages.length - 1));
+    // Versículos: the page follows what moved last — the verse on air (←/→)
+    // or the verse selected (↑/↓ turn it at the edge); a new chapter opens
+    // on the selection's page, else the air's, else page 1.
+    const vBox = useBox();
+    const vGrid = numGrid({ total: verses.length, width: vBox.w, height: vBox.h, size: numSize(grid, "verses") });
+    const vReport = vBox.w && !error ? vGrid.natural : 0;
+    useEffect(() => { onVersesH?.(vReport); }, [vReport, onVersesH]);
+    const vPages = useMemo(() => pagesOf(verses.length, vGrid.perPage), [verses.length, vGrid.perPage]);
+    const [vPage, setVPage] = useState(0);
+    const selFocus = sel.length ? (sel.includes(anchor) ? anchor : sel[sel.length - 1]) : null;
+    const airFocus = airHere ? airVerseNums[0] ?? null : null;
+    const lastFocus = useRef({});
+    useEffect(() => {
+        const was = lastFocus.current;
+        lastFocus.current = { air: airFocus };
+        const n = airFocus != null && airFocus !== was.air ? airFocus : selFocus ?? airFocus;
+        const i = n == null ? -1 : verses.findIndex((v) => v.number === n);
+        setVPage(i >= 0 ? pageOf(vPages, i + 1) : 0);
+    }, [selFocus, airFocus, vPages, verses, book, chapter]);
+    const vPageAt = Math.min(vPage, Math.max(0, vPages.length - 1));
+
     // The Bíblia's modules (owner layout 2026-10-12: Livro · Capítulo ·
     // Versículo stacked on the left under the version and search, the
     // chosen text in the middle, what is on air on the right). Where they go
@@ -543,47 +614,61 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 ] })} />
             </>}>
                 {versionsHome === "books" && <div className="bver-band" role="group" aria-label="Versão da Bíblia nas telas">{versionControls}</div>}
-                {/* As tall as its books and the band, like Capítulos (P4-3 = A;
-                    Console.jsx locks the height, capped): past that the books
-                    scroll under the band. */}
-                <div className="bbooks-scroll"><Measure onHeight={(h) => onBooksH?.(h ? h + (versionsHome === "books" ? VBAND_H : 0) : 0)}>
-                    {ver && ver !== wanted && (
-                        <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
-                            {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
-                        </div>
-                    )}
-                    <div className={`bgrid is-${grid}`} ref={gridRef}>
-                        {/* Both names (Rodada R, R2a = A): the abbreviation on
-                            top, the whole name under it, cut with "…". */}
-                        {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} aria-label={b.name} aria-current={b.name === book ? "true" : undefined} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}><b className="kx-book-a" aria-hidden="true">{b.short}</b><small className="kx-book-n" aria-hidden="true">{b.name}</small></button>)}
-                    </div>
-                </Measure></div>
+                {ver && ver !== wanted && (
+                    <Measure onHeight={setWarnH}><div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
+                        {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
+                    </div></Measure>
+                )}
+                {/* The 66 books always whole (owner 2026-10-29, mockup R6):
+                    Antigo and Novo Testamento apart (B1 = A), the cell
+                    stepping down until they fit, the names last (B4 = A;
+                    bibleFit.js); the rows share what is left. */}
+                <div className="bbooks" ref={booksBox.ref}>
+                    {[["Antigo Testamento", bibleBooks.slice(0, OT_COUNT), 0], ["Novo Testamento", bibleBooks.slice(OT_COUNT), OT_COUNT]].map(([label, list, from]) => (
+                        <React.Fragment key={label}>
+                            <div className="bt-head"><span className="kx-section">{label}<span className="kx-count"> · {list.length}</span></span></div>
+                            <div className={`bgrid is-${booksSize.id}`} role="group" aria-label={label}
+                                style={{ gridTemplateColumns: `repeat(${booksSize.cols}, minmax(0, 1fr))`, gridAutoRows: `minmax(${booksSize.h}px, 1fr)`, flexGrow: Math.ceil(list.length / booksSize.cols) }}>
+                                {list.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(from + i) }} title={b.name} aria-label={b.name} aria-current={b.name === book ? "true" : undefined} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}><b className="kx-book-a" aria-hidden="true">{b.short}</b>{booksSize.names && <small className="kx-book-n" aria-hidden="true">{b.name}</small>}</button>)}
+                            </div>
+                        </React.Fragment>
+                    ))}
+                </div>
             </Panel>
         ),
         chapters: (
             <Panel className="bpick-chapters" title="Capítulos" count={`${bookRow.name} · ${bookRow.chapters}`}>
-                {/* As tall as its cells (Console.jsx locks the height, capped). */}
-                <Measure onHeight={onChaptersH}><div className="bchap">
-                    <div className={`chapters is-${grid}`}>
-                        {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} aria-current={n === chapter ? "true" : undefined} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
+                {/* As tall as its cells (Console.jsx locks the height, capped);
+                    past that, in pages (B3 = A). */}
+                <div className="bchap" ref={chBox.ref}>
+                    <div className={`chapters is-${grid}`} style={{ gridTemplateColumns: `repeat(${chGrid.cols}, minmax(0, 1fr))` }}>
+                        {pageCells(chPages, chPageAt).map((cell) => (cell.n
+                            ? <button type="button" key={cell.n} className={`kx-t ${cell.n === chapter ? "is-on" : ""}`} aria-current={cell.n === chapter ? "true" : undefined} onClick={() => { setChapter(cell.n); setSel([]); }}>{cell.n}</button>
+                            : <PageCell key={cell.next ? "next" : "prev"} cell={cell} what="capítulos" onGo={() => setChPage(chPageAt + (cell.next ? 1 : -1))} />))}
                     </div>
-                </div></Measure>
+                </div>
             </Panel>
         ),
         verses: (
             <Panel className="bpick-verses" title="Versículos" count={`${book} ${chapter}`}>
-                {/* As tall as its cells too (P4-3 = A). */}
-                {!error && verses.length > 0 && (
-                    <Measure onHeight={onVersesH}><div className="bverses"><div ref={cellsRef} className={`verse-cells is-${grid}`} role="group" aria-label={`Versículos de ${book} ${chapter}`}>
-                        {verses.map((v) => (
-                            <button type="button" key={v.number}
-                                className={`kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}
-                                aria-current={airHere && airVerseNums.includes(v.number) ? "true" : undefined}
-                                onClick={(e) => pickCell(v.number, e)} onDoubleClick={() => sendCell(v.number)}
-                                title={`${book} ${chapter}:${v.number} · clique seleciona · 2 cliques projetam`}>{v.number}<SrState cls={`${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`} /></button>
-                        ))}
-                    </div></div></Measure>
-                )}
+                {/* As tall as its cells too (P4-3 = A); past that, in pages. */}
+                <div className="bverses" ref={vBox.ref}>
+                    {!error && verses.length > 0 && (
+                        <div ref={cellsRef} className={`verse-cells is-${grid}`} role="group" aria-label={`Versículos de ${book} ${chapter}`} style={{ gridTemplateColumns: `repeat(${vGrid.cols}, minmax(0, 1fr))` }}>
+                            {pageCells(vPages, vPageAt).map((cell) => {
+                                if (!cell.n) return <PageCell key={cell.next ? "next" : "prev"} cell={cell} what="versículos" label={(n) => verses[n - 1]?.number ?? n} onGo={() => setVPage(vPageAt + (cell.next ? 1 : -1))} />;
+                                const v = verses[cell.n - 1];
+                                const state = `${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`;
+                                return (
+                                    <button type="button" key={v.number} className={`kx-t ${state}`}
+                                        aria-current={airHere && airVerseNums.includes(v.number) ? "true" : undefined}
+                                        onClick={(e) => pickCell(v.number, e)} onDoubleClick={() => sendCell(v.number)}
+                                        title={`${book} ${chapter}:${v.number} · clique seleciona · 2 cliques projetam`}>{v.number}<SrState cls={state} /></button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </Panel>
         ),
         reading: (
