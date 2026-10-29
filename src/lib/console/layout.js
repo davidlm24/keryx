@@ -192,8 +192,29 @@ export function loadLayout(profile) {
     }
 }
 
-export function saveLayout(profile, layout) {
+// A splitter drag changes the layout at every mouse move: the write waits for
+// a short pause (and for the window closing), the last value wins.
+const SAVE_WAIT_MS = 150;
+const pendingSave = new Map(); // profile -> { layout, timer }
+function writeLayout(profile, layout) {
     try {
         localStorage.setItem(KEY(profile), JSON.stringify(layout));
     } catch { /* private mode or quota: the layout just isn't remembered */ }
 }
+export function flushLayout() {
+    for (const [profile, p] of pendingSave) {
+        clearTimeout(p.timer);
+        writeLayout(profile, p.layout);
+    }
+    pendingSave.clear();
+}
+export function saveLayout(profile, layout) {
+    const p = pendingSave.get(profile);
+    if (p) clearTimeout(p.timer);
+    const timer = setTimeout(() => {
+        pendingSave.delete(profile);
+        writeLayout(profile, layout);
+    }, SAVE_WAIT_MS);
+    pendingSave.set(profile, { layout, timer });
+}
+if (typeof window !== "undefined") window.addEventListener("pagehide", flushLayout);

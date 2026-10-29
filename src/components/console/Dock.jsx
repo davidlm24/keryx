@@ -425,6 +425,8 @@ function useDockEase(box, frame, editing) {
             running.delete(el);
             delete el.dataset.easing;
         }
+        // A splitter held by the hand: the cells follow it frame by frame.
+        if ("resizing" in document.documentElement.dataset) return;
         if (!easesBetween(was, now) || editing || reduced() || performance.now() - born.current < SETTLE_MS) return;
         const css = getComputedStyle(root);
         const ms = parseFloat(css.getPropertyValue("--dur-fold")) || 180;

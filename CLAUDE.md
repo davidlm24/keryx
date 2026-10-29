@@ -1283,7 +1283,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `dockMotion`/`easesBetween` in dock.js, tested; nothing eases the first
   second after the dock appears, while editing, or with reduced motion;
   never a CSS `flex-basis` transition, which collapsed a neighbour turning
-  fixed to 0 px). The Bíblia's
+  fixed to 0 px). **Dragging a splitter never eases** (owner 2026-10-29,
+  lag on Temas' column): `Split` (kx.jsx) puts `data-resizing` on `<html>`
+  while the hand holds it, `useDockEase` cancels and skips then, so a
+  measured module (Temas) follows the hand frame by frame, with no
+  scrollbar (console.css); `onSize` runs once per frame and `saveLayout`
+  writes localStorage after 150 ms of quiet (`flushLayout` on pagehide). The Bíblia's
   No ar is another module (`air`) and never folds away (its header's
   chevron still folds it, Rodada F4). In both a click prepares that slide, a double click
   sends it; ↑/↓ walk the Slides column, ←/→ move what is on air. **Lists
