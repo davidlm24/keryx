@@ -3,6 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Seg, Empty, Measure, SrState } from "./kx";
 import DockView from "./Dock";
+import { bibleVersionsHome } from "@/lib/console/dock";
 import { useContextMenu } from "./ContextMenu";
 import AddMenu from "./AddMenu";
 import { MenuButton } from "./Menu";
@@ -87,6 +88,9 @@ function ListMenu({ icon, label, unit, empty, rows }) {
 // groups (versionGroups), the closed box only the sigla — laid over the
 // select, which stays the control (the keyboard, the screen reader).
 // `none`: the label of an option "" (the 2ª versão's "Sem 2ª versão").
+// The version band's height on top of Livros (--band, console.css): added to
+// the measured books, so Livros' locked height holds both.
+const VBAND_H = 36;
 function VersionSelect({ value, groups, onChange, label, shown, tip, dot, none }) {
     return (
         <span className={`bver ${none && !value ? "is-none" : ""}`} title={tip}>
@@ -381,10 +385,6 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     };
     // The 66 books: the Livros card of the left column.
     const gridRef = useRef(null);
-    // Abrev | Nomes: the books as short codes (default) or full names, remembered.
-    const fullNames = prefs.bible_book_names === "full";
-    const setBookNames = (v) => { updateUser({ bible_book_names: v }).catch(() => c.say("Não foi possível salvar.")); };
-    const namesInMenu = (e) => !e.currentTarget.closest(".kx-panel-h")?.querySelector(":scope > .kx-seg")?.offsetWidth;
     // The verse row in the band: the same selection as clicking the text
     // (Ctrl adds, Shift makes a range, a double click projects), and it
     // brings the verse into view in the reading.
@@ -434,7 +434,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         { label: "Instalar uma edição própria…", icon: "plus", title: "Uma Bíblia que a igreja tem em arquivo (a BKJ 1611 e outras)", onClick: openOwn },
         { label: "Bíblias instaladas…", icon: "sliders", title: "Configurações › Bíblia e músicas", onClick: () => onSettings?.("biblia") },
     ];
-    // The bar under the No ar screen (P2-1 = A): what the screens show of a
+    // The line above the No ar screen (Q5) and the version band on Livros
+    // (Rodada R, R2b = C): what the screens show of a
     // passage, saved for the church (User), stamped at send (lookDefaults.js).
     const savePref = (patch, said) => { updateUser(patch).then(() => { if (said) c.say(said); }).catch(() => c.say("Não foi possível salvar.")); };
     const chooseVersion = (v) => { setWanted(v); rebuildAir({ bible_version: v }); };
@@ -509,6 +510,21 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const airSaid = `${airIdle ? "Nada no ar" : `No ar: ${airCap}`}${c.locked ? " · travado" : ""}`;
     const searchSel = sel.length === 1 ? { book, chapter, verse: sel[0] } : null;
 
+    // The version, the 2ª versão and where it goes (Rodada R, owner
+    // 2026-10-29, R2b = C): a band on top of Livros; with Livros in the tray,
+    // back in the line above the No ar screen (bibleVersionsHome, dock.js).
+    const versionsHome = bibleVersionsHome(dockProps?.dock);
+    const versionControls = (
+        <>
+            <VersionSelect value={wanted} groups={groups} onChange={chooseVersion} shown={wanted} dot={Boolean(badge)}
+                label={badge ? `Versão: ${badge.text}` : "Versão"} tip={[badge?.text, credit].filter(Boolean).join(" · ") || "Versão da Bíblia"} />
+            <VersionSelect value={want2} groups={groups2} none="Sem 2ª versão" onChange={(v) => { savePref({ bible_version_2: v }, v ? `2ª versão nas telas: ${v}.` : "Uma versão só nas telas."); rebuildAir({ bible_version_2: v }); }}
+                shown={want2 ? <><span className="bb-2l">2ª:{" "}</span>{want2}</> : <>+ 2ª<span className="bb-2l">{" "}versão</span></>} dot={pairFailed || Boolean(want2 && want2 === (ver || wanted))} label={`Segunda versão nas telas · ${want2 || "nenhuma"}`} tip={pairTip} />
+            {want2 && <Seg small className="bb-pair" label="Onde fica a 2ª versão" value={prefs.bible_pair} onChange={(v) => { savePref({ bible_pair: v }); restyleAir({ bible_pair: v }); }}
+                options={[["side", <Icon name="cols" />, { title: "Lado a lado: as duas versões lado a lado", "aria-label": "Lado a lado" }], ["stack", <Icon name="rows" />, { title: "Empilhadas: a 2ª versão embaixo da primeira, um pouco menor", "aria-label": "Empilhadas" }]]} />}
+        </>
+    );
+
     // The Bíblia's modules (owner layout 2026-10-12: Livro · Capítulo ·
     // Versículo stacked on the left under the version and search, the
     // chosen text in the middle, what is on air on the right). Where they go
@@ -516,35 +532,32 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // Console.jsx keeps it): each is built here apart from its place.
     const modules = {
         books: (
-            <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={<>
-                <Seg small label="Nomes dos livros" value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
+            <Panel className="bpick-books" title="Livros" actions={<>
                 <AddMenu title="Instalar uma versão da Bíblia" items={installItems} />
                 <IconBtn name="more" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
                     { label: `Tema da Bíblia… · ${themeLabel}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`, icon: "star", onSelect: chooseTheme },
                     "sep",
-                    // A narrow column hides Abrev | Nomes (console.css, C-47): then it is here.
-                    ...(namesInMenu(e) ? [
-                        { label: "Livros abreviados", icon: fullNames ? undefined : "check", onSelect: () => setBookNames("short") },
-                        { label: "Livros com o nome inteiro", icon: fullNames ? "check" : undefined, onSelect: () => setBookNames("full") },
-                        "sep",
-                    ] : []),
                     { label: "Células pequenas", icon: grid === "small" ? "check" : undefined, onSelect: () => setGrid?.("small") },
                     { label: "Células médias", icon: grid === "medium" ? "check" : undefined, onSelect: () => setGrid?.("medium") },
                     { label: "Células grandes", icon: grid === "large" ? "check" : undefined, onSelect: () => setGrid?.("large") },
                 ] })} />
             </>}>
-                {/* As tall as its books, like Capítulos (P4-3 = A; Console.jsx
-                    locks the height, capped): past that it scrolls. */}
-                <Measure onHeight={onBooksH}>
+                {versionsHome === "books" && <div className="bver-band" role="group" aria-label="Versão da Bíblia nas telas">{versionControls}</div>}
+                {/* As tall as its books and the band, like Capítulos (P4-3 = A;
+                    Console.jsx locks the height, capped): past that the books
+                    scroll under the band. */}
+                <div className="bbooks-scroll"><Measure onHeight={(h) => onBooksH?.(h ? h + (versionsHome === "books" ? VBAND_H : 0) : 0)}>
                     {ver && ver !== wanted && (
                         <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
                             {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
                         </div>
                     )}
                     <div className={`bgrid is-${grid}`} ref={gridRef}>
-                        {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} aria-label={b.name} aria-current={b.name === book ? "true" : undefined} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
+                        {/* Both names (Rodada R, R2a = A): the abbreviation on
+                            top, the whole name under it, cut with "…". */}
+                        {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} aria-label={b.name} aria-current={b.name === book ? "true" : undefined} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}><b className="kx-book-a" aria-hidden="true">{b.short}</b><small className="kx-book-n" aria-hidden="true">{b.name}</small></button>)}
                     </div>
-                </Measure>
+                </Measure></div>
             </Panel>
         ),
         chapters: (
@@ -637,18 +650,13 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         ),
         air: (
             <Panel className="bible-air-col" noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                <div className="bbar" role="group" aria-label="Como a Bíblia aparece nas telas">
+                <div className={`bbar ${versionsHome === "air" ? "has-versions" : ""}`} role="group" aria-label="Como a Bíblia aparece nas telas">
                     <Btn small kind="icon" onClick={chooseTheme} aria-label="Tema da Bíblia…" title={`Tema da Bíblia… · ${themeLabel}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`}><Icon name="palette" /></Btn>
                     <Btn small on={showRef} onClick={() => { savePref({ bible_show_reference: !showRef }, showRef ? "Telas sem a referência." : "Telas com a referência."); restyleAir({ bible_show_reference: !showRef }); }} title={showRef ? "A referência (João 3:16) aparece nas telas · clique para tirar" : "Sem a referência nas telas · clique para mostrar"}>Ref.</Btn>
                     <div className="kx-seg is-small" role="group" aria-label="Versículos por slide">
                         {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} aria-pressed={how === v} aria-label={v === "auto" ? "Auto" : undefined} onClick={() => setHow(v)} title={v === "auto" ? "Versículos por slide: pelo tamanho do texto" : `${v} versículo${v === "1" ? "" : "s"} por slide`}>{v === "auto" ? <><span className="bb-full">Auto</span><span className="bb-short" aria-hidden="true">A</span></> : l}</button>)}
                     </div>
-                    <VersionSelect value={wanted} groups={groups} onChange={chooseVersion} shown={wanted} dot={Boolean(badge)}
-                        label={badge ? `Versão: ${badge.text}` : "Versão"} tip={[badge?.text, credit].filter(Boolean).join(" · ") || "Versão da Bíblia"} />
-                    <VersionSelect value={want2} groups={groups2} none="Sem 2ª versão" onChange={(v) => { savePref({ bible_version_2: v }, v ? `2ª versão nas telas: ${v}.` : "Uma versão só nas telas."); rebuildAir({ bible_version_2: v }); }}
-                        shown={want2 ? <><span className="bb-2l">2ª: </span>{want2}</> : <>+ 2ª<span className="bb-2l"> versão</span></>} dot={pairFailed || Boolean(want2 && want2 === (ver || wanted))} label={`Segunda versão nas telas · ${want2 || "nenhuma"}`} tip={pairTip} />
-                    {want2 && <Seg small className="bb-pair" label="Onde fica a 2ª versão" value={prefs.bible_pair} onChange={(v) => { savePref({ bible_pair: v }); restyleAir({ bible_pair: v }); }}
-                        options={[["side", <Icon name="cols" />, { title: "Lado a lado: as duas versões lado a lado", "aria-label": "Lado a lado" }], ["stack", <Icon name="rows" />, { title: "Empilhadas: a 2ª versão embaixo da primeira, um pouco menor", "aria-label": "Empilhadas" }]]} />}
+                    {versionsHome === "air" && versionControls}
                 </div>
                 <div className="bible-air">
                     {/* No header (owner 2026-10-16): the screen sits on top, and

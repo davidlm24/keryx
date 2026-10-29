@@ -9,7 +9,7 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { lookDefaults, withLookDefaults } from "@/lib/console/lookDefaults";
 import { groupVerses } from "@/lib/console/bibleVerses";
 import BibliasSection from "./BibliasSection";
-import { booksSummary } from "@/lib/console/cfgSummaries";
+import { importSummary } from "@/lib/console/cfgSummaries";
 
 // The sample passage the preview shows (two verses, so the grouping shows).
 const SAMPLE_VERSES = [
@@ -65,13 +65,8 @@ export default function BibliaSection({ c }) {
                 </div>
             </div>
             </CfgGroup>
-            <CfgGroup id="biblia.livros" k="Livros e importação" defaultOpen={false} summary={booksSummary(prefs)}>
+            <CfgGroup id="biblia.livros" k="Importação de letras" defaultOpen={false} summary={importSummary(prefs)}>
             <div className="frm">
-                <FormRow k="Livros da Bíblia">
-                    <Seg small value={prefs.bible_book_names} onChange={(v) => save({ bible_book_names: v }, v === "full" ? "Livros com o nome inteiro." : "Livros abreviados.")}
-                        options={[["short", "Abreviados"], ["full", "Nome inteiro"]]} />
-                    <span className="kx-meta">no seletor da Bíblia</span>
-                </FormRow>
                 <FormRow k="Ao importar letras">
                     <LinesPicker value={prefs.import_lines} onChange={(v) => save({ import_lines: v }, "Corte das letras importadas salvo.")} />
                 </FormRow>

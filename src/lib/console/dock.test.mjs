@@ -785,3 +785,11 @@ test("bibleLocks: Livros, Capítulos and Versículos stay stacked at 1366 × 768
     assert.notDeepEqual(pathOf(apart.tree, "books").slice(0, -1), pathOf(apart.tree, "chapters").slice(0, -1));
     assert.deepEqual(bibleLocks(apart, { books: 324, chapters: 600 }, h, head), { books: naive.books, chapters: naive.books, verses: 0 });
 });
+
+test("bibleVersionsHome: the version band on Livros, else above the No ar screen (Rodada R, R2b)", async () => {
+    const { bibleVersionsHome } = await import("./dock.js");
+    const d = fromBibleArrangement({});
+    assert.equal(bibleVersionsHome(d), "books");
+    assert.equal(bibleVersionsHome(hideModule(d, "books")), "air", "Livros in the tray");
+    assert.equal(bibleVersionsHome(null), "air");
+});

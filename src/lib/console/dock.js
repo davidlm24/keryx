@@ -1169,3 +1169,10 @@ function fitNode(node, path, w, h, ctx) {
     // (resizeExact turns a splitter's pixels into weight).
     return { kind: "split", path, dir: node.dir, w, h, children, ...(exact ? { exact: true, room: exact.room, wsum: exact.wsum } : {}) };
 }
+
+// Where the Bíblia's version controls live (Rodada R, owner 2026-10-29,
+// R2b = C): a band on top of Livros while Livros is in the dock (it never
+// folds), else — Livros in the tray — the line above the No ar screen (`air`
+// never leaves), so the version is never out of reach. Livros as a tab
+// behind another module keeps it: its tab is a click.
+export const bibleVersionsHome = (dock) => (pathOf(dock?.tree, "books") ? "books" : "air");

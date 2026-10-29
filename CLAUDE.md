@@ -125,8 +125,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   most, then the rare; a page's first area is a plain heading
   (`fold={false}`: Telas, Conexão, Temas padrão, Passagens, Planejamento,
   Disposição, Andamento, Backup) and only the areas after it fold, the rare
-  ones starting closed (Transições, Som e YouTube, Arquivo de ajustes, Livros
-  e importação, Equipe de louvor, Atalhos, O que vai e o que fica, Código da
+  ones starting closed (Transições, Som e YouTube, Arquivo de ajustes, Importação
+  de letras, Equipe de louvor, Atalhos, O que vai e o que fica, Código da
   igreja, Dados); what is chosen goes in the group's `summary` — a plain
   one-line string the section computes from its own values (`outputsSummary`,
   `syncSummary`, `src/lib/console/cfgSummaries.js`; tested), shown only while
@@ -1012,14 +1012,30 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Livre) — never place a column by hand in `Console.jsx` or `BibleEnv.jsx`.
   The Bíblia's dock (`layout.bibleDock`, `env: "biblia"`; modules Livros, Capítulos, Versículos, Texto, No ar — the text and
   No ar never leave; the old "Versão e busca" module is gone, 2026-10-14:
-  Abrev | Nomes, the install + and a view menu (Tema da Bíblia…, Células
+  the install + and a view menu (Tema da Bíblia…, Células
   pequenas/médias/grandes — `layout.bibleGrid`, per computer) are Livros'
-  header. **The (+) lists only what is missing here** (Rodada P, P3;
+  header. **Every book cell shows both names** (Rodada R, owner 2026-10-29,
+  R2a = A): the abbreviation on top (600, 13 px) and the whole name under
+  it (meta, `fg-3`, one line, "…"), left-aligned by the group's colour bar;
+  Células pequenas/médias/grandes are densities of that cell (4 / 3 / 2 a
+  row in the column's default 300 px). **There is no Abrev | Nomes any
+  more** (header, view menu and Configurações › Bíblia e músicas, whose
+  group is now "Importação de letras"): `User.bible_book_names` stays
+  stored and nothing reads it. **The (+) lists only what is missing here** (Rodada P, P3;
   `installableEditions`), then "Instalar uma edição própria…" (the
   `OwnBibleDialog` of Configurações, the BKJ 1611's door) and "Bíblias
-  instaladas…". **One line ABOVE the No ar screen, always on screen** (Rodada Q, Q5 = owner 2026-10-23, S2 = A; reverses P2-1's bar under it; `.bbar`): Tema as an icon button (`palette`, "Tema da Bíblia…"), Ref. (`bible_show_reference`), versículos por slide 1/2/3/Auto, the version, "+ 2ª" / "2ª: X" and, only with a 2ª versão, Lado a lado | Empilhadas as two icon segments (`cols`, `rows`) — church preferences stamped at send (`withLookDefaults`). The line NEVER wraps: container queries on the column (`bbar-c`) shrink it in steps (under 460 px Auto→A and the 2ª shows only its sigla; under 330 px the selects narrow and the gaps tighten), every control reachable at the column's 300 px minimum. No size there (owner 2026-10-22:
+  instaladas…". **The version band on top of Livros** (Rodada R, owner
+  2026-10-29, R2b = C; reverses that part of Q5): a 36 px band under
+  Livros' header (`.bver-band`, controls 28 px), the version, the 2ª versão
+  ("+ 2ª versão" / "2ª: X") and, only with a 2ª, Lado a lado | Empilhadas
+  as two icon segments (`cols`, `rows`) on the right; it stays while the
+  books scroll, and Livros' locked height counts it (`VBAND_H`). **With
+  Livros in the tray the same controls go back to the line above the No ar
+  screen** (`bibleVersionsHome` in dock.js, tested: Livros in the dock =
+  "books", else "air"; `.bbar.has-versions`), so the version is never out
+  of reach. **One line ABOVE the No ar screen, always on screen** (Rodada Q, Q5 = owner 2026-10-23, S2 = A; reverses P2-1's bar under it; `.bbar`): Tema as an icon button (`palette`, "Tema da Bíblia…"), Ref. (`bible_show_reference`) and versículos por slide 1/2/3/Auto — church preferences stamped at send (`withLookDefaults`), like the version band's. The line NEVER wraps: it fits the column's 300 px minimum as it is, and only while it holds the version controls (`has-versions`) container queries on the column (`bbar-c`) shrink it in two steps (under 440 px Auto→A, the 2ª only its sigla, selects 56 px; under 350 px 46 px and the gaps tighten). No size there (owner 2026-10-22:
   the screens' size is the Bíblia theme's; `bible_text_size` is gone).
-  **The bar's changes reach what is on air at once** (owner 2026-10-22, as
+  **The bar's and the version band's changes reach what is on air at once** (owner 2026-10-22, as
   in Holyrics: the Bíblia has no Prévia, the screen under the line is No
   ar), when a passage is on air and the screens are not locked: Tema
   through `applyThemeOnAir(c, theme, { inUse: false })` (text look + Fundo,
@@ -1060,6 +1076,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   in the text panel's header and Ctrl + the wheel over the text, five
   steps P M G GG GGG (`layout.bibleRead`, per computer;
   `src/lib/console/bibleRead.js`, tested); it never changes the screens.
+  **The reading has no max width** (Rodada R, R3, owner 2026-10-29): the
+  verse cards fill the Texto panel and wrap as it narrows.
   The Bíblia has **no search field
   of its own** (owner 2026-10-16): the console's search (the palette, `/`)
   opens a reference there and searches a word (`request.search` → the

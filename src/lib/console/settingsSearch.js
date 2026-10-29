@@ -68,8 +68,7 @@ export const SETTINGS_INDEX = [
         ["categoria", "categorias", "nova categoria", "renomear", "ordem", "excluir categoria", "outros", "fundos", "galerias"]),
 
     e("biblia", "Passagens", "como uma passagem aparece nas telas: versículos por slide, referência e números, com um exemplo", ["passagem", "trecho", "exemplo", "prévia"]),
-    e("biblia", "Livros e importação", "livros abreviados e o corte das letras importadas", ["livros", "importar", "estrofe"]),
-    e("biblia", "Livros da Bíblia", "abreviados (Gn) ou com o nome inteiro (Gênesis)", ["abreviados", "nome inteiro", "abrev", "livros"]),
+    e("biblia", "Importação de letras", "o corte das letras importadas em slides", ["importar", "estrofe", "letras", "linhas"]),
     e("temas", "Tema da Bíblia", "o tema das passagens, em Temas padrão", ["tema", "bíblia", "passagens", "fundo", "estilo"], { target: "Temas padrão" }),
     e("biblia", "Versículos por slide", "quantos versículos de um trecho vão em cada slide", ["versículos", "slide", "automático", "trecho"]),
     e("biblia", "Referência", "mostrar João 3:16 embaixo do texto", ["referência", "capítulo"]),
