@@ -38,7 +38,8 @@ export function useRemote({ c, data, service, items, rows, airItemId, airNow, ne
         // A passage from the phone is cut by the Bíblia theme's measure too.
         stages: { ...STAGES, verses: (a) => stageFromVerses({ ...a, fit: a.fit ?? c.fitFor?.("bible", a.pair ? (prefs.bible_pair === "stack" ? "stack" : "side") : null) ?? null }) },
         // The culto's Avançar sozinho, written without a toast of its own (the runner says it).
-        setAutoplay: (on) => keryx.entities.Service.update(service.id, { autoplay: Boolean(on) }),
+        // No list yet: the shared Setlist is made first (consoleSetlist.js).
+        setAutoplay: async (on) => keryx.entities.Service.update(service?.id || await ensureService(), { autoplay: Boolean(on) }),
         // Rodada Q: setlist.add (the plan, never the air) and the Equipe's messages.
         addToSetlist, addPassage, ensureService, messages,
         createMessage: (fields) => keryx.entities.ServiceMessage.create(fields),

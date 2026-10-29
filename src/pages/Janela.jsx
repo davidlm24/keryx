@@ -81,12 +81,9 @@ function useJanelaConsole() {
     const { toast, toastAction, say, holdToast } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
-    // The console's culto (Planejar o culto's green dot), as it says it.
-    const [consoleService, setConsoleService] = useState(null);
     useEffect(() => {
         const off = relayListen("janela", (m) => {
             if (m.type === "console.prev") setPrevMirror(m.stage);
-            else if (m.type === "console.service") setConsoleService(m.id);
             // The PDFs' pages are the console's work: their progress comes from
             // it, and Tentar de novo goes back to it (Rodada H, HB).
             else if (m.type === "pages.progress") setRelayedProgress(m.pages);
@@ -102,7 +99,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, cur: live, bgPrefs, fitFor, themeId, prev, setPrev, consoleService, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
+    return { live, cur: live, bgPrefs, fitFor, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,
@@ -222,8 +219,7 @@ export default function Janela() {
         cfg, setCfg, uiLayout: null, setUiLayout: () => {}, restoreLayout: () => {},
         openScreen: (path) => setStack((s) => winPush(s, { page: "screen", props: { path: path || "/Projection" } }, "Telas e saídas")),
         openWhatsNew: () => toConsole("console.open", { what: "novidades" }, "As novidades abriram no console."),
-        // "Usar no console": the console changes its culto and says so back.
-        serviceId: c.consoleService, setServiceId: (id) => toConsole("service.use", { id: id || null }), plannerFocus: null,
+        plannerFocus: null,
     };
 
     // Keys: Esc closes what is on top (a menu, a question, the library, then

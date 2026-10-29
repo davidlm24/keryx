@@ -26,9 +26,8 @@ import ScreenEditor from "@/components/editor/ScreenEditor";
 //   askText              — PromptDialog
 //   cfg, setCfg, uiLayout, setUiLayout, restoreLayout, openScreen,
 //   openWhatsNew         — Configurações
-//   serviceId, setServiceId, plannerFocus — Planejar o culto: the console's
-//                          culto (its tab's green dot) and "Usar no console";
-//                          the planner's own tabs never change it (O9 = A)
+//   plannerFocus         — Planejar o culto: the item to open; the active
+//                          culto is the church's (useActiveService)
 // The console runs those through its own Prévia, sendStage and log; a
 // detached window sends them to the console (src/lib/janelaRelay.js).
 export function winPage(entry, { active, escRef, onClose }, h) {
@@ -40,7 +39,7 @@ export function winPage(entry, { active, escRef, onClose }, h) {
         case "planner":
             // The tab in front rides in the entry's props (keep: no remount),
             // so Destacar opens the detached window on it (nav.js detachSpec).
-            return <ServicePlanner c={c} data={data} openId={p.serviceId || null} focusId={h.plannerFocus} consoleServiceId={h.serviceId} onUseOnConsole={h.setServiceId}
+            return <ServicePlanner c={c} data={data} openId={p.serviceId || null} focusId={h.plannerFocus}
                 active={active} onFront={(id) => { if ((id || null) !== (p.serviceId || null)) h.replaceTop(id ? { serviceId: id } : {}, { keep: true }); }}
                 onClose={onClose} escRef={escRef}
                 onEditSong={(id) => h.push({ page: "song", props: { id } }, "Planejar o culto")} />;

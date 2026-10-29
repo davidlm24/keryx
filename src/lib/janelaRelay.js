@@ -35,13 +35,8 @@ export const JANELA_MESSAGES = {
     "console.open": { from: "janela", ok: (m) => m.what === "novidades" || (m.what === "settings" && (m.section === undefined || isId(m.section))) },
     // A detached page asks for the console's state when it opens.
     "console.hello": { from: "janela", ok: () => true },
-    // Planejar o culto's "Usar no console" (Rodada O, O9 = A): the console's
-    // Setlist takes that culto (null: its culto was deleted there, the
-    // console chooses again). Its tabs never change it otherwise.
-    "service.use": { from: "janela", ok: (m) => m.id === null || isId(m.id) },
-    // The console's culto now (null = none), to every detached page: the
-    // planner's tabs mark it with a green dot.
-    "console.service": { from: "console", ok: (m) => m.id === null || isId(m.id) },
+    // (Which culto the consoles show is the church's, User.active_service_id
+    // since 2026-10-29: a detached planner writes it like any window.)
     // The console's Prévia now (null = empty), to every detached page.
     "console.prev": { from: "console", ok: (m) => m.stage === null || isStage(m.stage) },
     // How far each PDF's pages are (Rodada H, HB): only the console makes

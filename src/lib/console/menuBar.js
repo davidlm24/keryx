@@ -42,11 +42,16 @@ export function buildMenus(ctx) {
     const f = ctx.follow || null;
     const services = (ctx.services || []).slice(0, 12);
 
+    // What every console shows (owner 2026-10-29, consoleSetlist.js): the
+    // shared Setlist, or the culto the church activated — on every computer.
+    const activeId = ctx.activeId || "";
     const culto = [
-        head("Culto de hoje"),
-        ...(services.length ? services.map((s) => ({ label: s.title || "Culto", kbd: date(s.date), checked: s.id === ctx.serviceId, service: true, onSelect: call("pickService", s.id) })) : [{ label: "Nenhum culto ainda", disabled: true }]),
+        head("No console · todos os computadores"),
+        { label: "Setlist", icon: "list", checked: !activeId, title: "A setlist compartilhada, quando nenhum culto está ativo", onSelect: call("activate", null) },
+        ...services.map((s) => ({ label: s.title || "Culto", kbd: date(s.date), checked: s.id === activeId, service: true, title: "Ativar este culto em todos os computadores", onSelect: call("activate", s.id) })),
+        ...(activeId ? [{ label: "Encerrar o culto…", icon: "check", title: "Marca o culto como feito e todos voltam à Setlist", onSelect: call("endService") }] : []),
         sep,
-        mi("planejar", { onSelect: call("planner", ctx.serviceId) }),
+        mi("planejar", { onSelect: call("planner", activeId || null) }),
         mi("novoCulto", { onSelect: call("planner", "new") }),
         { label: "Modelos de culto", icon: "copy", title: "Configurações › Culto", onSelect: call("settings", "culto") },
         { label: "Exportar a setlist em PDF", icon: "download", disabled: !ctx.serviceId || !ctx.itemsCount, title: ctx.serviceId ? undefined : "Escolha um culto primeiro", onSelect: call("exportPdf") },

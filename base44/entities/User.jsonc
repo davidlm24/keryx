@@ -87,6 +87,10 @@
       "type": "integer",
       "description": "Culto: duracao de uma musica na setlist quando ela nao tem a sua, em segundos. Nulo = 240"
     },
+    "active_service_id": {
+      "type": "string",
+      "description": "O culto ativo da igreja (id de Service), visto por todo console em todos os computadores; vazio = a Setlist compartilhada (src/lib/console/consoleSetlist.js, owner 2026-10-29)"
+    },
     "autoplay_gap": {
       "type": "integer",
       "description": "Culto: pausa entre itens da Setlist automatica (Avancar sozinho), em segundos: 0, 3, 5 ou 10. Nulo = 5"

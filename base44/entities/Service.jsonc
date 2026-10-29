@@ -51,10 +51,11 @@
       "type": "string",
       "enum": [
         "culto",
-        "evento"
+        "evento",
+        "console"
       ],
       "default": "culto",
-      "description": "Tipo: Culto ou Evento"
+      "description": "Tipo: Culto ou Evento; console = a Setlist compartilhada do console (uma por igreja, src/lib/console/consoleSetlist.js), nunca um culto planejado"
     },
     "event_description": {
       "type": "string",

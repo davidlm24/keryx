@@ -10,7 +10,7 @@ import { useUser } from "@/hooks/useUser";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { useFontRows } from "@/hooks/useFonts";
 import { isFontMedia, fontFamilies } from "@/lib/fonts";
-import { chooseService } from "@/lib/console/serviceChoice";
+import { visibleService } from "@/lib/console/consoleSetlist";
 
 // What the console reads: the library (songs, media, communication pieces),
 // the services and the chosen service's items, the themes. Each list follows
@@ -159,12 +159,14 @@ export function useBackgrounds() {
     }, [media, prefs]);
 }
 
-// The services, newest first, and the items of the one in hand (today's by
-// default, else the most recent).
-export function useRundown(serviceId) {
+// The services, newest first, the one every console shows (the church's
+// active culto, else the shared Setlist: consoleSetlist.js) and its items.
+export function useRundown(activeId) {
     const client = useQueryClient();
     const servicesQ = useList("Service", ["-date"]);
     const services = servicesQ.data;
+    const view = useMemo(() => visibleService(services, activeId), [services, activeId]);
+    const serviceId = view.service?.id || null;
     useEffect(() => keryx.entities.ServiceItem.subscribe(() => client.invalidateQueries({ queryKey: ["console", "serviceItems"] })), [client]);
     const itemsQ = useQuery({
         queryKey: ["console", "serviceItems", serviceId],
@@ -174,7 +176,8 @@ export function useRundown(serviceId) {
     const items = itemsQ.data ?? EMPTY;
     // The Setlist's empty state waits for the services and its items (POL-03).
     const loaded = answered(servicesQ) && (!serviceId || answered(itemsQ));
-    return { services, items: items.filter((i) => i.enabled !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), loaded };
+    const shown = useMemo(() => items.filter((i) => i.enabled !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), [items]);
+    return { services, view, items: shown, loaded };
 }
 
 // The Equipe's chat and song requests of the chosen culto (ServiceMessage,
@@ -189,12 +192,6 @@ export function useServiceMessages(serviceId) {
         enabled: Boolean(serviceId),
     });
     return serviceId ? q.data ?? EMPTY : EMPTY;
-}
-
-// The culto on the screens, else today's, else the most recent
-// (src/lib/console/serviceChoice.js).
-export function pickDefaultService(services, live = null) {
-    return chooseService(services, live);
 }
 
 // The outputs: the windows the main process places (desktop) and the

@@ -2013,6 +2013,9 @@
         "duration_song": {
           "type": "integer"
         },
+        "active_service_id": {
+          "type": "text"
+        },
         "autoplay_gap": {
           "type": "integer"
         },

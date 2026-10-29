@@ -63,7 +63,8 @@ export function serviceClock({ service, seconds = 0, late = 0, now, forecast = f
         const sentence = [full.text, full.more].filter(Boolean).join(" · ");
         return { ...full, text: short, more: "", label: sentence, title: `${sentence} · ${full.title}` };
     };
-    if (!service) return { text: "Sem culto", more: "", muted: true, warn: false, title: "Nenhum culto escolhido · escolha ou crie um na Setlist" };
+    // No culto, or the console's shared Setlist (consoleSetlist.js): no time to count from.
+    if (!service || service.service_type === "console") return { text: "Sem culto", more: "", muted: true, warn: false, title: "Nenhum culto ativo · ative um no título da Setlist ou em Planejar o culto" };
     const mins = minutesOf(service.startTime) ?? minutesOf(service.time);
     if (mins == null) return say({ text: "Culto sem horário", more: "", muted: true, warn: false, title: "Defina o horário em Planejar o culto (ou um horário de sempre em Configurações › Culto)" }, "Sem horário");
     const day = dayOf(service.date, now);

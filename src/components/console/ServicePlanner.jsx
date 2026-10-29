@@ -33,6 +33,8 @@ import { useWinCol } from "./winLayout";
 import { TabRow } from "./TabsPanel";
 import { usePlaced } from "./Menu";
 import { useServices } from "./useConsoleData";
+import { useActiveService } from "./useActiveService";
+import { cultosOf } from "@/lib/console/consoleSetlist";
 import { PLANNER_TABS_KEY, NO_TABS, readTabs, pruneTabs, adoptTabs, openTab, closeTab, tabLabel, lastService, cultosToOpen, duplicateFields } from "@/lib/console/plannerTabs";
 
 const ADD = [
@@ -51,14 +53,20 @@ const saveTabs = (tabs) => { try { window.localStorage.setItem(PLANNER_TABS_KEY,
 // Planejar o culto in tabs, as in a browser (owner 2026-10-21, Rodada O,
 // O9 = A): one culto per tab, the (+) a new tab that chooses one, the tabs
 // open kept on this computer. The tabs are for planning: switching them
-// never changes the console's culto — its tab has a green dot, and "Usar no
-// console" (a tab's right click) is the one door. Closing a tab never
+// never changes the console's list — the active culto's tab has a green
+// dot, and "Ativar o culto" (a tab's right click) activates one on every
+// computer (owner 2026-10-29, useActiveService). Closing a tab never
 // deletes the culto (Excluir culto… stays in the Culto panel). `openId`
 // opens or brings forward that culto's tab (the console's Planejar, a deep
 // link ?planner=<id>); `onFront` tells the window which tab is in front, so
 // "Destacar em janela" opens on it (nav.js detachSpec).
-export default function ServicePlanner({ c, data, openId = null, focusId = null, consoleServiceId = null, onUseOnConsole, active = true, onFront, onClose, escRef, onEditSong = null }) {
-    const { services, loaded } = useServices();
+export default function ServicePlanner({ c, data, openId = null, focusId = null, active = true, onFront, onClose, escRef, onEditSong = null }) {
+    // The planned cultos: the console's shared Setlist is never one of them
+    // (consoleSetlist.js). Which one is active is the church's, the same on
+    // every computer (useActiveService).
+    const { services: all, loaded } = useServices();
+    const services = useMemo(() => cultosOf(all), [all]);
+    const { activeId, activate, endService } = useActiveService(c.say);
     const [tabs, setTabs] = useState(() => openTab(loadTabs(), openId));
     // Only this window's own changes are saved; a planner in another window
     // (the console's and a detached one) changes the list too, and this one
@@ -93,15 +101,6 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
         if (id === "new") { setChoosing(false); return; }
         change((t) => closeTab(t, id));
     };
-    // Said once the console's culto IS that one (a detached window hears it
-    // back from the console); a message the console did not get says so.
-    const [using, setUsing] = useState(null);
-    const takeToConsole = (id) => { if (onUseOnConsole?.(id) !== false) setUsing(id); };
-    useEffect(() => {
-        if (!using || consoleServiceId !== using) return;
-        c.say(`${tabLabel(byId.get(using))} passa a ser o culto do console.`);
-        setUsing(null);
-    }, [using, consoleServiceId]); // eslint-disable-line react-hooks/exhaustive-deps
     const create = async (fields, message) => {
         try {
             const row = await keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto", ...fields });
@@ -140,16 +139,20 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
 
     const tabMenu = (e, t) => {
         if (t.id === "new") return;
-        const onConsole = t.id === consoleServiceId;
-        menu(e, { title: tabLabel(byId.get(t.id)), items: [
-            { label: onConsole ? "Já é o culto do console" : "Usar no console", icon: "check", disabled: onConsole || !onUseOnConsole, onSelect: () => takeToConsole(t.id) },
+        const svc = byId.get(t.id);
+        const on = t.id === activeId;
+        menu(e, { title: tabLabel(svc), items: [
+            on
+                ? { label: "Encerrar o culto…", icon: "check", title: "Marca o culto como feito e todos os computadores voltam à Setlist", onSelect: () => endService(svc) }
+                : { label: "Ativar o culto", icon: "check", disabled: !svc, title: "O console de todos os computadores passa a mostrar este culto", onSelect: () => activate(svc) },
+            ...(on ? [{ label: "Voltar à Setlist", icon: "list", title: "O culto continua planejado; todos os computadores voltam à Setlist", onSelect: () => activate(null) }] : []),
             { label: "Fechar a aba", icon: "x", onSelect: () => close(t.id) },
         ] });
     };
     const tabList = tabs.ids.filter((id) => byId.has(id) || !loaded).map((id) => {
         const label = byId.has(id) ? tabLabel(byId.get(id)) : "…";
-        const here = id === consoleServiceId;
-        return { id, name: label, dot: here ? "é o culto do console" : null, title: here ? `${label} · é o culto do console` : `${label} · clique direito: Usar no console` };
+        const here = id === activeId;
+        return { id, name: label, dot: here ? "ativo em todos os computadores" : null, title: here ? `${label} · ativo em todos os computadores` : `${label} · clique direito: Ativar o culto` };
     });
     if (choosing || !tabs.ids.length) tabList.push({ id: "new", name: "Nova aba", title: "Abrir ou criar um culto" });
 
@@ -164,7 +167,7 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
             {bar}
             {showsPlan
                 ? <CultoPlan key={front} c={c} services={services} serviceId={front} data={data} focusId={focus?.id === front ? focus.item : null} onFocused={() => setFocus(null)}
-                    escRef={innerEsc} onEditSong={onEditSong} onDeleted={(id) => { if (id === consoleServiceId) onUseOnConsole?.(null); close(id); }} />
+                    escRef={innerEsc} onEditSong={onEditSong} onDeleted={(id) => { if (id === activeId) activate(null); close(id); }} />
                 : <NewTab services={services} loaded={loaded} open={tabs.ids} last={last} onNew={newService} onDuplicate={duplicateLast} onOpen={showNew} />}
         </>
     );
