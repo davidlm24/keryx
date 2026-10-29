@@ -7,6 +7,7 @@ import { noticeLabel } from "@/lib/console/notice";
 import { materialStage, materialMeta } from "@/lib/console/school";
 import { passageOf, chapterOf, chapterOnAir, howOf, airPassage, slideWithVerse, verseNear } from "@/lib/console/bibleVerses";
 import { presentationStage, presentationBlock, pagesOf, playsInSequence } from "@/lib/presentation";
+import { chunkText } from "./textBudget.js";
 
 const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", presentation: "Apresentação", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
 
@@ -29,19 +30,20 @@ export function stageFromPassage(passage, ref = {}) {
 // verses per slide, for a chapter too; look: the church's display now
 // (lookDefaults(…).bible), so a chapter on air shown otherwise is sent
 // again. A range keeps its verses in its ref (nums), so the Bíblia's bar
-// can rebuild it on air (stageRebuiltOnAir).
-export function stageFromVerses({ verses, nums, how = "auto", version, book, chapter, onAir = null, pair = null, look = null }) {
-    if (nums.length > 1) return rangeStage({ verses, nums, how, version, book, chapter, pair });
+// can rebuild it on air (stageRebuiltOnAir). fit: the Bíblia theme's
+// measure ({ limit, split }, textBudget.js), how much a slide holds.
+export function stageFromVerses({ verses, nums, how = "auto", version, book, chapter, onAir = null, pair = null, look = null, fit = null }) {
+    if (nums.length > 1) return rangeStage({ verses, nums, how, version, book, chapter, pair, fit });
     if (!nums.length) return null;
-    const ch = chapterOf({ verses, n: nums[0], how, version, book, chapter, pair });
+    const ch = chapterOf({ verses, n: nums[0], how, version, book, chapter, pair, fit });
     if (!ch) return null;
     // The chapter on air, grouped as now: the slide holding that verse.
-    if (chapterOnAir(onAir, { book, chapter, version, version2: ch.ref.version2, how, look })) return { ...stageAirSlide(onAir, slideWithVerse(onAir.slides, nums[0]), ch.id), title: ch.title };
+    if (chapterOnAir(onAir, { book, chapter, version, version2: ch.ref.version2, how, look, fit })) return { ...stageAirSlide(onAir, slideWithVerse(onAir.slides, nums[0]), ch.id), title: ch.title };
     return { ...stageFromPassage(ch.passage, ch.ref), id: ch.id, title: ch.title, index: ch.index };
 }
 
-function rangeStage({ verses, nums, how, version, book, chapter, pair }) {
-    const p = passageOf({ verses, nums, how, version, book, chapter, pair });
+function rangeStage({ verses, nums, how, version, book, chapter, pair, fit = null }) {
+    const p = passageOf({ verses, nums, how, version, book, chapter, pair, fit });
     if (!p) return null;
     const version2 = p.slides.some((s) => s.pair) ? pair.version : null;
     return stageFromPassage({ reference: p.reference, text: p.text, slides: p.slides, version }, { book, chapter, version, ...(version2 ? { version2 } : {}), how: howOf(how), nums: [...nums].sort((a, b) => a - b) });
@@ -52,18 +54,23 @@ function rangeStage({ verses, nums, how, version, book, chapter, pair }) {
 // (`verses`, in `version`, with `pair`), grouped by `how`, the verse on air
 // still on screen. Null when the content on air is not one the Bíblia can
 // rebuild (airPassage) or its verses are not in that edition.
-export function stageRebuiltOnAir(onAir, { verses, version, how, pair = null }) {
+export function stageRebuiltOnAir(onAir, { verses, version, how, pair = null, fit = null }) {
     const t = airPassage(onAir);
     if (!t || !verses?.length) return null;
     const verse = verseNear(verses, t.verse);
-    const at = { verses, how, version, book: t.book, chapter: t.chapter, pair };
+    const at = { verses, how, version, book: t.book, chapter: t.chapter, pair, fit };
     const st = t.nums ? rangeStage({ ...at, nums: t.nums }) : stageFromVerses({ ...at, nums: [verse] });
     return st ? { ...st, index: slideWithVerse(st.slides, verse) } : null;
 }
 
-export function stageFromText(title, text) {
+// fit: the Texto theme's measure ({ limit, split }, textBudget.js): with
+// "Quando não cabe › Dividir em mais slides" a text longer than a slide
+// holds becomes several (owner 2026-10-29, F3 = A); else one, shrunk to fit.
+export function stageFromText(title, text, fit = null) {
     // With no look of its own: the Texto theme dresses it when sent (themes.js).
-    return { kind: "text", id: `text:${title}`, title, meta: "Texto", slides: [{ text }], index: 0, op: "content.show", args: { kind: "text", title, slides: [{ text }], inherit: { look: true, background: true } } };
+    const parts = fit?.split && String(text || "").length > fit.limit ? chunkText(text, fit.limit) : [];
+    const slides = parts.length > 1 ? parts.map((t) => ({ text: t })) : [{ text }];
+    return { kind: "text", id: `text:${title}`, title, meta: "Texto", slides, index: 0, op: "content.show", args: { kind: "text", title, slides, inherit: { look: true, background: true } } };
 }
 
 // A Media row: videos and images go to the main projector's media layer; a

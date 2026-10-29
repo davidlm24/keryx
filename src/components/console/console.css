@@ -2110,6 +2110,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .le-h.ne { left: 100%; top: 0; cursor: nesw-resize; } .console .le-h.sw { left: 0; top: 100%; cursor: nesw-resize; }
 .console .le-h.nw { left: 0; top: 0; cursor: nwse-resize; } .console .le-h.se { left: 100%; top: 100%; cursor: nwse-resize; }
 .console .le-guide { position: absolute; background: var(--brand); pointer-events: none; z-index: var(--z-guide); }
+/* The Editor de temas' safe area (themeBox.js SAFE): where every slide fits. */
+.console .le-safe { position: absolute; border: 1px dashed var(--chrome-pressed); border-radius: 2px; pointer-events: none; }
 .console .le-guide.x { top: 0; bottom: 0; width: 1px; } .console .le-guide.y { left: 0; right: 0; height: 1px; }
 .console .le-types { max-height: 320px; }
 .console .le-nums label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-meta); color: var(--fg-3); }

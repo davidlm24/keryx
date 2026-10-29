@@ -19,9 +19,11 @@ const loaded = (font) => {
 };
 
 // family: a theme's font_family (a KERYX key or a church family);
-// weight: 400, 600 (the screens' default) or 700.
-export function emPerChar(family, weight = 600) {
-    const key = `${family || "sans"}|${weight}`;
+// weight: 400, 600 (the screens' default) or 700; upper: the theme's
+// MAIÚSCULAS (text_case "upper"), capitals measured as such (wider).
+export function emPerChar(family, weight = 600, upper = false) {
+    const key = `${family || "sans"}|${weight}${upper ? "|upper" : ""}`;
+    const sample = upper ? SAMPLE.toUpperCase() : SAMPLE;
     if (cache.has(key)) return cache.get(key);
     if (typeof document === "undefined") return EM_PER_CHAR;
     const font = `${weight} 100px ${fontStack(family)}`;
@@ -30,7 +32,7 @@ export function emPerChar(family, weight = 600) {
         ctx = ctx || document.createElement("canvas").getContext("2d");
         if (!ctx) return EM_PER_CHAR;
         ctx.font = font;
-        const em = ctx.measureText(SAMPLE).width / 100 / [...SAMPLE].length;
+        const em = ctx.measureText(sample).width / 100 / [...sample].length;
         if (!(em > 0.2 && em < 1.5)) return EM_PER_CHAR;
         const value = Math.round(em * 1000) / 1000;
         cache.set(key, value);
@@ -39,10 +41,14 @@ export function emPerChar(family, weight = 600) {
         return EM_PER_CHAR;
     }
 }
+// No canvas (tests, a font not loaded): capitals are about a quarter wider.
+const UPPER = 1.22;
 
 // lineLimit's metrics for a text style (font_family, font_weight,
 // letter_spacing): what a slide's look needs to estimate its wraps.
 export function styleMetrics(style = {}) {
     const weight = style.font_weight === "bold" ? 700 : style.font_weight === "normal" ? 400 : 600;
-    return { em: emPerChar(style.font_family, weight), spacing: Number(style.letter_spacing) || 0 };
+    const upper = style.text_case === "upper";
+    const em = emPerChar(style.font_family, weight, upper);
+    return { em: upper && em === EM_PER_CHAR ? EM_PER_CHAR * UPPER : em, spacing: Number(style.letter_spacing) || 0 };
 }
