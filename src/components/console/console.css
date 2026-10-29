@@ -85,17 +85,15 @@
 .console .sync-pop-bar > i { display: block; height: 100%; background: var(--brand); }
 .console .sync-pop-f { display: flex; align-items: center; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--line-soft); }
 .console .topbar .kx-seg > button { white-space: nowrap; }
-/* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
-.console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
-/* KERYX | BÍBLIA are places, not commands (O topo, owner's pick B
-   2026-10-15): both in bold caps (the label stays "Bíblia" in the code), no
-   icons, the gold underline on the one on screen; the menu bar after the
-   divider stays lighter. */
-.console .envtabs > button { font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: var(--fs-content); }
-.console .topbar .tb-div { flex: none; width: 1px; height: 18px; background: var(--line-strong); margin: 0 var(--space-1); }
-.console .envtabs > button { color: var(--fg-2); }
-.console .envtabs > button.is-on { color: var(--fg-1); }
-.console .envtabs > button.is-on::after { bottom: 8px; background: var(--brand); height: 2px; border-radius: 1px; }
+/* The environments: a segmented pill in the centre, right before the search
+   (Rodada R, owner's mark R1 = C 2026-10-29). Places, not commands: bold caps
+   (the label stays "Bíblia" in the code), no icons; the one on screen is
+   filled. Still a tablist. */
+.console .topbar .tb-c { gap: var(--space-2); }
+.console .envtabs { flex: none; display: inline-flex; align-items: center; gap: 2px; height: 30px; padding: 2px; border-radius: var(--radius-round); background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); }
+.console .envtabs > button { height: 26px; padding: 0 var(--space-3); border-radius: var(--radius-round); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: var(--fs-ui); color: var(--fg-2); white-space: nowrap; }
+.console .envtabs > button:hover { color: var(--fg-1); }
+.console .envtabs > button.is-on { background: var(--fg-1); color: var(--bg-0); }
 .console .envtabs > button:disabled { opacity: .4; cursor: default; }
 /* The way back from a full-screen view: first in its header, outlined, never a ghost. */
 .console .markbtn { height: 32px; width: 32px; display: inline-grid; place-items: center; border-radius: var(--radius-round); flex: none; margin-right: var(--space-1); }
@@ -122,7 +120,7 @@
 .console .topbar .tb-menubtn { display: none; height: 28px; padding: 0 10px 0 8px; gap: 6px; border-radius: var(--radius-control); font-size: var(--fs-content); color: var(--fg-2); flex: none; }
 .console .topbar .tb-menubtn:hover, .console .topbar .tb-menubtn.is-on { background: var(--bg-2); color: var(--fg-1); }
 @container topbar (max-width: 1240px) {
-    .console .topbar .tb-menus, .console .topbar .tb-div { display: none; }
+    .console .topbar .tb-menus { display: none; }
     .console .topbar .tb-menubtn { display: inline-flex; align-items: center; }
 }
 /* The Menu button's popover: the four menus stacked, a submenu inline under
@@ -134,6 +132,7 @@
 @container topbar (max-width: 1400px) { .console .topbar .tb-svc-more { display: none; } }
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
 @container topbar (max-width: 1080px) {
+    .console .envtabs > button { padding: 0 var(--space-2); }
     .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }
     .console .topbar .tb-search input, .console .topbar .tb-search .tb-search-ph, .console .topbar .tb-search kbd { display: none; }
     .console .topbar .tb-svc { max-width: 168px; }
@@ -2395,7 +2394,8 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
   .console .import-dialog .im-row.is-repeated { outline: 1px dashed CanvasText; outline-offset: -1px; }
   /* Chosen or pressed: tabs, chips, cells, tiles, Seg, an open menu… */
   .console :is(.is-on, .is-sel, .is-selected):not(.kx-switch, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
-  .console .envtabs > button.is-on::after { background: Highlight; }
+  .console .envtabs { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .console .envtabs > button.is-on { background: Highlight; color: HighlightText; outline: 0; }
   /* The Bíblia's cells are boxes. */
   .console :is(.bgrid .kx-book, .chapters button, .verse-cells button):not(:focus-visible, .is-on, .is-selected, .is-prev) { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* The rule's shortcuts (Ajustes › Conteúdo) are buttons too; its kinds are kx-check (bundle.css). */
