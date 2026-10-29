@@ -1479,10 +1479,10 @@ async function checkConsole(webContents, { live, outputs }) {
         // A select left with the focus (a Tab, or a list closed without a
         // pick) never takes the live keys (audit C-03): "j" still opens the
         // quick jump, and the edition stays.
-        const edition = await js("(() => { const s = document.querySelector('.bbar .bver select'); if (s) s.focus(); return s && document.activeElement === s ? s.value : null; })()");
+        const edition = await js("(() => { const s = document.querySelector('.bver-band .bver select'); if (s) s.focus(); return s && document.activeElement === s ? s.value : null; })()");
         await press("j");
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
-        result.selectLeavesJump = edition !== null && result.quickOpened && await js(`(document.querySelector(".bbar .bver select") || {}).value === ${JSON.stringify(edition)}`);
+        result.selectLeavesJump = edition !== null && result.quickOpened && await js(`(document.querySelector(".bver-band .bver select") || {}).value === ${JSON.stringify(edition)}`);
         await type("o 3 16");
         result.quickRead = await js("[...document.querySelectorAll('.qj-step b')].map((n) => n.textContent).join('|')");
         // Space completed the book: the field holds the full name. The
@@ -1496,8 +1496,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Bible shows "No ar" only (no Prévia monitor).
         result.bibleOneMonitor = await js("document.querySelectorAll('.console .main .kx-mon').length === 1");
         // The Versículos card: the chapter's verses, the quick jump's verse
-        // selected (green). Abrev | Nomes (the Livros card) switches the
-        // books to their whole names and back.
+        // selected (green).
         result.bibleVerseRow = await js(`(() => {
             const row = document.querySelector(".bpick-verses .bverses");
             if (!row || getComputedStyle(row).display === "none") return "dobrada";
@@ -1507,10 +1506,8 @@ async function checkConsole(webContents, { live, outputs }) {
             const sel = cells.filter((b) => b.classList.contains("is-prev")).map(num);
             return cells.length === 5 && sel.join(",") === "16" ? true : { cells: cells.length, sel };
         })()`);
-        await click(".bpick-books .kx-seg button", "Nomes");
-        result.bibleNames = await waitFor(() => js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); return Boolean(b) && b.textContent === "Gênesis"; })()`), 3000);
-        await click(".bpick-books .kx-seg button", "Abrev");
-        result.bibleNamesBack = await waitFor(() => js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); return Boolean(b) && b.textContent === "Gn"; })()`), 3000);
+        // Every book cell shows both names (Rodada R, R2a = A): Gn over Gênesis.
+        result.bibleNames = await js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); return Boolean(b) && b.querySelector(".kx-book-a")?.textContent === "Gn" && b.querySelector(".kx-book-n")?.textContent === "Gênesis"; })()`);
         // One verse (Enter) goes out as the whole chapter, at that verse. The
         // Bíblia has its own theme (User.bible_theme_id): the passage goes on
         // air with its look and its background in the Fundo.
@@ -3028,7 +3025,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded && result.setlistRight === true && result.notesPanel && result.tabsMenu && result.quickTools && result.quickAlertOnce
         && result.colsFit && result.editBanner && result.editMove === true && result.editHonest === true && result.editEsc && result.editRestore
         && (result.bibleSplit === true || typeof result.bibleSplit === "string")
-        && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
+        && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layersFixed === true
         && result.outputKeysOk

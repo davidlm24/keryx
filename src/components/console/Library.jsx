@@ -31,6 +31,7 @@ import { QuickAlert, ToolsPicker } from "./QuickTools";
 import { TabRow } from "./TabsPanel";
 import { menuItem } from "@/lib/console/menuLabels";
 import { setDragGhost, stageGhost } from "./dragGhost";
+import { canGroup, foldersOf, folderOpen, visibleRows, folderCount } from "@/lib/console/libraryFolders";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
 // (sends) or the Setlist (adds the item there).
@@ -136,8 +137,28 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // line, under it the artist, the key and the length as songLine says
 // (the header's (+) › Mostrar o artista / o tom / a duração) — and its
 // flags as badges that the hover buttons replace.
+// Folders (Rodada R, owner 2026-10-29, R4a = B / R4b = B; libraryFolders.js):
+// `folders` = { group, open, onGroup, onOpen, categories } — the tabs grouped
+// (layout.libGroup), each folder open or closed (layout.libFoldersOpen) and
+// the church's Mídia categories. A search shows the flat list.
+// A folder's header: a click, Enter or Space opens or closes it. It is never
+// marked, never prepared; the rows under it are the list's rows as always.
+function FolderHead({ folder, tab, open, onToggle }) {
+    return (
+        <div role="listitem" className="lib-folder-li">
+            <button type="button" className="lib-folder kx-t" aria-expanded={open} title={folder.name} onClick={onToggle}>
+                <span className="lib-folder-chev"><Icon name={open ? "chevron-down" : "chevron-right"} size={14} /></span>
+                <span className="lib-folder-i"><Icon name="folder" size={14} /></span>
+                <span className="lib-folder-n">{folder.name}</span>
+                <span className="lib-folder-c kx-meta">{folderCount(tab, folder.rows.length)}</span>
+            </button>
+        </div>
+    );
+}
+
 const NONE = [];
-export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {}, picking, setPicking, askText = null, addSlot = null }) {
+const NO_OPEN = {};
+export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {}, picking, setPicking, askText = null, addSlot = null, folders: fold = null }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -183,12 +204,32 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const listRows = tab === "letras" ? songsShown : mediaKinds ? mediaShown : tab === "avisos" ? piecesShown : NONE;
     const allRows = tab === "letras" ? data.songs : mediaKinds ? data.media : tab === "avisos" ? data.pieces : NONE;
 
+    // Folders: the tab's own mode, never while searching (no result hidden).
+    const groupable = canGroup(tab) && Boolean(fold?.onGroup);
+    const grouped = groupable && fold?.group?.[tab] === true;
+    const openMap = fold?.open?.[tab] || NO_OPEN;
+    const folders = useMemo(() => (grouped && !ql ? foldersOf(tab, listRows, fold?.categories) : null), [grouped, ql, tab, listRows, fold?.categories]);
+    const toggleFolder = (f) => fold?.onOpen?.(tab, f.key, !folderOpen(openMap, f, folders.length));
+    // The rows, in folders or not: `draw` makes one row.
+    const listOf = (rows, draw) => (!folders ? rows.map(draw) : folders.map((f) => {
+        const open = folderOpen(openMap, f, folders.length);
+        return (
+            <React.Fragment key={f.key}>
+                <FolderHead folder={f} tab={tab} open={open} onToggle={() => toggleFolder(f)} />
+                {open && f.rows.map(draw)}
+            </React.Fragment>
+        );
+    }));
+    const inFolder = folders ? "in-folder" : "";
+
     // Selecting several (multiSelect.js, owner 2026-10-21): Ctrl/Shift +
     // click and the row menu's "Selecionar vários" mark; a plain click still
     // prepares (M1 = A). The header's button shows only while it is on
     // (owner 2026-10-28, I3 = A: autoPick). One tab at a time: changing tab
     // clears it.
-    const order = useMemo(() => listRows.map((r) => r.id), [listRows]);
+    // The order is what is on screen: rows in closed folders are out, so a
+    // Shift range and Selecionar todos take only what the operator sees.
+    const order = useMemo(() => (folders ? visibleRows(folders, openMap) : listRows).map((r) => r.id), [folders, openMap, listRows]);
     const existing = useMemo(() => allRows.map((r) => r.id), [allRows]);
     const ms = useMultiSelect({ order, existing, mode: "air", picking, onPicking: setPicking, autoPick: true });
     const clearSel = ms.clear;
@@ -269,6 +310,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
             <div className="searchrow">
                 <Field value={q} onChange={setQ} placeholder="Buscar…" />
                 {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} aria-label="Só favoritas" onClick={() => setFavOnly((f) => !f)} />}
+                {groupable && <IconBtn name="folder" on={grouped} className={grouped && ql ? "is-dim" : ""} title={grouped ? (ql ? "Em pastas · a busca mostra a lista inteira" : "Mostrar sem pastas") : "Agrupar em pastas"} aria-label="Agrupar em pastas" onClick={() => fold.onGroup(tab, !grouped)} />}
             </div>
 
             {tab === "letras" && (() => {
@@ -276,9 +318,10 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 return (
                     <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }} onKeyDown={listKeys}>
                         {!songs.length && data.loaded?.songs !== false && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
-                        {songs.map((s) => { const r = songRow(s, { duplicate: Boolean(dupIds?.has(s.id)), syncing: Boolean(s.audio_url && pending.has(s.audio_url)), showArtist: songLine.artist === true, showKey: songLine.key !== false, showLength: songLine.length !== false }); return (
+                        {listOf(songs, (s) => { const r = songRow(s, { duplicate: Boolean(dupIds?.has(s.id)), syncing: Boolean(s.audio_url && pending.has(s.audio_url)), showArtist: songLine.artist === true, showKey: songLine.key !== false, showLength: songLine.length !== false }); return (
                             <Row
                                 key={s.id}
+                                className={inFolder}
                                 title={s.title}
                                 tip={r.tip}
                                 meta={r.meta}
@@ -332,6 +375,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                     return (
                     <Row
                         key={m.id}
+                        className={inFolder}
                         icon={mediaIcon(m)}
                         title={m.title}
                         meta={jobLine ? jobLine : m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : <>{[MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</>}
@@ -374,7 +418,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }} onKeyDown={listKeys}>
                             {copies.map((p) => <Row key={p.key} className="is-copying" icon={mediaIcon(p)} title={p.title} meta={[p.type === "pdf" ? "PDF" : MEDIA_LABEL[p.type], p.meta].filter(Boolean).join(" · ")} item><RowBar /></Row>)}
                             {!media.length && !copies.length && data.loaded?.media !== false && <Empty icon={{ imagens: "image", audios: "volume", apresentacoes: "presentation" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
-                            {media.map(mediaRow)}
+                            {listOf(media, mediaRow)}
                         </div>
                     </>
                 );

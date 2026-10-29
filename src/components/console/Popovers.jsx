@@ -247,7 +247,9 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
 // The Biblioteca's also says what the songs' second line shows (`songLine`:
 // { artist, key, length }, layout.libShowArtist/Key/Length; Rodada G1).
 const SONG_LINE = [["artist", "Mostrar o artista"], ["key", "Mostrar o tom"], ["length", "Mostrar a duração"]];
-export function TabsMenu({ open, list, onToggle, onRestore, onClose, songLine = null, onSongLine }) {
+// `group`: the tab on screen in folders (null = it has none, the Avisos;
+// Rodada R, R4a = B), the same switch as the search row's folder button.
+export function TabsMenu({ open, list, onToggle, onRestore, onClose, songLine = null, onSongLine, group = null, onGroup }) {
     const row = open?.startsWith("tabs:") ? open.slice(5) : null;
     const known = Boolean(row && PANEL_TABS[row]);
     const pop = useRef(null);
@@ -264,6 +266,10 @@ export function TabsMenu({ open, list, onToggle, onRestore, onClose, songLine = 
                 title: t.last ? "Pelo menos uma aba fica à vista" : undefined, ariaDisabled: t.last, onSelect: () => onToggle(row, t.id),
             })),
             "sep",
+            ...(row === "lib" && group != null && onGroup ? [
+                { label: "Agrupar em pastas", role: "menuitemcheckbox", checked: group, onSelect: () => onGroup(!group) },
+                "sep",
+            ] : []),
             ...(row === "lib" && songLine && onSongLine ? [
                 { head: "Nas letras" },
                 ...SONG_LINE.map(([k, label]) => ({ label, role: "menuitemcheckbox", checked: Boolean(songLine[k]), onSelect: () => onSongLine(k, !songLine[k]) })),

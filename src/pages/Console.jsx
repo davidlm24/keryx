@@ -9,6 +9,7 @@ import { usePosterBackfill } from "@/hooks/usePosterBackfill";
 import { useCodecBackfill } from "@/hooks/useCodecBackfill";
 import { setVideoFiles } from "@/lib/videoFiles";
 import { usePagesBackfill, pagesProgressAll, subscribePagesProgress, retryPages } from "@/hooks/usePagesBackfill";
+import { canGroup } from "@/lib/console/libraryFolders";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
 import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
@@ -434,6 +435,13 @@ export default function Console() {
     }, [tier, layout.dockTier]); // eslint-disable-line react-hooks/exhaustive-deps
     // What the Biblioteca's songs show under their title (the header's (+)).
     const songLine = { artist: layout.libShowArtist, key: layout.libShowKey, length: layout.libShowLength };
+    // The Biblioteca in folders (Rodada R, R4b = B: each tab its own mode;
+    // libraryFolders.js), the search row's folder button and the eye's item.
+    const setLibGroup = (tab, on) => { const { [tab]: _was, ...rest } = layout.libGroup || {}; setLayout({ ...layout, libGroup: on ? { ...rest, [tab]: true } : rest }); };
+    const libFolders = {
+        group: layout.libGroup, open: layout.libFoldersOpen, categories: prefs.media_categories, onGroup: setLibGroup,
+        onOpen: (tab, key, on) => setLayout({ ...layout, libFoldersOpen: { ...layout.libFoldersOpen, [tab]: { ...layout.libFoldersOpen?.[tab], [key]: on } } }),
+    };
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT, hidden: layout.hidden, trayFromChurch: false, dockPresets: layout.dockPresets || [] }); c.say("Layout padrão restaurado."); };
     // The trimmable tab rows (panelTabs.js): what each shows, the (+) list.
     const tabLists = layout.tabs || DEFAULT_TABS;
@@ -1333,7 +1341,7 @@ export default function Console() {
         </>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Library c={c} data={data} askText={askText} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
                 onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
-                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} picking={libPicking} setPicking={setLibPicking} addSlot={libAddSlot} />
+                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} picking={libPicking} setPicking={setLibPicking} addSlot={libAddSlot} folders={libFolders} />
         </Panel>
     );
     const slidesPanel = (
@@ -1672,7 +1680,8 @@ export default function Console() {
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)}
-                songLine={songLine} onSongLine={(k, v) => setLayout({ ...layout, [SONG_LINE_KEYS[k]]: v })} />
+                songLine={songLine} onSongLine={(k, v) => setLayout({ ...layout, [SONG_LINE_KEYS[k]]: v })}
+                group={canGroup(libTabNow) ? layout.libGroup?.[libTabNow] === true : null} onGroup={(on) => setLibGroup(libTabNow, on)} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
