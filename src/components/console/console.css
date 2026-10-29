@@ -500,6 +500,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The tiles are cards: 4 px in from the column (2 px here and the grid's
    own 2 px, which keeps the ring of the theme in use whole). */
 .console :is(.temas-panel, .layer-temas) .tm { padding: 0 2px 2px; }
+/* While a splitter is held the measured panels follow the hand in a frame;
+   no scrollbar may flash if the content is a frame ahead of the box. */
+html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; }
 /* A layer row (owner 2026-10-28, Camadas K1/K2 = A: no grip, the order is
    the program's): the eye, the Fundo's padlock (an empty slot on the other
    rows, so the names line up), the name, the pencil — where it is edited,
