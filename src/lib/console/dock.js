@@ -976,33 +976,49 @@ export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head 
     return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked, shut, head, exact: dock.mode === "exact" });
 }
 
-// The Bíblia's Livros, Capítulos and Versículos as tall as their cells, each
-// up to 40 % of the column (Rodada P, P4-3), for fitDock's `locked`. `fit`:
-// the measured heights (0 = not measured), `h`: the column's height, `head`:
-// the density's header. When Livros and Capítulos stacked in one column with
-// Versículos leave Versículos less than its minimum, Capítulos (then Livros)
-// gives way and scrolls: otherwise fitDock joined Livros and Capítulos as
-// tabs at 1366 × 768 with Salmos open, and they stayed joined after a short
-// book, the hidden Capítulos no longer measuring.
+// The Bíblia's Livros, Capítulos and Versículos as tall as their cells
+// (Rodada P, P4-3), for fitDock's `locked`. `fit`: the heights the panels
+// report (0 = not measured), `h`: the column's height, `head`: the
+// density's header. Capítulos and Versículos go up to 40 % of the column
+// each and page past it (bibleFit.js). Livros is never capped at 40 % and
+// never gives way (owner 2026-10-29, mockup R6: the 66 books always whole;
+// its cells step down in size to fit instead): in the default column it
+// takes up to what Capítulos' and Versículos' minimums leave
+// (bibleBooksRoom), and when Livros and Capítulos leave Versículos less
+// than its cells want (up to half of what the books leave, at least its
+// minimum), Capítulos gives way — otherwise fitDock joined Livros
+// and Capítulos as tabs at 1366 × 768 with Salmos open, and they stayed
+// joined after a short book, the hidden Capítulos no longer measuring.
 export const BIBLE_FIT_MAX = 0.4;
-export function bibleLocks(dock, { books = 0, chapters = 0, verses = 0 } = {}, h, head = PANEL_HEAD) {
-    const cap = (px) => (px > 0 ? head + Math.min(px, Math.round(h * BIBLE_FIT_MAX)) : 0);
-    const out = { books: cap(books), chapters: cap(chapters), verses: cap(verses) };
+// The default column: Livros, Capítulos and Versículos alone, in that one
+// column (the operator may arrange them otherwise).
+function bibleColumn(dock) {
     const tree = dock?.tree;
     const at = (id) => pathOf(tree, id);
     const pb = at("books"), pc = at("chapters"), pv = at("verses");
     const parent = (p) => (p && p.length ? JSON.stringify(p.slice(0, -1)) : null);
     const col = pb && pc && pv && parent(pb) === parent(pc) && parent(pc) === parent(pv) ? nodeAt(tree, pb.slice(0, -1)) : null;
-    // Only a column of exactly these three, alone (the default's), and only
-    // the two that are locked.
-    if (!col || col.dir !== "col" || col.children.length !== 3 || [pb, pc, pv].some((p) => nodeAt(tree, p).tabs.length !== 1)) return out;
-    if (!out.books || !out.chapters) return out;
-    const room = h - 2 * G - MODULES.verses.minH;
-    let over = out.books + out.chapters - room;
-    if (over <= 0) return out;
-    const give = (id) => { const was = out[id]; out[id] = Math.max(MODULES[id].minH, was - over); over -= was - out[id]; };
-    give("chapters");
-    if (over > 0) give("books");
+    return Boolean(col && col.dir === "col" && col.children.length === 3 && [pb, pc, pv].every((p) => nodeAt(tree, p).tabs.length === 1));
+}
+// The most Livros' body may take in the default column (its header out):
+// the column less Capítulos' and Versículos' minimums and the gaps; 0 in
+// any other arrangement (BibleEnv then fits the books to the box it has).
+export function bibleBooksRoom(dock, h, head = PANEL_HEAD) {
+    if (!bibleColumn(dock)) return 0;
+    return Math.max(MODULES.books.minH - head, h - 2 * G - MODULES.chapters.minH - MODULES.verses.minH - head);
+}
+export function bibleLocks(dock, { books = 0, chapters = 0, verses = 0 } = {}, h, head = PANEL_HEAD) {
+    const cap = (px) => (px > 0 ? head + Math.min(px, Math.round(h * BIBLE_FIT_MAX)) : 0);
+    const out = { books: books > 0 ? head + Math.min(books, Math.max(0, h - head)) : 0, chapters: cap(chapters), verses: cap(verses) };
+    // Only a column of exactly these three, alone (the default's).
+    if (!bibleColumn(dock) || !out.books) return out;
+    out.books = Math.min(out.books, head + bibleBooksRoom(dock, h, head));
+    if (!out.chapters) return out;
+    // What the books leave: Versículos keeps up to half of it (at least its
+    // minimum) when it has that many cells, Capítulos the rest.
+    const rest = h - 2 * G - out.books;
+    const keep = Math.max(MODULES.verses.minH, Math.min(out.verses || MODULES.verses.minH, Math.floor(rest / 2)));
+    if (out.chapters > rest - keep) out.chapters = Math.max(MODULES.chapters.minH, rest - keep);
     return out;
 }
 

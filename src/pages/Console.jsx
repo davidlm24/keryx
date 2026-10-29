@@ -80,7 +80,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode, dockLocked, setDockLock, withLockOf, nodeAt, isSplit, setSplitWeights, presetsForSplit, weightsLabel, parseWeights, bibleLocks } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode, dockLocked, setDockLock, withLockOf, nodeAt, isSplit, setSplitWeights, presetsForSplit, weightsLabel, parseWeights, bibleLocks, bibleBooksRoom } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { outputsLeavingAir, ruleWithKind } from "@/lib/outputPrefs";
 import useOutputRules from "@/components/console/useOutputRules";
@@ -1116,14 +1116,17 @@ export default function Console() {
     // Capítulos as tall as its cells (owner 2026-10-16), like Camadas, up
     // to 40 % of the column: past it (Salmos' 150) it scrolls.
     const [chaptersFitH, setChaptersFitH] = useState(0);
-    // Livros and Versículos the same way (Rodada P, P4-3 = A), each up to
-    // 40 % too; when all three lock down a column, the last one takes the
-    // rest (fitDock), so Versículos still fills it.
+    // Livros and Versículos the same way (Rodada P, P4-3 = A); Versículos
+    // up to 40 % too, Livros whole (mockup R6); when all three lock down a
+    // column, the last one takes the rest (fitDock), so Versículos fills it.
     const [booksFitH, setBooksFitH] = useState(0);
     const [versesFitH, setVersesFitH] = useState(0);
-    // In one column, Capítulos then Livros give way before the column would
+    // In one column, Capítulos gives way before the column would
     // overflow (bibleLocks, dock.js): they never join as tabs.
     const { books: booksH, chapters: chaptersH, verses: versesH } = bibleLocks(bibleDock, { books: booksFitH, chapters: chaptersFitH, verses: versesFitH }, mainSize.h, PANEL_HEAD);
+    // The room the 66 books may take (owner 2026-10-29, mockup R6): BibleEnv
+    // steps the cells down until they fit it (bibleFit.js).
+    const booksRoom = bibleBooksRoom(bibleDock, mainSize.h, PANEL_HEAD);
     const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h, {
         locked: { ...(chaptersH ? { chapters: chaptersH } : {}), ...(booksH ? { books: booksH } : {}), ...(versesH ? { verses: versesH } : {}) },
         folded: folded ? folded.split(",") : [], head: PANEL_HEAD,
@@ -1629,7 +1632,7 @@ export default function Console() {
             {/* Behind THE window nothing takes the focus (C-12); its keys still listen on window. */}
             <main className="main" ref={mainRef} inert={winOpen ? "" : undefined}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
-                    grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH} onBooksH={setBooksFitH} onVersesH={setVersesFitH}
+                    grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH} onBooksH={setBooksFitH} onVersesH={setVersesFitH} booksRoom={booksRoom}
                     readSize={layout.bibleRead} setReadSize={(v) => setLayout({ ...layout, bibleRead: v })} onSettings={openSettings}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold, onPickSplit: pickSplit }} />}
                 {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} onPickSplit={pickSplit} />}

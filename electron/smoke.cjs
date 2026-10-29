@@ -1423,11 +1423,12 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".envtabs button", "Bíblia");
         await waitText(webContents, "SELECIONADO");
         // Three columns (owner layout 2026-10-12): Livro · Capítulo ·
-        // Versículo stacked, the text, No ar. Salmos' 150th chapter is
-        // reachable inside the Capítulos card; the text keeps a usable height;
-        // the page never scrolls sideways.
+        // Versículo stacked, the text, No ar. The 66 books are all on screen
+        // without scrolling (owner 2026-10-29, mockup R6); Salmos' 150th
+        // chapter is reachable through the Capítulos' pages ("›"); the text
+        // keeps a usable height; the page never scrolls sideways.
         await click(".bgrid .kx-book", "Sl");
-        await waitFor(() => js("document.querySelectorAll('.bpick-chapters .chapters button').length === 150"));
+        await waitFor(() => js("(document.querySelector('.bpick-chapters .kx-panel-h')?.textContent || '').includes('Salmos · 150')"));
         result.bibleNoScroll = {};
         for (const [w, h] of [[1366, 768], [1920, 1080]]) {
             if (operatorWin) operatorWin.setContentSize(w, h);
@@ -1438,11 +1439,18 @@ async function checkConsole(webContents, { live, outputs }) {
                 const g = (m) => document.querySelector('.console .dock .dock-group[data-dock-mods="' + m + '"]').getBoundingClientRect();
                 if (!(g("books").right <= g("reading").left + 1 && g("reading").right <= g("air").left + 1)) return "fora de ordem";
                 if (!(g("books").bottom <= g("chapters").top + 1 && g("chapters").bottom <= g("verses").top + 1)) return "pilha fora de ordem";
+                const books = document.querySelector(".bpick-books .bbooks");
+                if (!books || document.querySelectorAll(".bbooks .kx-book").length !== 66) return "sem os 66 livros";
+                if (books.scrollHeight > books.clientHeight + 1) return "livros rolam";
                 const box = document.querySelector(".bpick-chapters > .kx-panel-b");
-                const c150 = [...box.querySelectorAll(".chapters button")].find((b) => b.textContent === "150");
-                if (!c150) return "sem 150";
-                c150.scrollIntoView({ block: "nearest" });
-                const cb = c150.getBoundingClientRect(), bb = box.getBoundingClientRect();
+                const c150 = () => [...box.querySelectorAll(".chapters button")].find((b) => b.textContent === "150");
+                for (let i = 0; i < 40 && !c150(); i++) {
+                    const next = [...box.querySelectorAll(".chapters .bpage")].find((b) => /^Próximos/.test(b.title));
+                    if (!next) break;
+                    next.click();
+                }
+                if (!c150()) return "sem 150";
+                const cb = c150().getBoundingClientRect(), bb = box.getBoundingClientRect();
                 if (!(cb.bottom <= bb.bottom + 2 && cb.top >= bb.top - 2)) return "150 fora da caixa";
                 const read = document.querySelector(".bread");
                 if (!read || read.getBoundingClientRect().height < 150) return "leitura baixa";
@@ -1450,14 +1458,15 @@ async function checkConsole(webContents, { live, outputs }) {
             })()`);
         }
         // The smallest window: the columns shrink, the air column's Enviar ao
-        // ar stays on screen, and the books card scrolls instead of clipping.
+        // ar stays on screen, and the 66 books still fit with no scroll.
         if (operatorWin) operatorWin.setContentSize(960, 600);
         await sleep(500);
         result.bibleShort = await js(`(() => {
             const grid = document.querySelector(".bpick-books .bgrid");
             const send = [...document.querySelectorAll(".bible-air-col button")].find((b) => /Enviar ao ar/.test(b.textContent));
             const r = send && send.getBoundingClientRect();
-            return Boolean(grid) && grid.scrollWidth <= grid.clientWidth + 1 && Boolean(r) && r.height > 0 && r.bottom <= innerHeight;
+            const books = document.querySelector(".bpick-books .bbooks");
+            return Boolean(grid) && grid.scrollWidth <= grid.clientWidth + 1 && Boolean(books) && books.scrollHeight <= books.clientHeight + 1 && Boolean(r) && r.height > 0 && r.bottom <= innerHeight;
         })()`);
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
@@ -1506,8 +1515,10 @@ async function checkConsole(webContents, { live, outputs }) {
             const sel = cells.filter((b) => b.classList.contains("is-prev")).map(num);
             return cells.length === 5 && sel.join(",") === "16" ? true : { cells: cells.length, sel };
         })()`);
-        // Every book cell shows both names (Rodada R, R2a = A): Gn over Gênesis.
-        result.bibleNames = await js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); return Boolean(b) && b.querySelector(".kx-book-a")?.textContent === "Gn" && b.querySelector(".kx-book-n")?.textContent === "Gênesis"; })()`);
+        // A book cell shows both names (Rodada R, R2a = A): Gn over Gênesis —
+        // or, where they do not fit, Gn with Gênesis in its tooltip (mockup
+        // R6, B4 = A).
+        result.bibleNames = await js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); const n = b && b.querySelector(".kx-book-n"); return Boolean(b) && b.querySelector(".kx-book-a")?.textContent === "Gn" && (n ? n.textContent === "Gênesis" : b.title === "Gênesis"); })()`);
         // One verse (Enter) goes out as the whole chapter, at that verse. The
         // Bíblia has its own theme (User.bible_theme_id): the passage goes on
         // air with its look and its background in the Fundo.
