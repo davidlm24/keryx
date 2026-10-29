@@ -1105,19 +1105,25 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.colsFit = Object.values(result.cols).every(Boolean);
-        // Ver › Editar disposição (dock.js): a banner with the tray, a bar on
-        // every group; the Biblioteca dragged by its name to the right of the
-        // Slides goes there (a hint shows where while dragging), saved with
-        // the layout; the groups still fit; Esc leaves the edit mode without
-        // ending the projection; Restaurar posições puts the default back.
+        // Ver › Editar disposição (dock.js; Rodada R, R5): a banner with the
+        // tray, every group's panel header is the handle (no bar above it, so
+        // Camadas keeps its height); the Biblioteca dragged by its name to the
+        // right of the Slides goes there (the drop region shows where while
+        // dragging), saved with the layout; the groups still fit; Esc leaves
+        // the edit mode without ending the projection; Restaurar puts the
+        // default back.
         {
             const groupOrder = () => js(`[...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.dataset.dockMods).join(",")`);
             const orderBefore = await groupOrder();
+            const camadasH = () => js("(() => { const g = document.querySelector('.console .dock .dock-group[data-dock-mods=\"camadas\"]'); return g ? Math.round(g.getBoundingClientRect().height) : -1; })()");
+            const camadasOut = await camadasH();
             await click(".topbar .tb-ver");
             await click(".pop .kx-menu-item", "Editar disposição");
-            result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner [data-dock-tray]')) && [...document.querySelectorAll('.console .dock .dock-group')].every((g) => g.querySelector(':scope > .dock-bar'))"));
+            result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner [data-dock-tray]')) && !document.querySelector('.dock-bar') && [...document.querySelectorAll('.console .dock .dock-group')].every((g) => g.querySelector('.kx-panel-h.is-dock-edit, :scope > .dock-tabs.is-edit'))"));
+            const camadasIn = await camadasH();
+            result.editHonest = camadasOut === camadasIn ? true : { camadasOut, camadasIn };
             const dragHint = await js(`(async () => {
-                const chip = document.querySelector('.dock-group[data-dock-mods="lib"] .dock-chip');
+                const chip = document.querySelector('.dock-group[data-dock-mods="lib"] .dock-edit-name');
                 const to = document.querySelector('.dock-group[data-dock-mods="slides"]');
                 if (!chip || !to) return "faltou " + (chip ? "alvo" : "nome");
                 const a = chip.getBoundingClientRect();
@@ -1132,7 +1138,7 @@ async function checkConsole(webContents, { live, outputs }) {
                 pe("pointermove", a.left + 40, a.top + 40, window);
                 pe("pointermove", dx, dy, window);
                 await new Promise((res) => setTimeout(res, 150));
-                const hint = Boolean(document.querySelector(".dock-hint"));
+                const hint = Boolean(document.querySelector(".dock-drop.is-on"));
                 pe("pointerup", dx, dy, window);
                 await new Promise((res) => setTimeout(res, 300));
                 return hint;
@@ -1147,7 +1153,7 @@ async function checkConsole(webContents, { live, outputs }) {
             result.editEsc = await waitFor(() => js("!document.querySelector('.arr-banner')")) && JSON.stringify(live.get().content || null) === airBefore;
             await click(".topbar .tb-ver");
             await click(".pop .kx-menu-item", "Editar disposição");
-            await click(".arr-banner button", "Restaurar posições");
+            await click(".arr-banner button", "Restaurar");
             await click(".arr-banner button", "Concluir");
             result.editRestore = (await groupOrder()) === orderBefore;
         }
@@ -3020,7 +3026,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.seekDragFollows && result.seekDragOnce === true && result.pauseFades === true && result.projectorPausedAfterFade && result.audioTakenByEnd === true && result.pillTitleInPlayer && result.audioStopped && result.pillNada && result.playerAlwaysThere && result.playerIdleQuiet
         && result.tlGone && result.forecastOff && result.forecastOn
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded && result.setlistRight === true && result.notesPanel && result.tabsMenu && result.quickTools && result.quickAlertOnce
-        && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore
+        && result.colsFit && result.editBanner && result.editMove === true && result.editHonest === true && result.editEsc && result.editRestore
         && (result.bibleSplit === true || typeof result.bibleSplit === "string")
         && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent

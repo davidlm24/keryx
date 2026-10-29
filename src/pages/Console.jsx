@@ -85,7 +85,7 @@ import { outputsLeavingAir, ruleWithKind } from "@/lib/outputPrefs";
 import useOutputRules from "@/components/console/useOutputRules";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
-import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, DockLockSwitch, ZONE_LABEL } from "@/components/console/Dock";
+import DockView, { useDockDrag, DockTray, DockPresetsBar, DockLockSwitch, ZONE_LABEL } from "@/components/console/Dock";
 import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, nameProblem } from "@/lib/console/dockPresets";
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import Toast from "@/components/console/Toast";
@@ -1600,7 +1600,6 @@ export default function Console() {
             {editing && (
                 <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!winOpen && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
-                    {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small label="No ar" value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
                     {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small label="Tamanhos" value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }], ["exact", "Exato", { title: "Divisões exatas (33 · 33 · 34), sem o pulo de 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
                     {!winOpen && splitNames.length > 0 && (
                         <span className="dock-presets dock-span" role="group" aria-label="Divisão exata">
@@ -1611,8 +1610,9 @@ export default function Console() {
                             <button type="button" className="kx-btn kx-t" title="Digitar a porcentagem de cada painel" onClick={typeWeights}>Digitar…</button>
                         </span>
                     )}
+                    {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small label="No ar" value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Colunas", { title: "Sob as colunas: a faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela", { title: "Janela toda: a faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
                     {!winOpen && <DockLockSwitch on={envLocked} onChange={setEnvLock} />}
-                    {!winOpen && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
+                    {!winOpen && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} openMenu={openMenu} />}
                 </EditBanner>
             )}
             {c.locked && (
@@ -1626,7 +1626,6 @@ export default function Console() {
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold, onPickSplit: pickSplit }} />}
                 {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} onPickSplit={pickSplit} />}
             </main>
-            {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
             {/* THE window (Rodada C): one dialog, its pages stacked by
                 nav.js — all mounted, only the top shown, so Voltar finds

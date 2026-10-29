@@ -1076,7 +1076,35 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Slides, Programa, `PreviaPanel`, the Painel, Setlist, Camadas,
   No ar, `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
   side of another (splits) or its middle (tabs), a click on the name opens
-  "Mover para…", × puts it in the tray (the edit banner). While editing,
+  "Mover para…", × puts it in the tray (the edit banner). **The handle is
+  the panel's own header** (owner 2026-10-29, Rodada R, R5; no gold bar
+  above each group any more — it cost 34 px a group that `fitDock` did not
+  know, squeezed the locked heights and hid the real layout): the dock hands
+  each module's outermost panel `DockEditCtx` (kx.jsx; `DockEditHead`: the
+  grip before the name, the name a button — dragged it moves, clicked it is
+  Mover para… —, the header's own actions dimmed and inert, the × where the
+  fold sits, the header tinted gold); TabsPanel reads it too. A panel with no
+  header (the Programa, the Prévia, the Bíblia's No ar: `bare`/`noHead`)
+  gets a 28 px one for the edit only (R5a = B); no such panel has a locked
+  height, so it takes its room from its own body. The Player docked under
+  the Programa is a chip on the Programa's header. A group of tabs keeps its
+  strip: its grip drags the whole group, each tab is a chip that drags alone
+  (a click still shows it) with its ×. No ar (pinned): no grip, only ×. The
+  bodies stay veiled while editing (R5b = B). **The drag** (`useDockDrag`,
+  pointer events, never HTML5 DnD) draws on `<body>` and never re-renders the
+  console per move: a card held where it was grabbed and the drop region,
+  both moved by `transform` in requestAnimationFrame — a side's region is
+  the gold half the new panel would take, the middle a ring on the target's
+  header, the tray lights (`dropBox`); the source panels fade. On the drop
+  the dock changes in `flushSync` and every group slides from its old box to
+  its new one (FLIP over `[data-dock-mods]`, keyed by `data-dock-active`,
+  `--dur-fold`/`--ease-fold`; one that comes from the tray fades in; reduced
+  motion cuts; `useDockEase` is untouched). Esc mid-drag cancels only the
+  drag. **The banner is one line where it fits** (wraps only when it must):
+  "Editando a disposição" (the long hint is its tooltip), a short hint
+  hidden under 1500 px, the Bandeja inline, Tamanhos, Divisão (Exato), No
+  ar Colunas | Janela, Travar, the Disposição button (its menu: Salvar,
+  Salvar como…, Excluir…), Restaurar, Concluir. While editing,
   every splitter shows its side's size in % of the split and a click on
   that badge lets one type it (`Split` label/onPercent in kx.jsx, Dock.jsx). The banner's **Tamanhos: Livre | Por %** (owner 2026-10-15, Rodada D; per environment, per dock): Por % keeps `mode: "pct"` and `ref` (the box the sizes were made for) on the dock, `fitDock` scales the fixed sizes by the box on screen over `ref` so the proportions survive another window size (minimums and locked heights still win), and splitters snap to 5 % (`rebaseDock`, `setDockMode`, `snapPct` in dock.js, tested). **Exato** (owner 2026-10-22, Rodada P4-2 = A) keeps `mode: "exact"` and `ref` and every split's `weights` (one per child, summing 100): the open children share the room by them, so 33 · 33 · 34 is exactly that at any window size (no 5 % snap, no flexible child; the last open one only takes the rounding); minimums, locked heights, folds and the Programa's 16:9 still win (`allocateWeights` in `fitNode`), and the `sizes` follow the weights as drawn in `ref` (`syncExact` in `normalizeDock`), so a structural edit or leaving Exato keeps what is on screen (`setDockMode` takes the frame on screen). A splitter there trades weight between the open children on its two sides only, in whole % (`resizeExact`; typed on its badge: as typed; double click: the two share evenly, `evenExact`); the banner's one-click 50 · 50, 33 · 33 · 34 and 25 · 50 · 25 (`presetsForSplit`) and "Digitar…" (`parseWeights`) act on the split whose splitter was touched last while editing, else the outer one (`setSplitWeights`; `Split onPick`). **Travar fora da edição** (owner 2026-10-22, Rodada P4-1 = A): one switch per environment, in the banner (`DockLockSwitch`) and in Ver; on, outside the edit, every gap is a plain `dock-gap` (no drag, arrows or double click). It is `lock: true` on the dock beside `mode`/`ref` (`dockLocked`, `setDockLock`), so it rides `normalizeDock`; a named arrangement or another tier's dock coming in takes the switch as it is (`withLockOf`; `switchTier`'s `fresh` gives a tier never arranged the console's own, locked), Padrão and Restaurar posições keep it, and it never makes an arrangement "· alterada". The Programa, the
   Prévia and the Setlist never go to the tray; the player rides under the
