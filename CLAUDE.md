@@ -2033,7 +2033,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   photos ship theirs in `resources/backgrounds/thumbs/` (`backgroundThumbUrl`,
   `backgrounds.test.mjs` checks each); on air and in the Prévia a picture is
   always its file. A video's still is `Media.thumbnail_url`
-  (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
+  (taken by the console — at a few places in the clip, the brightest kept, `posterTimes`/`frameBrightness`; a black one from before is made anew once per file, `stillIsDark`, `keryx.stillsChecked` — `usePosterBackfill` + `mediaPosterCapture.js`,
   sent through `UploadFile`); it rides in the live item as `poster` for the
   Prévia and shows on hover in the Biblioteca. **A video Fundo plays only on
   the outputs and the Programa monitor** (Rodada O, item 11; like a generator,

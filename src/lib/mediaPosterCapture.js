@@ -1,7 +1,7 @@
 import { keryx } from "@/api/keryxClient";
-import { needsPoster, posterTime, posterSize } from "@/lib/mediaPoster";
+import { needsPoster, posterTimes, posterSize, frameBrightness, DARK_FRAME } from "@/lib/mediaPoster";
 
-const TIMEOUT_MS = 15_000;
+const TIMEOUT_MS = 25_000;
 
 // One frame of a video file as a JPEG blob, from an element that is never
 // on the page (muted, never played). -> { blob, duration }
@@ -28,24 +28,47 @@ export function capturePoster(url) {
         };
         const timer = setTimeout(() => finish(new Error("O vídeo demorou demais para abrir.")), TIMEOUT_MS);
         video.addEventListener("error", () => finish(new Error("Não foi possível abrir o vídeo.")));
+        // Frames are taken at a few places and the brightest kept: a clip that
+        // starts with a fade (or a dark scene) gave a black tile (2026-10-29).
+        let times = [0];
+        let tried = 0;
+        let best = null;
         video.addEventListener("loadedmetadata", () => {
-            const at = posterTime(video.duration);
-            if (at > 0) video.currentTime = at;
-            else video.addEventListener("loadeddata", draw, { once: true });
+            times = posterTimes(video.duration);
+            seek();
         }, { once: true });
-        video.addEventListener("seeked", draw, { once: true });
-        function draw() {
+        video.addEventListener("seeked", look);
+        function seek() {
+            if (times[tried] > 0) video.currentTime = times[tried];
+            else if (video.readyState >= 2) look();
+            else video.addEventListener("loadeddata", look, { once: true });
+        }
+        function look() {
             try {
                 const { width, height } = posterSize(video.videoWidth, video.videoHeight);
                 const canvas = document.createElement("canvas");
                 canvas.width = width;
                 canvas.height = height;
-                canvas.getContext("2d").drawImage(video, 0, 0, width, height);
-                const duration = Number.isFinite(video.duration) ? video.duration : 0;
-                canvas.toBlob((blob) => (blob ? finish(null, { blob, duration }) : finish(new Error("Sem imagem do vídeo."))), "image/jpeg", 0.8);
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(video, 0, 0, width, height);
+                // A small sample is enough to tell a black frame from a picture.
+                const probe = document.createElement("canvas");
+                probe.width = 32;
+                probe.height = 18;
+                const pctx = probe.getContext("2d");
+                pctx.drawImage(canvas, 0, 0, 32, 18);
+                const light = frameBrightness(pctx.getImageData(0, 0, 32, 18).data);
+                if (!best || light > best.light) best = { canvas, light };
+                tried += 1;
+                if (best.light >= DARK_FRAME || tried >= times.length) { save(); return; }
+                seek();
             } catch (err) {
                 finish(err);
             }
+        }
+        function save() {
+            const duration = Number.isFinite(video.duration) ? video.duration : 0;
+            best.canvas.toBlob((blob) => (blob ? finish(null, { blob, duration, light: best.light }) : finish(new Error("Sem imagem do vídeo."))), "image/jpeg", 0.8);
         }
         video.src = url;
     });
@@ -84,8 +107,9 @@ export function capturePicture(url) {
 // as a media file of its own (UploadFile: the adapter stores it as
 // keryx-media://, never the http form), filling a video's duration too when
 // the row has none. -> the updated row
-export async function savePoster(row) {
-    if (!needsPoster(row)) return row;
+export async function savePoster(row, { again = false } = {}) {
+    // again: a video that has a still but a black one (stillIsDark): make it anew.
+    if (again ? !(row?.type === "video" && String(row.file_url || "").startsWith("http")) : !needsPoster(row)) return row;
     const picture = row.type === "image";
     const { blob, duration } = picture ? await capturePicture(row.file_url) : await capturePoster(row.file_url);
     const file = picture
@@ -95,4 +119,25 @@ export async function savePoster(row) {
     const patch = { thumbnail_url: file_url };
     if (!row.duration && duration > 0) patch.duration = Math.round(duration);
     return keryx.entities.Media.update(row.id, patch);
+}
+
+// Whether a video's saved still is a black tile (made before the capture looked
+// past a fade). A file this computer cannot read counts as fine.
+export function stillIsDark(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            try {
+                const c = document.createElement("canvas");
+                c.width = 32;
+                c.height = 18;
+                const ctx = c.getContext("2d");
+                ctx.drawImage(img, 0, 0, 32, 18);
+                resolve(frameBrightness(ctx.getImageData(0, 0, 32, 18).data) < DARK_FRAME);
+            } catch { resolve(false); }
+        };
+        img.onerror = () => resolve(false);
+        img.src = url;
+    });
 }
