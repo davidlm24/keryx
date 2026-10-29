@@ -534,7 +534,7 @@ tipo de conteúdo* folded under it: the kinds of `src/lib/contentKinds.js`),
 
 **The top bar** (40 px, on `bg-0`, no panel), one line at every width. Left:
 the logo (its menu is the app's: Configurações, Saídas, Sobre o KERYX,
-Atualizar agora when due), then **KERYX | BÍBLIA** (bold caps, a gold
+Atualizar agora when due), then **CONSOLE | BÍBLIA** (bold caps, a gold
 underline on the one on screen — places, not commands), a divider, the menu
 bar (Culto, Música, Mídia, Ferramentas, Ajuda; `menuBar.js`). Under 1240 px a
 **☰ Menu** button replaces the bar, its popover the bar's menus stacked
