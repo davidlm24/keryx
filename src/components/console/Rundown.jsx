@@ -174,8 +174,8 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
         <div className="rund-scroll">
         <div className={`rund kx-acts-list ${sort.sorting ? "is-sorting" : ""}`} role="list" aria-label="Setlist" {...sort.listProps} onKeyDown={(e) => ms.keyDown(e, { onDelete: takeOutPicked })}>
             {!items.length && loaded && (
-                <Empty icon="list" title={service ? "Setlist vazia" : "Setlist de hoje"}>
-                    {service ? "Arraste da Biblioteca, busque (/) ou use +." : "Arraste da Biblioteca ou use + para começar a setlist de hoje. Ou escolha um culto no menu KERYX."}
+                <Empty icon="list" title="Setlist vazia">
+                    Arraste da Biblioteca, busque (/) ou use +. A mesma setlist aparece em todos os computadores.
                 </Empty>
             )}
             {onPlan && !items.length && loaded && <div className="rund-plan"><Btn small onClick={() => onPlan(null)}><Icon name="planner" />Planejar o culto</Btn></div>}

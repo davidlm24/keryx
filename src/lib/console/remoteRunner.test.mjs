@@ -412,14 +412,18 @@ test("the deps are read per command: the latest state wins", async () => {
     assert.equal((await runner.run({ action: "next" })).ok, true);
 });
 
-test("setlist.autoplay: the culto's switch, locked too; no culto, 409", async () => {
+test("setlist.autoplay: the culto's switch, locked too; with no list yet, the shared Setlist is made", async () => {
     const d = lock(fakeConsole());
     d.setAutoplay = async (on) => { d.calls.push(["setAutoplay", on]); d.service = { ...d.service, autoplay: on }; };
     assert.deepEqual(await run(d, "setlist.autoplay", { on: true }), { ok: true, message: "Celular: avançar sozinho ligado." });
     assert.equal((await run(d, "setlist.autoplay", { on: true })).ok, true, "on again changes nothing");
     assert.equal((await run(d, "setlist.autoplay", { on: false })).message, "Celular: avançar sozinho desligado.");
     assert.deepEqual(d.calls, [["setAutoplay", true], ["setAutoplay", false]]);
-    assert.equal((await run(fakeConsole({ service: null }), "setlist.autoplay", { on: true })).code, "nothing");
+    // No list yet (2026-10-29: the shared Setlist is made on demand): the console's setAutoplay makes it.
+    const none = fakeConsole({ service: null });
+    none.setAutoplay = async (on) => { none.calls.push(["setAutoplay", on]); };
+    assert.equal((await run(none, "setlist.autoplay", { on: true })).ok, true);
+    assert.deepEqual(none.calls, [["setAutoplay", true]]);
 });
 
 // -- Rodada Q: setlist.add, and the Equipe (role team) ----------------------

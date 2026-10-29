@@ -27,7 +27,7 @@ test("items say their state and act through the console", () => {
     const calls = [];
     const act = new Proxy({}, { get: (_t, name) => (...args) => calls.push([name, ...args]) });
     const menus = buildMenus({
-        act, serviceId: "s1", itemsCount: 3, locked: true, songId: "song9",
+        act, serviceId: "s1", activeId: "s1", itemsCount: 3, locked: true, songId: "song9",
         services: [{ id: "s1", title: "Culto de domingo", date: "2026-10-18" }, { id: "s2", title: "Quarta" }],
         timers: [{ minutes: 5, label: "5 min" }], playerOn: true, playing: true,
         follow: { source: "clock", paused: true, clock: null },
@@ -44,7 +44,24 @@ test("items say their state and act through the console", () => {
     assert.equal(letra[0].label, "Segue o relógio ao vivo");
     assert.equal(letra[1].label, "Iniciar");
     assert.equal(letra[1].disabled, true);
-    assert.deepEqual(calls, [["pickService", "s1"], ["syncSong", "song9"], ["playerToggle"], ["timer", 5]]);
+    assert.deepEqual(calls, [["activate", "s1"], ["syncSong", "song9"], ["playerToggle"], ["timer", 5]]);
+});
+
+test("Culto: the shared Setlist or the church's active culto, on every computer", () => {
+    const calls = [];
+    const act = new Proxy({}, { get: (_t, name) => (...args) => calls.push([name, ...args]) });
+    const services = [{ id: "s1", title: "Culto de domingo", date: "2026-10-18" }];
+    const none = buildMenus({ act, services });
+    assert.equal(find(none, "culto", "Setlist").checked, true, "no culto active: the Setlist");
+    assert.equal(find(none, "culto", "Culto de domingo").checked, false);
+    assert.equal(find(none, "culto", "Encerrar o culto…"), undefined, "nothing to end");
+    find(none, "culto", "Planejar o culto").onSelect();
+    const on = buildMenus({ act, services, activeId: "s1" });
+    assert.equal(find(on, "culto", "Setlist").checked, false);
+    find(on, "culto", "Setlist").onSelect();
+    find(on, "culto", "Encerrar o culto…").onSelect();
+    find(on, "culto", "Planejar o culto").onSelect();
+    assert.deepEqual(calls, [["planner", null], ["activate", null], ["endService"], ["planner", "s1"]]);
 });
 
 test("what is off when there is nothing to act on", () => {
@@ -53,7 +70,6 @@ test("what is off when there is nothing to act on", () => {
     assert.equal(find(menus, "culto", "Exportar a setlist em PDF").disabled, true);
     assert.equal(find(menus, "midia", "Tocar o player").disabled, true);
     assert.equal(find(menus, "musica", "Letra automática").sub[0].disabled, true);
-    assert.equal(find(menus, "culto", "Nenhum culto ainda").disabled, true);
     const playing = buildMenus({ follow: { source: "audio", paused: false } });
     assert.equal(find(playing, "musica", "Letra automática").sub[1].label, "Pausar");
     const paused = buildMenus({ follow: { source: "video", paused: true } });
@@ -125,7 +141,7 @@ test("flattenMenus: no item of the bar is lost (the logo's menu once lost 14 of 
 test("flattenMenus: submenus inline, state carried over, same handlers", () => {
     const calls = [];
     const act = new Proxy({}, { get: (_t, name) => (...args) => calls.push([name, ...args]) });
-    const menus = buildMenus({ act, timers: [{ minutes: 5, label: "5 min" }], follow: { source: "clock", paused: true, clock: null }, locked: true, services: [{ id: "s1", title: "A", date: "2026-10-18" }], serviceId: "s1" });
+    const menus = buildMenus({ act, timers: [{ minutes: 5, label: "5 min" }], follow: { source: "clock", paused: true, clock: null }, locked: true, services: [{ id: "s1", title: "A", date: "2026-10-18" }], serviceId: "s1", activeId: "s1" });
     const flat = flattenMenus(menus);
     const at = (label) => flat.findIndex((it) => it.label === label || it.head === label);
     // A sub list sits right under its parent, which is no longer an item.

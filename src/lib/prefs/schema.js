@@ -36,6 +36,9 @@ export const PREF_FIELDS = {
     // size on the screens is the Bíblia theme's (owner 2026-10-22).
     bible_version_2: { default: "", normalize: (v) => (typeof v === "string" && /^[A-Za-z0-9]{1,12}$/.test(v.trim()) ? renamedVersion(v.trim()) : "") },
     bible_pair: { default: "side", normalize: oneOf(["side", "stack"], "side") },
+    // The church's active culto (owner 2026-10-29, consoleSetlist.js): every
+    // console in every computer shows it; "" = the shared Setlist.
+    active_service_id: { default: "", normalize: (v) => (typeof v === "string" ? v.trim() : "") },
     service_start_time: { default: "", normalize: (v) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : "") },
     service_weekday: { default: null, normalize: (v) => (v !== null && v !== "" && Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 6 ? Number(v) : null) },
     duration_song: { default: 240, normalize: (v) => (Number.isInteger(Number(v)) && Number(v) >= 10 && Number(v) <= 3600 && v !== null ? Number(v) : 240) },

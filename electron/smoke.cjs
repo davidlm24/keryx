@@ -1728,14 +1728,15 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-layer", "Fundo");
         result.temasCard = await waitFor(() => js("(() => { const t = document.querySelector('[data-dock-mods~=\"temas\"] .tm, .layer-temas .tm'); const l = document.querySelector('.kx-layer'); return Boolean(t && l) && Boolean(l.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING) && document.querySelectorAll('.kx-layer .layer-edit').length === 4 && !document.querySelector('.layerprops') && ![...document.querySelectorAll('.layerprops button, .tm-acts button')].some((b) => /Biblioteca…|Editar fundo|Visual d/.test(b.textContent)); })()"), 4000);
         if (dayLookDrawer) await js("(() => { const b = document.querySelector('.prog-pill:not(.prev-pill) button[aria-label=\"Camadas\"]'); if (b) b.click(); return true; })()");
-        // No service yet: dropping a song on the Setlist (the right column,
-        // under Camadas, in the wide tier) starts today's setlist.
+        // No list yet: dropping a song on the Setlist (the right column,
+        // under Camadas, in the wide tier) makes the church's shared Setlist
+        // (owner 2026-10-29, consoleSetlist.js) — never a daily draft.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(400);
         await click(".kx-tabs button", "Letras");
         await waitText(webContents, "Canto do console");
-        // Configurações › Culto: the day's setlist comes with the usual time,
-        // and the song with the church's song length.
+        // Configurações › Culto: the song comes with the church's song length
+        // (the usual time is a planned culto's, never the shared Setlist's).
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { service_start_time: "18:30", duration_song: 300 }])`);
         await sleep(600);
         await js(`(() => {
@@ -1751,19 +1752,22 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`);
         result.autoSetlist = await waitFor(async () => {
             const rows = (await js(`window.keryxDesktop.db.call("Service", "list", [])`)).data || [];
-            svc = rows.find((r) => /^Setlist de \d\d\/\d\d$/.test(r.title)) || null;
-            return Boolean(svc);
+            svc = rows.find((r) => r.service_type === "console") || null;
+            return Boolean(svc) && !rows.some((r) => /^Setlist de \d\d\/\d\d$/.test(r.title || ""));
         }, 8000);
-        // The Setlist's header shows the draft culto: its name is the header's
-        // tooltip since Rodada O3 (no title text), the count says its item.
-        result.autoSetlistShown = await waitFor(() => js(`(() => { const h = document.querySelector('[data-dock-mods~="setlist"] .setlist-panel > .kx-panel-h'); return Boolean(h) && /^Setlist de \\d\\d\\/\\d\\d$/.test(h.title || "") && /1 item/.test(h.textContent); })()`), 5000);
-        if (!svc) throw new Error("a setlist do dia não foi criada");
-        result.cultoDefaults = svc.startTime === "18:30" && await waitFor(async () => {
+        // The Setlist's title is the list every console shows: "Setlist", its count the item.
+        result.autoSetlistShown = await waitFor(() => js(`(() => { const h = document.querySelector('[data-dock-mods~="setlist"] .setlist-head'); return Boolean(h) && /^setlist/i.test(h.textContent.trim()) && /1 item/.test(h.textContent); })()`), 5000);
+        if (!svc) throw new Error("a setlist compartilhada não foi criada");
+        result.cultoDefaults = !svc.startTime && await waitFor(async () => {
             const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
             return its.some((it) => it.type === "SONG" && it.duration === 300);
         }, 4000);
-        // Back to no usual time (the checks below expect the setlist as before).
-        await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { startTime: null }])`);
+        // The checks below plan and time a culto: the shared Setlist becomes
+        // one and the church activates it (User.active_service_id), as
+        // "Guardar no culto…" and "Ativar o culto" would.
+        await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { service_type: "culto", title: "Culto do smoke", startTime: null }])`);
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { active_service_id: "${svc.id}" }])`);
+        result.activeCulto = await waitFor(() => js(`(() => { const h = document.querySelector('[data-dock-mods~="setlist"] .setlist-head'); return Boolean(h) && /culto do smoke/i.test(h.textContent) && /ativo/.test(h.textContent); })()`), 5000);
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { service_start_time: null, duration_song: null }])`);
         for (const [i, title] of ["Abertura", "Louvor"].entries()) {
             await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i + 1}, duration: 300 }])`);
@@ -3045,7 +3049,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && (result.bibleSplit === true || typeof result.bibleSplit === "string")
         && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
-        && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layersFixed === true
+        && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.activeCulto && result.layersFixed === true
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.cfgSaidasGrid && result.cfgFileGroup && result.cardTrimmed && result.screenBlocks && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk

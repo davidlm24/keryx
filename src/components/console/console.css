@@ -1045,6 +1045,17 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
    footer, not its header; the body is a column, the list scrolls, the footer
    stays (the pattern of .slidesnav). */
 .console .setlist-panel > .kx-panel-b { display: flex; flex-direction: column; overflow: hidden; }
+/* The Setlist's title (owner 2026-10-29, U2 = A): what every console shows,
+   "Setlist" or the active culto (its dot the green of Planejar o culto's
+   tab), a button whose menu switches it. Its text keeps the header's 12 px
+   from the edge (the negative margin pays the button's own padding). */
+.console .setlist-head { flex: 0 1 auto; display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; padding: 2px var(--space-1); margin-left: calc(-1 * var(--space-1)); border: 0; border-radius: var(--radius-control); background: none; font-family: inherit; cursor: pointer; }
+.console .setlist-head:hover { background: var(--chrome-hover); color: var(--fg-1); }
+.console .setlist-head-t { flex: 0 1 auto; min-width: 4em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .setlist-head > svg { flex: none; width: 12px; height: 12px; }
+/* The count gives way first: the name is what says which list it is. */
+.console .setlist-head .kx-count { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .setlist-head-dot { flex: none; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--air-fg); }
 .console .rund-scroll { flex: 1; min-height: 0; overflow: auto; }
 .console .rund-foot { flex: none; container: setlist-f / inline-size; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); height: var(--band); padding: 0 var(--space-3) 0 var(--space-1); border-top: 1px solid var(--line); min-width: 0; }
 .console .rund-foot-steps { display: inline-flex; align-items: center; gap: var(--space-1); }
@@ -2435,6 +2446,9 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
      console's culto dot keeps a colour of the system. */
   .console .tabrow-close .kx-tc.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
   .console .tabrow .kx-tc-dot { background: LinkText; }
+  /* The Setlist's title: its hover keeps an edge, the active culto's dot a colour of the system. */
+  .console .setlist-head:hover { outline: 1px solid Highlight; }
+  .console .setlist-head-dot { background: LinkText; }
   /* Pedidos and Chat: a card and a bubble keep their edge, a badge its
      outline; what the operator noted or wrote is a solid Highlight ring. */
   .console :is(.ped-card, .ped-badge, .ped-msg, .ped-picked, .ped-pick) { outline: 1px solid CanvasText; outline-offset: -1px; }

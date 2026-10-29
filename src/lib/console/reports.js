@@ -54,6 +54,7 @@ export function servicesByMonth(services, months = 6, now = new Date()) {
     }
     const at = new Map(out.map((m, i) => [m.key, i]));
     for (const s of services || []) {
+        if (s.service_type === "console") continue; // the console's shared Setlist
         const i = at.get(String(s.date || "").slice(0, 7));
         if (i !== undefined) out[i].count += 1;
     }

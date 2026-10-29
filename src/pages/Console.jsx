@@ -19,13 +19,16 @@ import { useConsole } from "@/components/console/useConsole";
 import { useRemote } from "@/components/console/useRemote";
 import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
-import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService, useServiceMessages } from "@/components/console/useConsoleData";
+import { useLibrary, useRundown, useOutputs, useShowForecast, useServiceMessages } from "@/components/console/useConsoleData";
+import { useActiveService, useActiveServiceNews } from "@/components/console/useActiveService";
+import { CONSOLE_KIND, consoleSetlistOf, consoleSetlistRow, mergePlan, cultosOf, copyItems, setlistTitle } from "@/lib/console/consoleSetlist";
 import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion, SelectManyBtn } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
 import { MenuBarPop, MenusPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
 import { menuItem } from "@/lib/console/menuLabels";
+import Icon from "@/components/console/Icon";
 import { ImportSongsContext, SONG_FILE, SONG_ACCEPT } from "@/components/console/importSongs";
 import ImportSongsDialog from "@/components/console/ImportSongsDialog";
 import { usePackageHost } from "@/components/console/PackageDialogs";
@@ -99,7 +102,7 @@ import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, neighbours, total, itemOnAir, stageItem, addedSay } from "@/lib/console/setlist";
+import { plan, playableItems, neighbours, total, itemOnAir, stageItem, addedSay, statusOf } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { lookDefaults } from "@/lib/console/lookDefaults";
@@ -384,10 +387,6 @@ export default function Console() {
     useSyncJoinNote(c.say, data.songs.length);
     const layout = useMemo(() => ({ ...localLayout, density: prefs.console_density, hidden: hiddenMap(prefs.console_hidden_modules) }),
         [localLayout, prefs.console_density, prefs.console_hidden_modules]);
-    // ?planner=<id> (the old /Services/:id) opens on that culto.
-    const [serviceId, setServiceId] = useState(() => {
-        try { const v = new URLSearchParams(window.location.search).get("planner"); return v && v !== "1" && v !== "new" ? v : null; } catch { return null; }
-    });
     const [log, setLog] = useState({});
     const [bibleRequest, setBibleRequest] = useState(null);
     const [tries, setTries] = useState(1);
@@ -459,13 +458,31 @@ export default function Console() {
         if (!tabLists.lib.includes("avisos")) setTabList("lib", showTab("lib", tabLists.lib, "avisos"));
     };
 
-    const { services, items, loaded: rundownLoaded } = useRundown(serviceId);
-    // Chosen once the live state is read: the culto on the screens wins (a
-    // reload or a crash mid-service keeps its Setlist; serviceChoice.js).
-    const liveLoaded = Boolean(c.live);
-    useEffect(() => { if (!serviceId && services.length && liveLoaded) setServiceId(pickDefaultService(services, keryx.live.current())?.id || null); }, [services, serviceId, liveLoaded]);
+    // The Setlist every console shows (owner 2026-10-29, U1–U5 = A;
+    // consoleSetlist.js): the church's active culto, else the shared Setlist.
+    // No computer chooses its own culto any more.
+    const active = useActiveService(c.say, askConfirm);
+    const { services, view, items, loaded: rundownLoaded } = useRundown(active.activeId);
+    const service = view.service;
+    const serviceId = service?.id || null;
+    useActiveServiceNews(active.activeId, services, c.say);
+    // Two computers that made the shared Setlist before they synced: every
+    // console keeps the oldest and moves the other's items and messages in
+    // (mergePlan: the same choice everywhere, so they converge).
+    const merging = useRef(false);
+    useEffect(() => {
+        const plan = mergePlan(services);
+        if (!plan || merging.current) return;
+        merging.current = true;
+        (async () => {
+            for (const id of plan.drop) {
+                for (const it of await keryx.entities.ServiceItem.filter({ serviceId: id })) await keryx.entities.ServiceItem.update(it.id, { serviceId: plan.keep });
+                for (const m of await keryx.entities.ServiceMessage.filter({ serviceId: id })) await keryx.entities.ServiceMessage.update(m.id, { serviceId: plan.keep });
+                await keryx.entities.Service.delete(id);
+            }
+        })().catch(() => {}).finally(() => { merging.current = false; });
+    }, [services]);
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
-    const service = services.find((s) => s.id === serviceId) || null;
     // Papel de parede (owner's decisions 2026-10-12/14, src/lib/console/defaultFundo.js):
     // the service's background, else the church's ("Qualquer outro culto").
     // The live state keeps it (background.default) so Esc puts it back, whoever sends;
@@ -623,20 +640,20 @@ export default function Console() {
     const autoplay = useSetlistAutoplay({ c, service, items, songs: data.songs, prefs, projectorOpen: projector ? projector.open !== false : true, buildStage, sendStage });
     const endsAlone = useCallback((it) => endsByItself(it, String(it.type || "").toUpperCase() === "SONG" ? data.songs.find((x) => x.id === it.contentId) : null), [data.songs]);
 
-    // No service chosen: the first item added starts today's setlist, a draft
-    // service the operator can rename later in Cultos.
+    // The list in hand: the active culto, else the shared Setlist, made the
+    // first time anything needs it (an item, the Autoplay, the notes, a
+    // pedido). The daily draft "Setlist de dd/mm" is gone (U5 = A). One
+    // making at a time: what asks meanwhile waits for the same row.
+    const making = useRef(null);
+    useEffect(() => { if (serviceId) making.current = null; }, [serviceId]);
     const ensureService = useCallback(async () => {
         if (serviceId) return serviceId;
-        const d = new Date();
-        const two = (n) => String(n).padStart(2, "0");
-        // Today, at the church's usual time when it has one (Configurações › Culto).
-        const start = getPrefs().service_start_time;
-        const at = start ? { startTime: start } : {};
-        const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT", ...at });
-        setServiceId(row.id);
-        c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
-        return row.id;
-    }, [serviceId, c]);
+        making.current ||= (async () => {
+            const there = consoleSetlistOf(await keryx.entities.Service.filter({ service_type: CONSOLE_KIND }));
+            return there ? there.id : (await keryx.entities.Service.create(consoleSetlistRow())).id;
+        })().catch((err) => { making.current = null; throw err; });
+        return making.current;
+    }, [serviceId]);
     // "Avançar sozinho" (the Setlist's header): the culto's switch; with no
     // culto, today's draft starts.
     const setAutoplay = useCallback(async (on) => {
@@ -1271,12 +1288,54 @@ export default function Console() {
             { label: "Timer…", icon: "clock", onSelect: () => timersMenu(at, "Timer na setlist", (m) => addRowToSetlist({ type: "TIMER", title: `Timer ${m} min`, duration: m * 60 })) },
         ] });
     };
+    // The planned cultos the Setlist's title offers (U2 = A): not done, by
+    // date, the active one always among them.
+    const cultoChoices = cultosOf(services)
+        .filter((s) => s.id === active.activeId || statusOf(s.status) !== "COMPLETED")
+        .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")))
+        .slice(-8);
+    const dm = (d) => (d ? d.split("-").reverse().slice(0, 2).join("/") : "");
+    // "Guardar no culto…" (U3 = A): the shared Setlist's items copied into a
+    // culto (after its own); the Setlist stays as it is.
+    const saveToCulto = async (target) => {
+        try {
+            const culto = target || await keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto" });
+            const have = await keryx.entities.ServiceItem.filter({ serviceId: culto.id });
+            await keryx.entities.ServiceItem.bulkCreate(copyItems(items, culto.id, have.length));
+            c.say(`${items.length} ${items.length === 1 ? "item guardado" : "itens guardados"} em “${culto.title || "Culto sem nome"}”.`);
+        } catch (err) { c.say(err?.message || "Não foi possível guardar no culto."); }
+    };
+    const setlistHeadMenu = (e) => openMenu(e, { title: "Setlist", items: [
+        { head: "No console · todos os computadores" },
+        { label: "Setlist", icon: "list", checked: !view.active, title: "A setlist compartilhada, quando nenhum culto está ativo", onSelect: () => active.activate(null) },
+        ...cultoChoices.map((s) => ({ label: s.title || "Culto sem nome", kbd: dm(s.date), checked: s.id === active.activeId, title: "Ativar este culto em todos os computadores", onSelect: () => active.activate(s) })),
+        "sep",
+        view.active
+            ? { label: "Encerrar o culto…", icon: "check", title: "Marca o culto como feito e todos voltam à Setlist", onSelect: () => active.endService(service) }
+            : { label: "Guardar no culto…", icon: "copy", disabled: !items.length, title: items.length ? "Copia estes itens para um culto planejado" : "A setlist está vazia", sub: [
+                ...cultoChoices.map((s) => ({ label: s.title || "Culto sem nome", kbd: dm(s.date), onSelect: () => saveToCulto(s) })),
+                ...(cultoChoices.length ? ["sep"] : []),
+                menuItem("novoCulto", { onSelect: () => saveToCulto(null) }),
+            ] },
+        menuItem("planejar", { onSelect: () => openPlanner(view.active ? serviceId : null) }),
+    ] });
+    const setlistCount = setPlan.count ? `${setPlan.count} ${setPlan.count === 1 ? "item" : "itens"} · ${total(setPlan.seconds)}` : "";
+    const setlistMeta = [view.active ? "ativo" : "", setlistCount].filter(Boolean).join(" · ");
+    const setlistHead = (
+        <button type="button" className="kx-section setlist-head" aria-haspopup="menu" onClick={setlistHeadMenu}
+            title={view.active ? `${service.title || "Culto sem nome"} · ativo em todos os computadores · clique para trocar` : "A setlist compartilhada por todos os computadores · clique para ativar um culto"}>
+            {view.active && <span className="setlist-head-dot" aria-hidden="true" />}
+            <span className="setlist-head-t">{setlistTitle(view)}</span>
+            <Icon name="chevron-down" />
+            {setlistMeta && <span className="kx-count"> · {setlistMeta}</span>}
+        </button>
+    );
     const setlistPanel = (
-        // The count is only "n itens · tempo" (Rodada O3): the culto's name is
-        // the header's tooltip (with no items too), and Planejar o culto's.
-        <Panel title="Setlist" className={`setlist-panel ${coverCls}`} tip={service?.title} count={!service ? "nenhum culto" : setPlan.count ? `${setPlan.count} ${setPlan.count === 1 ? "item" : "itens"} · ${total(setPlan.seconds)}` : null}
-            actions={<>{coverTag}{setlistPicking && <SelectManyBtn on onToggle={setSetlistPicking} />}<IconBtn name="planner" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} media={data.media} askText={askText} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say}
+        // The title is what every console shows (U2 = A): "Setlist", or the
+        // active culto's name; a click opens the menu that switches it.
+        <Panel title="Setlist" caption={setlistHead} className={`setlist-panel ${coverCls}`}
+            actions={<>{coverTag}{setlistPicking && <SelectManyBtn on onToggle={setSetlistPicking} />}<IconBtn name="planner" title="Planejar o culto" small onClick={() => openPlanner(view.active ? serviceId : null)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+            <Rundown service={service} items={items} media={data.media} askText={askText} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={view.active ? (it) => openPlanner(serviceId, it?.id || null) : null} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
             <SetlistFooter autoplay={{ on: Boolean(service?.autoplay), onChange: setAutoplay }} prev={stepNb.prev} next={stepNb.next} onStep={stepSetlist} />
         </Panel>
@@ -1457,15 +1516,16 @@ export default function Console() {
     const helpCall = (op, done) => upd.call(op).then((r) => { const m = done?.(r); if (m) c.say(m); }).catch((err) => c.say(err?.message || "Não foi possível."));
     const menus = buildMenus({
         desktop: desktopApp, helpKey: keyHint("help", letters), update: upd.update,
-        services, serviceId, itemsCount: items.length, locked: c.locked,
+        services: cultosOf(services), serviceId, activeId: active.activeId, itemsCount: items.length, locked: c.locked,
         songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null,
         playerOn: Boolean(barLayer), playing: Boolean(barLayer && !c.cur[barLayer]?.playback?.paused),
         timers: timerChoices(data.timerPresets).map((t) => ({ minutes: t.minutes, label: minutesLabel(t.minutes) })),
         act: {
-            pickService: (id) => setServiceId(id),
+            activate: (id) => active.activate(id ? services.find((s) => s.id === id) || null : null),
+            endService: () => active.endService(view.active ? service : null),
             planner: (id) => openPlanner(id),
             settings: (section) => openSettings(section),
-            exportPdf: () => { if (service) exportServiceToPdf(service, items, church).then(() => c.say("PDF gerado.")).catch((err) => c.say(err?.message || "Não foi possível gerar o PDF.")); },
+            exportPdf: () => { if (service) exportServiceToPdf(view.active ? service : { ...service, date: consoleSetlistRow().date }, items, church).then(() => c.say("PDF gerado.")).catch((err) => c.say(err?.message || "Não foi possível gerar o PDF.")); },
             newSong: () => openSong("new"),
             lyricsSearch: () => setOpen("lyrics"),
             importFolder: () => folderRef.current?.click(),
@@ -1505,7 +1565,7 @@ export default function Console() {
         sendStage: (s) => sendStage(s),
         songSaved, addMaterial,
         cfg, setCfg, uiLayout, setUiLayout, restoreLayout, openScreen, openWhatsNew,
-        serviceId, setServiceId, plannerFocus,
+        plannerFocus,
     };
     // A page's guard calls this once leaving is allowed. While a detach is
     // under way, the level leaves (pop) and the next one asks; after the
@@ -1554,9 +1614,7 @@ export default function Console() {
             case "song.saved": songSaved(m.song); break;
             case "setlist.material": addMaterial(m.material); break;
             case "console.open": if (m.what === "novidades") openWhatsNew(); else openSettings(m.section || "console"); break;
-            case "console.hello": tellPrev(c.prev); tellPages(); tellService(serviceId); break;
-            // Planejar o culto's "Usar no console" in a detached window (O9).
-            case "service.use": setServiceId(m.id); break;
+            case "console.hello": tellPrev(c.prev); tellPages(); break;
             case "pages.retry": retryPages(m.id); break;
             default: break;
         }
@@ -1567,9 +1625,6 @@ export default function Console() {
     // A Prévia the list cannot carry (a theme's example) reads as empty there.
     const tellPrev = (stage) => { if (!relaySend("console", "console.prev", { stage: stage || null })) relaySend("console", "console.prev", { stage: null }); };
     useEffect(() => { tellPrev(c.prev); }, [c.prev]);
-    // The console's culto: a detached planner marks its tab with the green dot.
-    const tellService = (id) => relaySend("console", "console.service", { id: id || null });
-    useEffect(() => { tellService(serviceId); }, [serviceId]);
     // How far each PDF's pages are: only this window makes them, so a
     // detached Mídia reads the progress from here (Rodada H, HB).
     const tellPages = () => relaySend("console", "pages.progress", { pages: pagesProgressAll() });

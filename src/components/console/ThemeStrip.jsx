@@ -11,6 +11,7 @@ import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
 import { serviceTheme } from "@/lib/console/serviceLook";
+import { isConsoleSetlist } from "@/lib/console/consoleSetlist";
 import { updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
 import { menuItem } from "@/lib/console/menuLabels";
@@ -49,6 +50,9 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
     // until someone changes it — without writing the culto's theme, which
     // only seeds it when the culto is chosen.
     const cultoTheme = serviceTheme(service);
+    // A planned culto, or the console's shared Setlist (consoleSetlist.js).
+    const shared = !service || isConsoleSetlist(service);
+    const useFor = shared ? "Usar na Setlist" : "Usar neste culto";
     const named = (t) => (themeName(t, "") ? `Tema ${themeName(t)}` : "Tema");
     // A theme whose background the sync has not brought yet waits for it:
     // applied now, the screens would show a broken picture.
@@ -64,7 +68,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
             if (!sid) return;
             await keryx.entities.Service.update(sid, { theme_id: t.id });
             c.setThemeId(t.id);
-            c.say(`${named(t)} é o tema ${service ? "do culto" : "de hoje"}.`);
+            c.say(`${named(t)} é o tema ${shared ? "da Setlist" : "do culto"}.`);
         } catch (err) { c.say(err?.message || "Não foi possível gravar o tema do culto."); }
     };
     const edit = (id) => { const r = openEditor({ theme: id }); if (r?.error) c.say(r.error); };
@@ -101,7 +105,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
             : { label: "Salvar tema para a música", onSelect: () => saveForSong(t.id) }] : []),
         { label: t.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: t.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, t.id)), `${named(t)} é o tema padrão.`) },
         { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), `Bíblia: tema ${themeName(t)}.`) },
-        { label: service ? "Usar neste culto" : "Usar hoje", disabled: cultoTheme === t.id, onSelect: () => setForCulto(t) },
+        { label: useFor, disabled: cultoTheme === t.id, onSelect: () => setForCulto(t) },
         { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${named(t)} saiu do console.` : `${named(t)} fixado no console.`) },
         menuItem("excluir", { onSelect: () => removeTheme(t) }),
     ] });
@@ -117,8 +121,8 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
             ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
             : { label: "Salvar tema para a música", disabled: !current, onSelect: () => saveForSong(current.id) }] : []),
         "sep",
-        { label: service ? "Usar neste culto" : "Usar hoje", disabled: !current || cultoTheme === current?.id, onSelect: () => setForCulto(current) },
-        ...(cultoTheme && c.themeId !== cultoTheme ? [{ label: "Seguir o culto", icon: "undo", onSelect: () => c.setThemeId(cultoTheme) }] : []),
+        { label: useFor, disabled: !current || cultoTheme === current?.id, onSelect: () => setForCulto(current) },
+        ...(cultoTheme && c.themeId !== cultoTheme ? [{ label: shared ? "Seguir a Setlist" : "Seguir o culto", icon: "undo", onSelect: () => c.setThemeId(cultoTheme) }] : []),
         { label: current && current.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: !current || current.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, current.id)), `${named(current)} é o tema padrão.`) },
         "sep",
         { label: "Miniaturas pequenas", icon: thumb === "small" ? "check" : undefined, onSelect: () => setView?.({ temasThumb: "small" }) },

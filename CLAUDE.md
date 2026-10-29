@@ -905,10 +905,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tab that chooses (Novo culto, Duplicar the last culto, Abrir um culto),
   the open tabs kept on this computer (localStorage
   `keryx.console.planner.tabs` = `{ ids, active }`, `src/lib/console/plannerTabs.js`,
-  tested; a deleted culto's tab closes). **The tabs never change the
-  console's culto**: its tab has a green dot, and a tab's right click
-  "Usar no console" is the one door (a detached planner sends it over the
-  relay, `service.use`; the console answers `console.service`).
+  tested; a deleted culto's tab closes). **The tabs never change what the
+  consoles show**: the active culto's tab has a green dot ("ativo em todos
+  os computadores"), and a tab's right click is "Ativar o culto", or, on the
+  active one, "Encerrar o culto…" and "Voltar à Setlist" (the church's
+  pointer, below; a detached planner writes it like any window — the old
+  relay `service.use`/`console.service` is gone).
   `openPlanner(id)` opens or brings forward that culto's tab; the tab in
   front rides in the entry's props, so Destacar opens on it. Culto › Novo
   culto opens the new culto in a tab and leaves the console's culto as it
@@ -1445,9 +1447,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   service clock counts from the service's scheduled time (`serviceClock`
   in `src/lib/console/timeline.js`; never a default hour). Keys follow Holyrics: ←/→ move what is on air, ↑/↓ move the
   selection (green), Enter or a double click projects it; one Bible verse
-  goes out as its whole chapter so the arrows keep walking it. With no
-  service chosen, the first item added creates "Setlist de dd/mm" (a draft
-  Service). Screens and the console's monitors render with
+  goes out as its whole chapter so the arrows keep walking it. **One
+  Setlist for the whole church** (owner 2026-10-29, mockup "Setlist
+  compartilhada", U1–U5 = A; after two computers each opened their own
+  culto and nobody saw the other's list): no computer chooses its culto
+  any more. Every console shows the church's active culto
+  (`User.active_service_id`, synced; `useActiveService` in
+  src/components/console/useActiveService.js), else **the shared Setlist**:
+  one Service row of `service_type: "console"` (title "Setlist"), made the
+  first time anything needs a list (`ensureService`: an item, the
+  Autoplay, the notes, a pedido) — the daily draft "Setlist de dd/mm" is
+  gone. Rules in `src/lib/console/consoleSetlist.js` (tested:
+  `visibleService`, `cultosOf` — every list of cultos leaves the shared
+  row out: the Culto menu, Planejar o culto, Relatórios —, `mergePlan`:
+  two shared rows made before a sync are joined into the oldest by every
+  console, the items and messages moved, `copyItems`). Activating a culto
+  on any computer (the Setlist's title menu, the Culto menu, a planner
+  tab) switches every console, with a toast where it came from elsewhere
+  (`useActiveServiceNews`); nothing leaves the air. **The Setlist's title
+  is that menu** (U2 = A, `.setlist-head`): "Setlist" or the culto's name
+  with a green dot and "· ativo", then the cultos not done, "Encerrar o
+  culto…" (U4 = A: Feito, everyone back to the Setlist; asks first) or, on
+  the shared Setlist, "Guardar no culto…" (U3 = A: its items copied after a
+  culto's own, or into a Novo culto; the Setlist stays), and Planejar o
+  culto. The service clock says "Sem culto" on the shared Setlist; its PDF
+  is dated today. Screens and the console's monitors render with
   `src/components/screen/ScreenRenderer.jsx` — one component, sized in
   container units — so a preview is the output; the Programa monitor plays
   videos muted (`motion`). The player's eye ("Tirar o vídeo · o som
