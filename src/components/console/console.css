@@ -1075,6 +1075,20 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
 /* The Biblioteca's search field with its ☆ and "+" on one line. */
 .console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1); }
 .console .searchrow > .kx-field { flex: 1; }
+/* The Biblioteca in folders (Rodada R, R4a = B): a folder is a light list
+   header inside the list (chevron, folder, name, count), an inset card like
+   the rows, its rows a step in. The folder button stays pressed but dim
+   while a search shows the flat list. */
+.console .searchrow > .kx-btn.is-on.is-dim { opacity: .5; }
+.console .lib-folder-li { margin: 1px var(--space-1); }
+.console .lib-folder { width: 100%; display: flex; align-items: center; gap: 6px; min-height: var(--row); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--fg-2); font: 600 var(--fs-ui)/1.2 var(--font-sans); text-align: left; cursor: pointer; }
+.console .lib-folder:hover { background: var(--bg-2); color: var(--fg-1); }
+.console .lib-folder:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.console .lib-folder-chev, .console .lib-folder-i { flex: none; display: inline-flex; color: var(--fg-3); }
+.console .lib-folder[aria-expanded="true"] .lib-folder-i { color: var(--fg-2); }
+.console .lib-folder-n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .lib-folder-c { flex: none; font-weight: 400; white-space: nowrap; }
+.console .kx-row.in-folder { padding-left: calc(var(--space-2) + 20px); }
 .console .addmenu { position: relative; flex: none; }
 /* A row holding a control (AddMenu's node) wraps rather than run wide. */
 .console .addmenu-row { flex-wrap: wrap; height: auto; min-height: var(--control-sm); }
@@ -2355,6 +2369,8 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
    bundle.css, the outputs in screen.css) and the colour swatches. */
 .console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
 @media (forced-colors: active) {
+  /* The Biblioteca's folder headers keep an edge on focus. */
+  .console .lib-folder:focus-visible { outline: 2px solid Highlight; }
   .console .confirm-warn { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* Link do YouTube…: the check's dot and the card that warns. */
   .console .yt-dialog .yt-dot { background: CanvasText; }

@@ -598,7 +598,21 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   owner's rule (2026-10-20): KERYX ships no lyrics, and no parser of another
   program ships without a real export file in `songFormats/fixtures/`
   (2026-10-21: only Holyrics; EasyWorship and ProPresenter are not planned);
-  the search row is Buscar · ☆; **the Biblioteca's header
+  the search row is Buscar · ☆ · the folder button; **the Biblioteca in
+  folders** (Rodada R, owner 2026-10-29, R4a = B / R4b = B;
+  `src/lib/console/libraryFolders.js`, tested): the folder button (and the
+  eye's "Agrupar em pastas") groups the tab on screen, each tab its own mode
+  (`layout.libGroup`, per computer) — Letras one folder per `Song.artist`
+  (trimmed, grouped without case, the most common spelling, pt-BR order,
+  "Sem artista" last), the media tabs one per church category of the Mídia
+  (`mediaCategoriesInUse`), Avisos none (no button); folders come only from
+  data the rows already have (no field, no sync change; folders the operator
+  makes are future work). A folder is a light header (chevron, folder,
+  name, "n músicas"), never marked; each opens or closes on its own
+  (`layout.libFoldersOpen`; closed at first, the only one open). A search
+  shows the flat list (the button pressed but dim); ☆ filters inside the
+  folders; the multi-selection's order is the rows on screen (closed
+  folders out). **The Biblioteca's header
   holds the doors** (owner's pick, Rodada H, H1): its title, "Abrir a
   Biblioteca de mídia" (the Mídia page, every tab), the (+) that adds
   (owner 2026-10-28, I2 = A: Library.jsx draws its menu into the header's
