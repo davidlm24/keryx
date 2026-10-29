@@ -7,6 +7,7 @@ import { themeBackgroundArgs, defaultTheme } from "./themeCore.js";
 import { SIZE_PRESETS, sameSize, sizeCqw } from "../textSize.js";
 import { TRANSITIONS, NATURAL_MS } from "./look.js";
 import { steppedSize } from "./songSize.js";
+import { textBudget } from "./textBudget.js";
 
 // The six size presets, smallest first: what a song or an aviso chooses,
 // and the shortcuts beside a theme's free size (a number in cqw since the
@@ -47,6 +48,15 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "transition", "transition_ms",
     "font_weight", "font_style", "letter_spacing", "text_outline_px", "text_outline_color", "text_decoration", "text_justify"];
 const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
+// How much one slide holds with a theme (textBudget.js; owner 2026-10-29,
+// F3/F4 = A): the Bíblia's Auto and "Quando não cabe › Dividir em mais
+// slides" (theme.overflow "split") cut by it. metrics: styleMetrics of the
+// theme's look (fontMetrics.js, in the console); pair: "side" | "stack"
+// when a second edition is on screen.
+export const themeFit = (theme, { kind = "bible", metrics, pair = null } = {}) => {
+    const style = themeStyle(theme);
+    return { limit: textBudget(style, metrics, { kind, pair }), split: theme?.overflow === "split" };
+};
 export const themeStyle = (t) => ({ font_size: t?.font_size || "large", font_family: t?.font_family || "sans", text_effect: t?.text_effect || "shadow", text_color: t?.text_color || "#ffffff", text_color_2: t?.text_color_2 || "", ...extra(t) });
 const sameKey = (k, a, v) => {
     if (k === "font_size") return sameSize(a || v, v);
@@ -226,7 +236,7 @@ export function boxSummary(t) {
 // Where the box sits (the alignment is the text bar's).
 export function placeSummary(t) {
     const width = t?.text_box === "band" ? 100 : Number(t?.text_max_width) || 100;
-    return `${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}`;
+    return `${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}${t?.overflow === "split" ? " · divide" : ""}`;
 }
 
 export function fundoSummary(t) {

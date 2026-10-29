@@ -26,6 +26,7 @@
     "note": { "type": "string", "description": "Comentário do tema (até 500 caracteres, Rodada HF2): nunca vai ao ar, aparece na dica do tema em Temas" },
     "text_case": { "type": "string", "enum": ["", "none", "upper", "capitalize"], "description": "Caixa do texto: MAIÚSCULAS (upper) ou Primeira Maiúscula (capitalize, a barra de texto, Rodada P8-1); vazio = normal" },
     "text_decoration": { "type": "string", "enum": ["", "none", "underline"], "description": "Sublinhado do texto (a barra de texto, Rodada P8-1); vazio = sem" },
+    "overflow": { "type": "string", "enum": ["", "shrink", "split"], "description": "Quando não cabe (owner 2026-10-29, F3): shrink = diminuir a letra (padrão, vazio também), split = dividir em mais slides (Bíblia e Texto; a música sempre diminui). Não é estilo: lido ao montar o slide (textBudget.js)" },
     "text_justify": { "type": "string", "enum": ["", "none", "justify"], "description": "Texto justificado (a barra de texto, Rodada P8-1): a caixa fica onde text_align a põe; vazio = sem" },
     "text_box": { "type": "string", "enum": ["none", "band", "block"], "description": "Caixa atrás do texto: faixa ou bloco, Camadas" },
     "text_box_color": { "type": "string", "description": "Cor da caixa atrás do texto (#rrggbb)" },

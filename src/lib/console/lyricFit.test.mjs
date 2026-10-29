@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { lineLimit, slideFit, stanzaAt, slideSpan, fitScale } from "./lyricFit.js";
+import { lineLimit, slideFit, stanzaAt, slideSpan, fitScale, fitSearch, clampShift, HEIGHT_MIN } from "./lyricFit.js";
 
 test("the characters that fit on a screen line shrink as the letters grow", () => {
     assert.equal(lineLimit("large"), 31);
@@ -79,4 +79,24 @@ test("fitScale: the font shrinks only as much as the longest line needs", () => 
     assert.equal(fitScale(800, 4000), 0.55, "never below the minimum");
     assert.equal(fitScale(800, 4000, 0.3), 0.3);
     assert.equal(fitScale(0, 100), 1, "nothing measured yet: untouched");
+});
+
+test("fitSearch: the largest share of the font at which the slide fits", () => {
+    assert.equal(fitSearch(() => true), 1, "fits as it is: untouched");
+    // Fits at 0.6 and below (a height that rewraps is still monotone).
+    const f = fitSearch((x) => x <= 0.6);
+    assert.ok(f <= 0.6 && f > 0.59, `close below the edge: ${f}`);
+    assert.equal(fitSearch(() => false), HEIGHT_MIN, "never fits: the floor");
+    assert.equal(fitSearch(() => false, 0.3), 0.3);
+});
+
+test("clampShift: the nudge moves the text, never out of the safe area", () => {
+    // Text 100..300 in an area 50..400: room 50 up, 100 down.
+    assert.equal(clampShift(0, 100, 300, 50, 400), 0);
+    assert.equal(clampShift(30, 100, 300, 50, 400), 30);
+    assert.equal(clampShift(250, 100, 300, 50, 400), 100, "down only as far as the area");
+    assert.equal(clampShift(-80, 100, 300, 50, 400), -50, "up only as far as the area");
+    // Text taller than the area (should not happen after the fit): no push out.
+    assert.equal(clampShift(40, 40, 420, 50, 400), 0);
+    assert.equal(clampShift("x", 100, 300, 50, 400), 0);
 });

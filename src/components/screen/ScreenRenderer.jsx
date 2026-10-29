@@ -14,7 +14,7 @@ import { ringBell } from "@/lib/bell";
 import { usePrefs } from "@/hooks/useUser";
 import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
 import { refLine, refVersion } from "@/lib/bibleDisplay";
-import { fitScale } from "@/lib/console/lyricFit";
+import { fitScale, fitSearch, clampShift } from "@/lib/screenFit";
 import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
 import ActivityView from "./ActivityView";
 import { useExitGhost } from "@/hooks/useExitGhost";
@@ -314,47 +314,87 @@ function verseNodes(text, numbers = "sup") {
     return segs.flatMap((x, i) => (x.n === null ? [x.text] : [<sup key={i}>{x.n}</sup>, x.text]));
 }
 
-// One line of the lyrics is one line on screen (owner 2026-10-14): a song's
-// lines never wrap; when the longest does not fit the text's box the
-// slide's font shrinks (fitScale, down to FIT_MIN). Only a line too long
-// even then wraps, rather than leave the screen. The natural width comes
-// from a hidden copy of the text (`probe`, one line per line at the text's
-// size); measured after layout and again when the screen is resized or the
-// fonts arrive.
+// The text always fits the screen (owner 2026-10-29, mockup "O texto sempre
+// cabe na tela", F1–F4 = A). Two measures, after layout and again when the
+// screen is resized, the text's size changes (an output's Escala) or the
+// fonts arrive:
+// - width, a song only: one line of the lyrics is one line on screen (owner
+//   2026-10-14); when the longest does not fit the text's box the slide's
+//   font shrinks (fitScale, down to FIT_MIN), and only a line too long even
+//   then wraps. The natural width is a hidden copy (`probe`, white-space pre);
+// - height, every text: the slide's whole column (part name, picture, text,
+//   the two editions, the reference) fits the safe area — .ks-content's
+//   padding inside the output's Margens — at the largest share of its size
+//   that does (fitSearch, by halves: a smaller font rewraps). It is
+//   --ks-size times that share, and --ks-h for the small lines.
+// The theme's fine nudge then moves the text only inside that area
+// (clampShift). Nothing is ever cut at the screen's edge.
 const FIT_MIN = 0.45;
-function useFitWidth(on, deps) {
+const NO_FIT = { scale: 1, wrap: false, h: 1, shift: null };
+function useFit(on, lines, size, nudge, deps) {
+    const boxRef = React.useRef(null);
     const textRef = React.useRef(null);
     const probeRef = React.useRef(null);
-    const [fit, setFit] = React.useState({ scale: 1, wrap: false });
+    const [fit, setFit] = React.useState(NO_FIT);
     const measure = React.useCallback(() => {
-        const text = textRef.current, probe = probeRef.current;
-        const box = text?.closest(".ks-content");
-        if (!on || !text || !probe || !box) return;
-        const bs = getComputedStyle(box), ts = getComputedStyle(text);
-        const contentW = box.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
-        const maxW = ts.maxWidth.endsWith("%") ? (contentW * parseFloat(ts.maxWidth)) / 100 : contentW;
-        const avail = Math.min(contentW, maxW) - parseFloat(ts.paddingLeft) - parseFloat(ts.paddingRight);
-        const natural = probe.offsetWidth;
-        const scale = fitScale(avail, natural, FIT_MIN);
-        const wrap = natural * scale > avail + 1;
-        setFit((f) => (Math.abs(f.scale - scale) > 0.004 || f.wrap !== wrap ? { scale, wrap } : f));
-    }, [on]);
+        const box = boxRef.current;
+        if (!on || !box) return;
+        const set = (h) => { box.style.setProperty("--ks-size", `${size * h}cqw`); box.style.setProperty("--ks-h", String(h)); };
+        set(1);
+        box.style.translate = "none";
+        // Width: the song's longest line (as before the height).
+        let scale = 1, wrap = false;
+        const text = textRef.current, probe = probeRef.current, span = probe?.previousElementSibling;
+        if (lines && text && probe && span) {
+            span.style.fontSize = "";
+            text.classList.remove("is-wrap");
+            const bs = getComputedStyle(box), ts = getComputedStyle(text);
+            const contentW = box.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
+            const maxW = ts.maxWidth.endsWith("%") ? (contentW * parseFloat(ts.maxWidth)) / 100 : contentW;
+            const avail = Math.min(contentW, maxW) - parseFloat(ts.paddingLeft) - parseFloat(ts.paddingRight);
+            const natural = probe.offsetWidth;
+            scale = fitScale(avail, natural, FIT_MIN);
+            wrap = natural * scale > avail + 1;
+            if (scale < 1) span.style.fontSize = `${scale}em`;
+            text.classList.toggle("is-wrap", wrap);
+        }
+        // Height: the column's items (a display: contents wrapper holds them).
+        const bs = getComputedStyle(box), r = box.getBoundingClientRect();
+        const areaTop = r.top + parseFloat(bs.paddingTop), areaBottom = r.bottom - parseFloat(bs.paddingBottom);
+        const items = [...(box.firstElementChild?.children || [])];
+        const extent = () => {
+            let top = Infinity, bottom = -Infinity;
+            for (const el of items) { const b = el.getBoundingClientRect(); if (b.height) { top = Math.min(top, b.top); bottom = Math.max(bottom, b.bottom); } }
+            return top === Infinity ? { top: areaTop, bottom: areaTop } : { top, bottom };
+        };
+        const room = areaBottom - areaTop;
+        const h = items.length ? fitSearch((f) => { set(f); const e = extent(); return e.bottom - e.top <= room + 1; }) : 1;
+        set(h);
+        // The nudge, % of the screen's height in cqw (width units), in px.
+        const screenW = box.closest(".ks")?.getBoundingClientRect().width || r.width;
+        const e = extent();
+        const shift = nudge ? Math.round(clampShift((nudge * 0.5625 * screenW) / 100, e.top, e.bottom, areaTop, areaBottom)) : 0;
+        box.style.translate = shift ? `0 ${shift}px` : "";
+        setFit((f) => (Math.abs(f.scale - scale) > 0.004 || f.wrap !== wrap || Math.abs(f.h - h) > 0.004 || f.shift !== shift ? { scale, wrap, h, shift } : f));
+    }, [on, lines, size, nudge]);
     React.useLayoutEffect(measure, [measure, ...deps]);
     React.useEffect(() => {
         if (!on) return undefined;
-        const box = textRef.current?.closest(".ks-content");
+        const box = boxRef.current;
+        // The box (a resize, the output's Margens) and the text itself (the
+        // output's Escala changes its size, not the box's).
         const ro = typeof ResizeObserver === "function" && box ? new ResizeObserver(() => measure()) : null;
-        ro?.observe(box);
+        if (ro) { ro.observe(box); if (textRef.current) ro.observe(textRef.current); }
         let alive = true;
         document.fonts?.ready?.then(() => { if (alive) measure(); });
         // A church font that arrives later (its @font-face is declared when
         // the Media rows load, src/hooks/useFonts.js; its file when the sync
-        // brings it) changes the line's width: measure again.
+        // brings it) changes the text's size: measure again.
         const onLoaded = () => { if (alive) measure(); };
         document.fonts?.addEventListener?.("loadingdone", onLoaded);
         return () => { alive = false; ro?.disconnect(); document.fonts?.removeEventListener?.("loadingdone", onLoaded); };
-    }, [on, measure]);
-    return { textRef, probeRef, fit: on ? fit : { scale: 1, wrap: false } };
+    }, [on, measure, ...deps]);
+    return { boxRef, textRef, probeRef, fit: on ? fit : NO_FIT };
 }
 
 // still: a preview that does not move (the Prévia, thumbnails, samples) —
@@ -377,15 +417,18 @@ function Content({ content, showTitle = true, still = false }) {
     const chorded = lyrics && show.chords ? chordedOf(content.stage, content.index, slide.text) : null;
     const reference = slide.ref || content.ref?.reference || content.title;
     const key = `${content.startedAt}:${content.index}`;
-    const { textRef, probeRef, fit } = useFitWidth(lyrics, [key, slide.text, chorded, size, style.font_family, style.text_max_width, style.text_box, style.text_case, style.font_weight, style.font_style, style.letter_spacing, style.text_outline_px]);
-    const body = bible ? verseNodes(slide.text, style.verse_numbers) : chorded ? <ChordedLines chorded={chorded} /> : slide.text;
     // Two editions: each block says its sigla, so the reference drops it.
     const pair = bible && slide.pair?.text ? slide.pair : null;
     const refMode = pair && style.ref_line !== "none" ? "plain" : style.ref_line;
+    const { boxRef, textRef, probeRef, fit } = useFit(Boolean(slide.text || pair), lyrics, size, style.text_nudge || 0, [key, slide.text, pair?.text, chorded, show.labels, refMode, style.pair, style.font_family, style.text_max_width, style.text_box, style.text_case, style.font_weight, style.font_style, style.letter_spacing, style.line_height, style.text_outline_px, style.text_position, style.verse_numbers]);
+    const body = bible ? verseNodes(slide.text, style.verse_numbers) : chorded ? <ChordedLines chorded={chorded} /> : slide.text;
+    // Before the first measure the nudge is as the theme says (cqw); then
+    // the measured one, held inside the safe area (px).
+    const shift = fit.shift === null ? (style.text_nudge ? `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` : null) : fit.shift ? `0 ${fit.shift}px` : null;
     return (
         <>
             {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: fontStack(style.font_family) }}>{content.title}</div>}
-            <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": `${size}cqw`, ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
+            <div ref={boxRef} className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": `${size * fit.h}cqw`, "--ks-h": fit.h, ...(shift ? { translate: shift } : {}) }}>
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {show.labels && !bible && slide.label && <div className="ks-chorus">{slide.label}</div>}
                     {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}

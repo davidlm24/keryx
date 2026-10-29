@@ -292,6 +292,7 @@ test("the Editor de temas' group summaries are one pt-BR line each", async () =>
     assert.equal(m.placeSummary({}), "Meio · 100 %");
     assert.equal(m.placeSummary({ text_align: "left", text_justify: "justify" }), "Meio · 100 %");
     assert.equal(m.placeSummary({ text_align: "left", text_position: "bottom", text_max_width: 80 }), "Baixo · 80 %");
+    assert.equal(m.placeSummary({ overflow: "split" }), "Meio · 100 % · divide", "Quando não cabe › Dividir");
     assert.equal(m.placeSummary({ text_box: "band", text_max_width: 60 }), "Meio · 100 %");
     assert.equal(m.fundoSummary({}), "Falta escolher");
     assert.equal(m.transitionSummary({}), "Padrão · Esmaecer 400 ms");

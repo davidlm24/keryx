@@ -6,6 +6,7 @@
 // chapter too). Pure, no I/O; tested in bibleVerses.test.mjs. The stage
 // around it is stageFromVerses in stage.js.
 import { verseNumbers } from "../verseMarks.js";
+import { chunkText } from "./textBudget.js";
 
 // [3, 4, 5, 9] -> "3-5,9"
 export const rangeLabel = (nums) => {
@@ -28,8 +29,15 @@ function pairOf(nums, second) {
     return have.length ? { text: have.map((n) => `${n} ${second.texts.get(n)}`).join(" "), version: second.version } : null;
 }
 // "auto" fills a slide up to this many characters; with two editions on
-// screen each holds half as much, so the slide does.
+// screen each holds half as much, so the slide does. The callers pass the
+// Bíblia theme's own measure instead (fit.limit, textBudget.js; owner
+// 2026-10-29, F4 = A): this is the default with no theme at hand.
 export const AUTO_CHARS = 220;
+// fit: { limit, split } — limit: the characters one slide holds with the
+// theme (textBudget); split: the theme's "Quando não cabe › Dividir em mais
+// slides" (F3 = A), a slide longer than limit cut into pieces that fit
+// (chunkText). Never with a second edition: the two would split apart.
+const limitOf = (fit, second) => (fit?.limit > 0 ? fit.limit : second ? AUTO_CHARS / 2 : AUTO_CHARS);
 
 // Versículos por slide: "1", "2", "3" or "auto"; anything else reads as "1".
 export const HOW = ["1", "2", "3", "auto"];
@@ -49,12 +57,21 @@ const slideOf = (run, second) => {
     const p = pairOf(run.map((v) => v.number), second);
     return { text: run.map((v) => `${v.number} ${v.text}`).join(" "), label: run.length > 1 ? `v. ${run[0].number}–${run[run.length - 1].number}` : `v. ${run[0].number}`, ...(p ? { pair: p } : {}) };
 };
+// A run -> its slides: one, or (split) the pieces of one too long, each
+// labelled "(1/2)".
+function slidesOf(run, second, fit, limit) {
+    const slide = slideOf(run, second);
+    if (!fit?.split || second || slide.text.length <= limit) return [slide];
+    const parts = chunkText(slide.text, limit);
+    return parts.length < 2 ? [slide] : parts.map((text, i) => ({ ...slide, text, label: `${slide.label} (${i + 1}/${parts.length})` }));
+}
 
 // Verses -> slides: one, two, three per slide, or by length (auto).
 // pair: a second edition ({ verses, version }; see secondOf).
-export function groupVerses(verses, how, pair = null) {
+export function groupVerses(verses, how, pair = null, fit = null) {
     const second = secondOf(pair);
-    return runs(verses, howOf(how), second ? AUTO_CHARS / 2 : AUTO_CHARS).map((r) => slideOf(r, second));
+    const limit = limitOf(fit, second);
+    return runs(verses, howOf(how), limit).flatMap((r) => slidesOf(r, second, fit, limit));
 }
 
 // The verse numbers a parsed reference names ([] for a whole chapter).
@@ -67,10 +84,10 @@ const otherPair = (pair, version) => (pair?.version && pair.version !== version 
 
 // Several verses: the passage (a BiblePassage's fields), or null.
 // pair: a second edition, as in groupVerses.
-export function passageOf({ verses, nums, how = "auto", version, book, chapter, pair = null }) {
+export function passageOf({ verses, nums, how = "auto", version, book, chapter, pair = null, fit = null }) {
     how = howOf(how);
     const chosen = verses.filter((v) => nums.includes(v.number));
-    const slides = groupVerses(chosen, how, otherPair(pair, version));
+    const slides = groupVerses(chosen, how, otherPair(pair, version), fit);
     if (!slides.length || !version) return null;
     return { reference: `${book} ${chapter}:${rangeLabel(nums)} · ${version}`, book, chapter, verses: rangeLabel(nums), text: chosen.map((v) => `${v.number} ${v.text}`).join("\n"), slides, version };
 }
@@ -80,22 +97,23 @@ export function passageOf({ verses, nums, how = "auto", version, book, chapter, 
 // slide the one shown (index); null when the verse is not in the chapter.
 // pair: a second edition, as in groupVerses; its sigla rides in the ref as
 // version2, and the grouping as how (chapterOnAir).
-export function chapterOf({ verses, n, how = "1", version, book, chapter, pair = null }) {
+export function chapterOf({ verses, n, how = "1", version, book, chapter, pair = null, fit = null }) {
     if (!version || !verses.length) return null;
     const at = verses.findIndex((v) => v.number === n);
     if (at < 0) return null;
     how = howOf(how);
     const second = secondOf(otherPair(pair, version));
     const version2 = second?.version || null;
-    const limit = second ? AUTO_CHARS / 2 : AUTO_CHARS;
-    const before = runs(verses.slice(0, at), how, limit);
-    const slides = [...before, ...runs(verses.slice(at), how, limit)].map((r) => ({ ...slideOf(r, second), ref: `${book} ${chapter}:${rangeLabel(r.map((v) => v.number))} · ${version}` }));
+    const limit = limitOf(fit, second);
+    const toSlides = (r) => slidesOf(r, second, fit, limit).map((s) => ({ ...s, ref: `${book} ${chapter}:${rangeLabel(r.map((v) => v.number))} · ${version}` }));
+    const before = runs(verses.slice(0, at), how, limit).flatMap(toSlides);
+    const slides = [...before, ...runs(verses.slice(at), how, limit).flatMap(toSlides)];
     return {
         id: `chapter:${book}:${chapter}:${version}${version2 ? `+${version2}` : ""}`,
         title: `${book} ${chapter}:${n}`,
         index: before.length,
         passage: { reference: `${book} ${chapter} · ${version}`, text: verses.map((v) => `${v.number} ${v.text}`).join("\n"), slides, version },
-        ref: { book, chapter, version, ...(version2 ? { version2 } : {}), how, wholeChapter: true },
+        ref: { book, chapter, version, ...(version2 ? { version2 } : {}), how, ...(fit?.limit > 0 ? { limit: fit.limit, split: Boolean(fit.split) } : {}), wholeChapter: true },
     };
 }
 
@@ -108,9 +126,12 @@ export function chapterOf({ verses, n, how = "1", version, book, chapter, pair =
 // edition is sent again rather than moved, so a send never keeps what the
 // bar changed while the screens were locked.
 const refMode = (v) => v || "full";
-export const chapterOnAir = (onAir, { book, chapter, version, version2 = null, how = "1", look = null }) => Boolean(onAir && onAir.ref?.wholeChapter && onAir.ref.book === book && Number(onAir.ref.chapter) === Number(chapter) && onAir.ref.version === version
+// fit: the theme's measure (chapterOf): a chapter cut for another theme
+// (its size, capitals, Quando não cabe) is sent again too.
+export const chapterOnAir = (onAir, { book, chapter, version, version2 = null, how = "1", look = null, fit = null }) => Boolean(onAir && onAir.ref?.wholeChapter && onAir.ref.book === book && Number(onAir.ref.chapter) === Number(chapter) && onAir.ref.version === version
     && (onAir.ref.version2 || null) === (version2 && version2 !== version ? version2 : null)
     && howOf(onAir.ref.how) === howOf(how)
+    && (!fit?.limit || (onAir.ref.limit === fit.limit && Boolean(onAir.ref.split) === Boolean(fit.split)))
     && (!look || (refMode(onAir.style?.ref_line) === refMode(look.ref_line) && (!onAir.ref.version2 || (onAir.style?.pair || "side") === (look.pair || "side")))));
 
 // -- The bar under the Bíblia's No ar screen, on what is on air (owner
