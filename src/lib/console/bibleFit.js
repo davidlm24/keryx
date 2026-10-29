@@ -55,15 +55,17 @@ export function booksFit({ width, height, pref = "medium" }) {
     return at(BOOK_SIZES[BOOK_SIZES.length - 1]);
 }
 
-// Capítulos and Versículos: the cell of each P/M/G (console.css).
+// Capítulos and Versículos: the cell of each P/M/G (console.css). One step
+// up since the owner's 2026-10-29 note: pequenas are the médias of before,
+// médias the grandes, grandes a step past them.
 export const NUM_SIZES = {
-    small: { w: 28, h: 22, gap: 2 },
-    medium: { w: 34, h: 26, gap: 3 },
-    large: { w: 44, h: 34, gap: 4 },
+    small: { w: 34, h: 26, gap: 3 },
+    medium: { w: 44, h: 34, gap: 4 },
+    large: { w: 54, h: 42, gap: 5 },
 };
 export const numSize = (grid, kind = "chapters") => {
     const s = NUM_SIZES[grid] || NUM_SIZES.medium;
-    return kind === "verses" && s === NUM_SIZES.medium ? { ...s, w: 32 } : s;
+    return kind === "verses" && s === NUM_SIZES.small ? { ...s, w: 32 } : s;
 };
 const PAD = 4;
 

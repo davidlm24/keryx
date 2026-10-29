@@ -686,11 +686,15 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .bver + .bver > select { width: 96px; }
 .console .bver-dot { position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--bg-1); pointer-events: none; }
 .console .kx-panel-h .addmenu > .kx-btn-icon { width: var(--control-sm); height: var(--control-sm); }
-/* Capítulos and Versículos in three cell sizes (owner 2026-10-14: Livros'   view menu, layout.bibleGrid — pequenas, médias as they were, or grandes). */
-.console .chapters.is-small, .console .verse-cells.is-small { grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 2px; }
-.console .chapters.is-small button, .console .verse-cells.is-small button { height: 22px; font-size: var(--fs-meta); }
-.console .chapters.is-large, .console .verse-cells.is-large { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
-.console .chapters.is-large button, .console .verse-cells.is-large button { height: 34px; font-size: var(--fs-content-lg); }
+/* Capítulos and Versículos in three cell sizes (owner 2026-10-14: Livros'
+   view menu, layout.bibleGrid), one step up since 2026-10-29: pequenas are
+   the médias of before, médias the grandes (the base rules below), grandes a
+   step past them. bibleFit.js NUM_SIZES holds the same numbers. */
+.console .chapters.is-small, .console .verse-cells.is-small { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 3px; }
+.console .verse-cells.is-small { grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); }
+.console .chapters.is-small button, .console .verse-cells.is-small button { height: 26px; font-size: var(--fs-ui); }
+.console .chapters.is-large, .console .verse-cells.is-large { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 5px; }
+.console .chapters.is-large button, .console .verse-cells.is-large button { height: 42px; font-size: var(--fs-live); }
 /* The books (Rodada R, owner 2026-10-29, R2a = A): a cell shows both
    names, the abbreviation on top (600, 13 px) and the whole name under it
    (meta, fg-3, one line, cut with "…"), left-aligned beside the group's
@@ -776,8 +780,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .bchap-name::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: var(--radius-control) 0 0 var(--radius-control); background: var(--group, var(--line-strong)); }
 .console .bchap-name small { font-size: var(--fs-meta); font-weight: 400; color: var(--fg-3); }
 .console .bchap-name .kx-i { flex: none; }
-.console .chapters { min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 3px; max-height: 162px; overflow: auto; align-content: start; }
-.console .chapters button { height: 26px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-ui); font-variant-numeric: tabular-nums; }
+.console .chapters { min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; max-height: 162px; overflow: auto; align-content: start; }
+.console .chapters button { height: 34px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-content-lg); font-variant-numeric: tabular-nums; }
 .console .chapters button:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .chapters button.is-on { background: var(--bg-3); color: var(--fg-1); outline: 1px solid var(--line-strong); outline-offset: -1px; }
 /* The verse row: the loaded chapter's verses, the same cells as the
@@ -785,8 +789,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
    folds before the books on a short column, so the band never scrolls. */
 .console .bverses { display: flex; align-items: flex-start; gap: var(--space-2); }
 .console .bverses-k { flex: none; height: 26px; display: flex; align-items: center; padding: 0 var(--space-2); color: var(--fg-3); font-size: var(--fs-meta); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
-.console .verse-cells { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 3px; }
-.console .verse-cells button { height: 26px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-ui); font-variant-numeric: tabular-nums; }
+.console .verse-cells { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+.console .verse-cells button { height: 34px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-content-lg); font-variant-numeric: tabular-nums; }
 .console .verse-cells button:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .verse-cells button.is-prev { background: var(--prev-tint); color: var(--prev-fg); box-shadow: inset 0 0 0 1px var(--prev); }
 .console .verse-cells button.is-air { background: var(--air-tint); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
