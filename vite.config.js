@@ -78,14 +78,22 @@ function remoteInstallAssets() {
   };
 }
 
+// The sessions' worktrees live inside the repository (.claude/worktrees):
+// watching them reloaded the owner's desktop:dev on every edit made there,
+// and a file locked in one of them (EBUSY) killed it. Judged relative to
+// THIS root, so a preview running inside a worktree still watches its own.
+const ROOT = fileURLToPath(new URL('.', import.meta.url))
+const inSessions = (file) => /^\.claude[\\/]/.test(path.relative(ROOT, file))
+
 // https://vite.dev/config/
 export default defineConfig({
   // bundleBudget: the outputs' JS within budget, every stylesheet in the
   // entry (scripts/bundle-budget.cjs); a build past it fails.
   plugins: [react(), keryxPreview(), pdfjsAssets(), remoteInstallAssets(), bundleBudget()],
   // The side-panel preview passes a free port in PORT (.claude/launch.json,
-  // autoPort); without it Vite keeps its default.
-  server: process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : {},
+  // autoPort); without it Vite keeps its default. The watcher skips the
+  // sessions' worktrees (inSessions, above).
+  server: { ...(process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : {}), watch: { ignored: [inSessions] } },
   resolve: {
     alias: {
       // The Base44 vite plugin used to provide this alias; jsconfig.json
