@@ -15,29 +15,69 @@ export { tabStop } from "@/lib/console/tablist";
 // F4) — the chevron right of the header's +; folded down a column the panel
 // is its header, across a row a strip with its name standing (FoldStrip).
 // Folded, the body stays mounted, hidden, so it comes back as it was.
+// While editing the arrangement the dock hands the module's panel its edit
+// header through DockEditCtx (Rodada R, owner 2026-10-29, R5): the panel's
+// own header is the handle (DockEditHead), and a panel with none (`bare`
+// or `noHead`: the Programa, the Prévia, the Bíblia's No ar) gets a 28 px
+// one for the edit only (R5a = B).
 export function Panel({ title, count, tip, lead, caption, actions, fold, bare = false, noHead = false, className = "", style, children, bodyStyle }) {
     // `tip`: the header's tooltip (the Setlist's culto name, Rodada O3).
     // `noHead`: the card without its header line — a window page whose
     // title and tools ride the win-bar (Rodada C).
-    const head = !noHead && (!bare || title || caption || actions || lead || fold);
+    const edit = useContext(DockEditCtx);
+    const own = !noHead && (!bare || title || caption || actions || lead || fold);
+    const head = own || Boolean(edit);
     const strip = foldStrip(fold);
     // A screen reader's map of the console (C-28): each panel is a region
     // named by its title, and the title a heading to jump between panels.
     const headId = useId();
-    const named = head && !strip && Boolean(caption || title);
+    const named = head && !strip && Boolean(caption || title || edit);
     return (
         <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${fold?.on ? "is-collapsed" : ""} ${strip ? "kx-strip" : ""} ${className}`} style={style}
             role={named || (strip && fold.name) ? "region" : undefined} aria-labelledby={named ? headId : undefined} aria-label={strip ? fold.name || undefined : undefined}>
-            {strip ? <FoldStrip fold={fold} /> : head && <div className="kx-panel-h" title={tip || undefined}>
+            {strip ? <FoldStrip fold={fold} /> : edit ? (
+                <div className={`kx-panel-h is-dock-edit ${own ? "" : "is-dock-temp"}`} title={tip || undefined}>
+                    <DockEditHead edit={edit} id={headId} count={count} actions={actions} />
+                </div>
+            ) : head && <div className="kx-panel-h" title={tip || undefined}>
                 {lead}
                 {caption ? <span className="kx-panel-cap" id={headId} role="heading" aria-level={2}>{caption}</span> : <span className="kx-section" id={title ? headId : undefined} role={title ? "heading" : undefined} aria-level={title ? 2 : undefined}>{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
                 {actions}
                 <FoldBtn fold={fold} />
             </div>}
-            <div className="kx-panel-b" style={strip ? FOLDED_BODY : bodyStyle} inert={fold?.on ? "" : undefined}>{children}</div>
+            {/* Only the module's outermost panel takes the edit header. */}
+            <DockEditCtx.Provider value={null}>
+                <div className="kx-panel-b" style={strip ? FOLDED_BODY : bodyStyle} inert={fold?.on ? "" : undefined}>{children}</div>
+            </DockEditCtx.Provider>
         </div>
     );
 }
+
+// Editar disposição (Dock.jsx gives it, per module on screen): { name,
+// grip(e) — null for the No ar strip, which never moves —, onMenu(e) —
+// "Mover para…" —, onX — to the tray; null where the module cannot go
+// there or its tab carries the × —, xTitle, extra — the Player's chip on
+// the Programa's header }. Null outside the edit.
+export const DockEditCtx = createContext(null);
+
+// A panel's header while editing: the grip, the module's name (a click is
+// Mover para…; dragged, it moves too), the count, the panel's own actions
+// dimmed and inert (the header as it really is), then the ×.
+export function DockEditHead({ edit, id, count, actions }) {
+    return (
+        <>
+            {edit.grip && <span className="dock-grip" title={`Arraste ${edit.name} para outro lugar`} onPointerDown={edit.grip} aria-hidden="true"><Icon name="grip" /></span>}
+            <button type="button" id={id} className="dock-edit-name kx-section" onPointerDown={edit.grip || undefined} onClick={edit.onMenu}
+                title={edit.grip ? `Arraste ${edit.name} para outro lugar · clique para Mover para…` : `${edit.name} fica sempre embaixo · clique para tirar ou voltar`}>
+                {edit.name}{typeof count === "string" && count ? <span className="kx-count"> · {count}</span> : null}
+            </button>
+            {actions && <span className="dock-edit-acts" inert="">{actions}</span>}
+            {edit.extra}
+            {edit.onX && <button type="button" className="dock-x" title={edit.xTitle} aria-label={edit.xTitle} onClick={edit.onX}><Icon name="x" /></button>}
+        </>
+    );
+}
+
 // A body folded across a row (the strip): hidden over any display a panel
 // gives its body inline. Folded down a column it stays, inert and fading out
 // (console.css), so the panel closes over its content instead of emptying first.

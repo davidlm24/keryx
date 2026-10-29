@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import Icon from "./Icon";
-import { Split, onTabsKey } from "./kx";
+import { flushSync } from "react-dom";
+import Icon, { iconSvg } from "./Icon";
+import { Split, onTabsKey, DockEditCtx } from "./kx";
 import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct, dockMotion, easesBetween, PANEL_HEAD, dockLocked, resizeExact, evenExact } from "@/lib/console/dock";
 
 // Ver › Editar disposição for the culto environment (2026-10-13; the
@@ -8,9 +9,16 @@ import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, 
 // splits and tab groups (src/lib/console/dock.js decides everything; these
 // only draw it and report what the operator does).
 //   - DockView draws a fitted frame (fitDock): splits with their splitters,
-//     groups with their tabs; while editing, each group gets a bar with a
-//     grip (the whole group) and one chip per module (drag it; a click opens
-//     "Mover para…"; × puts it in the tray).
+//     groups with their tabs. While editing (Rodada R, owner 2026-10-29,
+//     R5) the panel's own header is the handle — the grip before its name,
+//     the name a click for "Mover para…", the × where the fold sits — given
+//     to the panel through DockEditCtx (kx.jsx Panel); the Programa, the
+//     Prévia and the Bíblia's No ar, which have no header, get a 28 px one
+//     for the edit only (R5a = B); a group of tabs keeps its strip, each
+//     tab a chip that drags alone with its ×, the strip's grip the group.
+//     No bar above the panels any more: the console in the edit is the
+//     console as it is (the 34 px gold bar per group squeezed the locked
+//     heights and showed a layout that was not the real one).
 //   - useDockDrag moves modules by dragging, with pointer events (never
 //     HTML5 drag and drop: the Setlist accepts any dragover, and a stage drag
 //     must never start from a layout move). A drop on a group's middle makes
@@ -23,6 +31,8 @@ const nameOf = (id) => MODULES[id]?.name || id;
 const firstOf = (f) => (f.kind === "group" ? f.tabs[0] : firstOf(f.children[0].frame));
 // Every module under a frame, by name: what a splitter resizes (C-62).
 const allNames = (f) => (f.kind === "group" ? f.tabs.map(nameOf) : f.children.flatMap((ch) => allNames(ch.frame)));
+const reduced = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 export const ZONE_LABEL = { center: "Juntar como aba", left: "Pôr à esquerda", right: "Pôr à direita", top: "Pôr em cima", bottom: "Pôr embaixo" };
 
@@ -33,125 +43,229 @@ export function pickZone(r, x, y) {
     return d[best] < 0.25 ? best : "center";
 }
 
+// Where a drop would land, drawn over the page (Rodada R, R5): the half of
+// the target the new panel would take, filled in gold, for a side; a ring
+// on the target's header for its middle (a tab); a ring on the tray. The
+// label says what letting go does. Viewport px.
+export function dropBox(t) {
+    const r = t.el.getBoundingClientRect();
+    if (t.kind === "tray") return { left: r.left, top: r.top, width: r.width, height: r.height, ring: true };
+    if (t.zone === "center") {
+        const h = t.el.querySelector(":scope > .dock-tabs, :scope > .kx-panel > .kx-panel-h");
+        const hb = h ? h.getBoundingClientRect().bottom - r.top : PANEL_HEAD;
+        return { left: r.left, top: r.top, width: r.width, height: clamp(hb, 24, r.height), ring: true };
+    }
+    const w = r.width / 2, h = r.height / 2;
+    return {
+        left: { left: r.left, top: r.top, width: w, height: r.height },
+        right: { left: r.left + w, top: r.top, width: w, height: r.height },
+        top: { left: r.left, top: r.top, width: r.width, height: h },
+        bottom: { left: r.left, top: r.top + h, width: r.width, height: h },
+    }[t.zone];
+}
+
+// What the drag draws: a card under the pointer and the drop region, both
+// on <body>, moved by `transform` in requestAnimationFrame (dragGhost.js's
+// way) — never React state per pointermove, which re-rendered the console.
+function beginDrag(p) {
+    const ghost = document.createElement("div");
+    ghost.className = "dock-ghost";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.style.width = `${p.w}px`;
+    ghost.innerHTML = iconSvg("grip");
+    const name = document.createElement("span");
+    name.className = "dock-ghost-t";
+    name.textContent = p.label;
+    ghost.appendChild(name);
+    if (p.mods.length > 1) { const n = document.createElement("span"); n.className = "dock-ghost-n"; n.textContent = String(p.mods.length); ghost.appendChild(n); }
+    const region = document.createElement("div");
+    region.className = "dock-drop";
+    region.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.className = "dock-drop-label";
+    region.appendChild(label);
+    document.body.append(region, ghost);
+    document.documentElement.dataset.dockDragging = "";
+    // The panels that go with the drag fade where they are (the source).
+    const src = [...document.querySelectorAll(".console [data-dock-mods]")].filter((g) => g.dataset.dockMods.split(" ").every((m) => p.mods.includes(m)));
+    for (const g of src) g.dataset.dockSrc = "";
+    return { ghost, region, label, src, raf: 0, shown: false, tray: null };
+}
+
+function paintDrag(ui, p, t) {
+    ui.ghost.style.transform = `translate(${Math.round(p.cx - p.dx)}px, ${Math.round(p.cy - p.dy)}px) rotate(-2deg)`;
+    const tray = t?.kind === "tray" ? t.el : null;
+    if (ui.tray !== tray) { ui.tray?.classList.remove("is-drop"); tray?.classList.add("is-drop"); ui.tray = tray; }
+    if (!t) { ui.region.classList.remove("is-on"); ui.shown = false; return; }
+    const b = dropBox(t);
+    ui.label.textContent = t.label;
+    // The first region of a drag lands at once; then it glides between targets.
+    if (!ui.shown) ui.region.classList.add("is-snap");
+    ui.region.classList.toggle("is-ring", Boolean(b.ring));
+    ui.region.style.transform = `translate(${Math.round(b.left)}px, ${Math.round(b.top)}px)`;
+    ui.region.style.width = `${Math.round(b.width)}px`;
+    ui.region.style.height = `${Math.round(b.height)}px`;
+    ui.region.classList.add("is-on");
+    if (!ui.shown) { void ui.region.offsetWidth; ui.region.classList.remove("is-snap"); ui.shown = true; }
+}
+
+// The groups' boxes, by module (a group's active one first): FLIP's "first".
+function groupRects() {
+    const m = new Map();
+    for (const g of document.querySelectorAll(".console [data-dock-mods]")) {
+        const r = g.getBoundingClientRect();
+        for (const id of g.dataset.dockMods.split(" ")) if (!m.has(id) || g.dataset.dockActive === id) m.set(id, r);
+    }
+    return m;
+}
+
+// After a drop, each panel slides from where it was to its new place
+// (FLIP: translate and scale back to none) in --dur-fold with --ease-fold;
+// one that was not on screen (from the tray), or whose shape changed too
+// much to scale, fades in. Reduced motion: the cut.
+function flipFrom(before) {
+    if (reduced()) return;
+    const css = getComputedStyle(document.documentElement);
+    const duration = parseFloat(css.getPropertyValue("--dur-fold")) || 180;
+    const easing = css.getPropertyValue("--ease-fold").trim() || "cubic-bezier(0.32, 0.72, 0, 1)";
+    for (const g of document.querySelectorAll(".console [data-dock-mods]")) {
+        const old = before.get(g.dataset.dockActive);
+        const now = g.getBoundingClientRect();
+        if (!now.width || !now.height) continue;
+        if (!old) { g.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing }); continue; }
+        const dx = old.left - now.left, dy = old.top - now.top, sx = old.width / now.width, sy = old.height / now.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) continue;
+        if (Math.max(sx, sy, 1 / sx, 1 / sy) > 3) { g.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing }); continue; }
+        g.animate([
+            { transformOrigin: "0 0", transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` },
+            { transformOrigin: "0 0", transform: "none" },
+        ], { duration, easing });
+    }
+}
+
+// The drag ends: the card settles into the region (a drop) or fades (none,
+// Esc), the region fades; `apply` changes the dock, then the panels slide.
+function endDrag(ui, t, apply) {
+    cancelAnimationFrame(ui.raf);
+    ui.tray?.classList.remove("is-drop");
+    delete document.documentElement.dataset.dockDragging;
+    for (const g of ui.src) delete g.dataset.dockSrc;
+    const box = t ? dropBox(t) : null;
+    if (t) {
+        const before = groupRects();
+        flushSync(apply);
+        flipFrom(before);
+    }
+    if (reduced()) { ui.ghost.remove(); ui.region.remove(); return; }
+    ui.ghost.classList.add("is-gone");
+    if (box) ui.ghost.style.transform = `translate(${Math.round(box.left + 8)}px, ${Math.round(box.top + 4)}px)`;
+    ui.region.classList.remove("is-on");
+    setTimeout(() => { ui.ghost.remove(); ui.region.remove(); }, 220);
+}
+
 // Dragging modules to a new place. `onDock(next)`: a drop that changes the dock.
-// -> { drag, start(e, { mods, label, fromTray }), justDragged() }
-//    drag = { x, y, label, target: { el, zone, label, next } | null } while dragging.
+// -> { start(e, { mods, label, fromTray }), justDragged() }
 export function useDockDrag({ dock, onDock }) {
-    const [drag, setDrag] = useState(null);
     const pend = useRef(null);
-    const last = useRef(null);
     const ended = useRef(0);
     const live = useRef({ dock, onDock });
     live.current = { dock, onDock };
 
+    // The target under (x, y): { kind, el, zone, label, next } or null. The
+    // dock does not change during a drag, so a target is worked out once
+    // per group and zone (moveModules is not cheap at pointer rate).
     const findTarget = (x, y, p) => {
         const d = live.current.dock;
         const el = document.elementFromPoint(x, y);
         if (!el) return null;
         const tray = el.closest("[data-dock-tray]");
+        const ge = tray ? null : el.closest("[data-dock-group]");
+        const at = tray || ge;
+        if (!at) return null;
+        const zone = tray ? "tray" : ge.dataset.dockCollapsed ? "center" : pickZone(ge.getBoundingClientRect(), x, y);
+        if (p.hit && p.hit.at === at && p.hit.zone === zone) return p.hit.target;
+        let target = null;
         if (tray) {
-            if (p.fromTray) return null;
-            const next = moveModules(d, p.mods, { kind: "tray" });
-            if (same(next, d)) return null;
-            return { el: tray, zone: "center", label: p.mods.includes("player") ? "Voltar para baixo do Programa" : "Tirar para a bandeja", next };
+            const next = p.fromTray ? d : moveModules(d, p.mods, { kind: "tray" });
+            if (!same(next, d)) target = { kind: "tray", el: tray, zone: "center", label: p.mods.includes("player") ? "Voltar para baixo do Programa" : "Tirar para a bandeja", next };
+        } else {
+            const r = ge.getBoundingClientRect();
+            const px = Math.round((zone === "left" || zone === "right" ? r.width : r.height) / 2);
+            const next = moveModules(d, p.mods, { kind: "group", path: JSON.parse(ge.dataset.dockGroup), zone }, { px });
+            if (!same(next, d)) target = { kind: "group", el: ge, zone, label: ZONE_LABEL[zone], next };
         }
-        const ge = el.closest("[data-dock-group]");
-        if (!ge) return null;
-        const r = ge.getBoundingClientRect();
-        const zone = ge.dataset.dockCollapsed ? "center" : pickZone(r, x, y);
-        const px = Math.round((zone === "left" || zone === "right" ? r.width : r.height) / 2);
-        const next = moveModules(d, p.mods, { kind: "group", path: JSON.parse(ge.dataset.dockGroup), zone }, { px });
-        if (same(next, d)) return null;
-        return { el: ge, zone, label: ZONE_LABEL[zone], next };
+        p.hit = { at, zone, target };
+        return target;
     };
 
     useEffect(() => {
+        const frame = () => {
+            const p = pend.current;
+            if (!p?.ui) return;
+            p.ui.raf = 0;
+            paintDrag(p.ui, p, findTarget(p.cx, p.cy, p));
+        };
         const move = (e) => {
             const p = pend.current;
             if (!p) return;
+            p.cx = e.clientX; p.cy = e.clientY;
             if (!p.moved) {
-                if (Math.hypot(e.clientX - p.x, e.clientY - p.y) < 5) return;
+                if (Math.hypot(p.cx - p.x, p.cy - p.y) < 5) return;
                 p.moved = true;
+                p.ui = beginDrag(p);
             }
-            last.current = { x: e.clientX, y: e.clientY, label: p.label, target: findTarget(e.clientX, e.clientY, p) };
-            setDrag(last.current);
+            if (!p.ui.raf) p.ui.raf = requestAnimationFrame(frame);
         };
-        const up = () => {
+        const finish = (drop) => {
             const p = pend.current;
             pend.current = null;
             if (!p?.moved) return;
             ended.current = Date.now();
-            const t = last.current?.target;
-            last.current = null;
-            setDrag(null);
-            if (t) live.current.onDock(t.next);
+            const t = drop ? findTarget(p.cx, p.cy, p) : null;
+            endDrag(p.ui, t, () => live.current.onDock(t.next));
         };
+        const up = (e) => {
+            if (pend.current?.moved) { pend.current.cx = e.clientX; pend.current.cy = e.clientY; }
+            finish(true);
+        };
+        const cancel = () => finish(false);
         // Esc while dragging: the drag ends, nothing else (not the edit mode).
         const esc = (e) => {
             if (e.key !== "Escape" || !pend.current?.moved) return;
             e.preventDefault();
             e.stopImmediatePropagation();
-            pend.current = null;
-            last.current = null;
-            ended.current = Date.now();
-            setDrag(null);
+            finish(false);
         };
         window.addEventListener("pointermove", move);
         window.addEventListener("pointerup", up);
-        window.addEventListener("pointercancel", up);
+        window.addEventListener("pointercancel", cancel);
         window.addEventListener("keydown", esc, true);
         return () => {
             window.removeEventListener("pointermove", move);
             window.removeEventListener("pointerup", up);
-            window.removeEventListener("pointercancel", up);
+            window.removeEventListener("pointercancel", cancel);
             window.removeEventListener("keydown", esc, true);
+            if (pend.current?.ui) finish(false);
         };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // The card is the size of what was grabbed (the panel's header, the tab
+    // strip for its grip, else the chip), held where the pointer took it.
     const start = (e, payload) => {
         if (e.button !== 0) return;
-        pend.current = { ...payload, x: e.clientX, y: e.clientY, moved: false };
+        const el = e.currentTarget;
+        const box = el.closest?.(".kx-panel-h") || (el.classList?.contains("dock-grip") && el.closest?.(".dock-tabs")) || el;
+        const r = box.getBoundingClientRect();
+        const w = clamp(r.width, 120, 280);
+        pend.current = { ...payload, x: e.clientX, y: e.clientY, cx: e.clientX, cy: e.clientY, moved: false, w, dx: clamp(e.clientX - r.left, 12, w - 12), dy: 15 };
     };
     // A click right after a drag is the drag's end, not a click.
     const justDragged = () => Date.now() - ended.current < 300;
-    return { drag, start, justDragged };
-}
-
-// Where a dragged module would land, over the page (owner 2026-10-15, Rodada
-// D: never a filled box or a border round the target): a thick gold line
-// on the edge it will dock against — a side of the panel, or under its
-// header to join as a tab — with what letting go does beside it.
-const LINE = 4;
-export function DockHint({ drag }) {
-    const t = drag?.target;
-    const ghost = drag && <div className="dock-ghost" style={{ left: drag.x + 14, top: drag.y + 12 }} aria-hidden="true"><Icon name="grip" />{drag.label}</div>;
-    if (!t) return ghost || null;
-    const r = t.el.getBoundingClientRect();
-    const inset = 6;
-    const head = Math.min(PANEL_HEAD, r.height / 3);
-    const line = {
-        left: { left: r.left, top: r.top + inset, width: LINE, height: r.height - inset * 2 },
-        right: { left: r.right - LINE, top: r.top + inset, width: LINE, height: r.height - inset * 2 },
-        top: { left: r.left + inset, top: r.top, width: r.width - inset * 2, height: LINE },
-        bottom: { left: r.left + inset, top: r.bottom - LINE, width: r.width - inset * 2, height: LINE },
-        center: { left: r.left + inset, top: r.top + head, width: r.width - inset * 2, height: LINE },
-    }[t.zone] || null;
-    if (!line) return ghost || null;
-    const vertical = t.zone === "left" || t.zone === "right";
-    const label = vertical
-        ? { left: t.zone === "left" ? line.left + LINE + 8 : undefined, right: t.zone === "right" ? window.innerWidth - line.left + 8 : undefined, top: line.top + line.height / 2 - 10 }
-        : { left: line.left + line.width / 2, top: t.zone === "bottom" ? line.top - 26 : line.top + LINE + 6, transform: "translateX(-50%)" };
-    return (
-        <>
-            <div className="dock-hint" style={line} aria-hidden="true" />
-            <span className="dock-hint-label" style={label} aria-hidden="true">{t.label}</span>
-            {ghost}
-        </>
-    );
+    return { start, justDragged };
 }
 
 // The modules in the tray, for the edit banner: drag one back, or click it
-// for "Mover para…".
+// for "Mover para…". A drop on it while dragging lights it.
 export function DockTray({ dock, dnd, onChipMenu }) {
     return (
         <div className="dock-tray" data-dock-tray="" title="Solte um módulo aqui para tirá-lo do console">
@@ -169,20 +283,21 @@ export function DockTray({ dock, dnd, onChipMenu }) {
 // Travar fora da edição (owner 2026-10-22, Rodada P4-1 = A), in the edit
 // banner: the environment on screen's switch (dock.js setDockLock). On,
 // the splitters only move in Editar disposição. The small switch, as the
-// Setlist's Autoplay.
+// Setlist's Autoplay; "Travar" on screen, the whole name for the reader.
 export function DockLockSwitch({ on, onChange }) {
     return (
         <button type="button" className="dock-lock" role="switch" aria-checked={Boolean(on)} aria-label="Travar fora da edição"
-            title={on ? "Travada: fora de Editar disposição os divisores não se movem" : "Travar: fora de Editar disposição os divisores não se movem (nem com as setas, nem com o duplo clique)"} onClick={() => onChange(!on)}>
-            <span className={`sw2 kx-switch kx-switch-sm ${on ? "is-on" : ""}`} aria-hidden="true" /><span>Travar fora da edição</span>
+            title={on ? "Travada: fora de Editar disposição os divisores não se movem" : "Travar fora da edição: fora de Editar disposição os divisores não se movem (nem com as setas, nem com o duplo clique)"} onClick={() => onChange(!on)}>
+            <span className={`sw2 kx-switch kx-switch-sm ${on ? "is-on" : ""}`} aria-hidden="true" /><span>Travar</span>
         </button>
     );
 }
 
 // The named arrangement being edited, in the edit banner (dockPresets.js):
-// its name (and whether it changed), Salvar over it, Salvar como… a new
-// one, Excluir. Switching between them is in Ver.
-export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, problemOf }) {
+// one button with its name (and whether it changed) whose menu (`openMenu`,
+// the console's) has Salvar over it, Salvar como… a new one, Excluir…;
+// naming one takes the field in its place. Switching between them is in Ver.
+export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, problemOf, openMenu }) {
     const [naming, setNaming] = useState(null);
     const problem = naming === null ? null : problemOf(naming);
     const done = () => { if (!problem) { onSaveAs(naming); setNaming(null); } };
@@ -201,13 +316,16 @@ export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, pr
             </span>
         );
     }
+    const name = preset ? preset.name : "Padrão";
+    const menu = (e) => openMenu(e, { title: `Disposição: ${name}${changed ? " · alterada" : ""}`, items: [
+        preset && changed && { label: `Salvar em “${preset.name}”`, icon: "save", onSelect: onSave },
+        { label: "Salvar como…", icon: "plus", onSelect: () => setNaming(""), title: "Salvar a disposição como está, com um nome, para trocar depois em Ver" },
+        preset && { label: "Excluir…", icon: "trash", onSelect: onDelete },
+    ].filter(Boolean) });
     return (
-        <span className="dock-presets">
-            <span className="kx-meta">Disposição: <b className="dock-preset-name">{preset ? preset.name : "Padrão"}</b>{changed ? " · alterada" : ""}</span>
-            {preset && changed && <button type="button" className="kx-btn kx-t" onClick={onSave} title={`Gravar as mudanças em “${preset.name}”`}>Salvar</button>}
-            <button type="button" className="kx-btn kx-t" onClick={() => setNaming("")} title="Salvar a disposição como está, com um nome, para trocar depois em Ver">Salvar como…</button>
-            {preset && <button type="button" className="kx-btn kx-t" onClick={onDelete} title={`Excluir a disposição “${preset.name}”`}>Excluir…</button>}
-        </span>
+        <button type="button" className="kx-btn kx-t dock-preset-btn" aria-haspopup="menu" onClick={menu} title="A disposição em edição: salvar, salvar com outro nome, excluir">
+            <span className="kx-meta">Disposição:</span> <b className="dock-preset-name">{name}</b>{changed ? <span className="kx-meta"> · alterada</span> : null}<Icon name="chevron-down" />
+        </button>
     );
 }
 
@@ -215,9 +333,10 @@ export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, pr
 // module's panel, with its fold chevron (`fold`: the frame's, with the
 // module's name and `onFold`, null while editing; Panel); `onFold(id)`: a
 // chevron or strip clicked (layout.folded, Rodada F4); `playerDocked`: the
-// player rides the Programa (a chip of its own while editing);
-// `onPickSplit(path)`: a splitter touched while editing (the split the
-// banner's 50 · 50, 33 · 33 · 34, 25 · 50 · 25 act on, Rodada P4-2).
+// player rides the Programa (a chip of its own on the Programa's header
+// while editing); `onPickSplit(path)`: a splitter touched while editing
+// (the split the banner's 50 · 50, 33 · 33 · 34, 25 · 50 · 25 act on,
+// Rodada P4-2).
 export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked, onFold, onPickSplit }) {
     // The tab in front of a group made of a split that does not fit (it is
     // not in the dock: a bigger screen splits it again).
@@ -227,26 +346,31 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
     useKeyingFlag();
     if (!frame) return null;
 
-    const chip = (id) => {
+    // Editing: what takes a module out — the tray, or the player home.
+    const outOf = (id) => {
         const home = id === "player" && playerDocked;
-        const out = canTray(id) || (id === "player" && !home);
-        // The No ar strip stays across the bottom (owner 2026-10-14): no drag, only ×.
-        const pinned = isPinned(id);
-        return (
-            <span key={id} className="dock-chipwrap">
-                <button type="button" className={`dock-chip ${pinned ? "is-pinned" : ""}`} onPointerDown={pinned ? undefined : (e) => dnd.start(e, { mods: [id], label: nameOf(id) })}
-                    onClick={(e) => { if (!dnd.justDragged()) onChipMenu(e, id); }}
-                    title={pinned ? `${nameOf(id)} fica sempre embaixo · × tira para a bandeja` : home ? "O player fica sob o Programa · arraste para pô-lo em outro lugar" : `Arraste ${nameOf(id)} para outro lugar · clique para Mover para…`}>
-                    {nameOf(id)}{home ? <span className="kx-meta"> · sob o Programa</span> : pinned ? <span className="kx-meta"> · fixo embaixo</span> : null}
-                </button>
-                {out && (
-                    <button type="button" className="dock-x" title={id === "player" ? "Voltar para baixo do Programa" : `Tirar ${nameOf(id)} para a bandeja`} aria-label={id === "player" ? "Voltar o player para baixo do Programa" : `Tirar ${nameOf(id)} para a bandeja`}
-                        onClick={() => onDock(id === "player" ? moveModules(dock, ["player"], { kind: "home" }) : hideModule(dock, id))}>
-                        <Icon name="x" />
-                    </button>
-                )}
-            </span>
-        );
+        if (!(canTray(id) || (id === "player" && !home))) return null;
+        return id === "player"
+            ? { title: "Voltar o player para baixo do Programa", run: () => onDock(moveModules(dock, ["player"], { kind: "home" })) }
+            : { title: `Tirar ${nameOf(id)} para a bandeja`, run: () => onDock(hideModule(dock, id)) };
+    };
+    const drag = (id) => (isPinned(id) ? null : (e) => dnd.start(e, { mods: [id], label: nameOf(id) }));
+    const menu = (id) => (e) => { if (!dnd.justDragged()) onChipMenu(e, id); };
+    // The player docked under the Programa: a chip on the Programa's header.
+    const playerChip = (
+        <button type="button" className="dock-chip" onPointerDown={drag("player")} onClick={menu("player")} title="O player fica sob o Programa · arraste para pô-lo em outro lugar">
+            <Icon name="grip" />Player<span className="kx-meta"> · sob o Programa</span>
+        </button>
+    );
+    // The edit header a module's panel draws (kx.jsx DockEditHead). In a
+    // group of tabs the × rides each tab's chip instead.
+    const editOf = (id, inTabs) => {
+        const out = inTabs ? null : outOf(id);
+        return {
+            name: nameOf(id), grip: drag(id), onMenu: menu(id),
+            onX: out?.run || null, xTitle: out?.title,
+            extra: id === "programa" && playerDocked ? playerChip : null,
+        };
     };
 
     const group = (f) => {
@@ -254,17 +378,29 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         const active = f.collapsed ? (f.tabs.includes(shown[k]) ? shown[k] : f.active) : f.active;
         const pick = (id) => (f.collapsed ? setShown((s) => ({ ...s, [k]: id })) : onDock(setActive(dock, f.path, id)));
         const live = f.tabs.includes("previa") || f.tabs.includes("abas");
+        const tabs = f.tabs.length > 1;
         let head = null;
-        if (editing) {
-            const chips = f.tabs.map(chip);
-            if (playerDocked && f.tabs.includes("programa")) chips.push(chip("player"));
+        if (tabs && editing) {
+            // The strip stays: its grip drags the group, each tab drags alone
+            // (a click still shows it), its × takes it out.
             head = (
-                <div className="dock-bar" role="group" aria-label={`Grupo: ${f.tabs.map(nameOf).join(", ")}`}>
-                    {!f.tabs.some(isPinned) && <span className="arr-grip" title="Arraste para mover o grupo inteiro" onPointerDown={(e) => dnd.start(e, { mods: f.tabs, label: f.tabs.map(nameOf).join(" + ") })}><Icon name="grip" /></span>}
-                    {chips}
+                <div className="dock-tabs is-edit" role="group" aria-label={`Grupo: ${f.tabs.map(nameOf).join(", ")}`}>
+                    {!f.tabs.some(isPinned) && <span className="dock-grip" title="Arraste para mover o grupo inteiro" onPointerDown={(e) => dnd.start(e, { mods: f.tabs, label: f.tabs.map(nameOf).join(" + ") })}><Icon name="grip" /></span>}
+                    {f.tabs.map((id) => {
+                        const out = outOf(id);
+                        return (
+                            <span key={id} className={`dock-tabchip ${id === active ? "is-on" : ""}`}>
+                                <button type="button" className={`dock-tab is-chip ${id === active ? "is-on" : ""}`} aria-pressed={id === active} onPointerDown={drag(id) || undefined}
+                                    onClick={() => { if (!dnd.justDragged()) pick(id); }} title={`Arraste ${nameOf(id)} para outro lugar · clique para mostrar`}>
+                                    {MODULES[id]?.icon && <Icon name={MODULES[id].icon} className="dock-tab-i" />}{nameOf(id)}
+                                </button>
+                                {out && <button type="button" className="dock-x" title={out.title} aria-label={out.title} onClick={out.run}><Icon name="x" /></button>}
+                            </span>
+                        );
+                    })}
                 </div>
             );
-        } else if (f.tabs.length > 1) {
+        } else if (tabs) {
             head = (
                 <div className="dock-tabs" role="tablist" onKeyDown={onTabsKey}>
                     {f.tabs.map((id) => (
@@ -276,9 +412,12 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         const fold = !editing && f.fold && onFold ? { ...f.fold, name: nameOf(active), onFold: () => onFold(active) } : null;
         return (
             <div className={`dock-group ${f.collapsed ? "is-tabs" : ""}`} data-dock-group={key(f.collapsed ? f.target : f.path)} data-dock-collapsed={f.collapsed ? "1" : undefined}
-                data-dock-mods={f.tabs.join(" ")} data-dock-folded={fold?.on ? fold.dir : undefined} {...(live ? { "data-live-keys": "", tabIndex: -1 } : {})}>
+                data-dock-mods={f.tabs.join(" ")} data-dock-active={active} data-dock-folded={fold?.on ? fold.dir : undefined} {...(live ? { "data-live-keys": "", tabIndex: -1 } : {})}>
                 {head}
-                {render(active, fold)}
+                {/* Always a provider, so entering the edit never remounts the panel. */}
+                <DockEditCtx.Provider value={editing ? editOf(active, tabs) : null}>
+                    {render(active, fold)}
+                </DockEditCtx.Provider>
             </div>
         );
     };
@@ -396,7 +535,6 @@ function useKeyingFlag() {
         return () => { window.removeEventListener("keydown", down, true); window.removeEventListener("pointermove", move, true); move(); };
     }, []);
 }
-const reduced = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
 const running = new WeakMap(); // cell -> its running Animation
 
 function useDockEase(box, frame, editing) {

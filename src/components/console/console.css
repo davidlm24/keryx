@@ -537,15 +537,29 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
 /* The Programa first or in the middle: the drawer opens on its right when there is more room there. */
 .console .drawer.is-right { left: auto; right: var(--gutter); }
 
-/* Ver › Editar layout (src/lib/console/arrange.js, Arrange.jsx): a bar on
-   top of each column (grip, name, ◀ ▶), a grip and ▲ ▼ in stacked cards'
-   headers, the panels' content veiled so a click never prepares or sends
-   while things move, and a line where a dragged column or card would land. */
+/* Ver › Editar disposição (Arrange.jsx, Dock.jsx; Rodada R, owner
+   2026-10-29, R5): the banner on one line where it fits, the panel's own
+   header as the handle (kx.jsx DockEditHead: tinted gold, the grip before
+   the name, its actions dimmed and inert, the × at its end), a 28 px header
+   for the edit only on a panel with none (the Programa, the Prévia, the
+   Bíblia's No ar; R5a = B), and the panels' content veiled so a click never
+   prepares or sends while things move (R5b = B). */
 .console .arr-banner { background: var(--brand-tint); color: var(--fg-1); box-shadow: inset 0 var(--bar) 0 var(--brand); }
-.console .arr-grip { flex: none; width: var(--control-sm); height: var(--control-sm); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-2); cursor: grab; touch-action: none; }
-.console .arr-grip:hover { background: var(--bg-3); color: var(--fg-1); }
-.console .arr-grip:active { cursor: grabbing; }
+.console .arr-banner .kx-btn { height: var(--control-sm); }
+@media (max-width: 1500px) { .console .arr-banner .arr-hint { display: none; } }
+.console .kx-panel-h.is-dock-edit { gap: 2px; padding-left: var(--space-1); background: var(--brand-tint); box-shadow: inset 0 -1px 0 var(--line-strong); }
+.console .kx-panel-h.is-dock-temp { height: 28px; margin-bottom: 2px; border-radius: var(--radius-control); }
+.console .dock-grip { flex: none; width: var(--control-sm); height: var(--control-sm); display: inline-grid; place-items: center; border-radius: var(--radius-control); color: var(--brand); cursor: grab; touch-action: none; }
+.console .dock-grip:hover { background: var(--bg-3); }
+.console .kx-panel-h .dock-edit-name { height: var(--control-sm); padding: 0 var(--space-1); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-1); text-align: left; cursor: grab; touch-action: none; }
+.console .kx-panel-h .dock-edit-name:hover { background: var(--bg-3); }
+.console .dock-edit-acts { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); opacity: var(--dim); }
+.console :is(.dock-grip, .dock-edit-name, .dock-tab.is-chip, .dock-chip):active { cursor: grabbing; }
 .console.is-editing .main .kx-panel-b { pointer-events: none; opacity: .5; transition: opacity var(--duration-fast) var(--ease-out); }
+/* While a module is dragged: the panels that go with it fade where they
+   are, the pointer grabs everywhere and nothing gets selected. */
+.console [data-dock-src] { opacity: .35; transition: opacity var(--duration-fast) var(--ease-out); }
+html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !important; user-select: none; }
 .console.is-editing .main .kx-split { pointer-events: auto; }
 /* The culto environment's dock (Dock.jsx, src/lib/console/dock.js): splits
    and tab groups. Sizes come from fitDock (fixed cells get their pixels, the
@@ -613,25 +627,43 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
 .console .dock .prev-panel > .kx-panel-b > .tnotes { flex: 0 1 auto; min-height: 0; }
 .console .dock .player-panel > .kx-panel-b { display: flex; align-items: center; overflow: hidden; }
 .console .dock .player-panel .pslot { flex: 1; min-width: 0; }
-/* Editing: a bar on each group (grip, one chip per module, ×). */
-.console .dock-bar { flex: none; height: 32px; display: flex; align-items: center; gap: 2px; margin-bottom: 2px; padding: 0 var(--space-1); border-radius: var(--radius-control); background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); overflow: hidden; }
-.console .dock-chipwrap { display: inline-flex; align-items: center; flex: none; }
+/* Editing a group of tabs: the strip stays, its grip drags the group, each
+   tab is a chip that drags alone (a click still shows it) with its ×. */
+.console .dock-tabs.is-edit { background: var(--brand-tint); border-radius: var(--radius-control); }
+.console .dock-tabchip { flex: none; display: inline-flex; align-items: center; border-radius: var(--radius-control); }
+.console .dock-tab.is-chip { display: inline-flex; align-items: center; cursor: grab; touch-action: none; box-shadow: inset 0 0 0 1px var(--line); }
+.console .dock-tabchip > .dock-x { width: 20px; height: 20px; }
 .console .dock-chip { display: inline-flex; align-items: center; gap: var(--space-1); height: var(--control-sm); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-1); font: 500 var(--fs-ui)/16px var(--font-sans); cursor: grab; touch-action: none; white-space: nowrap; }
 .console .dock-chip:hover { background: var(--bg-3); }
-.console .dock-chip:active { cursor: grabbing; }
-.console .dock-x { display: inline-grid; place-items: center; width: var(--control-sm); height: var(--control-sm); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-3); }
+.console .dock-x { flex: none; display: inline-grid; place-items: center; width: var(--control-sm); height: var(--control-sm); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-3); }
 .console .dock-x:hover { background: var(--bg-3); color: var(--fg-1); }
-.console .dock-tray { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); min-height: 32px; padding: 2px var(--space-2); border: 1px dashed var(--brand); border-radius: var(--radius-control); }
+.console .dock-tray { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); min-height: 28px; padding: 1px var(--space-2); border: 1px dashed var(--brand); border-radius: var(--radius-control); transition: background var(--duration-fast) var(--ease-out); }
+.console .dock-tray.is-drop { border-style: solid; background: var(--brand-tint); }
 .console .dock-tray .kx-meta { margin-right: var(--space-1); }
 .console .dock-presets { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); }
-.console .dock-presets .dock-preset-name { color: var(--fg-1); font-weight: 600; }
+.console .dock-presets .dock-preset-name, .console .dock-preset-btn .dock-preset-name { color: var(--fg-1); font-weight: 600; }
 .console .dock-presets .dock-name { width: 200px; height: 26px; }
+.console .dock-preset-btn { gap: var(--space-1); }
+.console .dock-preset-btn .kx-i { color: var(--fg-3); }
 .console .arr-banner { height: auto; min-height: var(--row); flex-wrap: wrap; row-gap: var(--space-1); padding-block: var(--space-1); }
-/* Where a dragged module docks (Dock.jsx DockHint): a gold line on that edge
-   and its label beside it; never a filled box over the target. */
-.console .dock-hint { position: fixed; z-index: var(--z-menu); pointer-events: none; border-radius: 2px; background: var(--brand); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-0) 60%, transparent); }
-.console .dock-hint-label { position: fixed; z-index: var(--z-menu); pointer-events: none; padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 var(--fs-meta)/16px var(--font-sans); white-space: nowrap; }
-.console .dock-ghost { position: fixed; z-index: var(--z-menu-top); pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font: 500 var(--fs-ui)/16px var(--font-sans); }
+/* A dragged module (Dock.jsx useDockDrag; on <body>, moved by transform in
+   requestAnimationFrame): a card under the pointer, held where it was
+   grabbed, and the region it would take — the half of the target filled in
+   gold for a side, a ring on the target's header for a tab, a ring on the
+   tray — with what letting go does. On a drop the card settles into the
+   region and fades while the panels slide to their places (FLIP). */
+.dock-ghost { position: fixed; left: 0; top: 0; z-index: var(--z-drag); pointer-events: none; box-sizing: border-box; height: 30px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-drag), inset 0 0 0 1px var(--brand); color: var(--fg-1); font: 600 var(--fs-ui)/16px var(--font-sans); white-space: nowrap; will-change: transform; }
+.dock-ghost .kx-i { flex: none; color: var(--brand); }
+.dock-ghost-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dock-ghost-n { flex: none; min-width: 18px; height: 18px; padding: 0 var(--space-1); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 var(--fs-meta)/18px var(--font-sans); text-align: center; font-variant-numeric: tabular-nums; }
+.dock-ghost.is-gone { opacity: 0; transition: opacity 180ms var(--ease-out), transform var(--dur-fold) var(--ease-fold); }
+.dock-drop { position: fixed; left: 0; top: 0; z-index: var(--z-menu); pointer-events: none; box-sizing: border-box; display: grid; place-items: center; border-radius: var(--radius-control); background: color-mix(in srgb, var(--brand) 22%, transparent); box-shadow: inset 0 0 0 2px var(--brand); opacity: 0; transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out), width var(--duration-fast) var(--ease-out), height var(--duration-fast) var(--ease-out); }
+.dock-drop.is-on { opacity: 1; }
+.dock-drop.is-snap { transition: opacity var(--duration-fast) var(--ease-out); }
+.dock-drop.is-ring { background: var(--brand-tint); }
+.dock-drop-label { padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 var(--fs-meta)/16px var(--font-sans); white-space: nowrap; }
+.dock-drop.is-ring .dock-drop-label { position: absolute; top: 100%; left: 50%; margin-top: var(--space-1); transform: translateX(-50%); }
+@media (prefers-reduced-motion: reduce) { .dock-ghost, .dock-ghost.is-gone, .dock-drop, .console .dock-tray, .console [data-dock-src] { transition: none; animation: none; } }
 /* A media row's picture on hover (Library.jsx MediaPeek): beside the Biblioteca, 16:9, never under the mouse */
 .console .media-peek { position: fixed; z-index: var(--z-confirm); pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: var(--screen-bg); box-shadow: var(--shadow-popover); outline: 1px solid var(--line); }
 .console .media-peek img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -2462,4 +2494,13 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
   /* A row's copy or pages bar (Rodada H, HB). */
   .console .kx-row-progress::before { background: CanvasText; }
   .console .kx-row-progress > b { background: Highlight; }
+  /* Editar disposição (Rodada R, R5): the panel header that is the handle
+     and a tab strip being edited get a boundary; the drop region a solid
+     highlight ring (no fill), its label the system's colours;
+     the tray lit for a drop the same ring. */
+  .console :is(.kx-panel-h.is-dock-edit, .dock-tabs.is-edit) { outline: 1px solid Highlight; outline-offset: -1px; }
+  .dock-drop { background: transparent; outline: 2px solid Highlight; outline-offset: -2px; }
+  .dock-drop-label { background: Highlight; color: HighlightText; }
+  .dock-ghost { outline: 1px solid CanvasText; }
+  .console .dock-tray.is-drop { outline: 2px solid Highlight; outline-offset: -2px; }
 }
