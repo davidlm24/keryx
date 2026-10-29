@@ -110,9 +110,21 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`--space-1`) in from the column, with its text at 12 px; listheads and
   sub-titles ("Selecionado", a Temas heading inside Camadas) at 12 px;
   Capítulos, Livros and Versículos are as tall as their cells (Rodada P,
-  P4-3), each up to 40 % of the column (`Measure` → the Bíblia's `fitDock`
-  `locked`, Console.jsx), and scroll past that; with all three locked down a
-  column the last takes the rest; every panel header is 36 px, 32 in
+  P4-3; the heights they report → the Bíblia's `fitDock` `locked`,
+  `bibleLocks`): **the 66 books are always whole, never scrolled** (owner
+  2026-10-29, mockup R6, B1–B4 = A) — Antigo and Novo Testamento under
+  their headings, the cell stepping down from the operator's P/M/G through
+  compact, tiny and micro (the abbreviation alone, the name in its
+  tooltip) until they fit the room the default column leaves
+  (`bibleBooksRoom`), the group's colour bar inset inside the box;
+  Capítulos and Versículos go up to 40 % of the column and past that **page**:
+  the last cell of every page but the last is "›", the first from the
+  second "‹" (the last page ends on the last number), the page following
+  the chapter chosen, the verse selected (↑/↓) or on air (←/→), whichever
+  moved last (`src/lib/console/bibleFit.js`, tested: `booksFit`,
+  `numGrid`, `pagesOf`, `pageCells`); when Livros leaves too little,
+  Versículos keeps up to half of the rest and Capítulos gives way; with all
+  three locked down a column the last takes the rest; every panel header is 36 px, 32 in
   Compacta (owner 2026-10-21, Rodada O5: the tokens `panel-head` and
   `panel-head-compact`; `panelHead` in layout.js and dock.js `PANEL_HEAD`
   keep the locked heights in step), one line — a header never wraps into a
@@ -1031,8 +1043,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   header. **Every book cell shows both names** (Rodada R, owner 2026-10-29,
   R2a = A): the abbreviation on top (600, 13 px) and the whole name under
   it (meta, `fg-3`, one line, "…"), left-aligned by the group's colour bar;
-  Células pequenas/médias/grandes are densities of that cell (4 / 3 / 2 a
-  row in the column's default 300 px). **There is no Abrev | Nomes any
+  Células pequenas/médias/grandes are densities of that cell, the largest the
+  books may take (they step down to fit, mockup R6; the names go when they
+  do not fit). **There is no Abrev | Nomes any
   more** (header, view menu and Configurações › Bíblia e músicas, whose
   group is now "Importação de letras"): `User.bible_book_names` stays
   stored and nothing reads it. **The (+) lists only what is missing here** (Rodada P, P3;

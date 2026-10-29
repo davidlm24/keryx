@@ -691,33 +691,45 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .chapters.is-small button, .console .verse-cells.is-small button { height: 22px; font-size: var(--fs-meta); }
 .console .chapters.is-large, .console .verse-cells.is-large { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
 .console .chapters.is-large button, .console .verse-cells.is-large button { height: 34px; font-size: var(--fs-content-lg); }
-/* The books (Rodada R, owner 2026-10-29, R2a = A): every cell shows both
+/* The books (Rodada R, owner 2026-10-29, R2a = A): a cell shows both
    names, the abbreviation on top (600, 13 px) and the whole name under it
    (meta, fg-3, one line, cut with "…"), left-aligned beside the group's
-   colour bar (::before, bundle.css). Pequenas, médias and grandes are
-   densities of that cell (the ⋯ menu, layout.bibleGrid): in the column's
-   default 300 px, four a row, three, two. */
-.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); padding: var(--space-1); }
-.console .bpick-books .bgrid .kx-book { height: 40px; min-width: 0; align-items: stretch; justify-content: center; gap: 1px; padding: 0 6px 0 9px; text-align: left; }
+   colour bar (::before, bundle.css). The 66 are always whole (mockup R6):
+   Antigo and Novo Testamento under their headings (B1 = A), the cell
+   stepping down from the operator's P/M/G (the ⋯ menu, layout.bibleGrid)
+   until they fit, compact, tiny and micro the abbreviation alone (B4 = A); the
+   columns and the rows' least height come from bibleFit.js (inline), the
+   rows share what is left. */
+/* Scrolls only where even micro cannot fit (a column under its minimum). */
+.console .bbooks { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden auto; }
+.console .bbooks .bt-head { flex: none; height: 20px; display: flex; align-items: flex-end; padding: 0 var(--space-3) 2px; }
+.console .bbooks .bt-head .kx-section { font-size: var(--fs-meta); }
+.console .bpick-books .bgrid { flex: 1 0 auto; padding: 0 var(--space-1) var(--space-1); }
+.console .bpick-books .bgrid .kx-book { height: auto; min-width: 0; align-items: stretch; justify-content: center; gap: 1px; padding: 0 6px 0 9px; text-align: left; }
 .console .bpick-books .kx-book-a { font-size: var(--fs-content); font-weight: 600; line-height: 16px; }
 .console .bpick-books .kx-book-n { display: block; font-size: var(--fs-meta); font-weight: 400; line-height: 14px; color: var(--fg-3); letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .bpick-books .kx-book.is-selected .kx-book-n { color: var(--fg-2); }
-.console .bpick-books .bgrid.is-small { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 2px; }
-.console .bpick-books .bgrid.is-small .kx-book { height: 32px; gap: 0; }
+.console .bpick-books .bgrid.is-small { gap: 2px; }
+.console .bpick-books .bgrid.is-small .kx-book { gap: 0; }
 .console .bpick-books .bgrid.is-small .kx-book-a { font-size: var(--fs-ui); line-height: 14px; }
 .console .bpick-books .bgrid.is-small .kx-book-n { line-height: 13px; }
-.console .bpick-books .bgrid.is-large { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 4px; }
-.console .bpick-books .bgrid.is-large .kx-book { height: 48px; gap: 2px; }
+.console .bpick-books .bgrid.is-large { gap: 4px; }
+.console .bpick-books .bgrid.is-large .kx-book { gap: 2px; }
 .console .bpick-books .bgrid.is-large .kx-book-a { font-size: var(--fs-content-lg); line-height: 18px; }
 .console .bpick-books .bgrid.is-large .kx-book-n { font-size: var(--fs-ui); line-height: 15px; }
+.console .bpick-books .bgrid:is(.is-compact, .is-tiny) { gap: 2px; }
+.console .bpick-books .bgrid.is-micro { gap: 1px; }
+.console .bpick-books .bgrid:is(.is-compact, .is-tiny, .is-micro) .kx-book { align-items: center; padding: 0 2px 0 6px; text-align: center; }
+.console .bpick-books .bgrid.is-tiny .kx-book-a { font-size: var(--fs-ui); line-height: 14px; }
+.console .bpick-books .bgrid.is-micro .kx-book-a { font-size: var(--fs-meta); line-height: 12px; }
+.console .bpick-books .bgrid.is-micro .kx-book::before { top: 4px; bottom: 4px; }
 /* The version band on top of Livros (Rodada R, R2b = C; reverses part of
    Q5): the version, the 2ª versão ("+ 2ª" while none) and, only with a 2ª,
    Lado a lado | Empilhadas on the right. A band under a header: 36 px, its
-   controls 28, 4 px in and 4 px apart; it stays while the books scroll.
+   controls 28, 4 px in and 4 px apart.
    With Livros in the tray the same controls ride the line above the No ar
    screen (bibleVersionsHome, dock.js). */
 .console .bpick-books > .kx-panel-b { display: flex; flex-direction: column; overflow: hidden; }
-.console .bbooks-scroll { flex: 1; min-height: 0; overflow: auto; }
 .console .bver-band { flex: none; height: var(--band); display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border-bottom: 1px solid var(--line); min-width: 0; container: bver-band / inline-size; }
 .console .bver-band .bb-pair { margin-left: auto; }
 .console .bver-band .bb-pair .kx-t { padding: 0 6px; }
@@ -727,9 +739,15 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
     .console .bver-band .bb-2l { display: none; }
     .console .bver-band .bver + .bver > select { width: 72px; }
 }
-.console .bpick-chapters .bchap { border-top: 0; padding: var(--space-1); }
-.console .bpick-chapters .chapters { max-height: none; overflow: visible; }
-.console .bpick-verses .bverses { padding: var(--space-1); }
+/* Capítulos and Versículos as tall as their cells, in pages past their
+   room (mockup R6, B3 = A; bibleFit.js gives the columns): "›" the last
+   cell of every page but the last, "‹" the first from the second. */
+.console :is(.bpick-chapters, .bpick-verses) > .kx-panel-b { display: flex; flex-direction: column; overflow: hidden; }
+.console .bpick-chapters .bchap { flex: 1; min-height: 0; border-top: 0; padding: var(--space-1); }
+.console .bpick-chapters .chapters { max-height: none; overflow: hidden; }
+.console .bpick-verses .bverses { flex: 1; min-height: 0; padding: var(--space-1); overflow: hidden; }
+.console :is(.chapters, .verse-cells) .bpage { display: grid; place-items: center; background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console :is(.chapters, .verse-cells) .bpage:hover { background: var(--bg-4); }
 /* Livros' header is its title, the install + and the view menu (Abrev |
    Nomes is gone, Rodada R, R2a = A): the title never gives way (audit C-47). */
 .console .bpick-books > .kx-panel-h > .kx-section { flex: 1 0 auto; }
@@ -2494,6 +2512,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
   /* A row's copy or pages bar (Rodada H, HB). */
   .console .kx-row-progress::before { background: CanvasText; }
   .console .kx-row-progress > b { background: Highlight; }
+  /* The page cells of Capítulos and Versículos (mockup R6). */
+  .console :is(.chapters, .verse-cells) .bpage { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* Editar disposição (Rodada R, R5): the panel header that is the handle
      and a tab strip being edited get a boundary; the drop region a solid
      highlight ring (no fill), its label the system's colours;
