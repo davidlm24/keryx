@@ -33,6 +33,31 @@ export function posterTime(duration) {
     return Math.min(5, Math.max(1, d / 10));
 }
 
+// The seconds worth trying for a still, best guess first: a clip that fades in
+// or starts on a dark scene is black at a tenth of the way, so the capture
+// looks at a few more places and keeps the brightest frame (owner 2026-10-29:
+// some background videos were a black tile until the pointer was over them).
+export function posterTimes(duration) {
+    const d = Number(duration);
+    const first = posterTime(d);
+    if (!Number.isFinite(d) || d <= 0) return [0];
+    if (d < 2) return [first];
+    return [...new Set([first, d * 0.25, d * 0.5, d * 0.75].map((t) => Math.round(Math.min(t, d - 0.1) * 10) / 10))];
+}
+
+// How bright a frame is, 0-255: the mean of the luma of RGBA pixels (a small
+// sample of the picture is enough).
+export function frameBrightness(rgba) {
+    const px = rgba?.length ? Math.floor(rgba.length / 4) : 0;
+    if (px === 0) return 0;
+    let sum = 0;
+    for (let i = 0; i < px * 4; i += 4) sum += 0.2126 * rgba[i] + 0.7152 * rgba[i + 1] + 0.0722 * rgba[i + 2];
+    return sum / px;
+}
+
+// Below this a frame is a black tile (a fade, a dark scene): look further.
+export const DARK_FRAME = 10;
+
 // The still's size: the video's shape, at most max px wide or high.
 export function posterSize(width, height, max = 480) {
     const w = Number(width) || 0;

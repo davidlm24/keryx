@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { needsPoster, posterTime, posterSize, tileUrl } from "./mediaPoster.js";
+import { needsPoster, posterTime, posterTimes, posterSize, tileUrl, frameBrightness, DARK_FRAME } from "./mediaPoster.js";
 
 const file = { type: "video", file_url: "http://127.0.0.1:7700/media/v.mp4" };
 
@@ -49,4 +49,23 @@ test("posterSize: the video's shape, at most 480 px", () => {
     assert.deepEqual(posterSize(1080, 1920), { width: 270, height: 480 });
     assert.deepEqual(posterSize(320, 240), { width: 320, height: 240 }, "never enlarged");
     assert.deepEqual(posterSize(0, 0), { width: 480, height: 270 }, "unknown: 16:9");
+});
+
+test("posterTimes: the best guess first, then three more places in the clip", () => {
+    assert.deepEqual(posterTimes(60), [5, 15, 30, 45]);
+    assert.deepEqual(posterTimes(10), [1, 2.5, 5, 7.5]);
+    assert.deepEqual(posterTimes(1), [0.5], "a very short clip: one place");
+    assert.deepEqual(posterTimes(0), [0]);
+    assert.deepEqual(posterTimes(Infinity), [0], "a stream has no length: its start");
+    for (const t of posterTimes(3)) assert.ok(t < 3);
+});
+
+test("frameBrightness: black is dark, a picture is not", () => {
+    const px = (r, g, b, n = 4) => new Uint8ClampedArray(Array.from({ length: n }, () => [r, g, b, 255]).flat());
+    assert.equal(frameBrightness(px(0, 0, 0)), 0);
+    assert.ok(frameBrightness(px(3, 3, 3)) < DARK_FRAME, "a fade, nearly black");
+    assert.ok(frameBrightness(px(120, 90, 40)) > DARK_FRAME);
+    assert.ok(Math.abs(frameBrightness(px(255, 255, 255)) - 255) < 0.001);
+    assert.equal(frameBrightness(new Uint8ClampedArray(0)), 0);
+    assert.equal(frameBrightness(null), 0);
 });

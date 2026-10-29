@@ -59,7 +59,9 @@ export const MODULES = {
     // `noFold`: no chevron in its header (fitDock's `folded`): the Programa
     // and the Prévia are screens, the player a slot.
     programa: { name: "Programa", minW: 320, minH: 172, required: true, noFold: true },
-    previa: { name: "Prévia", minW: 220, minH: 200, required: true, noFold: true },
+    // `icon`: its glyph beside the name where it is a tab (owner 2026-10-28,
+    // P2 = A: the Prévia's viewfinder wherever "Prévia" is written).
+    previa: { name: "Prévia", icon: "prev", minW: 220, minH: 200, required: true, noFold: true },
     abas: { name: "Painel", minW: 220, minH: 140 },
     // Never out of reach (the console audit, 2026-10-13).
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },

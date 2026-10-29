@@ -339,15 +339,18 @@ export function stateWords(cls = "") {
 }
 
 // Selecting several (src/lib/console/multiSelect.js, useMultiSelect): the
-// header button that turns "Selecionar vários" on (M2 = A), the box a row or
+// header button that turns "Selecionar vários" on (M2 = A; in the console's
+// Biblioteca and Setlist it shows only while on, owner 2026-10-28, I3 = A:
+// a Ctrl/Shift + click or the row menu starts it), the box a row or
 // a tile shows while it is on, and the bar with the count and what to do
 // with the marked items (the × clears, as Esc does).
 export function SelectManyBtn({ on, onToggle }) {
     return <IconBtn name={SELECT_MANY.icon} small on={on} title={on ? `${SELECT_MANY.label} · Esc desliga` : SELECT_MANY.label} onClick={() => onToggle(!on)} />;
 }
 // Who sings, on a Setlist or planner row of an item that came from a pedido
-// (Rodada Q, S13 = A; ServiceItem.requested_by): a gold tag, the name cut
-// with "…", the whole in the tooltip. Nothing for an item without one.
+// (Rodada Q, S13 = A; ServiceItem.requested_by): a gold tag, always whole
+// (owner 2026-10-28: the title gives way, never the name). Nothing for an
+// item without one.
 export function SingerTag({ name }) {
     if (!name) return null;
     return <span className="rund-who" title={`Pedido de ${name}`}><Icon name="user" /><span>{name}</span></span>;
@@ -446,16 +449,37 @@ export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, labe
     const drag = useRef(null);
     const [typing, setTyping] = useState(null);
     useEffect(() => {
+        // One size per frame (the last one), and `data-resizing` on <html> while
+        // the hand holds the splitter: the dock does not ease then (useDockEase).
+        let frame = 0;
+        let last = null;
+        const flush = () => { frame = 0; if (last !== null) { const v = last; last = null; onSize(v); } };
         const move = (e) => {
             if (!drag.current) return;
             const delta = horizontal ? e.clientY - drag.current.y : e.clientX - drag.current.x;
-            onSize(clamp(drag.current.size + sign * delta));
+            last = clamp(drag.current.size + sign * delta);
+            if (!frame) frame = requestAnimationFrame(flush);
         };
-        const up = () => { if (drag.current) { drag.current = null; document.body.style.cursor = ""; } };
+        const end = () => { delete document.documentElement.dataset.resizing; };
+        const up = () => {
+            if (!drag.current) return;
+            drag.current = null;
+            document.body.style.cursor = "";
+            if (frame) { cancelAnimationFrame(frame); flush(); }
+            end();
+        };
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
-        return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+        return () => {
+            window.removeEventListener("mousemove", move);
+            window.removeEventListener("mouseup", up);
+            if (frame) cancelAnimationFrame(frame);
+        };
     }, [horizontal, onSize, sign, clamp]);
+    // Unmounted mid-drag (the splitter's module left): the flag must not stay.
+    useEffect(() => () => {
+        if (drag.current) { drag.current = null; document.body.style.cursor = ""; delete document.documentElement.dataset.resizing; }
+    }, []);
     // From the keyboard (Tab to it): the arrows resize in 16 px steps, Enter
     // or Home restores. The arrows stop here (keys.js leaves a focused
     // separator alone), so nothing moves on air while resizing.
@@ -478,7 +502,7 @@ export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, labe
             tabIndex={0}
             title="Arraste para redimensionar · duplo clique restaura"
             onFocus={onPick}
-            onMouseDown={(e) => { onPick?.(); if (e.target.closest?.(".kx-split-pct")) return; e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
+            onMouseDown={(e) => { onPick?.(); if (e.target.closest?.(".kx-split-pct")) return; e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.documentElement.dataset.resizing = ""; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
             onDoubleClick={(e) => { if (!e.target.closest?.(".kx-split-pct")) onReset?.(); }}
             onKeyDown={onKeyDown}
         >

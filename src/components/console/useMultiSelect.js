@@ -15,7 +15,10 @@ import { selections } from "@/lib/console/selectionStore";
 //   picking, onPicking  "Selecionar vários" held by the caller (the
 //             Biblioteca's button is in its panel header, in Console.jsx);
 //             without them the hook holds it.
-export function useMultiSelect({ order, existing = order, mode = "gallery", register = true, picking: pickingProp, onPicking }) {
+//   autoPick  a Ctrl/Shift + click (or Ctrl+A) that marks something turns
+//             "Selecionar vários" on, so its button, hidden until then, shows
+//             lit (the console's panels, owner 2026-10-28, I3 = A).
+export function useMultiSelect({ order, existing = order, mode = "gallery", register = true, picking: pickingProp, onPicking, autoPick = false }) {
     const [sel, setSel] = useState(EMPTY_SELECTION);
     const [pickingOwn, setPickingOwn] = useState(false);
     const controlled = pickingProp !== undefined;
@@ -28,6 +31,8 @@ export function useMultiSelect({ order, existing = order, mode = "gallery", regi
     useEffect(() => { setSel((s) => pruneSelection(s, new Set(existing))); }, [existingKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const clear = useCallback(() => { setSel(EMPTY_SELECTION); setPickingState(false); }, [setPickingState]);
+    const markedNow = sel.ids.length > 0;
+    useEffect(() => { if (autoPick && markedNow && !picking) setPickingState(true); }, [autoPick, markedNow, picking, setPickingState]);
     const active = sel.ids.length > 0 || picking;
     useEffect(() => {
         if (!register) return undefined;
@@ -58,6 +63,11 @@ export function useMultiSelect({ order, existing = order, mode = "gallery", regi
         all: () => setSel(selectAll(order)),
         set: (ids) => setSel(ids.length ? { ids: [...ids], anchor: ids[0], lead: ids[ids.length - 1] } : EMPTY_SELECTION),
         clear,
+        // The row's menu "Selecionar vários" (I3 = A): on, with that row marked.
+        pickFrom(id) {
+            setPickingState(true);
+            setSel({ ids: [id], anchor: id, lead: id });
+        },
         // Selecionar vários: off clears what was marked.
         setPicking(on) {
             setPickingState(Boolean(on));

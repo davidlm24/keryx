@@ -105,7 +105,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
     // numbered again once (takeOutMany).
     const order = useMemo(() => items.filter((it) => !isSection(it)).map((it) => it.id), [items]);
     const allIds = useMemo(() => items.map((it) => it.id), [items]);
-    const ms = useMultiSelect({ order, existing: allIds, mode: "air", picking, onPicking: setPicking });
+    const ms = useMultiSelect({ order, existing: allIds, mode: "air", picking, onPicking: setPicking, autoPick: true });
     const picked = pickedOf(ms.sel, items);
     const takeOutPicked = async () => {
         const rows = picked;
@@ -178,7 +178,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                     {service ? "Arraste da Biblioteca, busque (/) ou use +." : "Arraste da Biblioteca ou use + para começar a setlist de hoje. Ou escolha um culto no menu KERYX."}
                 </Empty>
             )}
-            {onPlan && !items.length && loaded && <div className="rund-plan"><Btn small onClick={() => onPlan(null)}><Icon name="list" />Planejar o culto</Btn></div>}
+            {onPlan && !items.length && loaded && <div className="rund-plan"><Btn small onClick={() => onPlan(null)}><Icon name="planner" />Planejar o culto</Btn></div>}
             {items.map((it, i) => {
                 if (isSection(it)) {
                     const sec = p.sections[i] || { count: 0, seconds: 0 };
@@ -226,6 +226,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                             menuItem("enviarAoAr", { air: true, onSelect: () => onGo(it, i) }),
                             isYouTubeRow(linked) && menuItem("baixarParaMidia", { onSelect: () => downloadToMedia(linked, { askText, say: onSay }) }),
                             ...endItems(it),
+                            menuItem("selecionarVarios", { onSelect: () => ms.pickFrom(it.id) }),
                             "sep",
                             menuItem("tirar", { label: "Tirar da setlist…", onSelect: () => askTakeOut(it) }),
                             ...step.menuItems(i),

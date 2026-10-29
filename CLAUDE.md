@@ -598,10 +598,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   owner's rule (2026-10-20): KERYX ships no lyrics, and no parser of another
   program ships without a real export file in `songFormats/fixtures/`
   (2026-10-21: only Holyrics; EasyWorship and ProPresenter are not planned);
-  the search row is Buscar · ☆ · (+) Adicionar; **the Biblioteca's header
+  the search row is Buscar · ☆; **the Biblioteca's header
   holds the doors** (owner's pick, Rodada H, H1): its title, "Abrir a
-  Biblioteca de mídia" (the Mídia page, every tab), the chooser of what
-  shows (the eye) and the fold chevron, 24 px, 8 px apart; no (+) holds the lines-per-slide
+  Biblioteca de mídia" (the Mídia page, every tab), the (+) that adds
+  (owner 2026-10-28, I2 = A: Library.jsx draws its menu into the header's
+  slot, a portal), the chooser of what shows (the eye) and the fold
+  chevron, 24 px, 8 px apart. **Every panel header keeps one order and one
+  meaning per glyph** (owner 2026-10-28, mockup "Ícones dos painéis", I1–I4
+  = A): its own actions, then the (+) — only ever "add" —, the eye — only
+  ever "show or hide", the tab chooser, a layer, the player's video; never
+  "Pôr na prévia" — and the fold; no (+) holds the lines-per-slide
   chips any more ("Ao importar letras" lives in Configurações › Bíblia e
   músicas; Rodada G1). **Hover buttons are glyphs only** (owner, Rodada
   G1): the word stays inside the button as screen-reader text (`.kx-act-l`,
@@ -610,7 +616,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `film` = a video, `youtube` = a YouTube link, `presentation` = a
   PDF/presentation, `volume` = an audio file (`music` = a song only),
   `synced` = a song synced to its media, `clock` = a timer or the live
-  clock, `palette` = Temas, `grid` = the Multiview only; a Media row's
+  clock, `palette` = Temas, `grid` = the Multiview only, `prev` = the
+  Prévia (Lucide's scan, a viewfinder; owner 2026-10-28, P1/P2 = A: every
+  "Pôr na prévia", the Prévia's badge — the glyph alone on a narrow one —,
+  its dock tab and the Slides column's tab, the Pedidos' button), `planner`
+  = Planejar o culto (clipboard-list, I4 = A; the two packed into one path
+  each in icons.js, for the outputs' budget); a Media row's
   glyph is `mediaIcon` (libraryRows.js, tested) wherever it is listed.
   **Icons are Lucide** (Rodada HI, owner 2026-10-19): nodes of the
   `lucide` package mapped to our names in `src/lib/icons.js` (stroke
@@ -795,8 +806,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   or on air with Sincronizar on top; Letra automática › Iniciar/Pausar/
   Retomar; Mídia › Do computador… / Link do YouTube… open the Mídia on
   that step; Mídia › Fundos opens the backgrounds library at once). **Ver stays beside the bell, with the panels glyph**
-  (`panels`, Lucide layout-panel-left; the eye is only for the choosers of
-  what to show). **Ajuda is the bar's last menu** (owner 2026-10-20,
+  (`panels`, Lucide layout-panel-left; the eye is only for showing or
+  hiding: the choosers of what to show, a layer, the player's video). **Ajuda is the bar's last menu** (owner 2026-10-20,
   Rodada M0; Alt+A): Primeiros passos (a dialog, `firstSteps.js`, tested:
   seven steps, each with the button that opens what it names, keys per Teclas
   de uma letra), Atalhos, Novidades · Verificar tudo, Salvar diagnóstico…,
@@ -1231,7 +1242,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Equipe's song requests and the chat with it, below), **Ferramentas** and **Esteve no ar** (the "Voltar ao
   anterior" history). Where the panel shows the Aviso rápido or the
   Ferramentas, Biblioteca › Avisos leaves them out (`elsewhere`); the
-  Biblioteca's search-row "+" stays "add content". **One gutter
+  Biblioteca's header "+" stays "add content". **One gutter
   everywhere**: `.console` overrides `--gutter` to 6px and the rows and
   stacks use `gap: 0` — the splitter IS the gap, as in `.main` (two cards
   stacked without one keep the gutter as a margin); don't add a second gap
@@ -1272,7 +1283,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `dockMotion`/`easesBetween` in dock.js, tested; nothing eases the first
   second after the dock appears, while editing, or with reduced motion;
   never a CSS `flex-basis` transition, which collapsed a neighbour turning
-  fixed to 0 px). The Bíblia's
+  fixed to 0 px). **Dragging a splitter never eases** (owner 2026-10-29,
+  lag on Temas' column): `Split` (kx.jsx) puts `data-resizing` on `<html>`
+  while the hand holds it, `useDockEase` cancels and skips then, so a
+  measured module (Temas) follows the hand frame by frame, with no
+  scrollbar (console.css); `onSize` runs once per frame and `saveLayout`
+  writes localStorage after 150 ms of quiet (`flushLayout` on pagehide). The Bíblia's
   No ar is another module (`air`) and never folds away (its header's
   chevron still folds it, Rodada F4). In both a click prepares that slide, a double click
   sends it; ↑/↓ walk the Slides column, ←/→ move what is on air. **Lists
@@ -1475,7 +1491,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   click clears and the list prepares as always, M1 = A), with `SelectManyBtn`
   ("Selecionar vários", never "Selecionar" alone), `RowMark` and `SelBar` from
   kx.jsx and the `is-marked` state ("Selecionar vários" stays in the
-  header; once something is marked the SelBar shows "Selecionar todos" —
+  header of the windows — the Mídia, the background library, Planejar o
+  culto, the Escola, Temas —; **in the console's Biblioteca and Setlist it
+  shows only while on** (owner 2026-10-28, I3 = A, reversing M2 = A
+  there): a Ctrl/Shift + click or Ctrl+A turns it on (`useMultiSelect`'s
+  `autoPick`), as does the row menu's "Selecionar vários" (`pickFrom`,
+  that row marked), and it goes when the selection is cleared; once something is marked the SelBar shows "Selecionar todos" —
   the Bíblia's two check marks, `checks`, Ctrl+A too — beside "Limpar a
   seleção": `onAll`/`total`, Rodada P6; the Mídia's side panel has it too;
   `--sel-bg`/`--sel-ring`, the blue of
@@ -1854,13 +1875,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Biblioteca's own add (`addStageToSetlist(…, { extra })`, who sings
   kept). Its card says "Anotado por você"
   with an "operador" badge and a gold ring (`pedidoBy`), the same actions,
-  and the Equipe sees it as "Anotado pelo operador". A card's actions are
+  and the Equipe sees it as "Anotado pelo operador". **A card is two lines**
+  (owner 2026-10-28, C1 = A): the glyph, "X canta Y", its badges and the
+  hour; then who noted it and the note, cut with "…" (whole in the
+  tooltip), beside the actions as glyphs (`prev`, +, ✓, the trash; the
+  names in their tooltips). A card's actions are
   always on screen: Pôr na prévia and Setlist when the song is the console's
   (`mediaOfPedido` first, then `songOfPedido`: its songId, else the title folded) — **the Setlist item
   keeps who sings** (S13 = A, `pedidoItem`: `ServiceItem.requested_by`
   and the note as its `notes`; the Setlist and the planner rows wear a
-  gold tag with the `user` glyph, `SingerTag` in kx.jsx, the name cut with
-  "…", the whole in its tooltip; Planejar o culto edits it as "Pedido de";
+  gold tag with the `user` glyph, `SingerTag` in kx.jsx, **always whole**
+  (owner 2026-10-28: it never compacts; the title gives way with its "…"); Planejar o culto edits it as "Pedido de";
   the culto's PDF prints "· pedido de <nome>" after the title; the Equipe's
   Setlist shows it, `teamState` items' `singer`) —, else "não está na
   biblioteca" and
@@ -2038,7 +2063,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   photos ship theirs in `resources/backgrounds/thumbs/` (`backgroundThumbUrl`,
   `backgrounds.test.mjs` checks each); on air and in the Prévia a picture is
   always its file. A video's still is `Media.thumbnail_url`
-  (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
+  (taken by the console — at a few places in the clip, the brightest kept, `posterTimes`/`frameBrightness`; a black one from before is made anew once per file, `stillIsDark`, `keryx.stillsChecked` — `usePosterBackfill` + `mediaPosterCapture.js`,
   sent through `UploadFile`); it rides in the live item as `poster` for the
   Prévia and shows on hover in the Biblioteca. **A video Fundo plays only on
   the outputs and the Programa monitor** (Rodada O, item 11; like a generator,

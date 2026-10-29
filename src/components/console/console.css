@@ -356,8 +356,21 @@
 .console .ped-h { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-1); font-size: var(--fs-meta); color: var(--fg-3); }
 .console .ped-h b { color: var(--fg-2); font-weight: 600; }
 .console .ped-t { font-size: var(--fs-content); line-height: 1.4; color: var(--fg-1); overflow-wrap: anywhere; white-space: pre-wrap; }
-.console .ped-card { display: flex; flex-direction: column; gap: 6px; margin: 2px var(--space-1); padding: 10px var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); }
+/* A pedido in two lines (owner 2026-10-28, C1 = A): the glyph, "X canta Y"
+   and its marks with the hour; then who noted it and the note (cut, whole in
+   the tooltip) beside the actions, glyphs always on screen. */
+.console .ped-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px var(--space-2); margin: 0 var(--space-1); padding: 6px var(--space-2) 6px 10px; border-radius: var(--radius-control); background: var(--bg-3); }
 .console .ped-card.is-done { opacity: .55; }
+.console .ped-c-i { width: 14px; height: 14px; color: var(--brand); }
+.console .ped-c-l1 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--fs-content); color: var(--fg-1); }
+.console .ped-c-l1 b { font-weight: 600; }
+.console .ped-c-who { color: var(--fg-2); }
+.console .ped-c-meta { display: flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.console .ped-c-meta .ped-badge { margin-left: 0; }
+.console .ped-c-time { font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; }
+.console .ped-c-l2 { grid-column: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--fs-meta); color: var(--fg-3); }
+.console .ped-c-acts { grid-column: 3; display: flex; justify-content: flex-end; gap: 2px; }
+.console .ped-card > .ped-link { grid-column: 2 / -1; }
 .console .ped-song { display: flex; align-items: baseline; gap: 7px; font-size: var(--fs-content-lg); line-height: 1.35; color: var(--fg-1); overflow-wrap: anywhere; }
 .console .ped-song > svg { flex: none; align-self: center; width: 15px; height: 15px; color: var(--brand); }
 .console .ped-song > span { min-width: 0; }
@@ -452,7 +465,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 @container (max-width: 420px) { .console .slides-tabs .slides-tab-w { display: none; } }
 .console .slides-dot { flex: none; width: 7px; height: 7px; border-radius: var(--radius-round); }
 .console .slides-dot.is-air { background: var(--live); }
-.console .slides-dot.is-prev { background: var(--prev); }
+/* The Prévia's tab wears its glyph (owner 2026-10-28, P2 = A), gold. */
+.console .slides-tabs .slides-prev-i { flex: none; width: 14px; height: 14px; color: var(--prev-fg); }
 /* The No ar module: one row of cards while it is low (its band across the
    bottom of the window, only while lyrics are on air), a list in a column. */
 .console .onair-panel > .kx-panel-b { container-type: size; }
@@ -486,6 +500,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The tiles are cards: 4 px in from the column (2 px here and the grid's
    own 2 px, which keeps the ring of the theme in use whole). */
 .console :is(.temas-panel, .layer-temas) .tm { padding: 0 2px 2px; }
+/* While a splitter is held the measured panels follow the hand in a frame;
+   no scrollbar may flash if the content is a frame ahead of the box. */
+html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; }
 /* A layer row (owner 2026-10-28, Camadas K1/K2 = A: no grip, the order is
    the program's): the eye, the Fundo's padlock (an empty slot on the other
    rows, so the names line up), the name, the pencil — where it is edited,
@@ -585,6 +602,10 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .dock-tab { flex: none; height: var(--control-sm); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-3); font: 500 var(--fs-ui)/16px var(--font-sans); white-space: nowrap; }
 .console .dock-tab:hover { color: var(--fg-1); background: var(--bg-2); }
 .console .dock-tab.is-on { color: var(--fg-1); background: var(--bg-3); }
+/* A module with a glyph of its own shows it beside its name as a tab (the
+   Prévia's viewfinder, owner 2026-10-28, P2 = A). */
+.console .lib-add-slot { display: contents; }
+.console .dock-tab-i { width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px; color: var(--prev-fg); }
 /* The Prévia anywhere: its screen (the box itself, no card) as big as the cell allows; the
    teacher notes under it, when there are any. */
 .console .dock .prev-panel > .kx-panel-b { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; container-type: size; }
@@ -966,12 +987,11 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .rund-step .kx-act-l { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @container setlist-f (width < 200px) { .console .rund-auto { width: var(--control-sm); padding: 0; justify-content: center; } .console .rund-auto-l { display: none; } }
 /* Who sings, when the item came from a pedido (Rodada Q, S13 = A): a gold
-   tag on the row's one line, its name cut with "…" (the whole in its tooltip). */
-.console .rund-who { flex: 0 1 auto; min-width: 0; max-width: 45%; display: inline-flex; align-items: center; gap: var(--space-1); height: 18px; padding: 0 7px; border-radius: var(--radius-round); background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); font-size: var(--fs-meta); font-weight: 500; }
+   tag on the row's one line, always whole (owner 2026-10-28: it never
+   compacts); the title is what gives way, with its "…". */
+.console .rund-who { flex: none; display: inline-flex; align-items: center; gap: var(--space-1); height: 18px; padding: 0 7px; border-radius: var(--radius-round); background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand); font-size: var(--fs-meta); font-weight: 500; }
 .console .rund-who > svg { flex: none; width: 11px; height: 11px; }
-/* The title comes first: in a narrow column the tag gives way, down to its glyph. */
-.console .kx-row:has(> .rund-who) > .kx-row-main { min-width: 55%; }
-.console .rund-who > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .rund-who > span { white-space: nowrap; }
 .console .rund-end { flex: none; display: inline-grid; place-items: center; width: 16px; color: var(--fg-3); }
 .console .rund .kx-row.is-air .rund-end { color: inherit; }
 .console .rund-cd { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: 22px; padding: 0 2px 0 var(--space-2); border-radius: var(--radius-round); background: var(--brand-tint); color: var(--brand); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -1947,6 +1967,13 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The Prévia's badge: its caption mirrors the Programa's (green word while
    something is prepared, blue while the screens are locked). */
 .console .kx-prog-cap.is-prevcap .kx-live-cap { color: var(--prev-fg); }
+/* Its glyph (owner 2026-10-28, P1/P2 = A: the viewfinder wherever "Prévia"
+   is written) takes the word's colour; on a narrow Prévia the glyph alone
+   stands for the word, unless "travado" has to be read. */
+.console .kx-prev-glyph { flex: none; width: 13px; height: 13px; color: var(--fg-3); }
+.console .kx-prog-cap.is-prevcap .kx-prev-glyph { color: var(--prev-fg); }
+.console .kx-prog-cap.is-rh .kx-prev-glyph { color: var(--rh-fg); }
+@container prev-screen (max-width: 240px) { .console .kx-prog-cap:not(.is-rh) > .kx-prev-glyph + .kx-live-cap { display: none; } }
 
 /* ---- Camadas › Fundo › Gerado (GeneratorPanel.jsx) ---- */
 .console .lyr-gens { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
