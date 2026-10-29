@@ -1313,6 +1313,12 @@
         "text_case": {
           "type": "text"
         },
+        "text_decoration": {
+          "type": "text"
+        },
+        "text_justify": {
+          "type": "text"
+        },
         "text_box": {
           "type": "text"
         },

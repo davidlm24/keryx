@@ -1433,7 +1433,7 @@ async function checkConsole(webContents, { live, outputs }) {
         for (const [w, h] of [[1366, 768], [1920, 1080]]) {
             if (operatorWin) operatorWin.setContentSize(w, h);
             await sleep(500);
-            result.bibleNoScroll[`${w}x${h}`] = await js(`(() => {
+            result.bibleNoScroll[`${w}x${h}`] = await js(`(async () => {
                 const mods = [...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.dataset.dockMods).join(",");
                 if (mods !== "books,chapters,verses,reading,air") return "módulos: " + mods;
                 const g = (m) => document.querySelector('.console .dock .dock-group[data-dock-mods="' + m + '"]').getBoundingClientRect();
@@ -1447,7 +1447,9 @@ async function checkConsole(webContents, { live, outputs }) {
                 for (let i = 0; i < 40 && !c150(); i++) {
                     const next = [...box.querySelectorAll(".chapters .bpage")].find((b) => /^Próximos/.test(b.title));
                     if (!next) break;
+                    // A page renders after the click: wait, or every click repeats the first page.
                     next.click();
+                    await new Promise((r) => setTimeout(r, 80));
                 }
                 if (!c150()) return "sem 150";
                 const cb = c150().getBoundingClientRect(), bb = box.getBoundingClientRect();
@@ -2629,14 +2631,19 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".console .win-bar button", "Link do YouTube…");
         await waitFor(() => js("Boolean(document.querySelector('.confirm-dialog .kx-field input'))"), 4000);
         await setVal(".confirm-dialog .kx-field input", "https://youtu.be/dQw4w9WgXcQ");
-        await click(".confirm-dialog button", "Adicionar");
-        await waitFor(() => js("Boolean(document.querySelector('.mv-rename'))"));
-        await setVal(".mv-rename", "Vídeo do smoke");
-        await press("Enter");
+        // The dialog checks the link with YouTube first (#368): Adicionar o
+        // link shows once the check answers (offline too, as "error"). With a
+        // title from YouTube the row takes it and no rename field opens.
+        await waitFor(() => js("[...document.querySelectorAll('.confirm-dialog button')].some((b) => b.textContent.includes('Adicionar o link'))"), 10000);
+        await click(".confirm-dialog button", "Adicionar o link");
+        if (await waitFor(() => js("Boolean(document.querySelector('.mv-rename'))"), 2000)) {
+            await setVal(".mv-rename", "Vídeo do smoke");
+            await press("Enter");
+        }
         result.mvYouTube = await waitFor(async () => {
-            const rows = (await js(`window.keryxDesktop.db.call("Media", "filter", [{ title: "Vídeo do smoke" }])`)).data || [];
-            if (rows[0]) mvRows.push(rows[0]);
-            return Boolean(rows[0]) && /youtu/.test(rows[0].file_url);
+            const rows = ((await js(`window.keryxDesktop.db.call("Media", "list", [])`)).data || []).filter((r) => /dQw4w9WgXcQ/.test(r.file_url || ""));
+            if (rows[0] && !mvRows.some((m) => m.id === rows[0].id)) mvRows.push(rows[0]);
+            return Boolean(rows[0]);
         }, 6000);
         await click(".console .kx-win-tabs button", "Imagens");
         result.mvTabs = await waitFor(() => js("(() => { const t = [...document.querySelectorAll('.mv-cell')].map((n) => n.textContent); return t.length >= 2 && t.every((x) => !x.includes('Arquivo sumido') && !x.includes('Vídeo do smoke')); })()"));
