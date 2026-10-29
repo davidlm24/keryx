@@ -7,6 +7,7 @@ import {
     MEDIA_CHIPS, libraryArgs, emptyList, joinPage, mediaRow, sendMediaArgs,
     fieldRef, fieldBook, tapVerse, refLabel, bibleArgs, BIBLE_SECTIONS, bibleVersions,
     nowBarInfo, addToSetlistArgs, biblePlanArgs,
+    onAirNow, presentRows, dockModes, endState, verseRows, chapterArgs, UNDO_MS,
 } from "./remoteView.js";
 
 const T = 1_000_000;
@@ -256,6 +257,51 @@ test("the No ar bar: nothing on air hides it; slides give the line, the place, t
     assert.equal(nowBarInfo(quiz).reveal, true);
 });
 
+test("Apresentar: every slide whole, the one on air, the next and those already shown", () => {
+    assert.deepEqual(presentRows(null), []);
+    const rows = presentRows(song({ index: 1, slides: [{ text: "A\nB", label: "Estrofe" }, { text: "C" }, { text: "D" }, { image_url: "x.png" }] }).content);
+    assert.deepEqual(rows.map((r) => r.state), ["past", "air", "next", ""]);
+    assert.equal(rows[0].label, "Estrofe · 1");
+    assert.equal(rows[0].text, "A\nB", "the whole slide, its lines kept");
+    assert.equal(rows[3].text, "Imagem");
+    assert.equal(onAirNow(emptyState(T)), false);
+    assert.equal(onAirNow(song()), true);
+    assert.equal(onAirNow(applyOp(emptyState(T), "screen.set", { mode: "black" }, T)), true, "Tela preta is something to end");
+});
+
+test("the dock: Letra with slides, Player with what plays, the operator's side kept while it means something", () => {
+    assert.deepEqual(dockModes(emptyState(T)), { letra: false, player: false, mode: "letra" });
+    assert.equal(dockModes(song()).mode, "letra");
+    const video = applyOp(emptyState(T), "media.show", { kind: "video", url: "http://x/v.mp4", title: "Abertura", duration: 200 }, T);
+    assert.deepEqual(dockModes(video), { letra: false, player: true, mode: "player" }, "only a video: the Player by itself");
+    const both = applyOp(song(), "audio.show", { kind: "audio", url: "http://x/a.mp3", title: "Playback", duration: 200 }, T);
+    assert.equal(dockModes(both).mode, "letra");
+    assert.equal(dockModes(both, "player").mode, "player");
+    assert.equal(dockModes(song(), "player").mode, "letra", "a side with nothing falls back");
+    assert.equal(dockModes(applyOp(song(), "screen.set", { mode: "black" }, T)).letra, false, "under Tela preta the slides do not count");
+});
+
+test("Encerrar: off with nothing on air, armed on air, Desfazer for 8 s after the phone ended", () => {
+    assert.deepEqual(endState({ live: emptyState(T) }), { state: "off", left: 0 });
+    assert.deepEqual(endState({ live: song() }), { state: "arm", left: 0 });
+    const ended = { at: T, undo: true };
+    assert.deepEqual(endState({ live: emptyState(T), ended, now: T + 500, canUndo: true }), { state: "done", left: 8 });
+    assert.equal(endState({ live: emptyState(T), ended, now: T - 900, canUndo: true }).left, 8, "never more than the 8 s");
+    assert.equal(endState({ live: emptyState(T), ended, now: T + UNDO_MS, canUndo: true }).state, "off", "after 8 s it goes back");
+    assert.equal(endState({ live: emptyState(T), ended, now: T + 500, canUndo: false }).state, "off", "a console without Desfazer");
+    assert.equal(endState({ live: emptyState(T), ended: { at: T, undo: false }, now: T + 500, canUndo: true }).state, "off", "nothing to put back");
+});
+
+test("Bíblia verse by verse: the chapter asked once, the range's ends and inside marked", () => {
+    assert.deepEqual(chapterArgs({ book: "Salmos", chapter: 23, verseStart: 1, verseEnd: 3 }, "ARC"), { book: "Salmos", chapter: 23, whole: true, version: "ARC" });
+    assert.deepEqual(chapterArgs({ book: "Salmos", chapter: 23 }), { book: "Salmos", chapter: 23, whole: true });
+    const verses = [1, 2, 3, 4].map((n) => ({ n, text: `v${n}` }));
+    assert.deepEqual(verseRows(verses, { verseStart: 1, verseEnd: 3 }).map((r) => r.mark), ["sel", "in", "sel", ""]);
+    assert.deepEqual(verseRows(verses, { verseStart: 4, verseEnd: 4 }).map((r) => r.mark), ["", "", "", "sel"]);
+    assert.deepEqual(verseRows(verses, { verseStart: null }).map((r) => r.mark), ["", "", "", ""]);
+    assert.deepEqual(verseRows(null, null), []);
+});
+
 test("+ Setlist: songs, files and materials go; avisos never; a passage only with its verses", () => {
     assert.deepEqual(addToSetlistArgs("songs", "s1"), { kind: "song", id: "s1" });
     for (const k of ["video", "image", "audio", "pdf"]) assert.deepEqual(addToSetlistArgs(k, "m"), { kind: "media", id: "m" });
@@ -281,9 +327,9 @@ test("the role picks the environment and its tabs", () => {
     const team = tabsFor({ role: "team", caps: PROTOCOL.teamCaps });
     assert.deepEqual(team.map(([k]) => k), ["pedidos", "songs", "bible", "setlist"]);
     const control = tabsFor({ role: "control", caps: PROTOCOL.caps.filter((c) => c !== "requests") });
-    assert.deepEqual(control.map(([k]) => k), ["live", "setlist", "media", "bible", "more"]);
+    assert.deepEqual(control.map(([k]) => k), ["library", "present", "bible", "setlist", "more"], "the Biblioteca first (owner 2026-10-28, M1)");
     // A team never gets a projection tab, whatever caps say.
-    assert.ok(!tabsFor({ role: "team", caps: PROTOCOL.caps }).some(([k]) => ["live", "media", "more"].includes(k)));
+    assert.ok(!tabsFor({ role: "team", caps: PROTOCOL.caps }).some(([k]) => ["present", "library", "more"].includes(k)));
     // A console without requests: no Pedidos tab.
     assert.ok(!tabsFor({ role: "team", caps: ["library", "bible"] }).some(([k]) => k === "pedidos"));
 });

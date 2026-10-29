@@ -24,6 +24,8 @@
     "alerts": 12,
     "alertMessage": 80,
     "passageText": 280,
+    "chapterText": 24000,
+    "verseText": 600,
     "libraryPage": 50,
     "requestText": 280,
     "requestFrom": 40,
@@ -160,7 +162,8 @@
         "chapter": { "type": "int", "min": 1, "max": 150, "required": true },
         "verseStart": { "type": "int", "min": 1, "max": 176 },
         "verseEnd": { "type": "int", "min": 1, "max": 176 },
-        "version": { "type": "str", "max": 12 }
+        "version": { "type": "str", "max": 12 },
+        "whole": { "type": "bool" }
       },
       "oneOf": [["ref"], ["book", "chapter", "verseStart", "verseEnd"]]
     },
@@ -365,7 +368,7 @@
       "ready": "bool: false while the console's lists are still loading",
       "rows": "[<= limits.libraryPage] { id, title, sub, dur, fav, st: ok | missing | syncing | blocked, thumb: a relative /media/... poster or null, progress?: str as in state.items }"
     },
-    "passage": { "reference": "str", "text": "str (<= limits.passageText)", "version": "str" },
+    "passage": { "reference": "str", "text": "str (<= limits.passageText)", "version": "str", "verses": "only for whole: true (the phone's Bíblia, verse by verse): the whole chapter [{ n: int, text: str (<= limits.verseText) }], <= limits.chapterText in all, with truncated: true when it was cut; an older console sends neither, and the phone reads text" },
     "end": { "undo": "bool: Desfazer can put it back" },
     "send": { "title": "str: what went on air, echoed" },
     "added": { "title": "str: the Setlist item made, echoed" },

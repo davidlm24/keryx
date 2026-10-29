@@ -30,6 +30,14 @@ test("what the console says, and a passage to check before sending", () => {
     assert.equal(passagePreview("João 3", verses, [], "NVI").text, "16 Porque Deus amou 17 para que 18 x", "a whole chapter: from its first verse");
     assert.equal(passagePreview("João 3", verses, [], "NVI").version, "NVI");
     assert.ok(passagePreview("x", [{ number: 1, text: "a".repeat(400) }], [1]).text.length <= PROTOCOL.limits.passageText);
+    // whole: the chapter verse by verse, each and all of it within the limits.
+    assert.deepEqual(passagePreview("João 3:17", verses, [17], "NVI", { whole: true }).verses, [{ n: 16, text: "Porque Deus amou" }, { n: 17, text: "para que" }, { n: 18, text: "x" }]);
+    const long = Array.from({ length: 176 }, (_, i) => ({ number: i + 1, text: "b".repeat(1000) }));
+    const cut = passagePreview("Sl 119", long, [], "ARC", { whole: true });
+    assert.ok(cut.verses.every((v) => v.text.length <= PROTOCOL.limits.verseText));
+    assert.ok(cut.verses.reduce((n, v) => n + v.text.length, 0) <= PROTOCOL.limits.chapterText);
+    assert.equal(cut.truncated, true);
+    assert.equal(passagePreview("João 3", verses, [], "NVI", { whole: true }).truncated, undefined);
 });
 
 // The lock table: what the runner refuses while locked (kind S) is exactly

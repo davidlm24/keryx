@@ -187,7 +187,7 @@ export const REMOTE_HANDLERS = {
             if (r.error) return r.error;
             const name = formatReference(r.ref);
             // Version 1 pages show the reference alone: the edition rides in it.
-            return ok("", passagePreview(v >= 2 ? name : `${name} · ${r.version}`, r.verses, r.nums, r.version));
+            return ok("", passagePreview(v >= 2 ? name : `${name} · ${r.version}`, r.verses, r.nums, r.version, { whole: args.whole === true }));
         },
     },
     bibleSend: {

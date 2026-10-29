@@ -229,6 +229,11 @@ test("bibleFind: a preview of at most 280 characters, typed any way or picked", 
     // A version 1 page: the edition rides in the reference.
     assert.equal((await run(d, "bibleFind", { ref: "jo 3:16" }, 1)).data.reference, "João 3:16 · ARA");
     assert.ok((await run(d, "bibleFind", { book: "João", chapter: 3 })).data.text.startsWith("1 Versículo 1"), "a chapter alone: from verse 1");
+    // whole (the phone's Bíblia, verse by verse): the chapter's verses too; not asked, none.
+    const whole = (await run(d, "bibleFind", { book: "João", chapter: 3, verseStart: 16, verseEnd: 16, whole: true })).data;
+    assert.deepEqual(whole.verses.slice(0, 2).map((v) => [v.n, v.text.startsWith(`Versículo ${v.n} `)]), [[1, true], [2, true]]);
+    assert.equal(whole.verses.length, 30, "every verse of the chapter, not only the one asked");
+    assert.equal((await run(d, "bibleFind", { ref: "jo 3 16" })).data.verses, undefined);
     assert.equal((await run(d, "bibleFind", { ref: "jo 3 16", version: "NVI" })).data.version, "NVI");
     assert.equal((await run(d, "bibleFind", { ref: "xyz" })).status, 400);
     assert.equal((await run(d, "bibleFind", { ref: "jo 3:16", version: "XYZ" })).code, "not_found");

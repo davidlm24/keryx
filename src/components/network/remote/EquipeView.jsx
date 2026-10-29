@@ -289,9 +289,9 @@ function PedidoSheet({ initial, name, busy, onSend, onClose }) {
     const [singer, setSinger] = useState("");
     const [song, setSong] = useState(initial.song || "");
     const [songId, setSongId] = useState(initial.songId || "");
-    const [mediaId, setMediaId] = useState("");
-    const [chip, setChip] = useState("songs");
-    const [pickedChip, setPickedChip] = useState("songs");
+    const [mediaId, setMediaId] = useState(initial.mediaId || "");
+    const [chip, setChip] = useState(initial.chip || "songs");
+    const [pickedChip, setPickedChip] = useState(initial.chip || "songs");
     const [link, setLink] = useState("");
     const [note, setNote] = useState("");
     const [picking, setPicking] = useState(false);
@@ -387,7 +387,7 @@ function useSongs(query, chip = "songs") {
 }
 
 const FIND = { songs: ["Buscar música", "Nenhuma música", "música"], video: ["Buscar vídeo", "Nenhum vídeo", "vídeo"], audio: ["Buscar áudio", "Nenhum áudio", "áudio"] };
-function SongList({ onPick, compact = false, chip = "songs" }) {
+function SongList({ onPick, compact = false, chip = "songs", head = null }) {
     const [q, setQ] = useState("");
     const [query, setQuery] = useState("");
     useEffect(() => {
@@ -419,7 +419,7 @@ function SongList({ onPick, compact = false, chip = "songs" }) {
                 {rows.map((r) => (
                     <li key={r.id}>
                         <button type="button" className="rm-item" onClick={() => onPick(r)}>
-                            <Icon name={icon} size={18} />
+                            {r.thumb ? <img className="rm-thumb" src={r.thumb} alt="" loading="lazy" /> : <Icon name={icon} size={18} />}
                             <span className="rm-item-t"><b>{r.title}</b>{r.sub && <small>{r.sub}</small>}</span>
                             {!compact && <Icon name="chevron-right" size={18} />}
                         </button>
@@ -435,16 +435,47 @@ function SongList({ onPick, compact = false, chip = "songs" }) {
     if (compact) return <>{field}{body}</>;
     return (
         <div className="rm-main is-split">
-            <div className="rm-fix">{field}</div>
+            <div className="rm-fix">{head}{field}</div>
             <div className="rm-scroll" ref={scroller}>{body}</div>
         </div>
     );
 }
 
+// Músicas: the songs' lyrics, and the Mídia's videos and audios (owner
+// 2026-10-28, M6: the same Letras · Vídeos · Áudios as the pedido's picker).
+// A song opens its lyrics, a video or an audio what it is; both end in
+// "Pedir este louvor" — the Equipe never plays or sends anything.
 function SongsTab({ onAsk }) {
+    const [chip, setChip] = useState("songs");
     const [open, setOpen] = useState(null);
+    if (open?.media) return <MediaView row={open} chip={chip} onBack={() => setOpen(null)} onAsk={onAsk} />;
     if (open) return <SongView song={open} back="Músicas" onBack={() => setOpen(null)} onAsk={onAsk} />;
-    return <SongList onPick={(r) => setOpen({ id: r.id, title: r.title })} />;
+    const chips = (
+        <div className="rm-chips" role="group" aria-label="Da biblioteca">
+            {PICK_CHIPS.map((c) => <button type="button" key={c.key} className="rm-chip" aria-pressed={chip === c.key} onClick={() => setChip(c.key)}><Icon name={c.icon} size={16} />{c.label}</button>)}
+        </div>
+    );
+    return <SongList key={chip} chip={chip} head={chips} onPick={(r) => setOpen(chip === "songs" ? { id: r.id, title: r.title } : { ...r, media: true })} />;
+}
+
+// A video or an audio of the Mídia (M6): its still, what it is and how long,
+// and "Pedir este louvor" with it chosen (the pedido carries its mediaId).
+function MediaView({ row, chip, onBack, onAsk }) {
+    return (
+        <div className="rm-main is-split">
+            <div className="rm-fix rm-songtop">
+                <button type="button" className="rm-back" onClick={onBack}><Icon name="chevron-left" size={18} />{chip === "video" ? "Vídeos" : "Áudios"}</button>
+            </div>
+            <div className="rm-scroll">
+                <div className="rm-poster">{row.thumb ? <img src={row.thumb} alt="" /> : <Icon name={chipOf(chip).icon} size={32} />}</div>
+                <div className="rm-songttl"><b>{row.title}</b>{row.sub && <span>{row.sub}</span>}</div>
+                <p className="rm-note">A equipe não põe no ar. O pedido vai para o operador, com {chip === "video" ? "o vídeo" : "o áudio"} já escolhido.</p>
+            </div>
+            <div className="rm-foot">
+                <button type="button" className="rm-b is-go is-wide" onClick={() => onAsk({ song: row.title.slice(0, PEDIDO_LIMITS.song), mediaId: row.id, chip })}><Icon name="chat" size={18} />Pedir este louvor</button>
+            </div>
+        </div>
+    );
 }
 
 // A song's lyrics (songText): its parts in the order sung, Cifra (the

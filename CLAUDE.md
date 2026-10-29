@@ -1942,23 +1942,44 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (a v1 console: `isV1`), only the control pressed busy, S actions off
   while locked or stale (25 s without a frame), T always on; new items are
   picked, then sent from the sticky "Enviar ao ar · título"; Encerrar and
-  Destravar are held. **The Controle's five tabs** (Rodada Q PR3, owner's
-  mockup and mark S5 = A): Ao vivo, Setlist, Mídia, Bíblia, Mais — never a
-  chat tab (that is the Equipe's). Ao vivo is the slides, Enviar o
-  próximo, the compact Tela preta/Logo/Limpar row, the player and the held
-  "Segure para encerrar tudo" (the smoke reads it there); Slides, Aviso and
-  Timer are Mais › Enviar. Every other tab has **the No ar bar** under it
-  while something is on air (`NowBar.jsx`, `nowBarInfo`, tested): ⏮ · the
-  slide on air with "3/9" and the next · ⏭; its middle opens Ao vivo's
-  controls in a sheet (the shared pieces are `remote/liveParts.jsx`). The
-  Mídia keeps its chips and search still and scrolls only the list
-  (`rm-main is-split`: `rm-fix`, `rm-scroll` — the paging sentinel's
-  `root` —, `rm-foot`). **+ Setlist** beside Enviar ao ar in the Mídia
-  (`addToSetlistArgs`: never an aviso) and the Bíblia (`biblePlanArgs`:
-  only with verses) runs `setlist.add`, shown only with the `plan` cap;
-  it is T, so a row can be picked for it while locked. Only Ao vivo is in
-  the page's first load: the other tabs are lazy chunks (the outputs'
-  budget). **The Equipe's page** (Rodada Q PR4, the owner's mockup, S8 = A)
+  Destravar are held. **The Controle's five tabs** (the redesign, owner
+  2026-10-28, mockup "Celular · redesign", M1–M6 = A; it replaced Rodada
+  Q's Ao vivo and No ar bar): **Biblioteca** (where the phone opens and
+  stays after a send — `MediaTab.jsx`, the search then the chips),
+  **Apresentar** (`PresentTab.jsx`: every slide of the item on air as a
+  big card, `presentRows`, the one on air green and kept in view, the next
+  with the grey ring, a tap = `goto`; the letra automática, a timer on air
+  and Enviar o próximo / Voltar; with nothing on air, Enviar o próximo and
+  Abrir a Biblioteca), Bíblia, Setlist, Mais — never a chat tab (that is
+  the Equipe's). Slides, Aviso and Timer are Mais › Enviar. **The controls
+  are the dock at the bottom** (`ControlDock.jsx`): open on Apresentar —
+  Letra | Player (`dockModes`: Player by itself when only something plays,
+  the operator's pick kept while it means something), the big arrows or
+  the player (⏮ −10 ⏯ +10 ⏭, the eye, the volume), then Tela preta · Logo ·
+  Limpar · Encerrar —, its ⌄ folds it; on every other tab, while something
+  is on air, it is one line (⏮ · the slide on air with "3/9" and the next ·
+  ⏭ · ⌃, `nowBarInfo`) whose middle opens the same controls in a sheet.
+  **Encerrar has four states** (`endState`, tested): off with nothing on
+  air, a red outline on air (held 1,5 s; a short tap says "Segure para
+  encerrar tudo."), the fill while held, and for 8 s after this phone ended
+  it is "Desfazer 8" counting down (the toast no longer carries it). **The
+  Bíblia** reads the chapter verse by verse (`bibleFind` with `whole`: the
+  chapter's `verses`, each ≤ `limits.verseText`, ≤ `limits.chapterText` in
+  all; `verseRows`, `chapterArgs`) — a tap marks one, another makes the
+  range (gold, selecionado) — with a compact bar at the bottom, Livro ▾ ·
+  Capítulo ▾ · Versão ▾ · the lupa, each opening "Escolher a passagem"
+  (the reference typed, or books → chapters, eight cells across); an older
+  console sends no `verses` and the phone falls back to the prose and the
+  number grid. The Biblioteca keeps its search and chips still and scrolls
+  only the list (`rm-main is-split`: `rm-fix`, `rm-scroll` — the paging
+  sentinel's `root` —, `rm-foot`). **+ Setlist** beside Enviar ao ar in the
+  Biblioteca (`addToSetlistArgs`: never an aviso) and the Bíblia
+  (`biblePlanArgs`: only with verses) runs `setlist.add`, shown only with
+  the `plan` cap; it is T, so a row can be picked for it while locked. Only
+  the dock is in the page's first load: every tab, the Biblioteca included,
+  is a lazy chunk (the outputs' budget: with the Biblioteca in it, CI
+  measured /Remote at 400.0 kB). The smoke opens on "Biblioteca",
+  then presses Tela preta in Apresentar's dock. **The Equipe's page** (Rodada Q PR4, the owner's mockup, S8 = A)
   is the same `/Remote` signed in with the Equipe's code: `state.role`
   "team" draws `remote/EquipeView.jsx` (a lazy chunk) instead (`roleOf`;
   the role last seen kept in localStorage `keryx.remote.role`, so a reload
@@ -1966,7 +1987,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   1.5 s for one, then draws the Controle). Four tabs (`TEAM_TABS`,
   `tabsFor`): Pedidos, Músicas, Bíblia, Setlist; on top a strip with no
   buttons, "No ar · título · 3/9 · só leitura" (`teamStrip`), never the
-  NowBar. Pedidos is a **Pedidos | Chat** switch (S12; `.rm-seg`, each side
+  dock. Pedidos is a **Pedidos | Chat** switch (S12; `.rm-seg`, each side
   with its gold dot, the Pedidos tab's dot for both, `hasUnseen` against
   `keryx.remote.seen`), each the culto's `requests` page of its kind
   (asked at once, every 15 s, the chat every 5 s while it is open —
@@ -1981,8 +2002,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   contract's limits; each pedido wears its glyph, `pedidoGlyph` from the
   `requests` row's `media`);
   the sender's name is asked once and kept (`keryx.remote.name`, ≤ 40).
-  Músicas lists the library's songs; a song opens its `songText`
-  (`lyricParts`: Cifra when it has chords, A+) with "Pedir este louvor".
+  Músicas is Letras · Vídeos · Áudios (owner 2026-10-28, M6; `PICK_CHIPS`,
+  the Mídia's videos and audios with their still and length — `library`
+  with `kind`, which the team may already list); a song opens its
+  `songText` (`lyricParts`: Cifra when it has chords, A+), a video or an
+  audio its still, kind and length (`MediaView`), both with "Pedir este
+  louvor" (a file's pedido carries its `mediaId`).
   The Bíblia is `BibleTab readOnly` (no Enviar, no + Setlist). The Setlist
   is read only (`teamSetlistRows`: no ar, próximo, who sings a pedido's
   item); a song item opens its

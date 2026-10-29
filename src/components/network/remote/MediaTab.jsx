@@ -4,7 +4,8 @@ import { remoteCall } from "@/lib/console/remoteClient";
 import { addToSetlistArgs, allowed, chipOf, emptyList, joinPage, libraryArgs, MEDIA_CHIPS, mediaRow, SEARCH_DEBOUNCE_MS, sendMediaArgs } from "@/lib/network/remoteView";
 import { Cmd, Sheet } from "./parts";
 
-// Mídia: the console's library a page at a time (`library`, pages of 30, the
+// Biblioteca (the first tab, where the phone opens: owner 2026-10-28, M1 = A;
+// it was the Mídia tab): the console's library a page at a time (`library`, pages of 30, the
 // next one when the end of the list comes into view), by chip, with a search
 // that waits for the typing to stop; an answer that comes after the search
 // changed is dropped. Pick, then the footer's "Enviar ao ar · título"; a video
@@ -82,13 +83,13 @@ export default function MediaTab({ caps, c, setGate }) {
     return (
         <div className="rm-main is-split">
             <div className="rm-fix">
-                <div className="rm-chips" role="group" aria-label="Tipo">
-                    {MEDIA_CHIPS.map((m) => <button key={m.key} type="button" className="rm-chip" aria-pressed={chip === m.key} onClick={() => setChip(m.key)}>{m.label}</button>)}
-                </div>
                 <label className="rm-field">
                     <Icon name="search" size={20} />
                     <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Buscar em ${meta.label}`} aria-label={`Buscar em ${meta.label}`} maxLength={40} autoCapitalize="none" autoCorrect="off" enterKeyHint="search" />
                 </label>
+                <div className="rm-chips" role="group" aria-label="Tipo">
+                    {MEDIA_CHIPS.map((m) => <button key={m.key} type="button" className="rm-chip" aria-pressed={chip === m.key} onClick={() => setChip(m.key)}>{m.label}</button>)}
+                </div>
             </div>
             <div className="rm-scroll" ref={scroller}>
                 <ul className="rm-list" role="list" aria-busy={loading || undefined}>
