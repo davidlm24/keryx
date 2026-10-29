@@ -1796,7 +1796,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   with "Arquivo de fonte…" is refused by the copy (`COLLECTION_HINT`), 20 MB
   is the cap. Verificar
   says per church font whether it is copied, still coming (Baixando…) or
-  gone. `useFitWidth` re-measures on `document.fonts` `loadingdone`, so a
+  gone. `useFit` re-measures on `document.fonts` `loadingdone`, so a
   font that arrives late re-fits the line.
   **A theme's size is a number** (owner 2026-10-19, Rodada HF2, mockup H3
   `numero_atalhos`: "tamanho da fonte customizável, não predefinidos"):
@@ -2407,8 +2407,30 @@ it never rewrites the lyrics (the old `reflowLyrics` did, one way, and is
 gone), so any choice in any order works. Saving rebuilds the Prévia and
 `content.update`s the song on air (`songSaved` in Console.jsx). On every
 screen one line of the lyrics is one line: ScreenRenderer shrinks a song
-slide's font so its longest line fits (`useFitWidth`, a hidden probe,
-`fitScale` in lyricFit.js, down to 45 %; only past that it wraps).
+slide's font so its longest line fits (`useFit`, a hidden probe,
+`fitScale` in src/lib/screenFit.js, down to 45 %; only past that it wraps).
+**The text always fits the screen** (owner 2026-10-29, mockup "O texto
+sempre cabe na tela", F1–F4 = A; after a KJA slide in capitals ran off
+the screen): `useFit` also measures the HEIGHT of every text slide —
+song, Bíblia, texto, the two editions, the reference — and shrinks it
+(`--ks-size` × `--ks-h`, `fitSearch` by halves, floor `HEIGHT_MIN` 0.15)
+until the whole column fits the **safe area**: `.ks-content`'s padding
+(8cqw each side, 7cqw above and below) inside the output's Margens. Nothing
+is cut at the edge any more; the theme's Ajuste fino moves the text only
+inside that area (`clampShift`). screenFit.js stays tiny: it is the
+outputs' only fit code (lyricFit.js re-exports it for the editors). The
+Editor de temas draws the safe area (`SAFE` in themeBox.js; the box's width
+is a % of it, as the renderer reads it). **A theme's "Quando não cabe"**
+(`ProjectionTheme.overflow`, Posição group, not a style key): Diminuir a
+letra ("") or Dividir em mais slides ("split": a Bíblia or Texto slide
+longer than the theme holds is cut, `chunkText`, "v. 7 (1/2)"; never with a
+second edition; songs always shrink). How much a slide holds is
+`textBudget` (src/lib/console/textBudget.js, tested: the safe area, the
+size, capitals measured by `emPerChar(…, upper)`, width, line height, the
+2ª versão), through `themeFit` (themes.js) and `c.fitFor(kind, pair)`
+(useStamp): the Bíblia's **Auto** groups by it instead of 220 characters
+(`fit` on chapterOf/passageOf/stageFromVerses; `ref.limit`/`ref.split`
+make `chapterOnAir` send again when the theme changed).
 **Chords and part names are each screen's choice** (owner 2026-10-14):
 `lyricsOptions(page, pref)` in outputPrefs.js (`OutputPref.options.chords`
 / `.labels`; on for the Palco, off for every other output and the Pastor)

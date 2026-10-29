@@ -1316,6 +1316,9 @@
         "text_decoration": {
           "type": "text"
         },
+        "overflow": {
+          "type": "text"
+        },
         "text_justify": {
           "type": "text"
         },

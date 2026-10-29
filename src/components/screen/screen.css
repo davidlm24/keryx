@@ -13,7 +13,9 @@
 .ks-bg-default { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 20%, #26304f 0%, #10131f 55%, #06070c 100%); }
 .ks-black { position: absolute; inset: 0; background: #000; }
 
-/* Content: lyrics, Bible, free text */
+/* Content: lyrics, Bible, free text. The padding is the safe area: the
+   whole slide fits inside it (ScreenRenderer useFit shrinks --ks-size by
+   --ks-h; owner 2026-10-29, F1/F2 = A); an output's Margens add to it. */
 .ks-content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 7cqw 8cqw; gap: 2cqw; }
 .ks-content.ks-pos-top { justify-content: flex-start; padding-top: 9cqw; }
 .ks-content.ks-pos-bottom { justify-content: flex-end; padding-bottom: 8cqw; }
@@ -27,7 +29,7 @@
 .ks-text { font-size: var(--ks-size, 4.8cqw); }
 .ks-bible .ks-text { font-weight: 500; line-height: 1.3; font-size: calc(var(--ks-size, 4.8cqw) * .8); }
 .ks-text sup { font-size: .5em; opacity: .65; margin-right: .35em; vertical-align: .6em; font-weight: 500; }
-.ks-chorus { font-size: 1.6cqw; letter-spacing: .2em; text-transform: uppercase; opacity: .6; font-weight: 500; }
+.ks-chorus { font-size: calc(1.6cqw * var(--ks-h, 1)); letter-spacing: .2em; text-transform: uppercase; opacity: .6; font-weight: 500; }
 /* A song: one line of the lyrics, one line on screen; the font shrinks
    instead (ScreenRenderer useFitWidth: the probe measures, the span shrinks);
    a line too long even at the smallest size wraps (is-wrap). */
@@ -52,7 +54,7 @@
 .ks-pair.is-stack { gap: 2cqw; }
 .ks-pair.is-stack .ks-text + .ks-text { font-size: calc(var(--ks-size, 4.8cqw) * .7); opacity: .85; }
 .ks-sigla { display: block; margin-top: .5em; font-size: max(.4em, 1.4cqw); letter-spacing: .12em; font-weight: 500; opacity: .7; }
-.ks-ref { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .8; }
+.ks-ref { font-size: calc(2.2cqw * var(--ks-h, 1)); letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .8; }
 /* The slide change. The class sits on a display: contents wrapper (keyed by
    slide, so it remounts), which has no box of its own and animates nothing:
    the animation is on its children. --ks-tr is the length (Aparência or

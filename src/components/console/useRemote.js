@@ -34,7 +34,9 @@ export function useRemote({ c, data, service, items, rows, airItemId, airNow, ne
         callOp: c.callOp, liveOp: c.liveOp, clearText: c.clearText, say: c.say, end: c.end,
         // Desfazer as the console's Ctrl+Z: the toast's own, when it has one.
         undo: () => { const a = c.toastAction; if (!a?.undo) return false; a.run(); return true; },
-        sendStage, buildStage, referenceVerses, stages: STAGES,
+        sendStage, buildStage, referenceVerses,
+        // A passage from the phone is cut by the Bíblia theme's measure too.
+        stages: { ...STAGES, verses: (a) => stageFromVerses({ ...a, fit: a.fit ?? c.fitFor?.("bible", a.pair ? (prefs.bible_pair === "stack" ? "stack" : "side") : null) ?? null }) },
         // The culto's Avançar sozinho, written without a toast of its own (the runner says it).
         setAutoplay: (on) => keryx.entities.Service.update(service.id, { autoplay: Boolean(on) }),
         // Rodada Q: setlist.add (the plan, never the air) and the Equipe's messages.

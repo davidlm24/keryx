@@ -77,7 +77,7 @@ function useThemeInUse() {
 function useJanelaConsole() {
     const live = useLiveState();
     const themeId = useThemeInUse();
-    const { stamp, bgPrefs } = useStamp(themeId);
+    const { stamp, bgPrefs, fitFor } = useStamp(themeId);
     const { toast, toastAction, say, holdToast } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
@@ -102,7 +102,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, cur: live, bgPrefs, themeId, prev, setPrev, consoleService, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
+    return { live, cur: live, bgPrefs, fitFor, themeId, prev, setPrev, consoleService, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,

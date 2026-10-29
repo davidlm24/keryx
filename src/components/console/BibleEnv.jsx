@@ -262,6 +262,12 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // The church's display now (Ref., Lado a lado | Empilhadas): a chapter on
     // air shown otherwise is sent again, never only moved (bibleVerses.js).
     const look = useMemo(() => lookDefaults(prefs).bible, [prefs]);
+    // How much a slide holds with the Bíblia's theme (owner 2026-10-29,
+    // F3/F4 = A): Auto and "Quando não cabe" cut by it. With a second
+    // edition, the place the church shows it in.
+    const fitFor = c.fitFor;
+    const fitWith = useCallback((two) => (fitFor ? fitFor("bible", two ? look.pair || "side" : null) : null), [fitFor, look]);
+    const fit = useMemo(() => fitWith(Boolean(pair)), [fitWith, pair]);
     const airHere = Boolean(onAir && (airIsChapter || String(onAir.ref?.reference || onAir.title).startsWith(`${book} ${chapter}:`)));
     const airSlideText = onAir ? String(onAir.slides[onAir.index]?.text || "") : "";
     const airVerseNums = useMemo(() => verseNumbers(airSlideText), [airSlideText]);
@@ -277,7 +283,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     useFocusFollows(readingRef, ".kx-verse", ".kx-verse.is-prev", [selKey, mode]);
     useFocusFollows(cellsRef, "button", "button.is-prev", [selKey]);
 
-    const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir, pair, look }), [verses, how, ver, book, chapter, onAir, pair, look]);
+    const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir, pair, look, fit }), [verses, how, ver, book, chapter, onAir, pair, look, fit]);
     const verseStage = useCallback((n) => stageFor([n]), [stageFor]);
     const picked = verses.filter((v) => sel.includes(v.number));
     // A chapter that cannot load has nothing selected (C-48), whatever was asked.
@@ -285,7 +291,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const stage = useMemo(() => stageFor(sel), [stageFor, sel]);
     // Selecionado: the slides that go out — a range's, or one verse's slide
     // of its chapter, grouped as the bar says (1/2/3/Auto).
-    const slides = useMemo(() => (sel.length > 1 ? groupVerses(picked, how, pair) : stage?.slides?.[stage.index] ? [stage.slides[stage.index]] : []), [picked, how, sel.length, pair, stage]);
+    const slides = useMemo(() => (sel.length > 1 ? groupVerses(picked, how, pair, fit) : stage?.slides?.[stage.index] ? [stage.slides[stage.index]] : []), [picked, how, sel.length, pair, stage, fit]);
     // The console sends this stage on Enter / Ctrl+Enter in the Bible environment.
     useEffect(() => {
         if (!stageRef) return undefined;
@@ -305,10 +311,11 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             const got = await readChapter(version, r.book, r.chapter);
             // The 2ª versão of that chapter too, when it can be read.
             const two = want2 && want2 !== got.version ? await readChapter(want2, r.book, r.chapter).catch(() => null) : null;
-            const st = stageFromVerses({ verses: got.verses, nums: [r.verse], how, version: got.version, book: r.book, chapter: r.chapter, onAir, look, pair: two?.version === want2 ? { version: want2, verses: two.verses } : null });
+            const both = two?.version === want2;
+            const st = stageFromVerses({ verses: got.verses, nums: [r.verse], how, version: got.version, book: r.book, chapter: r.chapter, onAir, look, pair: both ? { version: want2, verses: two.verses } : null, fit: fitWith(both) });
             if (st) onSend(st);
         } catch (err) { c.say(err?.message || "Não foi possível abrir o capítulo."); }
-    }, [pickResult, version, want2, how, onAir, look, onSend, c]);
+    }, [pickResult, version, want2, how, onAir, look, onSend, c, fitWith]);
 
     // ↑/↓ from the console: move the selection one verse (in Buscar, one
     // result), keep it in view.
@@ -384,7 +391,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     };
     // Adds the selected verses as a passage (never the whole chapter).
     const addToService = async () => {
-        const passage = passageOf({ verses, nums: sel, how, version: ver, book, chapter, pair });
+        const passage = passageOf({ verses, nums: sel, how, version: ver, book, chapter, pair, fit });
         if (!passage) { c.say("Selecione versículos do capítulo."); return; }
         try {
             const sid = serviceId || await ensureService?.();
@@ -398,7 +405,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // chapter from there, as in Ler).
     // The 2ª versão rides too (none when it is that version).
     const sendVersion = (v, vs) => {
-        const st = stageFromVerses({ verses: vs, nums: sel, how, version: v, book, chapter, onAir, pair, look });
+        const st = stageFromVerses({ verses: vs, nums: sel, how, version: v, book, chapter, onAir, pair, look, fit });
         if (st) onSend(st);
     };
     const switchVersion = (v) => { chooseVersion(v); c.say(`Bíblia na ${v}.`); };
@@ -523,7 +530,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             const got = await readChapter(next.bible_version, t.book, t.chapter);
             const w2 = next.bible_version_2;
             const two = w2 && w2 !== got.version ? await readChapter(w2, t.book, t.chapter).catch(() => null) : null;
-            const st = stageRebuiltOnAir(on, { verses: got.verses, version: got.version, how: next.bible_verses_per_slide, pair: two?.version === w2 ? { version: w2, verses: two.verses } : null });
+            const both = two?.version === w2;
+            const st = stageRebuiltOnAir(on, { verses: got.verses, version: got.version, how: next.bible_verses_per_slide, pair: both ? { version: w2, verses: two.verses } : null, fit: live.current.c.fitFor?.("bible", both ? (next.bible_pair === "stack" ? "stack" : "side") : null) || null });
             // Something else went on air meanwhile, or the screens locked: leave it.
             const cc = live.current.c;
             if (!st || bibleOnAir()?.startedAt !== on.startedAt || cc.locked) return;

@@ -35,13 +35,10 @@ export function slideFit(text, fontSize, metrics) {
     };
 }
 
-// How much a slide's font shrinks so its longest line stays one line on
-// screen (ScreenRenderer measures; one line of the lyrics is one line on
-// the screens, owner 2026-10-14): 1 when it fits, never below `min`.
-export function fitScale(boxWidth, textWidth, min = 0.55) {
-    if (!(boxWidth > 0) || !(textWidth > 0) || textWidth <= boxWidth) return 1;
-    return Math.max(min, Math.floor((boxWidth / textWidth) * 1000) / 1000);
-}
+// The screens' own fit (fitScale, fitSearch, clampShift) lives in
+// src/lib/screenFit.js, small, so the outputs do not load the editors'
+// helpers here; re-exported for them.
+export { fitScale, fitSearch, clampShift, HEIGHT_MIN } from "../screenFit.js";
 
 // The stanza (block between blank lines, as the slides split them: a line
 // of only spaces is blank too) around a caret position in the lyrics, as

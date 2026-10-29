@@ -152,3 +152,36 @@ test("the style on air takes the reference line and the second edition's place",
     assert.deepEqual(airStyle(style, { ref_line: null, pair: "stack" }, true), { font_size: "large", pair: "stack" });
     assert.deepEqual(airStyle(style, { ref_line: null, pair: "stack" }, false), { font_size: "large" }, "one edition: no place");
 });
+
+test("fit: Auto groups by the theme's measure, not a fixed count", () => {
+    const vs = [1, 2, 3, 4, 5, 6].map((n) => ({ number: n, text: "x".repeat(70) }));
+    assert.equal(groupVerses(vs, "auto").length, 2, "220: three verses a slide");
+    assert.equal(groupVerses(vs, "auto", null, { limit: 100 }).length, 6, "a big theme: one a slide");
+    assert.equal(groupVerses(vs, "auto", null, { limit: 500 }).length, 1, "a small theme: all in one");
+});
+
+test("fit.split: a slide longer than the theme holds is cut into pieces (1/2)", () => {
+    const long = "E até nomeou profetas para fazerem em Jerusalém a seguinte proclamação a seu respeito: “Há um rei em Judá!” Ora, essa informação será levada ao rei. Por isso, é bom que venha depressa e esclareçamos este assunto!";
+    const vs = [{ number: 7, text: long }];
+    assert.equal(groupVerses(vs, "1", null, { limit: 100 }).length, 1, "Diminuir a letra: one slide, the screen shrinks it");
+    const cut = groupVerses(vs, "1", null, { limit: 100, split: true });
+    assert.ok(cut.length >= 2, "Dividir: pieces");
+    assert.ok(cut.every((s) => s.text.length <= 100));
+    assert.equal(cut[0].label, `v. 7 (1/${cut.length})`);
+    assert.ok(cut[0].text.startsWith("7 "), "the verse mark on the first piece");
+    assert.equal(cut.map((s) => s.text).join(" "), `7 ${long}`, "nothing lost");
+    // Never with a second edition: the two would split apart.
+    const pair = { version: "ARA", verses: [{ number: 7, text: "outra" }] };
+    assert.equal(groupVerses(vs, "1", pair, { limit: 100, split: true }).length, 1);
+});
+
+test("fit in a chapter: the verse chosen still starts the slide shown; a new measure is sent again", () => {
+    const vs = [1, 2, 3, 4].map((n) => ({ number: n, text: "palavra ".repeat(19).trim() }));
+    const ch = chapterOf({ verses: vs, n: 3, how: "1", version: "NVI", book: "Neemias", chapter: 6, fit: { limit: 90, split: true } });
+    assert.ok(ch.passage.slides[ch.index].text.startsWith("3 "), "the slide shown starts with verse 3");
+    assert.equal(ch.ref.limit, 90);
+    const onAir = { ref: ch.ref, style: {} };
+    assert.equal(chapterOnAir(onAir, { book: "Neemias", chapter: 6, version: "NVI", how: "1", fit: { limit: 90, split: true } }), true);
+    assert.equal(chapterOnAir(onAir, { book: "Neemias", chapter: 6, version: "NVI", how: "1", fit: { limit: 200, split: true } }), false, "another theme: sent again");
+    assert.equal(chapterOnAir(onAir, { book: "Neemias", chapter: 6, version: "NVI", how: "1", fit: { limit: 90, split: false } }), false);
+});

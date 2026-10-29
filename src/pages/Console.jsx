@@ -534,9 +534,9 @@ export default function Console() {
         // A PDF's presentation keeps its own ref (mediaId: the lists mark it on air).
         if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...ref } } }; }
         if (type === "TIMER") { const s = stageFromTool("timer", { minutes: Math.max(1, Math.round((item.duration || 300) / 60)) }); return { ...s, args: { ...s.args, ref } }; }
-        const s = stageFromText(item.title || "Texto", item.notes || item.title || "");
+        const s = stageFromText(item.title || "Texto", item.notes || item.title || "", c.fitFor("text"));
         return { ...s, args: { ...s.args, ref } };
-    }, [serviceId, data.themes]);
+    }, [serviceId, data.themes, c.fitFor]);
 
     // A song saved in the editor: the Prévia and the screens take its new
     // slides at once (the split chosen there, everywhere), each where it was.
@@ -887,7 +887,8 @@ export default function Console() {
         try {
             const { version, verses, pair } = await referenceVerses(ref);
             const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
-            const st = stageFromVerses({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, onAir, pair, look: lookDefaults(prefs).bible });
+            const look = lookDefaults(prefs).bible;
+            const st = stageFromVerses({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, onAir, pair, look, fit: c.fitFor("bible", pair ? look.pair || "side" : null) });
             if (!st) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
             c.setPrev(st);
         } catch (err) { c.say(err?.message || "Não foi possível abrir a passagem."); }
@@ -896,7 +897,7 @@ export default function Console() {
     // The verses already read -> { title } | null (no such verses); the
     // controle remoto's setlist.add goes through here too.
     const addPassage = async ({ ref, version, verses, pair }) => {
-        const passage = passageOf({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, pair });
+        const passage = passageOf({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, pair, fit: c.fitFor("bible", pair ? lookDefaults(prefs).bible.pair || "side" : null) });
         if (!passage) return null;
         const sid = await ensureService();
         const row = await keryx.entities.BiblePassage.create(passage);

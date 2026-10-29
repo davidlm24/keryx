@@ -23,7 +23,7 @@ import { SIZE_RANGE, sizeCqw, sizePreset, sizeValue } from "@/lib/textSize";
 import FontPicker, { fontNote } from "./FontPicker";
 import TextBar from "./TextBar";
 import { useChurchFonts } from "../console/useConsoleData";
-import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
+import { themeBoxRect, rectToTheme, MIN_WIDTH, SAFE } from "@/lib/console/themeBox";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import { ConfirmContext, deleteQuestion } from "../console/ConfirmDialog";
@@ -36,7 +36,8 @@ import UndoRedo from "./UndoRedo";
 // with their own slides.
 const SAMPLES = {
     lyrics: { label: "Música", args: { kind: "lyrics", title: "Grande é o Senhor", slides: [{ text: "Grande é o Senhor\ne mui digno de louvor" }, { text: "Na cidade do nosso Deus\nno seu santo monte", is_chorus: true }] } },
-    bible: { label: "Bíblia", args: { kind: "bible", title: "João 3:16 · NVI", ref: { reference: "João 3:16" }, slides: [{ text: "Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, para que todo aquele que nele crê não pereça, mas tenha a vida eterna.", ref: "João 3:16 · NVI" }] } },
+    // Two slides: a verse, and two together (long), so the fit shows (F1 = A).
+    bible: { label: "Bíblia", args: { kind: "bible", title: "João 3:16 · NVI", ref: { reference: "João 3:16" }, slides: [{ text: "Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, para que todo aquele que nele crê não pereça, mas tenha a vida eterna.", ref: "João 3:16 · NVI" }, { text: "16 Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, para que todo aquele que nele crê não pereça, mas tenha a vida eterna. 17 Pois Deus enviou o seu Filho ao mundo, não para condenar o mundo, mas para que este fosse salvo por meio dele.", ref: "João 3:16-17 · NVI" }] } },
     text: { label: "Texto", args: { kind: "text", title: "Avisos", slides: [{ text: "Culto de oração\nquarta-feira às 20h" }] } },
 };
 
@@ -45,6 +46,10 @@ const SAMPLES = {
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["3d", "3D"], ["neon", "Neon"], ["outline", "Vazado"], ["none", "Nenhum"]];
 const BOXES = [["", "Sem"], ["band", "Faixa"], ["block", "Bloco"]];
 const V_POS = [["top", "Alto"], ["", "Meio"], ["bottom", "Baixo"]];
+// Quando não cabe (owner 2026-10-29, F3 = A): the screens always fit the
+// slide whole; "split" first cuts a Bíblia or Texto slide that holds more
+// than the theme can (textBudget.js). Songs keep their slides and shrink.
+const OVERFLOW = [["", "Diminuir a letra"], ["split", "Dividir em mais slides"]];
 // show_item_title is the theme's since the Rodada B 2026-10-14 (it was the
 // church's, Aparência): a new theme starts with it on; a theme from before
 // the field opens as on and saves the choice — prefs v3 already filled the
@@ -52,7 +57,7 @@ const V_POS = [["top", "Alto"], ["", "Meio"], ["bottom", "Baixo"]];
 // restored from an older KERYX.
 const BLANK = {
     name: "", font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff", text_color_2: "",
-    text_opacity: "", text_max_width: "", line_height: "", text_case: "", text_nudge: "", text_align: "", text_position: "", text_decoration: "", text_justify: "",
+    text_opacity: "", text_max_width: "", line_height: "", text_case: "", text_nudge: "", text_align: "", text_position: "", text_decoration: "", text_justify: "", overflow: "",
     font_weight: "", font_style: "", letter_spacing: "", text_outline_px: "", text_outline_color: "", note: "",
     text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "", show_item_title: true,
     background_image: "", background_fit: "", background_dim: "", background_blur: "",
@@ -243,8 +248,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
         const p = pct(e);
         const dx = p.x - d.from.x, dy = p.y - d.from.y;
         let r;
-        if (d.handle === "e") r = { ...d.rect0, w: Math.min(100 - d.rect0.x, Math.max(MIN_WIDTH, d.rect0.w + dx)) };
-        else if (d.handle === "w") { const w = Math.min(d.rect0.x + d.rect0.w, Math.max(MIN_WIDTH, d.rect0.w - dx)); r = { ...d.rect0, x: d.rect0.x + d.rect0.w - w, w }; }
+        // Widths in % of the screen, inside the safe area (themeBox.js).
+        const minW = (MIN_WIDTH * SAFE.w) / 100;
+        if (d.handle === "e") r = { ...d.rect0, w: Math.min(SAFE.x + SAFE.w - d.rect0.x, Math.max(minW, d.rect0.w + dx)) };
+        else if (d.handle === "w") { const w = Math.min(d.rect0.x + d.rect0.w - SAFE.x, Math.max(minW, d.rect0.w - dx)); r = { ...d.rect0, x: d.rect0.x + d.rect0.w - w, w }; }
         else r = { ...d.rect0, x: d.rect0.x + dx, y: d.rect0.y + dy };
         set(rectToTheme(r, { box: draft.text_box }));
     };
@@ -343,6 +350,12 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                 <input type="range" className="le-range" min={-20} max={20} step={1} value={Number(draft.text_nudge) || 0} onChange={(e) => set({ text_nudge: Number(e.target.value) === 0 ? "" : Number(e.target.value) })} aria-label="Ajuste fino vertical" />
                                 <span className="kx-meta">{Number(draft.text_nudge) || 0}%</span>
                             </span>
+                            <span className="k">Quando não cabe</span>
+                            <span className="nv-inline">
+                                <Seg small label="Quando não cabe" value={draft.overflow === "split" ? "split" : ""} options={OVERFLOW} onChange={(v) => set({ overflow: v })} />
+                            </span>
+                            <span className="k" />
+                            <span className="kx-meta">{draft.overflow === "split" ? "Bíblia e Texto viram mais slides; a música diminui a letra." : "A letra diminui até o slide caber inteiro na tela."}</span>
                             </div>
                         </CfgGroup>
                         <CfgGroup id="tema.fundo" k="tema.fundo" title="Fundo" summary={fundoSummary(draft)}>
@@ -411,8 +424,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                         <div ref={screenRef} className="le-screen">
                             {doc && <ScreenRenderer fill state={doc} now={madeAt.current} preview audio={false} />}
                             <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
-                                {/* The 3×3 zones, as guides while dragging. */}
-                                {dragging && [33.3, 66.7].map((at) => <React.Fragment key={at}><i className="le-guide x" style={{ left: `${at}%` }} /><i className="le-guide y" style={{ top: `${at}%` }} /></React.Fragment>)}
+                                {/* The safe area the slide always fits (owner 2026-10-29, F2 = A),
+                                    and the 3×3 zones inside it, as guides while dragging. */}
+                                <i className="le-safe" style={{ left: `${SAFE.x}%`, top: `${SAFE.y}%`, width: `${SAFE.w}%`, height: `${SAFE.h}%` }} aria-hidden="true" />
+                                {dragging && [1, 2].map((n) => <React.Fragment key={n}><i className="le-guide x" style={{ left: `${SAFE.x + (SAFE.w * n) / 3}%` }} /><i className="le-guide y" style={{ top: `${SAFE.y + (SAFE.h * n) / 3}%` }} /></React.Fragment>)}
                                 {rect && (
                                     <div className="le-hit is-sel tb-box" style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` }}
                                         title="A caixa da letra" onPointerDown={(e) => startDrag(e)}>
@@ -423,7 +438,7 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                         </div>
                     </div>
                     <div className="listhead nv-note">
-                        <span className="kx-meta">A caixa é onde a letra se encaixa: arraste para as 9 posições; as alças mudam a largura.</span>
+                        <span className="kx-meta">A caixa é onde a letra se encaixa, dentro da área segura (tracejada): arraste para as 9 posições; as alças mudam a largura. Um slide que não cabe diminui até caber.</span>
                     </div>
                 </Panel>
             </div>

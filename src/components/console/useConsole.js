@@ -9,7 +9,8 @@ import { emptyToasts, pushToast, nextToast, dropToast } from "@/lib/console/toas
 import { lookDefaults, withLookDefaults } from "@/lib/console/lookDefaults";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
-import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName } from "@/lib/console/themes";
+import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName, themeFit, themeStyle } from "@/lib/console/themes";
+import { styleMetrics } from "@/lib/console/fontMetrics";
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { withTransitions } from "@/lib/console/transitions";
@@ -69,7 +70,14 @@ export function useStamp(themeId) {
     const prefs = usePrefs();
     const kindIds = useMemo(() => ({ bible: prefs.bible_theme_id, text: prefs.text_theme_id, tool: prefs.timer_theme_id }), [prefs.bible_theme_id, prefs.text_theme_id, prefs.timer_theme_id]);
     const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, themeId)), look), bgPrefs), [themes, kindIds, themeId, look, bgPrefs]);
-    return { stamp, bgPrefs };
+    // How much one slide holds with the theme a kind goes out with
+    // (themes.js themeFit): the Bíblia's Auto and the theme's "Quando não
+    // cabe" cut by it (owner 2026-10-29, F3/F4 = A). pair: "side" | "stack".
+    const fitFor = useCallback((kind, pair = null) => {
+        const theme = themeForKind(themes, kind, kindIds, themeId);
+        return themeFit(theme, { kind, pair, metrics: styleMetrics(themeStyle(theme)) });
+    }, [themes, kindIds, themeId]);
+    return { stamp, bgPrefs, fitFor };
 }
 
 // A toast: one line, 3 s (6 s for a long one, such as how to send a
@@ -189,7 +197,7 @@ export function useConsole() {
         setThemeIdState(id || null);
         try { if (id) localStorage.setItem(THEME_IN_USE_KEY, id); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
     }, []);
-    const { stamp, bgPrefs } = useStamp(themeId);
+    const { stamp, bgPrefs, fitFor } = useStamp(themeId);
     const { toast, toastId, toastImportant, toastAction, say, unsay, holdToast } = useToast();
     const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen } = useLiveOps(live, say, bgPrefs);
 
@@ -388,5 +396,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, last: lastStays(last, live, handHeld) ? last : null, moveLast, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastId, toastImportant, toastAction, say, unsay, holdToast };
+    return { live, cur: live, bgPrefs, fitFor, themeId, setThemeId, locked, setLocked, prev, setPrev, last: lastStays(last, live, handHeld) ? last : null, moveLast, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastId, toastImportant, toastAction, say, unsay, holdToast };
 }
