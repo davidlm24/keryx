@@ -38,7 +38,7 @@ test("booksHeight: both testaments, every book", () => {
 });
 
 test("numGrid: the natural height of every cell, and a page of what fits", () => {
-    const size = numSize("medium");
+    const size = numSize("small");
     // Salmos in 300 px: 7 columns, 22 rows.
     const all = numGrid({ total: 150, width: 300, height: 0, size });
     assert.equal(all.cols, 7);
@@ -50,7 +50,15 @@ test("numGrid: the natural height of every cell, and a page of what fits", () =>
     assert.equal(numGrid({ total: 4, width: 300, height: 0, size }).natural, 8 + 26);
     // 100 px of room: 3 rows of 7.
     assert.equal(numGrid({ total: 150, width: 300, height: 100, size }).perPage, 21);
-    assert.equal(numSize("medium", "verses").w, 32);
+    assert.equal(numSize("small", "verses").w, 32);
+});
+
+test("numSize: pequenas are the médias of before, each size one step up (owner 2026-10-29)", () => {
+    assert.deepEqual(numSize("small"), { w: 34, h: 26, gap: 3 });
+    assert.deepEqual(numSize("medium"), { w: 44, h: 34, gap: 4 });
+    assert.deepEqual(numSize("large"), { w: 54, h: 42, gap: 5 });
+    assert.deepEqual(numSize("whatever"), numSize("medium"));
+    assert.equal(numSize("medium", "verses").w, 44);
 });
 
 test("pagesOf: › at the end of every page but the last, ‹ from the second (B3 = A)", () => {
