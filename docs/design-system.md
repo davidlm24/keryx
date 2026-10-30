@@ -256,10 +256,16 @@ compositions), it is given.
 
 ### Banner
 
-- `kx-banner`: one 28 px line across the grid, tinted, a 2 px top rule in the
-  state's colour: blue `TELAS TRAVADAS — nada novo vai às telas` with
-  *Destravar*, amber for an output that failed (its title in
-  `kx-alert-title`, the detail `kx-sub`, the ways out as 24 px buttons).
+- `kx-banner`: one 28 px line across the grid, tinted, a 1 px border all
+  round in the state's colour (`--brand-ring`, `--warn-ring`, `--rh-ring`;
+  no top rule) and the state's glyph first (`kx-banner-i`): gold
+  `is-edit` for Editando a disposição, blue `is-rh` for `TELAS TRAVADAS —
+  nada novo vai às telas`, amber `is-warn` for an output that failed (its
+  title in `kx-alert-title`, the detail `kx-sub`). The ways out are 24 px
+  buttons that read on the tint: the main one filled in the state's colour
+  (`kx-banner-main`: Concluir, Destravar, Reabrir or Ver saídas), the others
+  ringed in it with `fg-1` text; a Seg or a switch inside sits in a darker
+  well (`bg-0`), its options `fg-1`, its labels `fg-2`.
   Output banners never stack: one, "e mais N".
 
 ### Popover, menu, tooltip
@@ -382,8 +388,9 @@ compositions), it is given.
 
 - `kx-empty`: a glyph, a `fg-2` line and a `fg-3` line, centred.
 - `kx-mark`: the 16 px gold KERYX mark (its K is a kept px size).
-- `kx-alert`: the *Aviso rápido* while it shows — a warn bar, warn tint, its
-  time and *Tirar*; `kx-screen-alert` its bar on a monitor.
+- `kx-alert`: the *Aviso rápido* while it shows — the banner's look (warn
+  tint, the 1 px border all round, the megaphone), its time and *Tirar*
+  filled in amber; `kx-screen-alert` its bar on a monitor.
 - `kx-tools` / `kx-tool`: ghost buttons in a 2 × 2 grid (Relógio,
   Cronômetro, Timer, Texto livre); `kx-screen-tool` the figure on a screen.
 - `kx-route`: a ghost button showing a value that opens a small menu.

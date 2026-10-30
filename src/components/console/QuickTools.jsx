@@ -63,6 +63,7 @@ Clique coloca no campo · dois cliques mostram nas telas`} onClick={() => setAle
             </div>
             {alert && (
                 <div className="kx-alert">
+                    <Icon name="megaphone" className="kx-banner-i" />
                     <span className="kx-alert-t">{alert.message}</span>
                     <AlertSince since={alert.since} />
                     <Btn onClick={() => c.callOp("alert.clear").catch(() => {})}>Tirar</Btn>

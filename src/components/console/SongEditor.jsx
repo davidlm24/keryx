@@ -5,7 +5,7 @@ import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { emptyState } from "@shared/live-state.mjs";
-import { songContent, isVideoUrl, songThemesAreOn } from "@/lib/console/content";
+import { songContent, isVideoUrl } from "@/lib/console/content";
 import { songTheme, songParts, cleanPartThemes } from "@/lib/console/songTheme";
 import { applyWithFundo, bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import ThemeChip from "./library/ThemeChip";
@@ -486,7 +486,6 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <Btn small onClick={() => set({ ...NO_OWN_LOOK, style_mode: "theme" })} title="Esquece o visual próprio: a música vai ao ar com o tema das músicas">Usar o das músicas</Btn>
                         </div>
                     )}
-                    {!songThemesAreOn() && (look.theme || legacyLook) && <div className="ed-pad"><span className="kx-meta">Os temas das músicas estão desligados no painel Temas: no ar, ela usa o tema em uso.</span></div>}
                     </CfgGroup>
                     <CfgGroup id="song.partes" title="Tema por parte" summary={partThemesSummary(partThemes, parts)} defaultOpen={parts.some((p) => partThemes[p.key])}>
                     {!parts.length && <div className="ed-pad"><span className="kx-meta">Marque as partes na letra com [Refrão], [Ponte]… (os botões acima da letra) para dar um tema a cada uma.</span></div>}

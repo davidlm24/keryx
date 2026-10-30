@@ -21,8 +21,6 @@ import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, useServiceMessages } from "@/components/console/useConsoleData";
 import { useActiveService, useActiveServiceNews } from "@/components/console/useActiveService";
-import SongThemesSwitch from "@/components/console/SongThemesSwitch";
-import { setSongThemes } from "@/lib/console/content";
 import { CONSOLE_KIND, consoleSetlistOf, consoleSetlistRow, mergePlan, cultosOf, copyItems, setlistTitle } from "@/lib/console/consoleSetlist";
 import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion, SelectManyBtn } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
@@ -464,8 +462,6 @@ export default function Console() {
     // consoleSetlist.js): the church's active culto, else the shared Setlist.
     // No computer chooses its own culto any more.
     const active = useActiveService(c.say, askConfirm);
-    // Temas das músicas (S2 = A): every place a song becomes a stage reads it (content.js).
-    setSongThemes(prefs.song_themes);
     const { services, view, items, loaded: rundownLoaded } = useRundown(active.activeId);
     const service = view.service;
     const serviceId = service?.id || null;
@@ -1352,7 +1348,7 @@ export default function Console() {
     // The header: the library (where the 9 slots are pinned) and the + menu
     // (owner 2026-10-14: the body is only the thumbnails); as tall as its
     // slots (Measure → locked.temas), like Camadas.
-    const temasBtns = <><SongThemesSwitch on={prefs.song_themes} say={c.say} /><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
+    const temasBtns = <><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
     // The theme in use is the marked slot (and the header's tooltip), not a subtitle (H1 = A).
     const temasPanel = <Panel title="Temas" tip={themeInUseName ? `Em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");
@@ -1648,21 +1644,23 @@ export default function Console() {
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
+                    <Icon name="warn" className="kx-banner-i" />
                     <span className="kx-alert-title">{health.banner.row.name} · Reconectando… tentativa {tries}</span>
                     <span className="kx-sub">ATENÇÃO · {health.banner.row.key === "/Projection" ? `última conexão boa às ${hhmm(lastOkAt)} · ` : ""}o monitor escolhido não está ligado</span>
                     <span className="kx-spacer" />
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("black")}>Tela preta</button>
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("logo")}>Mostrar logo</button>
-                    <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
+                    <button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
                 </div>
             )}
             {health.banner && health.banner.kind !== "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
+                    <Icon name="warn" className="kx-banner-i" />
                     <span className="kx-alert-title">{health.banner.title}{health.banner.more ? ` · e mais ${health.banner.more}` : ""}</span>
                     <span className="kx-sub">{health.banner.sub}</span>
                     <span className="kx-spacer" />
-                    {health.banner.kind === "closed" && <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => openOutput(health.banner.row.key)}>Reabrir</button>}
-                    <button type="button" className={`kx-btn kx-t ${health.banner.kind === "closed" ? "" : "kx-btn-outline"}`} onClick={() => setOpen("outs")}>Ver saídas</button>
+                    {health.banner.kind === "closed" && <button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => openOutput(health.banner.row.key)}>Reabrir</button>}
+                    <button type="button" className={`kx-btn kx-t ${health.banner.kind === "closed" ? "" : "kx-banner-main"}`} onClick={() => setOpen("outs")}>Ver saídas</button>
                     <button type="button" className="kx-btn kx-t" onClick={() => forgetOutput(health.banner.row.id)} title="Não avisar mais sobre esta saída nesta sessão">Esquecer</button>
                 </div>
             )}
@@ -1686,7 +1684,7 @@ export default function Console() {
                 </EditBanner>
             )}
             {c.locked && (
-                <div className="kx-banner is-rh" role="status" inert={winOpen ? "" : undefined}><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
+                <div className="kx-banner is-rh" role="status" inert={winOpen ? "" : undefined}><Icon name="lock" className="kx-banner-i" /><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             {/* Behind THE window nothing takes the focus (C-12); its keys still listen on window. */}
             <main className="main" ref={mainRef} inert={winOpen ? "" : undefined}>

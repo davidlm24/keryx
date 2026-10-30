@@ -544,8 +544,6 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
    for the edit only on a panel with none (the Programa, the Prévia, the
    Bíblia's No ar; R5a = B), and the panels' content veiled so a click never
    prepares or sends while things move (R5b = B). */
-.console .arr-banner { background: var(--brand-tint); color: var(--fg-1); box-shadow: inset 0 var(--bar) 0 var(--brand); }
-.console .arr-banner .kx-btn { height: var(--control-sm); }
 @media (max-width: 1500px) { .console .arr-banner .arr-hint { display: none; } }
 .console .kx-panel-h.is-dock-edit { gap: 2px; padding-left: var(--space-1); background: var(--brand-tint); box-shadow: inset 0 -1px 0 var(--line-strong); }
 .console .kx-panel-h.is-dock-temp { height: 28px; margin-bottom: 2px; border-radius: var(--radius-control); }
@@ -884,7 +882,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .kx-screen-hatch > div { background: var(--bg-1); padding: 6px 12px; border-radius: var(--radius-control); box-shadow: 0 0 0 1px var(--warn); }
 .console .svcpick { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); height: var(--row); }
 .console .svcpick select { flex: 1; min-width: 0; height: var(--control-sm); background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; }
-.console .kx-alert .kx-btn { color: var(--fg-1); }
+.console .kx-alert .kx-btn { color: var(--on-brand); }
 /* Timers prontos: chips of minutes; the timer on air with its time buttons. */
 .console .kx-timer-presets { display: flex; flex-wrap: wrap; gap: 4px; padding: var(--space-1) var(--space-2) 0; }
 .console .kx-timer-chip .kx-preset-t { padding: 0 8px; font-variant-numeric: tabular-nums; }
@@ -1036,6 +1034,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .rund-auto, .console .dock-lock { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-sm); padding: 0 var(--space-1); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: 500 var(--fs-ui)/1 var(--font-sans); white-space: nowrap; cursor: pointer; }
 .console .rund-auto:not(:disabled):hover, .console .dock-lock:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .rund-auto[aria-checked="true"], .console .dock-lock[aria-checked="true"] { color: var(--fg-1); }
+/* In the edit banner the Travar switch reads as its other controls (B3 = A). */
+.console .kx-banner .dock-lock { color: var(--fg-1); }
 .console .rund-auto:disabled { opacity: var(--dim); cursor: default; }
 /* The word "Autoplay" (Rodada O3) stays beside the switch; the count "· n
    itens · tempo" ellipsizes first (the title's kx-section shrinks). Only
