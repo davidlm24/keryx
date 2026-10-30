@@ -12,8 +12,6 @@ import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
 import { serviceTheme } from "@/lib/console/serviceLook";
 import { isConsoleSetlist } from "@/lib/console/consoleSetlist";
-import { usePrefs } from "@/hooks/useUser";
-import { setSongThemesPref } from "./SongThemesSwitch";
 import { updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
 import { menuItem } from "@/lib/console/menuLabels";
@@ -113,7 +111,6 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
     ] });
     const thumb = view.thumb === "large" ? "large" : "small";
     const names = view.names !== false;
-    const songThemes = usePrefs().song_themes !== false;
     // The header's + (Console.jsx): what can be done with the theme in use
     // and the song in hand, and how the panel shows itself. The library
     // button beside it is where the 9 are pinned.
@@ -123,7 +120,6 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
         ...(song ? [songTheme && (!current || current.id === songTheme.id)
             ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
             : { label: "Salvar tema para a música", disabled: !current, onSelect: () => saveForSong(current.id) }] : []),
-        { label: "Temas das músicas", icon: songThemes ? "check" : undefined, title: songThemes ? "Ligado: cada música vai ao ar com o seu tema" : "Desligado: toda música vai ao ar com o tema em uso", onSelect: () => setSongThemesPref(!songThemes, c.say) },
         "sep",
         { label: useFor, disabled: !current || cultoTheme === current?.id, onSelect: () => setForCulto(current) },
         ...(cultoTheme && c.themeId !== cultoTheme ? [{ label: shared ? "Seguir a Setlist" : "Seguir o culto", icon: "undo", onSelect: () => c.setThemeId(cultoTheme) }] : []),

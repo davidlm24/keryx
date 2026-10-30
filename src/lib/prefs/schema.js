@@ -36,9 +36,6 @@ export const PREF_FIELDS = {
     // size on the screens is the Bíblia theme's (owner 2026-10-22).
     bible_version_2: { default: "", normalize: (v) => (typeof v === "string" && /^[A-Za-z0-9]{1,12}$/.test(v.trim()) ? renamedVersion(v.trim()) : "") },
     bible_pair: { default: "side", normalize: oneOf(["side", "stack"], "side") },
-    // Temas das músicas (owner 2026-10-30, S2 = A): off, every song goes out
-    // with the theme in use (content.js setSongThemes).
-    song_themes: { default: true, normalize: (v) => v !== false },
     // The church's active culto (owner 2026-10-29, consoleSetlist.js): every
     // console in every computer shows it; "" = the shared Setlist.
     active_service_id: { default: "", normalize: (v) => (typeof v === "string" ? v.trim() : "") },

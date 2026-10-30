@@ -316,22 +316,3 @@ test("the text bar's keys (Rodada P, P8-1) are part of the look and fill like th
     assert.equal(withThemeDefaults("content.show", { style: { text_case: "upper" }, inherit: { look: true } }, t).style.text_case, "upper", "the item's own wins");
     assert.ok(isFactoryLook({ text_decoration: "underline" }), "a song or passage row has no such keys: the factory check reads the classics");
 });
-
-test("Temas das músicas off (owner 2026-10-30, S2 = A): a song goes out with the theme in use, its step kept", async () => {
-    const { songContent, setSongThemes, songThemesAreOn } = await import("./content.js");
-    const own = { id: "s", title: "Santo", lyrics: "Santo, santo", theme_id: "t1", part_themes: { "refrão": "t2" }, style_mode: "own", font_family: "serif", text_color: "#ff0000", font_size: "xlarge", background: { kind: "color", value: "#123456" } };
-    const themes = [{ id: "t1", name: "Noite", font_family: "serif", background: { kind: "color", value: "#000000" } }, { id: "t2", name: "Dia" }];
-    const on = songContent(own, {}, themes);
-    assert.equal(on.inherit.look, false, "on: its own theme, whole");
-    const off = songContent(own, {}, themes, { own: false });
-    assert.equal(off.inherit.look, true, "off: it follows the theme in use");
-    assert.equal(off.style.text_color, "#ffffff");
-    assert.equal(off.fundo, undefined, "no background of its own");
-    assert.equal(off.inherit.step, 1, "its size step stays (GG = +1)");
-    // The switch the console sets.
-    assert.equal(songThemesAreOn(), true);
-    setSongThemes(false);
-    assert.equal(songContent(own, {}, themes).inherit.look, true);
-    setSongThemes(true);
-    assert.equal(songContent(own, {}, themes).inherit.look, false);
-});

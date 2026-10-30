@@ -21,8 +21,6 @@ import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, useServiceMessages } from "@/components/console/useConsoleData";
 import { useActiveService, useActiveServiceNews } from "@/components/console/useActiveService";
-import SongThemesSwitch from "@/components/console/SongThemesSwitch";
-import { setSongThemes } from "@/lib/console/content";
 import { CONSOLE_KIND, consoleSetlistOf, consoleSetlistRow, mergePlan, cultosOf, copyItems, setlistTitle } from "@/lib/console/consoleSetlist";
 import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion, SelectManyBtn } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
@@ -464,8 +462,6 @@ export default function Console() {
     // consoleSetlist.js): the church's active culto, else the shared Setlist.
     // No computer chooses its own culto any more.
     const active = useActiveService(c.say, askConfirm);
-    // Temas das músicas (S2 = A): every place a song becomes a stage reads it (content.js).
-    setSongThemes(prefs.song_themes);
     const { services, view, items, loaded: rundownLoaded } = useRundown(active.activeId);
     const service = view.service;
     const serviceId = service?.id || null;
@@ -1352,7 +1348,7 @@ export default function Console() {
     // The header: the library (where the 9 slots are pinned) and the + menu
     // (owner 2026-10-14: the body is only the thumbnails); as tall as its
     // slots (Measure → locked.temas), like Camadas.
-    const temasBtns = <><SongThemesSwitch on={prefs.song_themes} say={c.say} /><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
+    const temasBtns = <><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
     // The theme in use is the marked slot (and the header's tooltip), not a subtitle (H1 = A).
     const temasPanel = <Panel title="Temas" tip={themeInUseName ? `Em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");

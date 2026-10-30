@@ -89,7 +89,7 @@
     },
     "song_themes": {
       "type": "boolean",
-      "description": "Temas das músicas (owner 2026-10-30): ligado (nulo), cada música vai ao ar com o seu tema; desligado, toda música vai com o tema em uso no painel Temas (src/lib/console/content.js setSongThemes)"
+      "description": "Temas das músicas: a chave do console (30/10), tirada no mesmo dia (owner: o tema é só de cada música). Guardado, nada lê mais"
     },
     "active_service_id": {
       "type": "string",
