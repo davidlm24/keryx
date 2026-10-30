@@ -60,6 +60,41 @@ function useRun(c, network, setInfo) {
     return [run, busy];
 }
 
+// The firewall of Windows (owner 2026-10-30, F = A): on 30/10 it allowed
+// KERYX only on Public networks while the Wi-Fi was Private, and every phone
+// was refused while the QR looked fine. Read once when the block shows
+// (electron/firewall.cjs); "Liberar no firewall…" asks Windows, which asks
+// for the administrator's password — nothing changes without that click.
+function FirewallLine({ c, network }) {
+    const [fw, setFw] = useState(null);
+    const [busy, setBusy] = useState(false);
+    useEffect(() => {
+        let alive = true;
+        network.call("firewall").then((res) => { if (alive && res?.data) setFw(res.data); }).catch(() => {});
+        return () => { alive = false; };
+    }, [network]);
+    if (!fw?.blocked) return null;
+    const allow = async () => {
+        setBusy(true);
+        try {
+            const res = await network.call("allowFirewall");
+            if (res?.error) { c.say(res.error.message); return; }
+            setFw(res.data);
+            c.say(res.data?.blocked ? "O firewall ainda bloqueia: faça à mão, como diz abaixo." : "Liberado: os celulares já entram nesta rede.");
+        } finally { setBusy(false); }
+    };
+    return (
+        <div className="cfg-fw" role="status">
+            <span>O firewall do Windows está bloqueando os celulares nesta rede.</span>
+            <Btn small kind="brand" disabled={busy} onClick={allow} title="O Windows pede a senha de administrador">Liberar no firewall…</Btn>
+            <details>
+                <summary>Como fazer à mão</summary>
+                Segurança do Windows › Firewall e proteção de rede › Permitir um aplicativo pelo firewall › Alterar configurações › na linha KERYX, marque Privada e Pública › OK.
+            </details>
+        </div>
+    );
+}
+
 // One door's card: its switch, its code (shown on demand, renewed) and the
 // phones that entered by it.
 function Door({ c, network, info, setInfo, role }) {
@@ -143,6 +178,7 @@ export default function PhonesBlock({ c, network, info, setInfo, url }) {
                     </div>
                 </div>
             )}
+            {on && info.running && <FirewallLine c={c} network={network} />}
             {on && !info.running && <div className="listhead"><span className="kx-warn">Ligue as telas na rede (acima) para o celular encontrar o KERYX.</span></div>}
             {on && (
                 <>

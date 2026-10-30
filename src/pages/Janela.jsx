@@ -49,6 +49,7 @@ import { liveAction, escapeTarget } from "@/lib/console/keys";
 import { usePackageHost } from "@/components/console/PackageDialogs";
 import { PackageContext } from "@/components/console/packages";
 import { usePrefs } from "@/hooks/useUser";
+import { setSongThemes } from "@/lib/console/content";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { setVideoFiles } from "@/lib/videoFiles";
 
@@ -78,6 +79,8 @@ function useJanelaConsole() {
     const live = useLiveState();
     const themeId = useThemeInUse();
     const { stamp, bgPrefs, fitFor } = useStamp(themeId);
+    // Temas das músicas (S2 = A): a detached song editor previews as the console sends.
+    setSongThemes(usePrefs().song_themes);
     const { toast, toastAction, say, holdToast } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { emptyState, applyOp } from "../../../shared/live-state.mjs";
 import {
     capsOf, isV1, canRun, kindOf, allowed, airHeader, bannerOf, slideInfo, slideRows, playerInfo, volumeStep,
-    followInfo, timerInfo, setlistRows, sayOf,
+    followInfo, timerInfo, setlistRows, sayOf, SWAP_TO,
     MEDIA_CHIPS, libraryArgs, emptyList, joinPage, mediaRow, sendMediaArgs,
     fieldRef, fieldBook, tapVerse, refLabel, bibleArgs, BIBLE_SECTIONS, bibleVersions,
     nowBarInfo, addToSetlistArgs, biblePlanArgs,
@@ -470,4 +470,10 @@ test("lyrics: chords cut out of the line, shown only with Cifra", () => {
     assert.equal(hasChords(s), true);
     assert.equal(hasChords({ parts: [{ lines: ["sem"] }] }), false);
     assert.equal(songSub(s), "Pedras Vivas · Tom G");
+});
+
+test("SWAP_TO: each side opens the sign-in on the other, never signed in by itself", () => {
+    // lan.cjs codePage reads ?role= (control | team) and asks for THAT side's code.
+    assert.equal(SWAP_TO.team, "/lan/remote-code?role=team");
+    assert.equal(SWAP_TO.control, "/lan/remote-code?role=control");
 });

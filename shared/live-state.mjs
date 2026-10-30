@@ -91,7 +91,7 @@ export const DISCUSSION_MINUTES = [0.5, 60];
 // the rest (Camadas, 2026-10-10) are typed: a number in a range or a choice.
 // letter_spacing is em, text_outline_px px on a 1920-wide screen (Rodada
 // HF2, the theme's typography; src/lib/textSize.js has the same ranges).
-export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20], transition_ms: [120, 600], background_dim: [0, 0.9], background_blur: [0, 20],
+export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20], text_margin: [0, 20], transition_ms: [120, 600], background_dim: [0, 0.9], background_blur: [0, 20],
     letter_spacing: [-0.1, 0.5], text_outline_px: [0, 8] };
 // The line spacing: one of the old names, or a number (Rodada HF2).
 export const LINE_HEIGHT_NAMES = ["tight", "normal", "loose"];

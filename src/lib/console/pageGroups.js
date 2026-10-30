@@ -7,7 +7,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 // ({ theme, missing }), `following` true when the song follows the default.
 // `step`: the size relative to the theme (Rodada P, P8-2, songSize.js).
 export function songThemeSummary({ theme, themeName = "", missing = false, following = true, step = 0 } = {}) {
-    const what = theme ? themeName || "tema sem nome" : missing ? "tema excluído" : following ? "sem tema próprio" : "só desta música";
+    const what = theme ? themeName || "tema sem nome" : missing ? "tema excluído" : following ? "o das músicas" : "visual antigo";
     return step ? `${what} · tamanho ${step > 0 ? "+" : "−"}${Math.abs(step)}` : what;
 }
 

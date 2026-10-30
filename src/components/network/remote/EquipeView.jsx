@@ -1,11 +1,13 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/console/Icon";
 import { remoteCall } from "@/lib/console/remoteClient";
+import { keryx } from "@/api/keryxClient";
 import {
     capsOf, chatArgs, cleanName, emptyList, hasChords, hasUnseen, joinPage, libraryArgs, lyricParts, mediaRow, messageRows, NAME_KEY, newestAt,
     PEDIDO_LIMITS, pedidoArgs, PICK_CHIPS, chipOf, requestsEvery, SEARCH_DEBOUNCE_MS, SEEN_KEY, songSub, tabsFor, TAG_TEXT, teamSetlistRows, teamStrip,
 } from "@/lib/network/remoteView";
 import { Sheet, Toast } from "./parts";
+import { SWAP_TO } from "@/lib/network/remoteView";
 
 const BibleTab = lazy(() => import("./BibleTab"));
 
@@ -59,6 +61,8 @@ export default function EquipeView({ live, state, stale, cmd }) {
                 <span className="rm-dot" aria-hidden="true" />
                 <b aria-live="polite">{strip.text}</b>
                 <span>{strip.pos}</span>
+                {/* To the Controle (owner 2026-10-30, C = A): its own code, never this one's. */}
+                <a className="rm-swap" href={SWAP_TO.control} title="Entrar como Controle: pede o código do controle">Controle…</a>
             </div>
             <div className="rm-body">
                 <div className="rm-pane">
@@ -135,8 +139,11 @@ function NameSheet({ name, onSave, onClose }) {
 // ---- Pedidos: the culto's song requests and chat ---------------------------
 
 // The newest page of `requests` of each kind (S12: Pedidos and Chat apart),
-// asked at once, every 15 s — the chat every 5 s while it is open — and
-// right after this phone sends (`sent`). Only while the page is visible.
+// asked at once, right after this phone sends (`sent`) and the moment a
+// message reaches the event stream (owner 2026-10-30: the operator's words
+// took up to 5 s, the phone's arrived at once — lan.cjs already sends an
+// Equipe phone every ServiceMessage change); every 15 s — the chat every
+// 5 s while it is open — only as the fallback. Only while visible.
 function useRequests({ on, chatOpen, sent }) {
     const [pages, setPages] = useState({ pedido: null, chat: null });
     const [failed, setFailed] = useState("");
@@ -145,6 +152,16 @@ function useRequests({ on, chatOpen, sent }) {
         if (r.ok && r.result) { setPages((cur) => ({ ...cur, [kind]: r.result })); setFailed(""); } else if (!r.ok && !r.signedOut) setFailed(r.message || "");
     }, []);
     useEffect(() => { if (on) { load("pedido"); load("chat"); } }, [on, load, sent]);
+    useEffect(() => {
+        if (!on) return undefined;
+        let wait = null;
+        // A burst (a pedido marked done, then a chat line) is one read.
+        const off = keryx.entities.ServiceMessage.subscribe(() => {
+            clearTimeout(wait);
+            wait = setTimeout(() => { load("pedido"); load("chat"); }, 150);
+        });
+        return () => { clearTimeout(wait); off?.(); };
+    }, [on, load]);
     usePoll(on, () => load("pedido"), requestsEvery("pedido", chatOpen));
     usePoll(on, () => load("chat"), requestsEvery("chat", chatOpen));
     return { pages, failed };

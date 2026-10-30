@@ -526,6 +526,11 @@ export const PEDIDO_LIMITS = { from: PROTOCOL.limits.requestFrom, singer: REQ.si
 // The Equipe asks `requests` for each kind (its Pedidos and its Chat, S12)
 // every 15 s, every 5 s for the chat while the Chat is open (the operator
 // answers there), and right after a send; the newest page only.
+// The other side of the phone (owner 2026-10-30, C = A): the sign-in page
+// on that side (electron/lan.cjs codePage, ?role=), which asks for that
+// side's own code — the Equipe never becomes the Controle without it.
+export const SWAP_TO = { control: "/lan/remote-code?role=control", team: "/lan/remote-code?role=team" };
+
 export const REQUESTS_EVERY_MS = 15000;
 export const REQUESTS_CHAT_MS = 5000;
 export const requestsEvery = (kind, chatOpen) => (kind === "chat" && chatOpen ? REQUESTS_CHAT_MS : REQUESTS_EVERY_MS);

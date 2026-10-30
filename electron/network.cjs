@@ -4,6 +4,7 @@
 
 const crypto = require("node:crypto");
 const { createLanServer, lanAddresses } = require("./lan.cjs");
+const { createFirewall } = require("./firewall.cjs");
 
 const SETTINGS_KEY = "network";
 const DEFAULT_PORT = 7701;
@@ -28,6 +29,8 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
     const save = (patch) => settings.set(SETTINGS_KEY, { ...config(), ...patch });
 
     const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), onRemote, log: (m) => logger.warn(m) });
+    // Whether Windows lets the phones in on this network (firewall.cjs).
+    const firewall = createFirewall({ log: (m) => logger.warn(m) });
     // The controle remoto's settings ("network".remote): on/off, its code and
     // the key that signs the phones' cookie.
     const remote = () => config().remote || {};
@@ -129,6 +132,11 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             newTeamCode: async () => { saveTeam({ code: codeOtherThan(remote().code), secret: newRemoteSecret() }); lan.dropRemotes("team"); return info(); },
             disconnectTeam: async () => { saveTeam({ secret: newRemoteSecret() }); lan.dropRemotes("team"); return info(); },
             revealTeamCode: async () => ({ code: team().code || "" }),
+            // KERYX no celular's firewall line (owner 2026-10-30, F = A):
+            // read when the section opens; the rule is added only from the
+            // operator's click, elevated (Windows asks).
+            firewall: async () => firewall.check(),
+            allowFirewall: async () => firewall.allow(),
             // The PIN itself, on demand (Mostrar PIN): only the console asks
             // (keryx:network is a trusted channel); info() never carries it.
             revealPin: async () => ({ pin: config().pin || "" }),

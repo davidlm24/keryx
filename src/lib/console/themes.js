@@ -45,7 +45,7 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 // text_align puts it) and text_case "capitalize" (Primeira Maiúscula).
 // font_size is a number in cqw stored as a string ("4.8"), or an old
 // preset's name ("large"): compared with sameSize, never as a string.
-export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "transition", "transition_ms",
+export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "text_margin", "transition", "transition_ms",
     "font_weight", "font_style", "letter_spacing", "text_outline_px", "text_outline_color", "text_decoration", "text_justify"];
 const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
 // How much one slide holds with a theme (textBudget.js; owner 2026-10-29,
@@ -236,7 +236,8 @@ export function boxSummary(t) {
 // Where the box sits (the alignment is the text bar's).
 export function placeSummary(t) {
     const width = t?.text_box === "band" ? 100 : Number(t?.text_max_width) || 100;
-    return `${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}${t?.overflow === "split" ? " · divide" : ""}`;
+    const margin = t?.text_margin === "" || t?.text_margin == null ? null : Number(t.text_margin);
+    return `${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}${margin != null && margin !== 8 ? ` · margem ${pctOf(margin)}` : ""}${t?.overflow === "split" ? " · divide" : ""}`;
 }
 
 export function fundoSummary(t) {

@@ -41,3 +41,10 @@ test("chunkText: whole sentences where they fit, words otherwise", () => {
     assert.deepEqual(chunkText("", 50), []);
     assert.deepEqual(chunkText("7 E até nomeou profetas: “Há um rei em Judá!” Ora, essa informação será levada ao rei.", 50), ["7 E até nomeou profetas: “Há um rei em Judá!”", "Ora, essa informação será levada ao rei."]);
 });
+
+test("textBudget: a wider Margem holds less, none holds more (owner 2026-10-30, M = A)", () => {
+    const base = textBudget({});
+    assert.ok(textBudget({ text_margin: 16 }) < base);
+    assert.ok(textBudget({ text_margin: 0 }) > base);
+    assert.equal(textBudget({ text_margin: "" }), base, "the factory 8 is the default");
+});

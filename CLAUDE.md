@@ -2117,6 +2117,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   contract's limits; each pedido wears its glyph, `pedidoGlyph` from the
   `requests` row's `media`);
   the sender's name is asked once and kept (`keryx.remote.name`, ≤ 40).
+  **A message reaches the phone at once** (owner 2026-10-30): the Equipe's
+  page reads Pedidos and Chat again when the event stream brings a
+  ServiceMessage change (`useRequests`); the 5/15 s poll is the fallback.
+  **Each side has a way to the other** (C = A, `SWAP_TO` in remoteView.js):
+  Controle › Mais "Entrar como Equipe…", the Equipe's strip "Controle…",
+  both the sign-in page on that side, which asks for that side's code.
+  **KERYX no celular warns when the firewall blocks** (F = A,
+  `electron/firewall.cjs`, tested: the active networks' categories against
+  this program's inbound rules, read with PowerShell, the path in the
+  environment; network ops `firewall`/`allowFirewall`): an amber line under
+  the QR with "Liberar no firewall…" (an elevated netsh rule, private,
+  public and domain, only on that click; Windows asks for the password) and
+  the manual steps (30/10: the Wi-Fi was Private and KERYX was allowed only
+  on Public).
   Músicas is Letras · Vídeos · Áudios (owner 2026-10-28, M6; `PICK_CHIPS`,
   the Mídia's videos and audios with their still and length — `library`
   with `kind`, which the team may already list); a song opens its
@@ -2454,7 +2468,26 @@ size, capitals measured by `emPerChar(…, upper)`, width, line height, the
 2ª versão), through `themeFit` (themes.js) and `c.fitFor(kind, pair)`
 (useStamp): the Bíblia's **Auto** groups by it instead of 220 characters
 (`fit` on chapterOf/passageOf/stageFromVerses; `ref.limit`/`ref.split`
-make `chapterOnAir` send again when the theme changed).
+make `chapterOnAir` send again when the theme changed). **Revisão de
+30/10** (owner, mockup "Revisão de 30/10", all A): **a theme has its own
+Margem** (`ProjectionTheme.text_margin`, cqw each side, 7/8 of it above
+and below, "" = 8; an EXTRA_KEY and a `STYLE_RANGES` key, drawn as
+`--ks-mx`/`--ks-my` on `.ks-content` by `marginVars`; `safeArea`,
+`marginOf`, `marginFromEdge` in themeBox.js and `textBudget` follow it; the
+Editor de temas' Posição has Sem/P/M/G and the dashed area's four corners
+drag it; the output's Margens still add on top). **Choosing a transition
+plays it** on the Editor de temas' canvas (the next slide comes in with
+`motion` on for a moment; "Ver de novo"). **A song has a theme, never
+loose fonts and colours** (S1): the song editor's group is Tema (ThemeChip,
+the library) and Tamanho; a song saved with a look of its own keeps it and
+offers "Transformar em tema" / "Usar o das músicas". **Temas das músicas**
+(S2, `User.song_themes`, synced; null = on): off, `songContent` treats every
+song as `generalLook` (the theme in use, its step kept); the console and
+/Janela set it with `setSongThemes` on render, and the switch is in the Temas
+panel's header (`SongThemesSwitch.jsx`, "Das músicas") and its + menu.
+**Panel headers are the name and the buttons** (H1): no fixed subtitles
+(Camadas, Slides' "—", Temas' "em uso" is its tooltip), the Setlist's count
+and time in its footer (`.rund-foot-n`).
 **Chords and part names are each screen's choice** (owner 2026-10-14):
 `lyricsOptions(page, pref)` in outputPrefs.js (`OutputPref.options.chords`
 / `.labels`; on for the Palco, off for every other output and the Pastor)

@@ -87,6 +87,10 @@
       "type": "integer",
       "description": "Culto: duracao de uma musica na setlist quando ela nao tem a sua, em segundos. Nulo = 240"
     },
+    "song_themes": {
+      "type": "boolean",
+      "description": "Temas das músicas (owner 2026-10-30): ligado (nulo), cada música vai ao ar com o seu tema; desligado, toda música vai com o tema em uso no painel Temas (src/lib/console/content.js setSongThemes)"
+    },
     "active_service_id": {
       "type": "string",
       "description": "O culto ativo da igreja (id de Service), visto por todo console em todos os computadores; vazio = a Setlist compartilhada (src/lib/console/consoleSetlist.js, owner 2026-10-29)"

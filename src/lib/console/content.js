@@ -36,7 +36,23 @@ export function songFollow(song, slides) {
 // carry them, their chorded twins ride in stage.chordedSlides for the Palco.
 // `themes` (ProjectionTheme rows): the song's theme and its parts' themes
 // apply (songTheme.js); without them the song shows its own look.
-export function songContent(song, ref = {}, themes = []) {
+// The console's "Temas das músicas" switch (owner 2026-10-30, S2 = A; the
+// church's User.song_themes, false = off): off, every song goes out as if it
+// had no look of its own — no theme, no part themes, no own font, colours or
+// background — over the theme in use; its size step stays. The console and a
+// detached page set it from the church's preference (setSongThemes), so the
+// many places a song becomes a stage all follow it.
+let songThemesOn = true;
+export const setSongThemes = (on) => { songThemesOn = on !== false; };
+export const songThemesAreOn = () => songThemesOn;
+export const generalLook = (song) => ({
+    ...song, theme_id: "", part_themes: {}, style_mode: "theme",
+    font_family: "", text_effect: "", text_color: "", text_color_2: "",
+    background: null, background_image: "", background_generator: null,
+});
+
+export function songContent(song, ref = {}, themes = [], { own = songThemesOn } = {}) {
+    if (!own) song = generalLook(song);
     const built = songSlidesFor(song);
     // The song's own background (any kind) goes to the Fundo layer when it
     // is sent (args.fundo; backgroundSpec.js fundoOps).
