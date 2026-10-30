@@ -355,12 +355,34 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-out.is-rh .kx-out-st { color: var(--rh-fg); }
 
 /* ---- Banner: one thin line across the grid. The colour is the state's tint + a 2px top rule. ---- */
-.kx-banner { height: var(--row); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3); border-radius: var(--radius-control); font-size: var(--fs-ui); font-weight: 500; }
+/* A banner (owner 2026-10-30, mockup "Barras de alerta e de edição", B1 = B,
+   B2 = A, B3 = A): a 1 px border all round in the state's colour, the
+   state's glyph first (kx-banner-i), no top rule. Its ways out read on the
+   tint: the main one filled in the state's colour (kx-banner-main), the
+   others ringed in it with fg-1 text; the controls inside (Seg, switch,
+   labels) sit in a darker well. --st is the state's colour, --st-on the
+   text on it. */
+.kx-banner { --st: var(--warn); --st-on: var(--on-brand); min-height: var(--row); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3); border-radius: var(--radius-control); font-size: var(--fs-ui); font-weight: 500; }
 .kx-banner span.kx-sub { font-weight: 400; color: var(--fg-2); }
 .kx-banner .kx-spacer { flex: 1; }
-.kx-banner.is-rh { background: var(--rh-tint); color: var(--rh-fg); box-shadow: inset 0 var(--bar) 0 var(--rh); }
-.kx-banner.is-warn { background: var(--warn-tint); color: var(--warn-fg); box-shadow: inset 0 var(--bar) 0 var(--warn); }
-.kx-banner .kx-btn { height: var(--control-sm); padding: 0 var(--space-2); }
+.kx-banner.is-rh { --st: var(--rh-fill); --st-on: var(--on-state); background: var(--rh-tint); color: var(--rh-fg); box-shadow: var(--rh-ring); }
+.kx-banner.is-warn { --st: var(--warn); background: var(--warn-tint); color: var(--warn-fg); box-shadow: var(--warn-ring); }
+.kx-banner.is-edit { --st: var(--brand); background: var(--brand-tint); color: var(--fg-1); box-shadow: var(--brand-ring); }
+.kx-banner .kx-banner-i { flex: none; color: var(--st); }
+.kx-banner.is-rh .kx-banner-i { color: var(--rh); }
+.kx-banner .kx-btn { height: var(--control-sm); padding: 0 var(--space-2); color: var(--fg-1); background: color-mix(in srgb, var(--bg-0) 35%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--st) 60%, transparent); }
+.kx-banner .kx-btn:hover { background: var(--bg-2); color: var(--fg-1); }
+.kx-banner .kx-btn:is(:active, .is-on, [aria-expanded="true"]) { background: var(--bg-3); }
+.kx-banner .kx-btn.kx-banner-main { padding: 0 var(--space-3); background: var(--st); color: var(--st-on); font-weight: 600; box-shadow: none; }
+.kx-banner .kx-btn.kx-banner-main:hover { background: color-mix(in srgb, var(--st) 85%, var(--fg-1)); color: var(--st-on); }
+.kx-banner .kx-btn.kx-banner-main:active { background: color-mix(in srgb, var(--st) 85%, var(--bg-0)); }
+.kx-banner .kx-meta { color: var(--fg-2); }
+.kx-banner .kx-seg { background: var(--bg-0); box-shadow: inset 0 0 0 1px var(--line); }
+.kx-banner .kx-seg > button { color: var(--fg-1); opacity: .82; }
+.kx-banner .kx-seg > button:hover { opacity: 1; }
+.kx-banner .kx-seg > button.is-on { background: var(--bg-3); opacity: 1; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.kx .kx-banner .kx-switch:not(.is-on) { background: var(--bg-0); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.kx .kx-banner .kx-switch:not(.is-on)::after { background: var(--fg-1); }
 
 /* ---- Popover, menu, tooltip ---- */
 .kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 6px; min-width: 180px; }
@@ -556,10 +578,13 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-mark::after { content: "K"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--on-brand); font-family: var(--font-display); font-weight: 600; font-size: 10px; line-height: 1; }
 
 /* ---- Alert (Alerta rápido): the one thing that bypasses Prévia. A warn line in the console, a thin amber bar on the screen. ---- */
-.kx-alert { position: relative; display: flex; align-items: center; gap: var(--space-2); height: var(--row); padding: 0 var(--space-1) 0 var(--space-3); background: var(--warn-tint); color: var(--warn-fg); font-size: var(--fs-ui); }
-.kx-alert::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: var(--warn); }
+/* The Aviso rápido on air: a banner's look (B1 = B), the border all round,
+   the megaphone first, Tirar filled in amber (B2 = A). */
+.kx-alert { position: relative; display: flex; align-items: center; gap: var(--space-2); height: var(--row); padding: 0 var(--space-1) 0 var(--space-2); border-radius: var(--radius-control); background: var(--warn-tint); color: var(--warn-fg); font-size: var(--fs-ui); box-shadow: var(--warn-ring); }
+.kx-alert > .kx-banner-i { flex: none; color: var(--warn); }
 .kx-alert .kx-alert-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kx-alert .kx-btn { height: 22px; padding: 0 6px; color: var(--fg-1); }
+.kx-alert .kx-btn { height: 22px; padding: 0 var(--space-2); background: var(--warn); color: var(--on-brand); font-weight: 600; }
+.kx-alert .kx-btn:hover { background: color-mix(in srgb, var(--warn) 85%, var(--fg-1)); color: var(--on-brand); }
 .kx-screen-alert { position: absolute; left: 0; right: 0; top: 0; z-index: var(--z-guide); height: 7cqw; display: flex; align-items: center; justify-content: center; padding: 0 3cqw; background: var(--warn); color: var(--on-warn); font-family: var(--font-sans); font-size: 2.6cqw; font-weight: 500; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---- Tools (Relógio, Cronômetro, Timer, Texto livre): ghost buttons in a 2×2 grid; on screen a countdown-style figure with a label. ---- */
@@ -623,7 +648,10 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
   .kx-num { border: 1px solid FieldText; }
   .kx-tabs > button.is-on::after { height: 2px; background: Highlight; }
   :is(.kx-row, .kx-slide, .kx-verse):is(.is-air, .is-prev, .is-rh, .is-next)::before { background: none; }
-  .kx-row.is-warn::before, .kx-alert::before { background: CanvasText; }
+  .kx-row.is-warn::before { background: CanvasText; }
+  .kx-alert { outline: 1px solid CanvasText; outline-offset: -1px; }
+  :is(.kx-banner, .kx-alert) .kx-btn { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .kx-banner .kx-seg { outline: 1px solid ButtonText; outline-offset: -1px; }
   :is(.kx-row, .kx-slide, .kx-verse).is-air { background: Highlight; color: HighlightText; }
   :is(.kx-row, .kx-slide, .kx-verse).is-air * { color: HighlightText; }
   :is(.kx-row, .kx-slide, .kx-verse).is-prev { outline: 2px dashed LinkText; outline-offset: -2px; }

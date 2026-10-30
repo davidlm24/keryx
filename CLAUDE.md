@@ -2484,7 +2484,13 @@ offers "Transformar em tema" / "Usar o das músicas". **The theme lives only in 
 (owner 2026-10-30, the same day S2 shipped): a song with a theme goes out
 with it, one with none with the theme in use; there is no console switch
 for it (the "Das músicas" switch and its menu item are gone;
-`User.song_themes` stays stored, unread). Don't bring a switch back.
+`User.song_themes` stays stored, unread). Don't bring a switch back. **Banners have a border, not a top rule** (owner
+2026-10-30, mockup "Barras de alerta e de edição", B1 = B, B2 = A, B3 = A;
+the Banner of docs/design-system.md): the edit, alert and Travadas banners
+and the Aviso rápido on air wear a 1 px border all round in their state's
+colour and its glyph first; the main way out is filled in that colour, the
+others ringed with `fg-1` text, and a Seg or switch inside sits in a darker
+well.
 **Panel headers are the name and the buttons** (H1): no fixed subtitles
 (Camadas, Slides' "—", Temas' "em uso" is its tooltip), the Setlist's count
 and time in its footer (`.rund-foot-n`).

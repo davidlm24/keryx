@@ -1644,21 +1644,23 @@ export default function Console() {
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
+                    <Icon name="warn" className="kx-banner-i" />
                     <span className="kx-alert-title">{health.banner.row.name} · Reconectando… tentativa {tries}</span>
                     <span className="kx-sub">ATENÇÃO · {health.banner.row.key === "/Projection" ? `última conexão boa às ${hhmm(lastOkAt)} · ` : ""}o monitor escolhido não está ligado</span>
                     <span className="kx-spacer" />
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("black")}>Tela preta</button>
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("logo")}>Mostrar logo</button>
-                    <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
+                    <button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
                 </div>
             )}
             {health.banner && health.banner.kind !== "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
+                    <Icon name="warn" className="kx-banner-i" />
                     <span className="kx-alert-title">{health.banner.title}{health.banner.more ? ` · e mais ${health.banner.more}` : ""}</span>
                     <span className="kx-sub">{health.banner.sub}</span>
                     <span className="kx-spacer" />
-                    {health.banner.kind === "closed" && <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => openOutput(health.banner.row.key)}>Reabrir</button>}
-                    <button type="button" className={`kx-btn kx-t ${health.banner.kind === "closed" ? "" : "kx-btn-outline"}`} onClick={() => setOpen("outs")}>Ver saídas</button>
+                    {health.banner.kind === "closed" && <button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => openOutput(health.banner.row.key)}>Reabrir</button>}
+                    <button type="button" className={`kx-btn kx-t ${health.banner.kind === "closed" ? "" : "kx-banner-main"}`} onClick={() => setOpen("outs")}>Ver saídas</button>
                     <button type="button" className="kx-btn kx-t" onClick={() => forgetOutput(health.banner.row.id)} title="Não avisar mais sobre esta saída nesta sessão">Esquecer</button>
                 </div>
             )}
@@ -1682,7 +1684,7 @@ export default function Console() {
                 </EditBanner>
             )}
             {c.locked && (
-                <div className="kx-banner is-rh" role="status" inert={winOpen ? "" : undefined}><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
+                <div className="kx-banner is-rh" role="status" inert={winOpen ? "" : undefined}><Icon name="lock" className="kx-banner-i" /><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             {/* Behind THE window nothing takes the focus (C-12); its keys still listen on window. */}
             <main className="main" ref={mainRef} inert={winOpen ? "" : undefined}>

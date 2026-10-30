@@ -75,6 +75,9 @@
   --shadow-window: 0 0 0 1px color-mix(in srgb, var(--line) 40%, transparent), 0 24px 64px #000000b3, 0 2px 8px #00000080;
   --live-ring: inset 0 0 0 1px color-mix(in srgb, var(--air) 75%, transparent);
   --prev-ring: inset 0 0 0 1px color-mix(in srgb, var(--prev) 75%, transparent);
+  --brand-ring: inset 0 0 0 1px color-mix(in srgb, var(--brand) 55%, transparent);
+  --warn-ring: inset 0 0 0 1px color-mix(in srgb, var(--warn) 55%, transparent);
+  --rh-ring: inset 0 0 0 1px color-mix(in srgb, var(--rh) 55%, transparent);
   --next-ring: inset 0 0 0 1px var(--line-strong);
   --shadow-menu: 0 0 0 1px var(--line-overlay), 0 12px 32px #000000a6;
   --shadow-drag: 0 0 0 1px var(--line-overlay), 0 14px 30px #000000a0;
