@@ -16,9 +16,11 @@
 /* Content: lyrics, Bible, free text. The padding is the safe area: the
    whole slide fits inside it (ScreenRenderer useFit shrinks --ks-size by
    --ks-h; owner 2026-10-29, F1/F2 = A); an output's Margens add to it. */
-.ks-content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 7cqw 8cqw; gap: 2cqw; }
-.ks-content.ks-pos-top { justify-content: flex-start; padding-top: 9cqw; }
-.ks-content.ks-pos-bottom { justify-content: flex-end; padding-bottom: 8cqw; }
+/* The safe area: the theme's Margem (owner 2026-10-30, M = A; text_margin,
+   set by ScreenRenderer as --ks-mx / --ks-my), 8cqw and 7cqw by default. */
+.ks-content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: var(--ks-my, 7cqw) var(--ks-mx, 8cqw); gap: 2cqw; }
+.ks-content.ks-pos-top { justify-content: flex-start; padding-top: calc(var(--ks-my, 7cqw) + 2cqw); }
+.ks-content.ks-pos-bottom { justify-content: flex-end; padding-bottom: calc(var(--ks-my, 7cqw) + 1cqw); }
 .ks-content.ks-al-left { align-items: flex-start; text-align: left; }
 .ks-content.ks-al-right { align-items: flex-end; text-align: right; }
 .ks-title { position: absolute; top: 3.5cqw; left: 8cqw; right: 8cqw; text-align: center; font-size: 2.2cqw; font-weight: 500; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

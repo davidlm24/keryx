@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { themeBoxRect, rectToTheme, BOX_H, MIN_WIDTH, SAFE } from "./themeBox.js";
+import { themeBoxRect, rectToTheme, BOX_H, MIN_WIDTH, SAFE, safeArea, marginOf, marginFromEdge } from "./themeBox.js";
 
 test("the safe area is screen.css's padding: 8 % each side, 7cqw above and below", () => {
     assert.deepEqual(SAFE, { x: 8, y: 12.4, w: 84, h: 75.1 });
@@ -57,4 +57,30 @@ test("a band stretches edge to edge: the width is locked", () => {
     assert.equal(themeBoxRect({ text_box: "band", text_max_width: 60 }).w, 100);
     assert.equal(themeBoxRect({ text_box: "band" }).x, 0);
     assert.equal(rectToTheme({ x: 0, y: 12.4, w: 60, h: BOX_H }, { box: "band" }).text_max_width, "");
+});
+
+test("the theme's Margem (owner 2026-10-30, M = A): the safe area follows it, 7/8 of it above and below", () => {
+    assert.equal(marginOf({}), 8);
+    assert.equal(marginOf({ text_margin: "" }), 8);
+    assert.equal(marginOf({ text_margin: 0 }), 0);
+    assert.equal(marginOf({ text_margin: 40 }), 20, "clamped to 20");
+    assert.deepEqual(safeArea(0), { x: 0, y: 0, w: 100, h: 100 });
+    const g = safeArea(12);
+    assert.equal(g.x, 12);
+    assert.equal(g.w, 76);
+    assert.equal(Math.round(g.y * 10) / 10, 18.7);
+    // A wider Margem moves a left box in and narrows the full width.
+    assert.deepEqual(themeBoxRect({ text_margin: 12, text_align: "left", text_max_width: 50 }).x, 12);
+    assert.equal(themeBoxRect({ text_margin: 12 }).w, 76);
+    // And the round trip holds with it.
+    const style = { text_align: "right", text_position: "bottom", text_max_width: 60, text_nudge: "" };
+    assert.deepEqual(rectToTheme(themeBoxRect({ ...style, text_margin: 4 }), { margin: 4 }), style);
+});
+
+test("marginFromEdge: a handle dragged to either side, whole cqw; the factory 8 writes nothing", () => {
+    assert.equal(marginFromEdge(12.4), 12);
+    assert.equal(marginFromEdge(88), 12, "the right edge counts from the right");
+    assert.equal(marginFromEdge(8.2), "");
+    assert.equal(marginFromEdge(-5), 0);
+    assert.equal(marginFromEdge(40), 20);
 });

@@ -1340,6 +1340,9 @@
         "text_nudge": {
           "type": "real"
         },
+        "text_margin": {
+          "type": "real"
+        },
         "background_fit": {
           "type": "text"
         },
@@ -2012,6 +2015,9 @@
         },
         "duration_song": {
           "type": "integer"
+        },
+        "song_themes": {
+          "type": "boolean"
         },
         "active_service_id": {
           "type": "text"

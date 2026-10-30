@@ -1059,6 +1059,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .rund-scroll { flex: 1; min-height: 0; overflow: auto; }
 .console .rund-foot { flex: none; container: setlist-f / inline-size; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); height: var(--band); padding: 0 var(--space-3) 0 var(--space-1); border-top: 1px solid var(--line); min-width: 0; }
 .console .rund-foot-steps { display: inline-flex; align-items: center; gap: var(--space-1); }
+/* The Setlist's "6 itens · 22 min" (H1 = A): between the switch and the steps, the first to give way. */
+.console .rund-foot-n { flex: 0 100 auto; min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .rund-step { width: var(--control-sm); padding: 0; }
 .console .rund-step .kx-act-l { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @container setlist-f (width < 200px) { .console .rund-auto { width: var(--control-sm); padding: 0; justify-content: center; } .console .rund-auto-l { display: none; } }
@@ -1386,6 +1388,10 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .cfg .cfg-outprefs { display: flex; gap: var(--space-3); align-items: flex-start; flex: none; margin: 0 0 var(--space-2) 34px; border-left: 2px solid var(--line); background: var(--bg-1); border-radius: 0 var(--radius-control) var(--radius-control) 0; }
 .console .cfg .cfg-acts { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
 .console .cfg .cfg-pin { letter-spacing: .2em; color: var(--fg-1); }
+/* KERYX no celular: the firewall blocks the phones on this network (owner 2026-10-30, F = A). */
+.console .cfg .cfg-fw { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 var(--space-3) var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--warn-tint); color: var(--warn-fg); font-size: var(--fs-ui); }
+.console .cfg .cfg-fw details { flex-basis: 100%; color: var(--fg-2); }
+.console .cfg .cfg-fw summary { cursor: pointer; color: var(--warn-fg); }
 .console .cfg .cfg-qr { display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-3); align-items: flex-start; flex-wrap: wrap; }
 .console .cfg .cfg-qr-box { background: var(--qr-ground); padding: 8px; border-radius: var(--radius-control); line-height: 0; }
 .console .cfg .cfg-qr-list { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
@@ -2122,6 +2128,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .le-h.nw { left: 0; top: 0; cursor: nwse-resize; } .console .le-h.se { left: 100%; top: 100%; cursor: nwse-resize; }
 .console .le-guide { position: absolute; background: var(--brand); pointer-events: none; z-index: var(--z-guide); }
 /* The Editor de temas' safe area (themeBox.js SAFE): where every slide fits. */
+/* The safe area's corners move the theme's Margem (owner 2026-10-30, M = A): hollow, beside the box's solid handles. */
+.console .le-safe-h { background: var(--bg-0); border-color: var(--brand); cursor: ew-resize; }
 .console .le-safe { position: absolute; border: 1px dashed var(--chrome-pressed); border-radius: 2px; pointer-events: none; }
 .console .le-guide.x { top: 0; bottom: 0; width: 1px; } .console .le-guide.y { left: 0; right: 0; height: 1px; }
 .console .le-types { max-height: 320px; }
@@ -2446,6 +2454,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
      console's culto dot keeps a colour of the system. */
   .console .tabrow-close .kx-tc.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
   .console .tabrow .kx-tc-dot { background: LinkText; }
+  .console .cfg .cfg-fw { outline: 1px solid CanvasText; outline-offset: -1px; }
   /* The Setlist's title: its hover keeps an edge, the active culto's dot a colour of the system. */
   .console .setlist-head:hover { outline: 1px solid Highlight; }
   .console .setlist-head-dot { background: LinkText; }

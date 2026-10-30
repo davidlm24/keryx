@@ -7,7 +7,7 @@
 // the canvas (src/lib/console/themeBox.js maps it to text_align /
 // text_position / text_max_width / text_nudge, "" = factory), with the 3×3
 // zones as guides while dragging.
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { Panel, Btn, Seg, Empty, WinBar } from "../console/kx";
@@ -23,7 +23,7 @@ import { SIZE_RANGE, sizeCqw, sizePreset, sizeValue } from "@/lib/textSize";
 import FontPicker, { fontNote } from "./FontPicker";
 import TextBar from "./TextBar";
 import { useChurchFonts } from "../console/useConsoleData";
-import { themeBoxRect, rectToTheme, MIN_WIDTH, SAFE } from "@/lib/console/themeBox";
+import { themeBoxRect, rectToTheme, MIN_WIDTH, safeArea, marginOf, marginFromEdge, MARGIN_PRESETS } from "@/lib/console/themeBox";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import { ConfirmContext, deleteQuestion } from "../console/ConfirmDialog";
@@ -57,7 +57,7 @@ const OVERFLOW = [["", "Diminuir a letra"], ["split", "Dividir em mais slides"]]
 // restored from an older KERYX.
 const BLANK = {
     name: "", font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff", text_color_2: "",
-    text_opacity: "", text_max_width: "", line_height: "", text_case: "", text_nudge: "", text_align: "", text_position: "", text_decoration: "", text_justify: "", overflow: "",
+    text_opacity: "", text_max_width: "", line_height: "", text_case: "", text_nudge: "", text_margin: "", text_align: "", text_position: "", text_decoration: "", text_justify: "", overflow: "",
     font_weight: "", font_style: "", letter_spacing: "", text_outline_px: "", text_outline_color: "", note: "",
     text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "", show_item_title: true,
     background_image: "", background_fit: "", background_dim: "", background_blur: "",
@@ -95,6 +95,12 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
     // Which sample the canvas dresses, and its slide.
     const [sample, setSample] = useState("lyrics");
     const [slide, setSlide] = useState(0);
+    // The transition shown on the canvas (owner 2026-10-30, T = A): for a
+    // moment the canvas moves like an output — the next slide comes in with
+    // the theme's transition, then it is a still again. A single-slide
+    // example comes in again instead.
+    const [demo, setDemo] = useState({ n: 0, on: false });
+    const showTransition = useCallback(() => setDemo((d) => ({ n: d.n + 1, on: true })), []);
     const loaded = useRef(false);
     const screenRef = useRef(null);
     const drag = useRef(null);
@@ -227,9 +233,19 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
         } catch { return null; }
     }, [draft, sample, slide]);
     const slides = SAMPLES[sample].args.slides.length;
+    useEffect(() => {
+        if (!demo.n) return undefined;
+        if (slides > 1) setSlide((s) => (s === 0 ? 1 : 0));
+        const ms = draft?.transition === "cut" ? 0 : Number(draft?.transition_ms) || NATURAL_MS[draft?.transition || "fade"] || 400;
+        const t = setTimeout(() => setDemo((d) => ({ ...d, on: false })), ms + 500);
+        return () => clearTimeout(t);
+    }, [demo.n]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ---- The lyrics box on the canvas (themeBox.js) ----
     const rect = draft ? themeBoxRect(themeStyle(draft)) : null;
+    // The theme's Margem (owner 2026-10-30, M = A): the dashed safe area.
+    const margin = draft ? marginOf(draft) : 8;
+    const SAFE = safeArea(margin);
     const pct = (e) => {
         const r = screenRef.current?.getBoundingClientRect();
         if (!r || !r.width) return { x: 0, y: 0 };
@@ -247,13 +263,15 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
         if (!d) return;
         const p = pct(e);
         const dx = p.x - d.from.x, dy = p.y - d.from.y;
+        // A corner of the safe area: the Margem follows the pointer.
+        if (d.handle === "m") { set({ text_margin: marginFromEdge(p.x) }); return; }
         let r;
         // Widths in % of the screen, inside the safe area (themeBox.js).
         const minW = (MIN_WIDTH * SAFE.w) / 100;
         if (d.handle === "e") r = { ...d.rect0, w: Math.min(SAFE.x + SAFE.w - d.rect0.x, Math.max(minW, d.rect0.w + dx)) };
         else if (d.handle === "w") { const w = Math.min(d.rect0.x + d.rect0.w - SAFE.x, Math.max(minW, d.rect0.w - dx)); r = { ...d.rect0, x: d.rect0.x + d.rect0.w - w, w }; }
         else r = { ...d.rect0, x: d.rect0.x + dx, y: d.rect0.y + dy };
-        set(rectToTheme(r, { box: draft.text_box }));
+        set(rectToTheme(r, { box: draft.text_box, margin }));
     };
     const endDrag = () => { if (drag.current) history.end(); drag.current = null; setDragging(false); };
 
@@ -350,6 +368,11 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                 <input type="range" className="le-range" min={-20} max={20} step={1} value={Number(draft.text_nudge) || 0} onChange={(e) => set({ text_nudge: Number(e.target.value) === 0 ? "" : Number(e.target.value) })} aria-label="Ajuste fino vertical" />
                                 <span className="kx-meta">{Number(draft.text_nudge) || 0}%</span>
                             </span>
+                            <span className="k">Margem</span>
+                            <span className="nv-inline">
+                                <Seg small label="Margem" value={String(margin)} options={MARGIN_PRESETS} onChange={(v) => set({ text_margin: Number(v) === 8 ? "" : Number(v) })} />
+                                <span className="kx-meta">{margin} % · ou arraste os cantos do tracejado</span>
+                            </span>
                             <span className="k">Quando não cabe</span>
                             <span className="nv-inline">
                                 <Seg small label="Quando não cabe" value={draft.overflow === "split" ? "split" : ""} options={OVERFLOW} onChange={(v) => set({ overflow: v })} />
@@ -394,9 +417,11 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                             <div className="frm nv-frm">
                             <span className="k">Transição</span>
                             <span className="nv-inline">
-                                <Seg small label="Transição" value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
-                                {draft.transition && draft.transition !== "cut" && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
+                                <Seg small label="Transição" value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => { set({ transition: v, ...(v ? {} : { transition_ms: "" }) }); showTransition(); }} />
+                                {draft.transition && draft.transition !== "cut" && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} onPointerUp={showTransition} onKeyUp={showTransition} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
                             </span>
+                            <span className="k" />
+                            <span className="nv-inline"><Btn small onClick={showTransition} title="A tela ao lado passa ao próximo slide com esta transição"><Icon name="play" size={12} />Ver de novo</Btn></span>
                             </div>
                         </CfgGroup>
                     </div>
@@ -422,11 +447,15 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="le-stage">
                         <div ref={screenRef} className="le-screen">
-                            {doc && <ScreenRenderer fill state={doc} now={madeAt.current} preview audio={false} />}
+                            {doc && <ScreenRenderer key={slides > 1 ? "canvas" : `demo-${demo.n}`} fill state={doc} now={madeAt.current} preview motion={demo.on} audio={false} />}
                             <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
                                 {/* The safe area the slide always fits (owner 2026-10-29, F2 = A),
                                     and the 3×3 zones inside it, as guides while dragging. */}
                                 <i className="le-safe" style={{ left: `${SAFE.x}%`, top: `${SAFE.y}%`, width: `${SAFE.w}%`, height: `${SAFE.h}%` }} aria-hidden="true" />
+                                {/* Its corners move the Margem (M = A); the box keeps its own side handles. */}
+                                {[[SAFE.x, SAFE.y], [SAFE.x + SAFE.w, SAFE.y], [SAFE.x, SAFE.y + SAFE.h], [SAFE.x + SAFE.w, SAFE.y + SAFE.h]].map(([x, y], i) => (
+                                    <i key={i} className="le-h le-safe-h" style={{ left: `${x}%`, top: `${y}%` }} title={`Margem ${margin} % · arraste para mudar`} onPointerDown={(e) => startDrag(e, "m")} />
+                                ))}
                                 {dragging && [1, 2].map((n) => <React.Fragment key={n}><i className="le-guide x" style={{ left: `${SAFE.x + (SAFE.w * n) / 3}%` }} /><i className="le-guide y" style={{ top: `${SAFE.y + (SAFE.h * n) / 3}%` }} /></React.Fragment>)}
                                 {rect && (
                                     <div className="le-hit is-sel tb-box" style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` }}
@@ -438,7 +467,7 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                         </div>
                     </div>
                     <div className="listhead nv-note">
-                        <span className="kx-meta">A caixa é onde a letra se encaixa, dentro da área segura (tracejada): arraste para as 9 posições; as alças mudam a largura. Um slide que não cabe diminui até caber.</span>
+                        <span className="kx-meta">A caixa é onde a letra se encaixa, dentro da área segura (tracejada): arraste para as 9 posições; as alças mudam a largura e os cantos do tracejado, a margem. Um slide que não cabe diminui até caber.</span>
                     </div>
                 </Panel>
             </div>

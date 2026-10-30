@@ -5,10 +5,10 @@ import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { emptyState } from "@shared/live-state.mjs";
-import { songContent, isVideoUrl } from "@/lib/console/content";
+import { songContent, isVideoUrl, songThemesAreOn } from "@/lib/console/content";
 import { songTheme, songParts, cleanPartThemes } from "@/lib/console/songTheme";
-import { applyWithFundo, bgSpec } from "@/lib/console/backgroundSpec";
-import BgChip from "./library/BgChip";
+import { applyWithFundo, bgSpec, bgFields } from "@/lib/console/backgroundSpec";
+import ThemeChip from "./library/ThemeChip";
 import { parseChords, slidesFromLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { fitMarks, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength } from "@/lib/console/lyricSync";
 import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeInline, transposeChords, transposeChord } from "@/lib/chords";
@@ -22,13 +22,10 @@ import { useContextMenu } from "./ContextMenu";
 import LinesPicker from "./LinesPicker";
 import { defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
 import { useWinCol } from "./winLayout";
-import { FontSelect } from "../editor/FontPicker";
 import { CfgGroup } from "./settings/parts";
 import { songThemeSummary, partThemesSummary, notesSummary } from "@/lib/console/pageGroups";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
-const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
-const SWATCHES = [["#ffffff", "Branco"], ["#f3e6c9", "Creme"], ["#c9dcff", "Azul claro"], ["#ffe08a", "Amarelo"], ["#1a1a1a", "Preto"]];
 // The slide previews' size, remembered on this computer.
 const THUMBS = [["s", "P", { title: "Prévias pequenas" }], ["m", "M", { title: "Prévias médias" }], ["l", "G", { title: "Prévias grandes" }]];
 const THUMBS_KEY = "keryx.console.editor.thumbs";
@@ -37,6 +34,8 @@ const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); ret
 // A song's background fields for a spec (null: none of its own); the
 // picture stays in background_image too for whoever still reads only it.
 const songBg = (spec) => ({ background: spec || null, background_image: spec?.kind === "image" ? spec.value : "" });
+// A song's look of its own, cleared (S1 = A: a song has a theme, not loose fonts and colours).
+const NO_OWN_LOOK = { font_family: "", text_effect: "", text_color: "", text_color_2: "", ...songBg(null) };
 
 const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false, follow_mode: "", slide_seconds: null };
 const unCR = (t) => String(t ?? "").replace(/\r\n?/g, "\n");
@@ -189,13 +188,19 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // The size is not part of the look (Rodada P, P8-2): it is a step from
     // the theme's, kept whatever the look (songSize.js).
     const lookOf = (t) => { const s = themeStyle(t); return { font_family: s.font_family, text_effect: s.text_effect, text_color: s.text_color, text_color_2: s.text_color_2 }; };
-    const shown = following && def ? { ...song, ...lookOf(def) } : song;
-    const setLook = (patch) => set({ ...(following && def ? lookOf(def) : {}), ...patch, style_mode: "own" });
-    const applyTheme = (id) => {
-        const t = themes.find((x) => x.id === id);
-        if (!t) return;
-        const spec = bgSpec(t);
-        setLook({ ...lookOf(t), ...(spec ? songBg(spec) : {}) });
+    // A look of its own saved before S1 = A (owner 2026-10-30): its own
+    // font, colours or background, with no theme. It still goes on air so;
+    // the group offers to make it a theme.
+    const legacyLook = Boolean(song) && !song.theme_id && (!following || Boolean(bgSpec(song)));
+    const lookToTheme = async () => {
+        const name = (song.title || "").trim() || "Tema da música";
+        // A theme is saved with a background (owner 2026-10-14): the song's, else the songs' theme's, else black.
+        const spec = bgSpec(song) || (def ? bgSpec(def) : null) || { kind: "color", value: "#000000" };
+        try {
+            const row = await keryx.entities.ProjectionTheme.create({ name, ...lookOf(song), ...bgFields(spec) });
+            set({ ...NO_OWN_LOOK, theme_id: row.id, style_mode: "theme" });
+            c.say(`Tema “${name}” criado: a música segue esse tema.`);
+        } catch (err) { c.say(err?.message || "Não foi possível criar o tema."); }
     };
     const addMarker = (label) => {
         const el = lyricsRef.current;
@@ -449,23 +454,18 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => { setCifraKept(true); set({ chords: e.target.value }); }} aria-label="Cifra separada" /></div>
                         </CfgGroup>
                     )}
-                    <CfgGroup id="song.tema" title="Tema desta música" summary={songThemeSummary({ theme: look.theme, themeName: look.theme ? themeName(look.theme) : "", missing: look.missing, following, step: songStep(song) })}>
+                    {/* A theme, never loose fonts and colours (owner 2026-10-30, S1 = A):
+                        the library's theme or the songs' one, and the size as a
+                        step from it. A song saved before with a look of its own
+                        keeps it, and says so, with the way to a theme. */}
+                    <CfgGroup id="song.tema" title="Tema desta música" summary={songThemeSummary({ theme: look.theme, themeName: look.theme ? themeName(look.theme) : "", missing: look.missing, following: !legacyLook, step: songStep(song) })}>
                     <div className="frm">
                         <span className="k">Tema</span>
-                        <select className="cfg-select" aria-label="Tema desta música"
-                            value={look.theme || look.missing ? `t:${song.theme_id}` : following ? "default" : "own"}
-                            onChange={(e) => { const v = e.target.value; if (v.startsWith("t:")) set({ theme_id: v.slice(2) }); else if (v === "default") set({ theme_id: "", style_mode: "theme" }); else setLook({ theme_id: "" }); }}
-                            title="O mesmo das músicas: vai ao ar com o tema das músicas (Configurações › Temas e fundos). Um tema: a música segue esse tema inteiro. Só desta música: a fonte, as cores e o fundo abaixo">
-                            <option value="default">{def ? `O mesmo das músicas · ${themeName(def)}` : "O mesmo das músicas"}</option>
-                            {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>{themeName(t)}</option>)}
-                            {def && <option value={`t:${def.id}`}>{themeName(def)} (sempre este)</option>}
-                            {look.missing && <option value={`t:${song.theme_id}`} disabled>(tema excluído)</option>}
-                            <option value="own">Só desta música</option>
-                        </select>
+                        <ThemeChip value={song.theme_id || ""} title="Tema desta música" empty={def ? `o das músicas · ${themeName(def)}` : "o das músicas"}
+                            onPick={(id) => set(id ? { theme_id: id } : { theme_id: "", style_mode: "theme" })} />
                         {/* The size relative to the theme (Rodada P, P8-2 = B):
-                            −2…+2 steps, whatever theme or look the song has;
-                            the song keeps the whole theme. Beside it, the
-                            size it goes on air with (the stamped preview). */}
+                            −2…+2 steps, whatever theme the song has; beside it,
+                            the size it goes on air with (the stamped preview). */}
                         <span className="k">Tamanho</span>
                         <span className="nv-inline">
                             <Seg small label="Tamanho em relação ao tema" value={String(songStep(song))} onChange={(v) => set({ font_size: stepValue(v) })} options={STEP_OPTIONS} />
@@ -476,29 +476,17 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         <div className="ed-pad ed-linked">
                             <span className="kx-meta">Segue o tema <b>{themeName(look.theme)}</b>: mudar o tema muda esta música.</span>
                             {onEditTheme && <Btn small onClick={() => onEditTheme(look.theme.id)} title="Abrir este tema no Editor de temas, na mesma janela · Voltar traz a música de volta">Editar tema…</Btn>}
-                            <Btn small onClick={() => { applyTheme(look.theme.id); set({ theme_id: "" }); }} title="Traz a fonte, as cores e o fundo do tema para esta música (Só desta música), para ajustar aqui">Ajustar só nesta música</Btn>
                         </div>
                     )}
-                    {look.missing && <div className="ed-pad"><span className="kx-meta kx-warn">O tema desta música foi excluído: ela vai ao ar só com o tema dela, abaixo.</span></div>}
-                    {!look.theme && <>
-                    <div className="frm">
-                        <span className="k">Fonte</span>
-                        <FontSelect className="cfg-select" value={shown.font_family || "sans"} onChange={(v) => setLook({ font_family: v })} />
-                        <span className="k">Cor do texto</span>
-                        <div className="swatches">
-                            {SWATCHES.map(([hex, name]) => <button type="button" key={hex} className={`kx-t ${(shown.text_color || "#ffffff").toLowerCase() === hex ? "is-on" : ""}`} style={{ background: hex }} aria-label={name} title={name} onClick={() => setLook({ text_color: hex })} />)}
-                            <input type="color" className="ed-color" value={shown.text_color || "#ffffff"} onChange={(e) => setLook({ text_color: e.target.value })} aria-label="Outra cor" title="Outra cor" />
+                    {look.missing && <div className="ed-pad"><span className="kx-meta kx-warn">O tema desta música foi excluído: ela vai ao ar com o tema das músicas.</span></div>}
+                    {legacyLook && (
+                        <div className="ed-pad ed-linked">
+                            <span className="kx-meta">Visual antigo desta música: fonte, cor ou fundo próprios.</span>
+                            <Btn small onClick={lookToTheme} title="Cria um tema com a fonte, as cores e o fundo desta música, e a música passa a seguir esse tema">Transformar em tema</Btn>
+                            <Btn small onClick={() => set({ ...NO_OWN_LOOK, style_mode: "theme" })} title="Esquece o visual próprio: a música vai ao ar com o tema das músicas">Usar o das músicas</Btn>
                         </div>
-                        <span className="k">Efeito</span>
-                        <select className="cfg-select" value={shown.text_effect || "shadow"} onChange={(e) => setLook({ text_effect: e.target.value })} aria-label="Efeito">{EFFECTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-                    </div>
-                    {/* The song's own background, any kind, from the library;
-                        it goes to the Fundo layer when the song goes on air. */}
-                    <div className="frm">
-                        <span className="k">Fundo</span>
-                        <BgChip value={bgSpec(song)} title="Fundo da música" empty="o do tema" noneLabel="Sem fundo próprio (usa o do tema)" onPick={(spec) => set(songBg(spec))} />
-                    </div>
-                    </>}
+                    )}
+                    {!songThemesAreOn() && (look.theme || legacyLook) && <div className="ed-pad"><span className="kx-meta">Os temas das músicas estão desligados no painel Temas: no ar, ela usa o tema em uso.</span></div>}
                     </CfgGroup>
                     <CfgGroup id="song.partes" title="Tema por parte" summary={partThemesSummary(partThemes, parts)} defaultOpen={parts.some((p) => partThemes[p.key])}>
                     {!parts.length && <div className="ed-pad"><span className="kx-meta">Marque as partes na letra com [Refrão], [Ponte]… (os botões acima da letra) para dar um tema a cada uma.</span></div>}

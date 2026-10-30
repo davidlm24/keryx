@@ -292,6 +292,8 @@ test("the Editor de temas' group summaries are one pt-BR line each", async () =>
     assert.equal(m.placeSummary({}), "Meio · 100 %");
     assert.equal(m.placeSummary({ text_align: "left", text_justify: "justify" }), "Meio · 100 %");
     assert.equal(m.placeSummary({ text_align: "left", text_position: "bottom", text_max_width: 80 }), "Baixo · 80 %");
+    assert.equal(m.placeSummary({ text_margin: 12 }), "Meio · 100 % · margem 12 %", "the theme's Margem (M = A)");
+    assert.equal(m.placeSummary({ text_margin: 8 }), "Meio · 100 %", "the factory 8 says nothing");
     assert.equal(m.placeSummary({ overflow: "split" }), "Meio · 100 % · divide", "Quando não cabe › Dividir");
     assert.equal(m.placeSummary({ text_box: "band", text_max_width: 60 }), "Meio · 100 %");
     assert.equal(m.fundoSummary({}), "Falta escolher");
@@ -313,4 +315,23 @@ test("the text bar's keys (Rodada P, P8-1) are part of the look and fill like th
     assert.equal(out.style.text_case, "capitalize");
     assert.equal(withThemeDefaults("content.show", { style: { text_case: "upper" }, inherit: { look: true } }, t).style.text_case, "upper", "the item's own wins");
     assert.ok(isFactoryLook({ text_decoration: "underline" }), "a song or passage row has no such keys: the factory check reads the classics");
+});
+
+test("Temas das músicas off (owner 2026-10-30, S2 = A): a song goes out with the theme in use, its step kept", async () => {
+    const { songContent, setSongThemes, songThemesAreOn } = await import("./content.js");
+    const own = { id: "s", title: "Santo", lyrics: "Santo, santo", theme_id: "t1", part_themes: { "refrão": "t2" }, style_mode: "own", font_family: "serif", text_color: "#ff0000", font_size: "xlarge", background: { kind: "color", value: "#123456" } };
+    const themes = [{ id: "t1", name: "Noite", font_family: "serif", background: { kind: "color", value: "#000000" } }, { id: "t2", name: "Dia" }];
+    const on = songContent(own, {}, themes);
+    assert.equal(on.inherit.look, false, "on: its own theme, whole");
+    const off = songContent(own, {}, themes, { own: false });
+    assert.equal(off.inherit.look, true, "off: it follows the theme in use");
+    assert.equal(off.style.text_color, "#ffffff");
+    assert.equal(off.fundo, undefined, "no background of its own");
+    assert.equal(off.inherit.step, 1, "its size step stays (GG = +1)");
+    // The switch the console sets.
+    assert.equal(songThemesAreOn(), true);
+    setSongThemes(false);
+    assert.equal(songContent(own, {}, themes).inherit.look, true);
+    setSongThemes(true);
+    assert.equal(songContent(own, {}, themes).inherit.look, false);
 });

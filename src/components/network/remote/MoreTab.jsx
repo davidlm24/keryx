@@ -1,7 +1,7 @@
 import React from "react";
 import Icon from "@/components/console/Icon";
 import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
-import { allowed } from "@/lib/network/remoteView";
+import { allowed, SWAP_TO } from "@/lib/network/remoteView";
 import { Cmd, HoldButton, Toggle } from "./parts";
 import { SendLaunchers } from "./liveParts";
 
@@ -62,6 +62,10 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
                 </span>
                 <button type="button" className="rm-b is-sm" onClick={onRefresh}><Icon name="refresh" size={18} />Atualizar</button>
             </div>
+            {/* To the Equipe (owner 2026-10-30, C = A): its own code, never this one's. */}
+            <a className="rm-row2 rm-swap-row" href={SWAP_TO.team}>
+                <span className="rm-row2-t"><b>Entrar como Equipe…</b><small>Pedidos, chat e letras, com o código da equipe.</small></span>
+            </a>
             <details className="rm-install">
                 <summary>Adicionar à tela inicial</summary>
                 <p><b>Android (Chrome):</b> menu ⋮ › <em>Adicionar à tela inicial</em>.</p>

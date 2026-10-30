@@ -1756,7 +1756,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return Boolean(svc) && !rows.some((r) => /^Setlist de \d\d\/\d\d$/.test(r.title || ""));
         }, 8000);
         // The Setlist's title is the list every console shows: "Setlist", its count the item.
-        result.autoSetlistShown = await waitFor(() => js(`(() => { const h = document.querySelector('[data-dock-mods~="setlist"] .setlist-head'); return Boolean(h) && /^setlist/i.test(h.textContent.trim()) && /1 item/.test(h.textContent); })()`), 5000);
+        result.autoSetlistShown = await waitFor(() => js(`(() => { const h = document.querySelector('[data-dock-mods~="setlist"] .setlist-head'); const n = document.querySelector('[data-dock-mods~="setlist"] .rund-foot-n'); return Boolean(h && n) && /^setlist/i.test(h.textContent.trim()) && /1 item/.test(n.textContent); })()`), 5000);
         if (!svc) throw new Error("a setlist compartilhada não foi criada");
         result.cultoDefaults = !svc.startTime && await waitFor(async () => {
             const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
@@ -1767,7 +1767,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // "Guardar no culto…" and "Ativar o culto" would.
         await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { service_type: "culto", title: "Culto do smoke", startTime: null }])`);
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { active_service_id: "${svc.id}" }])`);
-        result.activeCulto = await waitFor(() => js(`(() => { const h = document.querySelector('[data-dock-mods~="setlist"] .setlist-head'); return Boolean(h) && /culto do smoke/i.test(h.textContent) && /ativo/.test(h.textContent); })()`), 5000);
+        result.activeCulto = await waitFor(() => js(`(() => { const h = document.querySelector('[data-dock-mods~="setlist"] .setlist-head'); return Boolean(h) && /culto do smoke/i.test(h.textContent) && Boolean(h.querySelector(".setlist-head-dot")); })()`), 5000);
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { service_start_time: null, duration_song: null }])`);
         for (const [i, title] of ["Abertura", "Louvor"].entries()) {
             await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i + 1}, duration: 300 }])`);

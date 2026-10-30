@@ -43,7 +43,8 @@ export function AutoplaySwitch({ on, onChange, disabled }) {
 // in the tooltip and as screen-reader text. `prev`/`next` the neighbours of
 // the item on air (neighbours() in setlist.js); a missing one disables its
 // button and the tooltip says why.
-export function SetlistFooter({ autoplay, prev, next, onStep }) {
+// count: "6 itens · 22 min", moved here from the header (owner 2026-10-30, H1 = A).
+export function SetlistFooter({ autoplay, prev, next, onStep, count = "" }) {
     const name = (it) => it.title || typeLabel(it.type);
     const btn = (it, glyph, word, none) => (
         <button type="button" className="kx-btn kx-btn-icon rund-step" disabled={!it} title={it ? `${word} · ${name(it)}` : none} onClick={() => onStep(it)}>
@@ -53,6 +54,7 @@ export function SetlistFooter({ autoplay, prev, next, onStep }) {
     return (
         <div className="rund-foot" role="group" aria-label="Setlist: avançar">
             <AutoplaySwitch {...autoplay} />
+            {count && <span className="rund-foot-n kx-meta" title={count}>{count}</span>}
             <span className="rund-foot-steps">
                 {btn(prev, "skip-back", "Item anterior", "Não há item anterior")}
                 {btn(next, "skip-fwd", "Próximo item", "Não há próximo item")}

@@ -331,6 +331,14 @@ function verseNodes(text, numbers = "sup") {
 // (clampShift). Nothing is ever cut at the screen's edge.
 const FIT_MIN = 0.45;
 const NO_FIT = { scale: 1, wrap: false, h: 1, shift: null };
+// The theme's Margem (owner 2026-10-30, M = A): text_margin cqw each side,
+// 7/8 of it above and below; none set = screen.css's 8cqw / 7cqw.
+function marginVars(m) {
+    if (m === "" || m == null) return {};
+    const n = Math.min(20, Math.max(0, Number(m)));
+    return Number.isFinite(n) ? { "--ks-mx": `${n}cqw`, "--ks-my": `${((n * 7) / 8).toFixed(2)}cqw` } : {};
+}
+
 function useFit(on, lines, size, nudge, deps) {
     const boxRef = React.useRef(null);
     const textRef = React.useRef(null);
@@ -420,7 +428,7 @@ function Content({ content, showTitle = true, still = false }) {
     // Two editions: each block says its sigla, so the reference drops it.
     const pair = bible && slide.pair?.text ? slide.pair : null;
     const refMode = pair && style.ref_line !== "none" ? "plain" : style.ref_line;
-    const { boxRef, textRef, probeRef, fit } = useFit(Boolean(slide.text || pair), lyrics, size, style.text_nudge || 0, [key, slide.text, pair?.text, chorded, show.labels, refMode, style.pair, style.font_family, style.text_max_width, style.text_box, style.text_case, style.font_weight, style.font_style, style.letter_spacing, style.line_height, style.text_outline_px, style.text_position, style.verse_numbers]);
+    const { boxRef, textRef, probeRef, fit } = useFit(Boolean(slide.text || pair), lyrics, size, style.text_nudge || 0, [key, slide.text, pair?.text, chorded, show.labels, refMode, style.pair, style.font_family, style.text_max_width, style.text_box, style.text_case, style.font_weight, style.font_style, style.letter_spacing, style.line_height, style.text_outline_px, style.text_position, style.verse_numbers, style.text_margin]);
     const body = bible ? verseNodes(slide.text, style.verse_numbers) : chorded ? <ChordedLines chorded={chorded} /> : slide.text;
     // Before the first measure the nudge is as the theme says (cqw); then
     // the measured one, held inside the safe area (px).
@@ -428,7 +436,7 @@ function Content({ content, showTitle = true, still = false }) {
     return (
         <>
             {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: fontStack(style.font_family) }}>{content.title}</div>}
-            <div ref={boxRef} className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": `${size * fit.h}cqw`, "--ks-h": fit.h, ...(shift ? { translate: shift } : {}) }}>
+            <div ref={boxRef} className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": `${size * fit.h}cqw`, "--ks-h": fit.h, ...marginVars(style.text_margin), ...(shift ? { translate: shift } : {}) }}>
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {show.labels && !bible && slide.label && <div className="ks-chorus">{slide.label}</div>}
                     {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}
