@@ -53,6 +53,17 @@ export function mergePlan(services) {
     return { keep: rows[0].id, drop: rows.slice(1).map((s) => s.id) };
 }
 
+// Where the items of a dropped shared row go in the kept one: after the kept
+// row's last item, in their own order. Both rows numbered from 0, so moving
+// them as they were left two items on every number.
+// -> [{ id, order }]
+export function mergedOrders(keptItems, movedItems) {
+    const after = (keptItems || []).reduce((n, it) => Math.max(n, (it.order ?? -1) + 1), 0);
+    return [...(movedItems || [])]
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((it, i) => ({ id: it.id, order: after + i }));
+}
+
 // The items a culto gets from the shared Setlist ("Guardar no culto…",
 // U3 = A): copies, in order, after what the culto already has. Sections,
 // notes and who sings come along; the ids are new (the store gives them).

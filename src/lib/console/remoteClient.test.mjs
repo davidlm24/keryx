@@ -48,6 +48,11 @@ test("a 504 or a link lost mid-command is an unknown outcome, never sent again",
     assert.equal(r.unknown, true);
     assert.equal(r.message, "Não sei se foi — confira a tela");
     assert.equal(slow.calls.length, 1);
+    // A read that timed out changed nothing: it is not an unknown outcome.
+    const read = await remoteCall("requests", { kind: "chat" }, answer(504, { error: { message: "O console não respondeu.", status: 504 } }));
+    assert.equal(read.ok, false);
+    assert.equal(read.unknown, undefined);
+    assert.doesNotMatch(read.message, /Não sei se foi/);
     let tries = 0;
     const dropped = await remoteCall("next", {}, async () => { tries += 1; throw new Error("reset"); });
     assert.equal(dropped.unknown, true);

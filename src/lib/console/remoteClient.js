@@ -9,6 +9,7 @@ import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" }
 
 const { limits, messages } = PROTOCOL;
 const isRead = (action) => PROTOCOL.actions[action]?.kind === "R";
+const SLOW_READ = "O computador do KERYX demorou a responder.";
 // How long the phone waits before it says it does not know: the server's own
 // wait, plus the Wi-Fi's.
 const waitFor = (action) => (limits.slowActions.includes(action) ? limits.slowTimeoutMs : limits.timeoutMs) + 4000;
@@ -42,6 +43,8 @@ export async function remoteCall(action, args = {}, fetchImpl = globalThis.fetch
     // 404 with no code: the remote itself is off (a 404 with not_found is an item).
     if (res.status === 404 && !code) return { ...out, off: true, message: "O controle remoto foi desligado no computador do KERYX." };
     if (res.status === 503 && message === messages.consoleClosed) return { ...out, closed: true };
+    // A read that took too long changed nothing: it only has no answer.
+    if (res.status === 504 && isRead(action)) return { ...out, message: SLOW_READ };
     if (res.status === 504) return { ...out, unknown: true, message: messages.unknownOutcome };
     // An action this computer's KERYX does not know: an older version.
     if (res.status === 400 && /desconhecido/i.test(message)) return { ...out, update: true, message: messages.updateApp };
