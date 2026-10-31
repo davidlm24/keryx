@@ -1,7 +1,7 @@
 {
   "name": "keryx",
   "private": true,
-  "version": "0.2.25",
+  "version": "0.2.26",
   "description": "KERYX: projeção de letras, Bíblia e mídia para a igreja",
   "author": "KERYX",
   "type": "module",
