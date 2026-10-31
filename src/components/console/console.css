@@ -1049,7 +1049,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
    "Setlist" or the active culto (its dot the green of Planejar o culto's
    tab), a button whose menu switches it. Its text keeps the header's 12 px
    from the edge (the negative margin pays the button's own padding). */
-.console .setlist-head { flex: 0 1 auto; display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; padding: 2px var(--space-1); margin-left: calc(-1 * var(--space-1)); border: 0; border-radius: var(--radius-control); background: none; font-family: inherit; cursor: pointer; }
+.console .setlist-head { flex: 0 1 auto; display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; min-height: var(--control-sm); padding: 2px var(--space-1); margin-left: calc(-1 * var(--space-1)); border: 0; border-radius: var(--radius-control); background: none; font-family: inherit; cursor: pointer; }
 .console .setlist-head:hover { background: var(--chrome-hover); color: var(--fg-1); }
 .console .setlist-head-t { flex: 0 1 auto; min-width: 4em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .setlist-head > svg { flex: none; width: 12px; height: 12px; }
