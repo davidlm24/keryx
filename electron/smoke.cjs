@@ -3200,15 +3200,12 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             let sid = st.data && st.data.result && st.data.result.serviceId;
             let reopened = false;
             if (!sid) {
-                // No service chosen (a check before reloaded the console):
-                // open the console on one, as ?planner= does.
+                // No culto on the consoles (a check before ended it): the
+                // church activates one (User.active_service_id, the shared
+                // Setlist of 29/10; ?planner= no longer chooses the console's).
                 const day = new Date();
                 const svc = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Service", "create", [{ title: "Culto do celular", date: "${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}", status: "DRAFT" }])`)).data;
-                const back = webContents.getURL();
-                const u = new URL(back);
-                u.search = `?planner=${svc.id}`;
-                await webContents.loadURL(u.toString());
-                reopened = back;
+                await webContents.executeJavaScript(`window.keryxDesktop.db.call("User", "update", ["local", { active_service_id: "${svc.id}" }])`);
                 const until = Date.now() + 10000;
                 while (Date.now() < until && !sid) {
                     await sleep(500);
