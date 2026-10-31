@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isConsoleSetlist, cultosOf, consoleSetlistOf, consoleSetlistRow, visibleService, mergePlan, copyItems, setlistTitle } from "./consoleSetlist.js";
+import { isConsoleSetlist, cultosOf, consoleSetlistOf, consoleSetlistRow, visibleService, mergePlan, mergedOrders, copyItems, setlistTitle } from "./consoleSetlist.js";
 
 const shared = (id, created) => ({ id, title: "Setlist", service_type: "console", created_date: created });
 const culto = (id, title = "Culto de 27/10") => ({ id, title, service_type: "culto", date: "2026-10-27" });
@@ -35,6 +35,15 @@ test("two shared rows: every computer keeps the oldest and drops the rest", () =
     assert.deepEqual(mergePlan(list), { keep: "z", drop: ["a", "b"] }, "same time: the id decides, the same on every computer");
     assert.equal(mergePlan([shared("one", "2026-10-29"), culto("c")]), null);
     assert.equal(mergePlan([]), null);
+});
+
+test("the dropped row's items go after the kept row's, in their own order", () => {
+    const kept = [{ id: "k0", order: 0 }, { id: "k1", order: 1 }];
+    const moved = [{ id: "m1", order: 1 }, { id: "m0", order: 0 }];
+    assert.deepEqual(mergedOrders(kept, moved), [{ id: "m0", order: 2 }, { id: "m1", order: 3 }]);
+    assert.deepEqual(mergedOrders([{ id: "k", order: 7 }], [{ id: "m" }]), [{ id: "m", order: 8 }], "after the highest number, a gap or not");
+    assert.deepEqual(mergedOrders([], [{ id: "m", order: 3 }]), [{ id: "m", order: 0 }]);
+    assert.deepEqual(mergedOrders(kept, []), []);
 });
 
 test("Guardar no culto copies the items in order, after the culto's own", () => {

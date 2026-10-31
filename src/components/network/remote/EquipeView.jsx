@@ -146,10 +146,23 @@ function NameSheet({ name, onSave, onClose }) {
 // 5 s while it is open — only as the fallback. Only while visible.
 function useRequests({ on, chatOpen, sent }) {
     const [pages, setPages] = useState({ pedido: null, chat: null });
-    const [failed, setFailed] = useState("");
+    const [failed, setFailed] = useState({ pedido: "", chat: "" });
+    // Each kind's answers in the order asked: a poll that left before a
+    // message and returns after the read the message triggered must not put
+    // the older page back.
+    const asked = useRef({ pedido: 0, chat: 0 });
+    const shown = useRef({ pedido: 0, chat: 0 });
+    const alive = useRef(true);
+    useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
     const load = useCallback(async (kind) => {
+        const n = ++asked.current[kind];
         const r = await remoteCall("requests", { kind });
-        if (r.ok && r.result) { setPages((cur) => ({ ...cur, [kind]: r.result })); setFailed(""); } else if (!r.ok && !r.signedOut) setFailed(r.message || "");
+        if (!alive.current || n < shown.current[kind]) return;
+        if (r.ok && r.result) {
+            shown.current[kind] = n;
+            setPages((cur) => ({ ...cur, [kind]: r.result }));
+            setFailed((cur) => ({ ...cur, [kind]: "" }));
+        } else if (!r.ok && !r.signedOut) setFailed((cur) => ({ ...cur, [kind]: r.message || "" }));
     }, []);
     useEffect(() => { if (on) { load("pedido"); load("chat"); } }, [on, load, sent]);
     useEffect(() => {
@@ -206,6 +219,7 @@ function PedidosTab({ service, name, busy, view, setView, pages, failed, unseen,
     const scroller = useRef(null);
     const pinned = useRef(true);
     const page = pages[view];
+    const error = failed[view];
     const rows = messageRows(page?.rows || [], name);
     const last = rows[rows.length - 1]?.id || "";
     useEffect(() => { pinned.current = true; }, [view]);
@@ -234,9 +248,9 @@ function PedidosTab({ service, name, busy, view, setView, pages, failed, unseen,
             <div className="rm-seg" role="group" aria-label="Pedidos ou chat">{seg("pedido", "Pedidos")}{seg("chat", "Chat")}</div>
             <div className="rm-scroll rm-chat" ref={scroller} role="log" aria-label={chat ? "Chat com o operador" : "Pedidos de louvor"}
                 onScroll={(e) => { const el = e.currentTarget; pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40; }}>
-                {failed && <p className="rm-empty">{failed}</p>}
-                {!failed && page && !rows.length && <p className="rm-empty">{chat ? "Nenhuma mensagem neste culto ainda. O que você escrever aqui aparece no console do operador, e a resposta aparece aqui." : "Nenhum pedido neste culto ainda."}</p>}
-                {!page && !failed && <p className="rm-hint">Carregando…</p>}
+                {error && <p className="rm-empty">{error}</p>}
+                {!error && page && !rows.length && <p className="rm-empty">{chat ? "Nenhuma mensagem neste culto ainda. O que você escrever aqui aparece no console do operador, e a resposta aparece aqui." : "Nenhum pedido neste culto ainda."}</p>}
+                {!page && !error && <p className="rm-hint">Carregando…</p>}
                 {page && page.total > rows.length && <p className="rm-hint">{chat ? "As mensagens mais antigas ficam no computador." : "Os pedidos mais antigos ficam no computador."}</p>}
                 {rows.map((m) => <Message key={m.id} m={m} />)}
             </div>

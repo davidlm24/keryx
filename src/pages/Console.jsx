@@ -21,7 +21,7 @@ import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, useServiceMessages } from "@/components/console/useConsoleData";
 import { useActiveService, useActiveServiceNews } from "@/components/console/useActiveService";
-import { CONSOLE_KIND, consoleSetlistOf, consoleSetlistRow, mergePlan, cultosOf, copyItems, setlistTitle } from "@/lib/console/consoleSetlist";
+import { CONSOLE_KIND, consoleSetlistOf, consoleSetlistRow, mergePlan, mergedOrders, cultosOf, copyItems, setlistTitle } from "@/lib/console/consoleSetlist";
 import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion, SelectManyBtn } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
@@ -476,7 +476,9 @@ export default function Console() {
         merging.current = true;
         (async () => {
             for (const id of plan.drop) {
-                for (const it of await keryx.entities.ServiceItem.filter({ serviceId: id })) await keryx.entities.ServiceItem.update(it.id, { serviceId: plan.keep });
+                const kept = await keryx.entities.ServiceItem.filter({ serviceId: plan.keep });
+                const moved = mergedOrders(kept, await keryx.entities.ServiceItem.filter({ serviceId: id }));
+                for (const it of moved) await keryx.entities.ServiceItem.update(it.id, { serviceId: plan.keep, order: it.order });
                 for (const m of await keryx.entities.ServiceMessage.filter({ serviceId: id })) await keryx.entities.ServiceMessage.update(m.id, { serviceId: plan.keep });
                 await keryx.entities.Service.delete(id);
             }

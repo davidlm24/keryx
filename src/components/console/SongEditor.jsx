@@ -20,7 +20,7 @@ import { sizeCqw } from "@/lib/textSize";
 import { STEP_OPTIONS, songStep, stepValue } from "@/lib/console/songSize";
 import { useContextMenu } from "./ContextMenu";
 import LinesPicker from "./LinesPicker";
-import { defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
+import { defaultTheme, followsTheme, themeForKind, themeStyle, themeName } from "@/lib/console/themes";
 import { useWinCol } from "./winLayout";
 import { CfgGroup } from "./settings/parts";
 import { songThemeSummary, partThemesSummary, notesSummary } from "@/lib/console/pageGroups";
@@ -194,10 +194,15 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const legacyLook = Boolean(song) && !song.theme_id && (!following || Boolean(bgSpec(song)));
     const lookToTheme = async () => {
         const name = (song.title || "").trim() || "Tema da música";
+        // What the song showed: the theme in use, as a send stamps it (#393).
+        const shown = themeForKind(themes, "lyrics", {}, c.themeId) || def;
         // A theme is saved with a background (owner 2026-10-14): the song's, else the songs' theme's, else black.
-        const spec = bgSpec(song) || (def ? bgSpec(def) : null) || { kind: "color", value: "#000000" };
+        const spec = bgSpec(song) || (shown ? bgSpec(shown) : null) || { kind: "color", value: "#000000" };
+        // A song that follows the theme with only a picture of its own has no
+        // look in its fields: the look it showed is that theme's.
+        const look = lookOf(following && shown ? shown : song);
         try {
-            const row = await keryx.entities.ProjectionTheme.create({ name, ...lookOf(song), ...bgFields(spec) });
+            const row = await keryx.entities.ProjectionTheme.create({ name, ...look, ...bgFields(spec) });
             set({ ...NO_OWN_LOOK, theme_id: row.id, style_mode: "theme" });
             c.say(`Tema “${name}” criado: a música segue esse tema.`);
         } catch (err) { c.say(err?.message || "Não foi possível criar o tema."); }
