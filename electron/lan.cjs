@@ -437,8 +437,11 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         if (tooMany(key)) return html(res, 429, codePage({ on, role: chosen, error: "Muitas tentativas. Aguarde um minuto." }));
         const { remote, team } = getConfig();
         const given = form.get("code") || "";
-        // Signing in with one code clears the other's cookie.
-        const cookie = (name, value) => `${name}=${value}; Path=/; Max-Age=${value ? 31536000 : 0}; HttpOnly; SameSite=Strict`;
+        // Signing in with one code clears the other's cookie. Lax, as the
+        // screens' keryx_lan: a link opened from WhatsApp or a QR reader is a
+        // cross-site navigation, and Strict arrived signed out (31/10). Lax
+        // never sends it on a cross-site POST, and every command is a POST.
+        const cookie = (name, value) => `${name}=${value}; Path=/; Max-Age=${value ? 31536000 : 0}; HttpOnly; SameSite=Lax`;
         const enter = (role, name, token, other) => {
             attempts.delete(key);
             return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": [cookie(name, token), cookie(other, ""), cookie(SIDE_COOKIE, role)] }).end();

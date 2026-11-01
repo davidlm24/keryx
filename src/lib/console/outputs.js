@@ -20,12 +20,26 @@ const NET = "net:";
 export const netId = (client) => `${NET}${String(client.ip || "").replace(/^::ffff:/, "")}|${client.screen || ""}`;
 export const localId = (key) => `${LOCAL}${key}`;
 
+// A phone on /Remote (the Controle or the Equipe) is a companion, never a
+// screen: its browser drops the event stream whenever it goes to the
+// background, so it never counts in the health, the banner or "2 telas"
+// (the 31/10 service). KERYX no celular lists the phones (PhonesBlock).
+export const isPhone = (client) => client?.screen === "/Remote";
+export const screenClients = (clients) => (clients || []).filter((cl) => !isPhone(cl));
+
+// A network screen is judged gone only after this long without it: its
+// event stream retries in about 3 s, and dropping it at the first 5 s poll
+// that missed it blinked the banner. Its return is seen at once.
+export const DROP_GRACE_MS = 10000;
+
 // The session memory after one poll. `outputs` are the main process's output
 // windows ({ key, label, open }), `clients` the network screens connected
-// now ({ ip, screen, label, agent }); null when the network could not be
-// read this time (then no screen is judged gone). Returns the same object
-// when nothing changed, so a poll that finds everything as it was does not
-// re-render.
+// now ({ ip, screen, label, agent }; phones are left out); null when the
+// network could not be read this time (then no screen is judged gone).
+// Returns the same object when nothing changed, so a poll that finds
+// everything as it was does not re-render. A network screen missing from a
+// poll is first only `missingAt` (still online); a poll DROP_GRACE_MS later
+// drops it, `droppedAt` being when it was first missed.
 export function remember(seen, { outputs = [], clients = null }, now) {
     let next = seen;
     const put = (id, value) => {
@@ -42,13 +56,15 @@ export function remember(seen, { outputs = [], clients = null }, now) {
     }
     if (!clients) return next;
     const present = new Set();
-    for (const cl of clients) {
+    for (const cl of screenClients(clients)) {
         const id = netId(cl);
         present.add(id);
-        put(id, { kind: "net", key: id, name: cl.label || "Tela na rede", ip: String(cl.ip || "").replace(/^::ffff:/, ""), screen: cl.screen || "", agent: cl.agent || "", droppedAt: null });
+        put(id, { kind: "net", key: id, name: cl.label || "Tela na rede", ip: String(cl.ip || "").replace(/^::ffff:/, ""), screen: cl.screen || "", agent: cl.agent || "", missingAt: null, droppedAt: null });
     }
     for (const [id, v] of Object.entries(seen)) {
-        if (v.kind === "net" && !present.has(id) && !v.droppedAt) put(id, { ...v, droppedAt: now });
+        if (v.kind !== "net" || present.has(id) || v.droppedAt) continue;
+        if (v.missingAt == null) put(id, { ...v, missingAt: now });
+        else if (now - v.missingAt >= DROP_GRACE_MS) put(id, { ...v, droppedAt: v.missingAt });
     }
     return next;
 }

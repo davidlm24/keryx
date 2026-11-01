@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { EventEmitter } = require("node:events");
-const { createYouTube, youtubeNote, youtubeId, oembedState, downloadArgs, parseLine, track, progressOf, errorMessage, downloadedFields } = require("./youtube.cjs");
+const { createYouTube, youtubeNote, youtubeId, oembedState, downloadArgs, parseLine, lineSplitter, track, progressOf, errorMessage, downloadedFields } = require("./youtube.cjs");
 const { importMedia } = require("./mediaImport.cjs");
 
 test("youtubeId: every link form, nothing else", () => {
@@ -223,4 +223,26 @@ test("the bell on a download that ended: done opens the file in the Mídia, fail
     yt.ops.download({ id: "m1", url: "https://youtu.be/aBcDeFgHiJk" });
     await until(events, "done");
     assert.deepEqual(notes.map((n) => [n.kind, n.title]), [["youtube", "Baixado para a Mídia: Louvor (Ao Vivo)"]]);
+});
+
+test("lineSplitter: a multi-byte character cut between two chunks stays whole", () => {
+    const text = "INFO 10|5|Adoração ao Pão\nFILE C:/Vídeos/a.mp4\r\nKX 1 2 NA";
+    const bytes = Buffer.from(text, "utf8");
+    const want = ["INFO 10|5|Adoração ao Pão", "FILE C:/Vídeos/a.mp4", "KX 1 2 NA"];
+    const cut = bytes.indexOf(Buffer.from("ã")) + 1; // inside the two bytes of "ã"
+    const sp = lineSplitter();
+    const lines = [...sp.push(bytes.subarray(0, cut)), ...sp.push(bytes.subarray(cut)), ...sp.end()];
+    assert.deepEqual(lines, want);
+    assert.equal(parseLine(lines[0]).title, "Adoração ao Pão");
+    assert.equal(parseLine(lines[1]).path, "C:/Vídeos/a.mp4");
+    for (let i = 0; i <= bytes.length; i++) {
+        const s = lineSplitter();
+        assert.deepEqual([...s.push(bytes.subarray(0, i)), ...s.push(bytes.subarray(i)), ...s.end()], want, `cut ${i}`);
+    }
+});
+
+test("the spawn asks Python for UTF-8", () => {
+    const src = fs.readFileSync(path.join(__dirname, "youtube.cjs"), "utf8");
+    assert.match(src, /PYTHONIOENCODING: "utf-8"/);
+    assert.match(src, /PYTHONUTF8: "1"/);
 });

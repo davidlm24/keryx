@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, localId, showsOn, byGroup, groupOf, outputsSummary, outputStatusText } from "./outputs.js";
+import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, localId, DROP_GRACE_MS, isPhone, screenClients, showsOn, byGroup, groupOf, outputsSummary, outputStatusText } from "./outputs.js";
 
 const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção", open, placement: { mode: "fullscreen", displayId: 2, missing } });
 const stage = (open) => ({ key: "/StageView", label: "Palco", open, placement: { mode: "window", displayId: null, missing: false } });
@@ -30,6 +30,7 @@ test("everything there: the count, and what each one shows", () => {
 test("a network screen that drops stays as Desconectada until it comes back", () => {
     let seen = remember({}, { outputs: [proj(true)], clients: [tv] }, at(19, 0));
     seen = remember(seen, { outputs: [proj(true)], clients: [] }, at(19, 42));
+    seen = remember(seen, { outputs: [proj(true)], clients: [] }, at(19, 42) + DROP_GRACE_MS);
     const h = outputHealth({ outputs: [proj(true)], seen, air: "Canto" });
     const row = h.rows.find((r) => !r.local);
     assert.equal(row.state, "disconnected");
@@ -48,9 +49,56 @@ test("a network screen that drops stays as Desconectada until it comes back", ()
 test("the drop time is kept, not moved by later polls", () => {
     let seen = remember({}, { clients: [tv] }, at(19, 0));
     seen = remember(seen, { clients: [] }, at(19, 42));
+    seen = remember(seen, { clients: [] }, at(19, 42) + DROP_GRACE_MS);
     const again = remember(seen, { clients: [] }, at(19, 50));
     assert.equal(again, seen); // nothing changed: the same object, no re-render
-    assert.equal(again[netId(tv)].droppedAt, at(19, 42));
+    assert.equal(again[netId(tv)].droppedAt, at(19, 42), "when it was first missed");
+});
+
+test("a screen that misses a poll is still online: it drops only 10 s later", () => {
+    let seen = remember({}, { outputs: [proj(true)], clients: [tv] }, at(19, 0));
+    // The event stream retries in ~3 s: one poll without it is no drop.
+    seen = remember(seen, { outputs: [proj(true)], clients: [] }, at(19, 42));
+    assert.equal(seen[netId(tv)].droppedAt, null);
+    assert.equal(seen[netId(tv)].missingAt, at(19, 42));
+    let h = outputHealth({ outputs: [proj(true)], seen });
+    assert.equal(h.problems, 0);
+    assert.equal(h.banner, null, "no banner blinks");
+    assert.equal(h.status.compact, "2 telas");
+    // Back at the next poll: as if it never left.
+    const back = remember(seen, { outputs: [proj(true)], clients: [{ ...tv, since: "b" }] }, at(19, 42) + 5000);
+    assert.equal(back[netId(tv)].missingAt, null);
+    assert.equal(outputHealth({ outputs: [proj(true)], seen: back }).problems, 0);
+    // Still gone at 5 s: online; at 10 s: Desconectada, at the time it left.
+    seen = remember(seen, { outputs: [proj(true)], clients: [] }, at(19, 42) + 5000);
+    assert.equal(seen[netId(tv)].droppedAt, null);
+    seen = remember(seen, { outputs: [proj(true)], clients: [] }, at(19, 42) + DROP_GRACE_MS);
+    h = outputHealth({ outputs: [proj(true)], seen });
+    assert.equal(h.rows.find((r) => !r.local).state, "disconnected");
+    assert.equal(h.banner.title, "Letras desconectada às 19:42");
+    // Its return is still seen at once.
+    seen = remember(seen, { outputs: [proj(true)], clients: [{ ...tv, since: "c" }] }, at(19, 43));
+    assert.equal(outputHealth({ outputs: [proj(true)], seen }).problems, 0);
+});
+
+test("a phone on /Remote is never a screen: no row, no count, no banner when it sleeps", () => {
+    const phone = { ip: "::ffff:192.168.0.31", screen: "/Remote", role: "control", label: "Controle remoto", agent: "Android Mobile", since: "a" };
+    const team = { ...phone, ip: "::ffff:192.168.0.32", role: "team" };
+    assert.equal(isPhone(phone), true);
+    assert.equal(isPhone(tv), false);
+    assert.deepEqual(screenClients([tv, phone, team]), [tv]);
+    assert.deepEqual(screenClients(null), []);
+    let seen = remember({}, { outputs: [proj(true)], clients: [tv, phone, team] }, at(19, 0));
+    assert.deepEqual(Object.keys(seen).sort(), [localId("/Projection"), netId(tv)].sort());
+    let h = outputHealth({ outputs: [proj(true)], seen });
+    assert.equal(h.status.compact, "2 telas", "the projector and the TV, not the phones");
+    assert.equal(h.rows.length, 1 + 1);
+    // The phone's browser goes to the background for a minute: nothing.
+    seen = remember(seen, { outputs: [proj(true)], clients: [tv] }, at(19, 30));
+    seen = remember(seen, { outputs: [proj(true)], clients: [tv] }, at(19, 31));
+    h = outputHealth({ outputs: [proj(true)], seen });
+    assert.equal(h.problems, 0);
+    assert.equal(h.banner, null);
 });
 
 test("a poll that could not read the network judges no screen gone", () => {
@@ -87,6 +135,7 @@ test("closed on purpose: forgotten, no warning", () => {
 test("the projector on the wrong monitor wins the banner", () => {
     let seen = remember({}, { outputs: [proj(true)], clients: [tv] }, at(19, 0));
     seen = remember(seen, { outputs: [proj(true, true)], clients: [] }, at(19, 10));
+    seen = remember(seen, { outputs: [proj(true, true)], clients: [] }, at(19, 10) + DROP_GRACE_MS);
     const h = outputHealth({ outputs: [proj(true, true)], seen, tries: 3 });
     assert.equal(h.banner.kind, "reconnecting");
     assert.equal(h.banner.tries, 3);

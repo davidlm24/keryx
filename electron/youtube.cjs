@@ -27,6 +27,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const childProcess = require("node:child_process");
+const { StringDecoder } = require("node:string_decoder");
 
 const fsp = fs.promises;
 
@@ -93,6 +94,28 @@ function parseLine(line) {
     m = s.match(/^FILE (.+)$/);
     if (m) return { kind: "file", path: m[1] };
     return null;
+}
+
+// Splits yt-dlp's stdout (bytes, in any chunking) into whole lines. A
+// multi-byte UTF-8 character cut between two chunks is held by the decoder
+// until its rest arrives, so "ã" never becomes "?" (a title, or a folder in
+// the FILE line). `push(chunk)` -> the complete lines; `end()` -> the rest.
+function lineSplitter() {
+    const decoder = new StringDecoder("utf8");
+    let buf = "";
+    return {
+        push(chunk) {
+            buf += typeof chunk === "string" ? chunk : decoder.write(chunk);
+            const lines = buf.split(/\r?\n/);
+            buf = lines.pop();
+            return lines;
+        },
+        end() {
+            const rest = buf + decoder.end();
+            buf = "";
+            return rest ? [rest] : [];
+        },
+    };
 }
 
 // The whole download's progress over its parts (the picture, then the
@@ -352,14 +375,16 @@ function createYouTube({
         const result = await new Promise((resolve) => {
             const child = spawn(working, downloadArgs({ url: job.url, outDir, ffmpegDir: toolsDir, node: runtime?.path }), {
                 windowsHide: true,
-                env: { ...process.env, ...(runtime?.env || {}) },
+                // yt-dlp (Python) writes stdout in the console's code page (cp1252
+                // on a pt-BR Windows) unless told otherwise; we read UTF-8.
+                env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1", ...(runtime?.env || {}) },
             });
             job.child = child;
             let t = null;
             let file = null;
             let meta = null;
             let stderr = "";
-            let buf = "";
+            const splitter = lineSplitter();
             let lastTell = 0;
             const onLine = (line) => {
                 const p = parseLine(line);
@@ -371,15 +396,12 @@ function createYouTube({
                 if (now() - lastTell > 250) { lastTell = now(); tell(job); }
             };
             child.stdout.on("data", (d) => {
-                buf += String(d);
-                const lines = buf.split(/\r?\n/);
-                buf = lines.pop();
-                lines.forEach(onLine);
+                splitter.push(d).forEach(onLine);
             });
             child.stderr.on("data", (d) => { stderr = (stderr + String(d)).slice(-STDERR_KEEP); });
             child.on("error", (err) => resolve({ code: -1, stderr: String(err && err.message), file, meta }));
             child.on("close", (code) => {
-                if (buf) onLine(buf);
+                splitter.end().forEach(onLine);
                 resolve({ code, stderr, file, meta });
             });
         });
@@ -420,4 +442,4 @@ function createYouTube({
     };
 }
 
-module.exports = { createYouTube, youtubeNote, youtubeId, oembedState, downloadArgs, parseLine, track, progressOf, errorMessage, downloadedFields, YouTubeError, FORMAT };
+module.exports = { createYouTube, youtubeNote, youtubeId, oembedState, downloadArgs, parseLine, lineSplitter, track, progressOf, errorMessage, downloadedFields, YouTubeError, FORMAT };

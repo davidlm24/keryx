@@ -3311,7 +3311,10 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             const consoleText = () => bodyText(webContents);
             await sleep(5500); // one outputs poll with the stage tablet connected
             stage.close();
-            const end = Date.now() + 14000;
+            // A screen is judged gone only 10 s after the first poll that
+            // missed it (DROP_GRACE_MS: its stream's retry is no drop), so
+            // up to one 5 s poll + 10 s + a poll's slack.
+            const end = Date.now() + 24000;
             while (Date.now() < end && !(await consoleText()).includes("Palco desconectada")) await sleep(300);
             const text = await consoleText();
             result.dropBanner = text.includes("Palco desconectada");
