@@ -5,9 +5,10 @@
 // when it goes on air (or into the Fundo layer when picked in Camadas) unless
 // the item already has its own.
 
+import { OWN_IMAGES, OWN_VIDEOS, fold, cleanName, ownName, normalizeCategories } from "./categoryNames.js";
+
+export { OWN_IMAGES, OWN_VIDEOS, normalizeCategories };
 export const CATEGORY_SUGGESTIONS = ["Adoração", "Natureza", "Abstrato", "Céu/Luz", "Cruz e igreja", "Sazonal", "Comunicação", "Outros"];
-export const OWN_IMAGES = "Suas imagens";
-export const OWN_VIDEOS = "Seus vídeos";
 export const DIM_PCT = [0, 90];
 export const BLUR_PX = [0, 20];
 
@@ -107,24 +108,9 @@ export function categoriesOf(list, stored = null) {
 // BackgroundPref.category; the list only names and orders them, so a name in
 // use outside it still shows (after it). "Outros" is where a deleted
 // category's backgrounds go: it is never renamed or deleted.
+// The names' rules (normalizeCategories) are categoryNames.js, which the
+// church's preferences load without this module.
 export const FALLBACK_CATEGORY = "Outros";
-const CATEGORY_MAX = 40;
-const fold = (s) => s.toLocaleLowerCase("pt-BR");
-const cleanName = (v) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ").slice(0, CATEGORY_MAX).trim() : "");
-const ownName = (n) => n === OWN_IMAGES || n === OWN_VIDEOS;
-
-export function normalizeCategories(v) {
-    if (!Array.isArray(v)) return null;
-    const seen = new Set();
-    const out = [];
-    for (const raw of v) {
-        const name = cleanName(raw);
-        if (!name || ownName(name) || seen.has(fold(name))) continue;
-        seen.add(fold(name));
-        out.push(name);
-    }
-    return out;
-}
 
 export const categoryList = (stored) => normalizeCategories(stored) ?? [...CATEGORY_SUGGESTIONS];
 

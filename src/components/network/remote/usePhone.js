@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { remoteCall } from "@/lib/console/remoteClient";
 import { STALE_MS, STATE_EVERY_MS, UNDO_MS, sayOf } from "@/lib/network/remoteView";
+import { startAwake } from "@/lib/network/keepAwake";
 
 const signIn = () => { window.location.href = "/lan/remote-code"; };
 
@@ -123,49 +124,22 @@ export function useCommands({ setGate }) {
     return { busy, run, say, toast, closeToast: () => setToast(null), unknown, clearUnknown: () => setUnknown(false), ended };
 }
 
-// "Manter a tela ligada" (owner's pick: opt-in). The Wake Lock API needs
-// HTTPS and the page is http://192.168…, so a tiny silent video loops in
-// the page instead (started by the tap that turns it on, as phones ask);
-// where the API exists (a secure origin) it is used.
+// "Manter a tela ligada" (owner's pick: opt-in): the silent loop or the
+// Wake Lock of src/lib/network/keepAwake.js, started by the tap that turns
+// it on, as phones ask.
 export function useKeepAwake() {
     const [on, setOn] = useState(false);
-    const video = useRef(null);
-    const lock = useRef(null);
+    const release = useRef(null);
     const stop = useCallback(() => {
         setOn(false);
-        try { lock.current?.release(); } catch { /* already released */ }
-        lock.current = null;
-        if (video.current) { video.current.pause(); video.current.remove(); video.current = null; }
+        release.current?.();
+        release.current = null;
     }, []);
     const start = useCallback(() => {
         setOn(true);
-        if (window.isSecureContext && navigator.wakeLock?.request) {
-            navigator.wakeLock.request("screen").then((l) => { lock.current = l; }).catch(() => {});
-            return;
-        }
-        const v = document.createElement("video");
-        v.className = "rm-awake";
-        v.muted = true;
-        v.loop = true;
-        v.playsInline = true;
-        v.setAttribute("playsinline", "");
-        v.setAttribute("aria-hidden", "true");
-        v.src = "/nosleep.mp4";
-        document.body.appendChild(v);
-        video.current = v;
-        v.play().catch(() => {});
+        release.current?.();
+        release.current = startAwake();
     }, []);
-    // The API's lock ends when the page hides; it is asked again on return.
-    useEffect(() => {
-        if (!on) return undefined;
-        const back = () => {
-            if (document.visibilityState !== "visible") return;
-            if (!(window.isSecureContext && navigator.wakeLock?.request)) { video.current?.play().catch(() => {}); return; }
-            if (!lock.current || lock.current.released) navigator.wakeLock.request("screen").then((l) => { lock.current = l; }).catch(() => {});
-        };
-        document.addEventListener("visibilitychange", back);
-        return () => document.removeEventListener("visibilitychange", back);
-    }, [on]);
     useEffect(() => stop, [stop]);
     return { on, start, stop };
 }

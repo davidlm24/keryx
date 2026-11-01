@@ -23,13 +23,13 @@ export default function TabletVideoReceiver() {
     return (
         <>
             {video && (
-                <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
+                <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center ks-stage">
                     <ClipTitle title={video.title} />
                     <LiveVideo item={video} meter="video" className="w-full h-full" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
                 </div>
             )}
             {leaving && (
-                <div key={ghost.key} className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center ks-fade-out" style={{ animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
+                <div key={ghost.key} className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center ks-fade-out ks-stage" style={{ animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
                     <ClipTitle title={leaving.title} />
                     <LiveVideo item={leaving} fadeOut={{ at: ghost.at, until: ghost.until }} className="w-full h-full" />
                 </div>
