@@ -311,13 +311,13 @@
       "args": {
         "from": { "type": "str", "max": 40, "required": true },
         "singer": { "type": "str", "max": 60 },
-        "song": { "type": "str", "max": 80, "required": true },
+        "song": { "type": "str", "max": 80 },
         "songId": { "type": "id" },
         "mediaId": { "type": "id" },
         "note": { "type": "str", "max": 200 },
         "link": { "type": "str", "max": 200 }
       },
-      "$comment": "songId: a song of the library the phone listed; one the console no longer has is dropped and the typed song kept. mediaId (Rodada Q, S15): a video or an audio of the Mídia the phone listed; one the console does not have, or of another type, is dropped the same way, and so is any mediaId beside a songId kept."
+      "$comment": "song or link (vistoria 31/10): a pedido with a YouTube link and no song takes the video title from YouTube (oEmbed), else \"Vídeo do YouTube\"; with neither it is 400. songId: a song of the library the phone listed; one the console no longer has is dropped and the typed song kept. mediaId (Rodada Q, S15): a video or an audio of the Mídia the phone listed; one the console does not have, or of another type, is dropped the same way, and so is any mediaId beside a songId kept."
     },
     "requests": {
       "kind": "R",

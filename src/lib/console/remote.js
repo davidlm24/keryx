@@ -329,9 +329,10 @@ export function messageRow(action, args = {}, at = new Date().toISOString()) {
 }
 
 // The same message again (a phone that sent twice, a retry): same kind,
-// sender, text and song within limits.dedupeMs. -> the row | null.
+// sender, text, song and link within limits.dedupeMs (two link-only
+// pedidos of different videos are two). -> the row | null.
 export function sameMessage(rows = [], row, now = Date.now()) {
-    const key = (r) => [r.kind, r.sender || "", r.text || "", r.song || ""].join("\u0001");
+    const key = (r) => [r.kind, r.sender || "", r.text || "", r.song || "", r.link || ""].join("\u0001");
     const want = key(row);
     return rows.find((r) => key(r) === want && Math.abs(now - Date.parse(r.sentAt || "")) <= limits.dedupeMs) || null;
 }

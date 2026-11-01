@@ -364,6 +364,9 @@ test("the pedido form against the contract's limits", () => {
     assert.equal(pedidoArgs({ from: "L", song: "x", songId: "bad id!" }).args.songId, undefined);
     assert.equal(pedidoArgs({ from: "L", song: "x", link: "https://vimeo.com/1" }).message, PROTOCOL.messages.notYouTube);
     assert.equal(pedidoArgs({ from: "L", song: "x", link: "youtu.be/dQw4w9WgXcQ" }).args.link, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    // A link alone is a pedido (vistoria 31/10): the console names it.
+    assert.deepEqual(pedidoArgs({ from: "L", link: "youtu.be/dQw4w9WgXcQ", singer: "Ana" }).args, { from: "L", singer: "Ana", link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
+    assert.equal(pedidoArgs({ from: "L", link: "https://vimeo.com/1" }).message, PROTOCOL.messages.notYouTube);
     const long = pedidoArgs({ from: "N".repeat(99), song: "S".repeat(200), singer: "C".repeat(99), note: "O".repeat(400) }).args;
     const spec = PROTOCOL.actions["request.send"].args;
     assert.equal(long.from.length, spec.from.max);

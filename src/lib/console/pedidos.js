@@ -182,5 +182,16 @@ export function pedidoItem(r) {
     const note = String(r.text || "").trim();
     return { ...(who ? { requested_by: who } : {}), ...(note ? { notes: note } : {}) };
 }
+// A pedido's stage on its way to the Setlist (a click on + or a drag,
+// vistoria 31/10, M2): the stage with who sings and the note as `extra`,
+// which addStageToSetlist lays on the ServiceItem it makes.
+export const withPedido = (stage, r) => (stage ? { ...stage, extra: pedidoItem(r) } : null);
+// A pedido's YouTube link as the stage wants it: the url and the title the
+// card says (the phone's name, or the one the console took from YouTube).
+// -> { url, title } | null (no link).
+export function pedidoYouTube(r) {
+    if (!r?.link) return null;
+    return { url: r.link, title: String(r.song || "").trim() || "Vídeo do YouTube" };
+}
 // The Setlist's tag: the name the item keeps ("" = none).
 export const singerOf = (item) => String(item?.requested_by || "").replace(/\s+/g, " ").trim();

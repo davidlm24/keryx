@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
     messagesInOrder, messageSay, freshMessages, hasUnread, newestAt, songOfPedido, FRESH_MS,
     isOperator, pedidosOf, chatOf, tabOf, chatHead, pedidoBy, operatorChat, operatorPedido, pedidoItem, singerOf, PEDIDO_MAX,
-    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pickRows, PICK_TABS, pedidoNote,
+    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pickRows, PICK_TABS, pedidoNote, withPedido, pedidoYouTube,
 } from "./pedidos.js";
 
 const row = (id, sentAt, extra = {}) => ({ id, sentAt, kind: "chat", sender: "Ana", text: "oi", status: "open", ...extra });
@@ -157,6 +157,15 @@ test("a pedido on the Setlist keeps who sings and its note (S13 = A)", () => {
     assert.deepEqual(pedidoItem(row("c", "x")), {}, "a chat gives nothing");
     assert.equal(singerOf({ requested_by: " Ana " }), "Ana");
     assert.equal(singerOf({}), "");
+});
+
+test("a pedido's stage carries who sings and the note to the Setlist (M2); its link keeps its name", () => {
+    const p = row("p", "x", { kind: "pedido", singer: "Ana", text: "Depois da oferta", song: "Raridade", link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
+    assert.deepEqual(withPedido({ id: "song:s1", title: "Raridade" }, p), { id: "song:s1", title: "Raridade", extra: { requested_by: "Ana", notes: "Depois da oferta" } });
+    assert.equal(withPedido(null, p), null);
+    assert.deepEqual(pedidoYouTube(p), { url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", title: "Raridade" });
+    assert.equal(pedidoYouTube({ ...p, song: " " }).title, "Vídeo do YouTube");
+    assert.equal(pedidoYouTube({ ...p, link: "" }), null);
 });
 
 test("a pedido in the bell: who asked, who sings and the note, its Ver the Pedidos tab", () => {

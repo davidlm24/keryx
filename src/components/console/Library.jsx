@@ -388,6 +388,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromMedia(m)) }),
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
                             onOpenMedia && { label: "Abrir a Mídia", icon: "media", onSelect: () => onOpenMedia() },
+                            // The Mídia with this file chosen and in view: there it is renamed (vistoria 31/10).
+                            onOpenMedia && menuItem("editar", { onSelect: () => onOpenMedia(`select:${m.id}`) }),
                             isYouTubeRow(m) && menuItem("baixarParaMidia", { onSelect: () => downloadToMedia(m, { askText, say: c.say }) }),
                             menuItem("selecionarVarios", { onSelect: () => ms.pickFrom(m.id) }),
                             menuItem("exportar", { onSelect: () => exportRows([m]) }),

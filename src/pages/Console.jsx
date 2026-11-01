@@ -711,7 +711,8 @@ export default function Console() {
     // the rows below renumbered once and one toast.
     // -> { added: titles, left, error? } (the controle remoto's setlist.add
     // reads it; silent: no toast, the runner says it). extra: fields every
-    // item made also gets (a pedido's who sings and note, Rodada Q S13/S15).
+    // item made also gets (a pedido's who sings and note, Rodada Q S13/S15);
+    // a stage's own `extra` (a pedido dragged in, withPedido) goes on its item.
     const addStageToSetlist = useCallback(async (given, index, { silent = false, extra = {} } = {}) => {
         const say = silent ? () => {} : c.say;
         const stages = (Array.isArray(given) ? given : [given]).filter(Boolean);
@@ -727,11 +728,11 @@ export default function Console() {
             for (const { stage, item } of rows) {
                 let { type, contentId } = item;
                 if (type === "YT") {
-                    const row = await mediaFromYouTube(stage.args?.url || stage.id.slice(3));
+                    const row = await mediaFromYouTube(stage.args?.url || stage.id.slice(3), { title: stage.title });
                     type = "VIDEO";
                     contentId = row.id;
                 }
-                await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at + added.length, duration: stage.args?.duration || defaultDuration(type, getPrefs()), ...extra });
+                await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at + added.length, duration: stage.args?.duration || defaultDuration(type, getPrefs()), ...extra, ...(stage.extra || {}) });
                 added.push(stage.title);
             }
             say(addedSay(added, left));
@@ -1335,7 +1336,7 @@ export default function Console() {
         // active culto's name; a click opens the menu that switches it.
         <Panel title="Setlist" caption={setlistHead} className={`setlist-panel ${coverCls}`}
             actions={<>{coverTag}{setlistPicking && <SelectManyBtn on onToggle={setSetlistPicking} />}<IconBtn name="planner" title="Planejar o culto" small onClick={() => openPlanner(view.active ? serviceId : null)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} media={data.media} askText={askText} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={view.active ? (it) => openPlanner(serviceId, it?.id || null) : null} onSay={c.say}
+            <Rundown service={service} items={items} media={data.media} askText={askText} onOpenMedia={openMedia} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={view.active ? (it) => openPlanner(serviceId, it?.id || null) : null} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
             <SetlistFooter count={setlistCount} autoplay={{ on: Boolean(service?.autoplay), onChange: setAutoplay }} prev={stepNb.prev} next={stepNb.next} onStep={stepSetlist} />
         </Panel>
@@ -1388,7 +1389,7 @@ export default function Console() {
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
             items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend}
-            messages={messages} onAddSong={addSong} onAddMedia={(m, extra) => addStageToSetlist(stageFromMedia(m), undefined, { extra })} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} />
+            messages={messages} onAddSong={addSong} onAddMedia={(m, extra) => addStageToSetlist(stageFromMedia(m), undefined, { extra })} onAddStage={(s) => addStageToSetlist(s)} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" actions={<>

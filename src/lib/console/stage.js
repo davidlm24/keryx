@@ -105,8 +105,10 @@ export function stageFromMediaList(all) {
     return { kind: "media", id: `medias:${list.map((m) => m.id).join(",")}`, title: `${list.length} mídias em sequência`, meta: "Mídia", slides: [], index: 0, op: "media.playlist", args: { items, index: 0 }, missing: list.some((m) => m.missing) };
 }
 
-export function stageFromYouTube(url) {
-    return { kind: "video", id: `yt:${url}`, title: "Vídeo do YouTube", meta: "YouTube", slides: [], index: 0, op: "video.show", args: { kind: "youtube", url, title: "Vídeo do YouTube" } };
+// title: the name the link goes by (a pedido's), else "Vídeo do YouTube".
+export function stageFromYouTube(url, title = "") {
+    const name = String(title || "").trim() || "Vídeo do YouTube";
+    return { kind: "video", id: `yt:${url}`, title: name, meta: "YouTube", slides: [], index: 0, op: "video.show", args: { kind: "youtube", url, title: name } };
 }
 
 // A CommunicationVideo row (src/lib/console/notice.js): countdown, timer,

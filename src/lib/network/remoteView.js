@@ -490,8 +490,10 @@ export function pedidoArgs({ from, singer, song, songId, mediaId, note, link } =
     const name = cleanName(from);
     if (!name) return { error: "from", message: "Escreva o seu nome." };
     const title = clip(song, REQ.song.max);
-    if (!title) return { error: "song", message: "Escreva o louvor ou escolha da biblioteca." };
-    const args = { from: name, song: title };
+    // A YouTube link alone is a pedido too: the console names it from YouTube.
+    if (!title && !String(link || "").trim()) return { error: "song", message: "Escreva o louvor, escolha da biblioteca ou cole um link do YouTube." };
+    const args = { from: name };
+    if (title) args.song = title;
     const who = clip(singer, REQ.singer.max);
     if (who) args.singer = who;
     if (songId && new RegExp(PROTOCOL.idPattern).test(songId)) args.songId = songId;
