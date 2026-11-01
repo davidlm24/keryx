@@ -17,6 +17,7 @@ import { formatReference } from "@/lib/bibleBooks";
 import { referenceFrom } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
 import { byGroup, rowStatus } from "@/lib/console/outputs";
+import { placementOptions, placementTarget, placementValue, placementWord } from "@/lib/console/placement";
 import { PREF_OUTPUTS, ruleLabel, ruleSummary } from "@/lib/outputPrefs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { Switch } from "./settings/parts";
@@ -142,7 +143,7 @@ export function useAnchor(selector, width, active) {
 const TONE_DOT = { ok: "var(--ok)", rh: "var(--rh)", warn: "var(--warn)", off: "var(--fg-3)" };
 const TONE_CLS = { ok: "", rh: "is-rh", warn: "is-warn", off: "is-off" };
 
-export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, idle, onIdle, onSettings, ruleOf = null, onRule = null }) {
+export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, idle, onIdle, onSettings, ruleOf = null, onRule = null, displays = [], outputs = [], onPlace = null }) {
     const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
     const box = useFocusFirst(open === "outs");
@@ -152,6 +153,15 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
     const flip = (key, on) => {
         setWant((w) => ({ ...w, [key]: on }));
         Promise.resolve(on ? onOpen(key) : onClose(key)).finally(() => setWant(({ [key]: _done, ...rest }) => rest));
+    };
+    // The same for the destination: the button shows the choice at once, the
+    // main process moves the window, and the row reads it back when done.
+    const [placing, setPlacing] = useState({});
+    const pick = (key, value) => {
+        const target = placementTarget(value, displays);
+        if (!target) return;
+        setPlacing((p) => ({ ...p, [key]: target }));
+        Promise.resolve(onPlace(key, target)).finally(() => setPlacing(({ [key]: _done, ...rest }) => rest));
     };
     if (open !== "outs") return null;
     const rows = health.rows;
@@ -184,11 +194,32 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                             {/* What this output receives, changed right here (owner
                                 2026-10-27, S1 = A): the four shortcuts and the Editor.
                                 Palco, Pastor and Transmissão draw their own thing. */}
-                            {ruleOf && onRule && PREF_OUTPUTS.includes(page) && (
-                                <button type="button" className="kx-t kx-out-recv" aria-haspopup="menu" title={`O que ${r.name} recebe: ${ruleSummary(ruleOf(page))}`} onClick={(e) => onRule(e, page, r.name)}>
-                                    Recebe: <b>{ruleLabel(ruleOf(page))}</b><Icon name="chevron-down" size={12} />
-                                </button>
-                            )}
+                            {(() => {
+                                const recv = ruleOf && onRule && PREF_OUTPUTS.includes(page);
+                                // Where it opens (owner 2026-11-02, D1 = A): every local
+                                // row but a removed one, Palco and Pastor too.
+                                const place = r.local && onPlace && outputs.find((o) => o.key === r.key)?.assignment;
+                                if (!recv && !place) return null;
+                                const shown = place && (r.key in placing ? { ...place, target: placing[r.key] } : place);
+                                const word = place && placementWord(shown, displays);
+                                return (
+                                    <div className="kx-out-ctl">
+                                        {recv && (
+                                            <button type="button" className="kx-t kx-out-recv" aria-haspopup="menu" title={`O que ${r.name} recebe: ${ruleSummary(ruleOf(page))}`} onClick={(e) => onRule(e, page, r.name)}>
+                                                Recebe: <b>{ruleLabel(ruleOf(page))}</b><Icon name="chevron-down" size={12} />
+                                            </button>
+                                        )}
+                                        {place && (
+                                            <span className={`kx-out-recv kx-out-dest ${word.off ? "is-off" : ""}`} title={`Em qual tela ${r.name} abre`}>
+                                                Destino: <b>{word.text}</b><Icon name="chevron-down" size={12} />
+                                                <select value={placementValue(shown, displays)} onChange={(e) => pick(r.key, e.target.value)} aria-label={`Tela de ${r.name}`}>
+                                                    {placementOptions(displays, shown).map((op) => <option key={op.value} value={op.value} disabled={op.disabled}>{op.label}</option>)}
+                                                </select>
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                         <span className="kx-out-st" style={{ gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                             <i className="kx-dot" style={{ background: TONE_DOT[st.tone] }} />{st.text}

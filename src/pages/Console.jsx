@@ -524,7 +524,7 @@ export default function Console() {
         const live = c.live;
         if (fundoPadrao && fundoGoesOnNow(live)) c.liveOp("background.set", fundoPadrao).catch(() => {});
     }, [liveReady, padraoKey]); // eslint-disable-line react-hooks/exhaustive-deps
-    const { outputs, network, seen, forgetOutput, refresh: refreshOutputs } = useOutputs();
+    const { displays: monitors, outputs, network, seen, forgetOutput, refresh: refreshOutputs } = useOutputs();
     // Outputs: the projector window missing its display, or closed, is the warning.
     const projector = outputs.find((o) => o.key === "/Projection");
 
@@ -853,6 +853,12 @@ export default function Console() {
     const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {}).then(refreshOutputs);
     // Adicionar saída (the Saídas popover): back on the list with the same
     // screen, "Abrir ao iniciar" and Ajustes it had.
+    // Saídas' Destino: where an output opens; the main process moves a window
+    // that is open, and the popover reads the row again when it is done.
+    const placeOutput = (key, target) => (window.keryxDesktop?.displays.set(key, { target }) || Promise.resolve())
+        .then((res) => { if (res?.error) c.say(res.error.message); })
+        .catch((err) => c.say(err?.message || "Não foi possível mudar a tela da saída."))
+        .then(refreshOutputs);
     const restoreOutput = (key) => window.keryxDesktop?.displays.set(key, { removed: false }).catch((err) => c.say(err?.message || "Não foi possível adicionar a saída."));
     const removedOutputs = useMemo(() => outputs.filter((o) => o.removed), [outputs]);
 
@@ -1741,7 +1747,7 @@ export default function Console() {
             <SyncPop open={open} setOpen={setOpen} onSettings={openSettings} say={c.say} songsHere={data.songs.length} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} displays={monitors} outputs={outputs} onPlace={window.keryxDesktop ? placeOutput : null} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)}
                 songLine={songLine} onSongLine={(k, v) => setLayout({ ...layout, [SONG_LINE_KEYS[k]]: v })}
                 group={canGroup(libTabNow) ? layout.libGroup?.[libTabNow] === true : null} onGroup={(on) => setLibGroup(libTabNow, on)} />
