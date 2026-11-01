@@ -4,7 +4,7 @@ import Icon from "../Icon";
 import { Btn, Field, Empty } from "../kx";
 import { Switch, desktopOnly, CfgKey, CfgGroup, Reading } from "./parts";
 import { useNetworkInfo } from "./useDisplays";
-import { byGroup } from "@/lib/console/outputs";
+import { byGroup, screenClients } from "@/lib/console/outputs";
 import { useOutputLooks, useOutputPrefRows } from "@/hooks/useOutputPref";
 import OutputPreview from "./OutputPreview";
 import { openEditor } from "@/lib/editorWindow";
@@ -93,7 +93,8 @@ export default function RedeSection({ c }) {
         try { navigator.clipboard.writeText(url).then(() => c.say("Endereço copiado."), fail); } catch { fail(); }
     };
     const main = info.urls?.[0];
-    const clients = info.clients || [];
+    // The phones are listed in KERYX no celular, never as screens.
+    const clients = screenClients(info.clients);
 
     return (
         <>
@@ -163,7 +164,7 @@ export default function RedeSection({ c }) {
             <CfgGroup id="rede.conectadas" k="Telas conectadas pela rede" summary={connectedSummary(clients, info.running)}>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
             {clients.map((cl) => {
-                const path = cl.screen && cl.screen !== "/Remote" ? cl.screen : "";
+                const path = cl.screen || "";
                 const pref = path ? normalizePref(prefRows.find((r) => r.screen_path === path) || null) : null;
                 return (
                     <div key={`${cl.ip}-${cl.since}`} className="kx-row cfg-net-row">
@@ -171,7 +172,7 @@ export default function RedeSection({ c }) {
                             page, the same settings, the same live state. */}
                         {pref
                             ? <span className="cfg-net-thumb"><OutputPreview path={path} pref={pref} design={designOf(pref, layoutRows)} themes={themes} live={c.live} church={church} /></span>
-                            : <span className="kx-glyph"><Icon name={cl.screen === "/Remote" ? "tablet" : "tv"} /></span>}
+                            : <span className="kx-glyph"><Icon name="tv" /></span>}
                         <div className="kx-row-main"><div className="kx-row-title">{cl.label || "Página inicial"}</div><div className="kx-row-meta">{cl.ip} · conectada desde {new Date(cl.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>
                     </div>
                 );

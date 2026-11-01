@@ -7,8 +7,8 @@
 // The plain lists, not layout.js: every output reads these preferences and
 // must not load the console's dock with them.
 import { DENSITIES, MODULES } from "../console/layoutChoices.js";
-import { normalizeCategories } from "../console/backgroundPrefs.js";
-import { renamedVersion } from "../bibleBooks.js";
+import { normalizeCategories } from "../console/categoryNames.js";
+import { renamedVersion } from "../bibleRenames.js";
 import { idleLookOf, isDefaultIdleLook } from "../../../shared/idleLook.mjs";
 import { TRANSITION_TYPE_IDS } from "../contentKinds.js";
 
