@@ -1,0 +1,47 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { placementValue, placementTarget, placementOptions, placementWord } from "./placement.js";
+
+const D1 = { id: 11, label: "Dell", width: 2560, height: 1440 };
+const D2 = { id: 22, label: "Projetor", width: 1920, height: 1080, bounds: { width: 1280, height: 720 } };
+const displays = [D1, D2];
+const gone = { id: 33, label: "TV", width: 1280, height: 720 };
+
+test("the value is auto, window, d:<id> or gone:<id>", () => {
+    assert.equal(placementValue({ target: "auto" }, displays), "auto");
+    assert.equal(placementValue({ target: "window" }, displays), "window");
+    assert.equal(placementValue({ target: D2 }, displays), "d:22");
+    assert.equal(placementValue({ target: gone }, displays), "gone:33");
+    assert.equal(placementValue(null, displays), "auto");
+    assert.equal(placementValue({}, displays), "auto");
+});
+
+test("choosing asks for the mode, or the monitor with its size (bounds first)", () => {
+    assert.equal(placementTarget("auto", displays), "auto");
+    assert.equal(placementTarget("window", displays), "window");
+    assert.deepEqual(placementTarget("d:22", displays), { id: 22, label: "Projetor", width: 1280, height: 720 });
+    assert.deepEqual(placementTarget("d:11", displays), { id: 11, label: "Dell", width: 2560, height: 1440 });
+});
+
+test("a monitor that is not there asks for nothing", () => {
+    assert.equal(placementTarget("d:99", displays), null);
+    assert.equal(placementTarget("gone:33", displays), null);
+});
+
+test("the options: the two modes, the monitors that are on, then the off one disabled", () => {
+    assert.deepEqual(placementOptions(displays, { target: "auto" }).map((o) => o.label), [
+        "Automático", "Sempre numa janela", "Tela 1 · 2560×1440", "Tela 2 · 1280×720",
+    ]);
+    const withGone = placementOptions(displays, { target: gone });
+    assert.deepEqual(withGone.at(-1), { value: "gone:33", label: "1280×720 (desligada)", disabled: true });
+    assert.equal(withGone.length, 5);
+    assert.equal(placementOptions(displays, { target: D1 }).some((o) => o.disabled), false);
+    assert.equal(placementOptions([], { target: "auto" }).length, 2);
+});
+
+test("the popover's word: the mode, the monitor's number, or the off size in amber", () => {
+    assert.deepEqual(placementWord({ target: "auto" }, displays), { text: "Automático", off: false });
+    assert.deepEqual(placementWord({ target: "window" }, displays), { text: "Janela", off: false });
+    assert.deepEqual(placementWord({ target: D2 }, displays), { text: "Tela 2", off: false });
+    assert.deepEqual(placementWord({ target: gone }, displays), { text: "1280×720 (desligada)", off: true });
+});

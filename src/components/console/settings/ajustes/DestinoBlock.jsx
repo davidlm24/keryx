@@ -5,6 +5,7 @@ import { CfgDisc, CfgGroup, FormRow, Switch, desktopOnly } from "../parts";
 import { useDisplays, useNetworkInfo } from "../useDisplays";
 import { ICON_CHOICES, outputMeta } from "@/lib/outputPrefs";
 import { destinoSummary, nomeIconeSummary } from "@/lib/console/ajustesSummaries";
+import { placementOptions } from "@/lib/console/placement";
 
 // The icons' names, for screen readers and the tooltip.
 const ICON_NAMES = { projector: "Projetor", tv: "TV", monitor: "Monitor", tablet: "Tablet", film: "Filme", megaphone: "Megafone", book: "Livro", image: "Imagem", text: "Texto", star: "Estrela", layers: "Camadas", external: "Janela" };
@@ -37,10 +38,7 @@ export default function DestinoBlock({ ctx }) {
                         {displays && !o && <span className="kx-meta">Lendo as telas…</span>}
                         {displays && o && <>
                             <select className="cfg-select" value={valueOf(o.assignment)} onChange={(e) => choose(o, e.target.value)} aria-label={`Tela de ${label}`}>
-                                <option value="auto">Automático</option>
-                                <option value="window">Sempre numa janela</option>
-                                {list.map((d, i) => <option key={d.id} value={`d:${d.id}`}>Tela {i + 1} · {d.bounds?.width || d.width}×{d.bounds?.height || d.height}</option>)}
-                                {typeof o.assignment.target === "object" && !list.some((d) => d.id === o.assignment.target.id) && <option value={`gone:${o.assignment.target.id}`} disabled>{o.assignment.target.width}×{o.assignment.target.height} (desligada)</option>}
+                                {placementOptions(list, o.assignment).map((op) => <option key={op.value} value={op.value} disabled={op.disabled}>{op.label}</option>)}
                             </select>
                             {o.open
                                 ? <Btn small onClick={() => apply(displays.close(path))}>Fechar</Btn>

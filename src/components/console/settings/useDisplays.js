@@ -1,5 +1,6 @@
 import { useBridge, usePoll } from "./parts";
 import { outputStatusText } from "@/lib/console/outputs";
+import { placementValue, placementTarget } from "@/lib/console/placement";
 
 // The monitors and where each output opens (electron/outputs.cjs), read from
 // the main process every 3 s. Shared by Telas e saídas (the cards) and the
@@ -21,18 +22,10 @@ export function useDisplays(say) {
         .catch((err) => say(err?.message || "Não foi possível mudar a saída."));
     // A display's number as Windows counts it here (0: not among the ones on).
     const number = (id) => list.findIndex((d) => d.id === id) + 1;
-    const valueOf = (a) => {
-        const t = a.target;
-        if (t === "auto" || t === "window") return t;
-        return list.some((d) => d.id === t.id) ? `d:${t.id}` : `gone:${t.id}`;
-    };
+    const valueOf = (a) => placementValue(a, list);
     const choose = (o, value) => {
-        let target = value;
-        if (value.startsWith("d:")) {
-            const d = list.find((x) => `d:${x.id}` === value);
-            target = { id: d.id, label: d.label, width: d.bounds?.width || d.width, height: d.bounds?.height || d.height };
-        }
-        return apply(displays.set(o.key, { target }));
+        const target = placementTarget(value, list);
+        return target ? apply(displays.set(o.key, { target })) : Promise.resolve();
     };
     const statusOf = (o) => outputStatusText(o.placement, number(o.placement?.displayId));
     return { displays, state, setState, readError, list, outputs, apply, number, valueOf, choose, statusOf };
