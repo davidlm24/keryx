@@ -13,7 +13,11 @@ import { mediaType } from "@/lib/contentKinds";
  * reports that (media.advance, which ignores duplicate reports).
  * fadeOut ({ at, until }): the media is leaving (ScreenRenderer's ghost,
  * Transições): it plays on, quieter and quieter, and moves nothing on.
+ * On a network screen the screen is the 16:9 stage (ScreenStart), not the
+ * tablet's viewport: the picture fills the stage's box.
  */
+const NET = keryx.isNetworkScreen;
+const box = NET ? "h-full" : "min-h-screen";
 export default function LiveMediaView({ media, fadeOut = null }) {
     // An image's name over it only when the church wants titles (the legacy pref; the item title is the theme's since the Rodada B 2026-10-14).
     const prefs = usePrefs();
@@ -61,17 +65,17 @@ export default function LiveMediaView({ media, fadeOut = null }) {
 
     if (media.kind === "video" || media.kind === "youtube") {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center relative">
+            <div className={`${box} bg-black flex items-center justify-center relative`}>
                 {counter}
                 {/* Ends -> the playlist moves on, a single video leaves the screen. */}
-                <LiveVideo item={media} onEnded={advance} onRefused={refuse} meter={fadeOut ? null : "media"} fadeOut={fadeOut} className="w-full h-screen" />
+                <LiveVideo item={media} onEnded={advance} onRefused={refuse} meter={fadeOut ? null : "media"} fadeOut={fadeOut} className={NET ? "w-full h-full" : "w-full h-screen"} />
             </div>
         );
     }
 
     if (media.kind === "image" || media.kind === "gif") {
         return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 relative">
+            <div className={`${box} bg-black flex flex-col items-center justify-center p-8 relative`}>
                 {counter}
                 {showTitle && media.title && !inPlaylist && media.kind === "image" && (
                     <h2 className="text-3xl font-semibold text-white mb-4">{media.title}</h2>
@@ -80,7 +84,7 @@ export default function LiveMediaView({ media, fadeOut = null }) {
                     key={media.url}
                     src={media.url}
                     alt={media.title}
-                    className={`max-w-full object-contain ${inPlaylist || media.kind === "gif" ? "max-h-screen" : "max-h-[85vh]"}`}
+                    className={`max-w-full object-contain ${inPlaylist || media.kind === "gif" ? (NET ? "max-h-full" : "max-h-screen") : (NET ? "max-h-[85%]" : "max-h-[85vh]")}`}
                 />
             </div>
         );
@@ -89,5 +93,5 @@ export default function LiveMediaView({ media, fadeOut = null }) {
     // A PDF or a PowerPoint sent as media before Rodada F3: black. A PDF goes
     // on air as a presentation now (its pages, the content layer), a
     // PowerPoint not at all (the operator saves it as PDF).
-    return <div className="min-h-screen bg-black" />;
+    return <div className={`${box} bg-black`} />;
 }

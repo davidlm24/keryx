@@ -46,6 +46,8 @@ const PastorView = lazy(() => import('./pages/PastorView'));
 const StreamView = lazy(() => import('./pages/StreamView'));
 const RemoteView = lazy(() => import('./pages/RemoteView'));
 const NetworkHome = lazy(() => import('@/components/network/NetworkHome'));
+// Only an output on a tablet or a TV loads it (NetworkStatus).
+const ScreenStart = lazy(() => import('@/components/network/ScreenStart'));
 // The church's fonts load as a chunk of their own too: their query (react-query's
 // useQuery) and src/lib/fonts.js would otherwise ride the entry into every
 // page, and the phone (/Remote) went over its budget (scripts/bundle-budget.cjs).
@@ -80,6 +82,8 @@ const screens = (
 function NetworkStatus() {
   const { pathname } = useLocation();
   if (pathname === '/StreamView') return null;
+  // An output on a tablet or a TV: the 16:9 stage and the one tap (ScreenStart).
+  if (TITLED.has(pathname)) return <><Suspense fallback={null}><ScreenStart /></Suspense><NetStatus chip /></>;
   // The phone has its own banner for a dead link (RemoteView): no chip over its header.
   return <NetStatus chip={pathname !== '/Remote'} />;
 }

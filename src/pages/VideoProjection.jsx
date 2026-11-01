@@ -39,10 +39,13 @@ export default function VideoProjection() {
     const ghost = useExitGhost(live, live?.rev, videoExitMs, !other);
     const leaving = ghost?.from?.video || null;
     const box = { position: "fixed", inset: 0, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" };
+    // On a network screen the box is the 16:9 stage (ks-stage, ScreenStart),
+    // so the clip fills the box, not the tablet's viewport.
+    const tall = keryx.isNetworkScreen ? "w-full h-full" : "w-full h-screen";
     const fading = leaving && (
-        <div key={ghost.key} className="ks-fade-out" style={{ ...box, animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
+        <div key={ghost.key} className="ks-fade-out ks-stage" style={{ ...box, animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
             {leaving.title && <div className="net-vtitle">{leaving.title}</div>}
-            <LiveVideo item={leaving} fadeOut={{ at: ghost.at, until: ghost.until }} className="w-full h-screen" />
+            <LiveVideo item={leaving} fadeOut={{ at: ghost.at, until: ghost.until }} className={tall} />
         </div>
     );
 
@@ -50,9 +53,9 @@ export default function VideoProjection() {
 
     return (
         <>
-            <div style={box}>
+            <div className="ks-stage" style={box}>
                 {video.title && <div className="net-vtitle">{video.title}</div>}
-                <LiveVideo item={video} meter="video" className="w-full h-screen" onEnded={() => { if (keryx.isDesktop) projection.clearVideo({ ended: true }).catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
+                <LiveVideo item={video} meter="video" className={tall} onEnded={() => { if (keryx.isDesktop) projection.clearVideo({ ended: true }).catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
                 <AlertLayer alert={alertOf(live, prefs.pref, "/VideoProjection")} />
             </div>
             {fading}

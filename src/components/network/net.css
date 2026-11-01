@@ -143,3 +143,22 @@
 /* ---- Vídeo: the clip's name over the picture ---- */
 .net-vtitle { position: absolute; top: max(14px, 3vmin); left: 50%; transform: translateX(-50%); z-index: 10; pointer-events: none; padding: 1.2vmin 2.4vmin; border-radius: 999px; background: #000000a6; color: #fff; font-family: var(--font-sans); font-size: max(15px, 2.6vmin); font-weight: 600; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
 .np-cap .np-since { font-variant-numeric: tabular-nums; color: var(--fg-3); }
+
+/* An output page on a screen of the network (owner 2026-11-01, S2 = A;
+   ScreenStart.jsx sets html.ks-net and the box, src/lib/network/screenStage.js):
+   the projector's 16:9 stage centred on black, so a 4:3 iPad sees the whole
+   picture with bars, never cut at the sides. The fallback before the first
+   measure is the dynamic viewport (Safari's bars move 100vh). A layout's
+   Projeção element stays inside its layout. */
+html.ks-net, html.ks-net body { background: #000; }
+html.ks-net .ks.ks-fill, html.ks-net .kl.kl-fill, html.ks-net .ks-stage {
+  inset: 0; margin: auto;
+  width: min(100vw, 177.78vh); height: min(100vh, 56.25vw);
+  width: var(--net-w, min(100vw, 177.78dvh)); height: var(--net-h, min(100dvh, 56.25vw));
+}
+html.ks-net .kl-screen > .ks.ks-fill { margin: 0; width: auto; height: auto; }
+html.ks-net .ks-stage > .ks-alert-layer { position: absolute; }
+/* M4 = A: a browser that refused a video even muted waits for one tap (an
+   Aviso rápido still shows over it: .ks-alert-layer). */
+.net-tap { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; width: 100%; height: 100%; border: 0; background: #000; color: #fff; font-family: "Geist", system-ui, sans-serif; cursor: pointer; }
+.net-tap b { font-size: max(18px, 3.2vmin); font-weight: 600; letter-spacing: .01em; opacity: .9; }

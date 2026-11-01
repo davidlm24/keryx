@@ -4,6 +4,7 @@ import { playbackPlan, playbackGain } from "@shared/live-state.mjs";
 import { createPool } from "@/lib/mediaPool";
 import { getYouTubeId, loadYouTubeApi } from "@/utils/youtube";
 import { usePrefs } from "@/hooks/useUser";
+import { clipRate, tapGate } from "@/lib/network/screenStage";
 
 // YouTube draws the video's title and channel over the top of its player
 // (at the start and on pause) and its logo at the bottom; no player option
@@ -81,8 +82,17 @@ function videoStill(el, poster) {
  * onRefused(code): a YouTube link the player will not play (YouTube's error
  *   number: 101/150 the owner does not let it play outside YouTube, 100
  *   gone or private). The player stays black, never YouTube's error page.
+ *
+ * On a screen of the church network (a tablet, a TV; owner 2026-11-01, S1
+ * and M4 = A) every video plays muted — the sound comes out of the KERYX
+ * computer, and a browser starts a muted video by itself —; one it still
+ * refuses waits for the page's one tap ("Toque para começar", ScreenStart),
+ * and a clip a little out of step catches up by its rate, never a seek
+ * (clipRate, src/lib/network/screenStage.js). Nothing changes elsewhere.
  */
-export default function LiveVideo({ item, loop = false, muted = false, className = "", onEnded, onDuration, onRefused, meter = null, fadeOut = null }) {
+const NET = keryx.isNetworkScreen;
+export default function LiveVideo({ item, loop = false, muted: mutedProp = false, className = "", onEnded, onDuration, onRefused, meter = null, fadeOut = null }) {
+    const muted = mutedProp || NET;
     const isYouTube = item?.kind === "youtube";
     const hideYtTitle = usePrefs().youtube_hide_title;
     const videoRef = useRef(null);
@@ -153,12 +163,30 @@ export default function LiveVideo({ item, loop = false, muted = false, className
         if (plan.seek !== undefined) el.currentTime = plan.seek;
         el.volume = plan.volume * left();
         if (plan.pause) el.pause();
+        if (NET) {
+            const rate = plan.seek === undefined ? clipRate(el, playback, now, { loop }) : 1;
+            if (el.playbackRate !== rate) el.playbackRate = rate;
+        }
         if (plan.play) {
             el.play().then(() => setBlocked(false)).catch((err) => {
-                if (err && err.name === "NotAllowedError") setBlocked(true);
+                if (!err || err.name !== "NotAllowedError") return;
+                if (NET && !tapGate.started) waitTap();
+                else setBlocked(true);
             });
         }
     };
+
+    // A network screen's refusal waits for the page's one tap (tapGate).
+    const dropTap = useRef(null);
+    const waitTap = () => {
+        if (dropTap.current) return;
+        dropTap.current = tapGate.refused(() => {
+            dropTap.current = null;
+            videoRef.current?.play().catch(() => {});
+            syncRef.current();
+        });
+    };
+    useEffect(() => () => dropTap.current?.(), []);
 
     // A file plays in an element from the pool, put into this player's box.
     // A layout effect, so the element changes hands inside the commit.
@@ -195,6 +223,7 @@ export default function LiveVideo({ item, loop = false, muted = false, className
         return () => {
             el.removeEventListener("loadedmetadata", onMeta);
             el.removeEventListener("ended", onEnd);
+            if (el.playbackRate !== 1) el.playbackRate = 1;
             if (videoRef.current === el) videoRef.current = null;
             videos.release(el);
         };
