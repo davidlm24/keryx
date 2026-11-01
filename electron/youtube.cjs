@@ -67,6 +67,9 @@ function oembedState(status) {
 function downloadArgs({ url, outDir, ffmpegDir, node }) {
     return [
         "--no-playlist", "--newline", "--progress", "--no-colors", "--no-mtime",
+        // The PyInstaller build ignores PYTHONIOENCODING/PYTHONUTF8 and prints
+        // cp1252 on a pt-BR Windows (checked with 2026.10.26): say it here.
+        "--encoding", "utf-8",
         ...(node ? ["--js-runtimes", `node:${node}`] : []),
         "--ffmpeg-location", ffmpegDir,
         "-f", FORMAT,

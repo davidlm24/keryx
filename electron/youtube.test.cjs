@@ -34,6 +34,7 @@ test("downloadArgs: H.264 up to 1080p, merged to mp4, the runtime and ffmpeg nam
     assert.ok(args.includes("--no-playlist"));
     assert.deepEqual(args.slice(-2), ["--", "https://youtu.be/aBcDeFgHiJk"], "the link last, never read as an option");
     assert.ok(!downloadArgs({ url: "u", outDir: "o", ffmpegDir: "f" }).includes("--js-runtimes"));
+    assert.deepEqual(args.slice(args.indexOf("--encoding"), args.indexOf("--encoding") + 2), ["--encoding", "utf-8"]);
 });
 
 test("parseLine: progress, info (a title with |), the file; anything else null", () => {
