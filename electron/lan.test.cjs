@@ -283,7 +283,7 @@ async function remoteSignedIn(f) {
     assert.equal(res.status, 303);
     assert.equal(res.headers.get("location"), "/Remote");
     assert.match(res.headers.get("set-cookie"), /HttpOnly/);
-    assert.match(res.headers.get("set-cookie"), /SameSite=Strict/);
+    assert.match(res.headers.get("set-cookie"), /SameSite=Lax/);
     return res.headers.get("set-cookie").split(";")[0];
 }
 const send = (f, body, headers = {}) => fetch(`${f.base}/api/remote`, { method: "POST", headers: { "content-type": "application/json", "x-keryx": "1", ...headers }, body: JSON.stringify(body) });
@@ -555,7 +555,7 @@ async function teamSignedIn(f) {
     assert.equal(res.status, 303);
     assert.equal(res.headers.get("location"), "/Remote");
     const set = res.headers.get("set-cookie");
-    assert.match(set, /keryx_team=[0-9a-f]{64}; Path=\/; Max-Age=31536000; HttpOnly; SameSite=Strict/);
+    assert.match(set, /keryx_team=[0-9a-f]{64}; Path=\/; Max-Age=31536000; HttpOnly; SameSite=Lax/);
     assert.match(set, /keryx_remote=; Path=\/; Max-Age=0/, "the Controle's cookie goes");
     return set.split(";")[0];
 }
