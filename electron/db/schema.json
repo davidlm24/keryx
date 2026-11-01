@@ -1794,6 +1794,10 @@
         "audio_url": {
           "type": "text"
         },
+        "playback_mode": {
+          "type": "text",
+          "default": ""
+        },
         "background_image": {
           "type": "text"
         },

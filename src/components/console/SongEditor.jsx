@@ -6,6 +6,7 @@ import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard 
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
+import { soundModeFor } from "@/lib/console/videoSound";
 import { songTheme, songParts, cleanPartThemes } from "@/lib/console/songTheme";
 import { applyWithFundo, bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import ThemeChip from "./library/ThemeChip";
@@ -37,7 +38,7 @@ const songBg = (spec) => ({ background: spec || null, background_image: spec?.ki
 // A song's look of its own, cleared (S1 = A: a song has a theme, not loose fonts and colours).
 const NO_OWN_LOOK = { font_family: "", text_effect: "", text_color: "", text_color_2: "", ...songBg(null) };
 
-const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false, follow_mode: "", slide_seconds: null };
+const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", playback_mode: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false, follow_mode: "", slide_seconds: null };
 const unCR = (t) => String(t ?? "").replace(/\r\n?/g, "\n");
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
@@ -403,6 +404,10 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const partThemes = cleanPartThemes(song.part_themes);
     const media = song.audio_url;
     const video = isVideoUrl(media);
+    // "Só o som do vídeo" (videoSound.js): the switch for a video file, a
+    // hint for a YouTube link (it never plays hidden).
+    const soundMode = soundModeFor(media);
+    const soundOnly = soundMode === "switch" && song.playback_mode === "sound";
     const marked = starts.filter((x) => Number.isFinite(x)).length;
     // Avançar sozinha (Rodada P7): Não, Pelas marcas or Por tempo.
     const advance = followModeOf(song, starts.map((start) => ({ start })));
@@ -586,10 +591,19 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         <div className="ed-media">{video
                             ? <video ref={mediaRef} src={media} controls preload="metadata" />
                             : <audio ref={mediaRef} src={media} controls preload="metadata" />}
-                            <span className="kx-meta">{video ? "Vídeo · vai às telas de vídeo" : "Playback · toca no canal de áudio"}</span>
+                            <span className="kx-meta">{soundOnly ? "Vídeo · só o som, no canal de áudio" : video ? "Vídeo · vai às telas de vídeo" : "Playback · toca no canal de áudio"}</span>
                         </div>
                     )}
                     <div className="ed-syncstat">
+                        {soundMode === "switch" && <>
+                            <div className="ed-adv">
+                                <span className="k">Nas telas</span>
+                                <button type="button" role="switch" aria-checked={soundOnly} aria-label="Só o som do vídeo" className={`sw2 kx-switch kx-t ${soundOnly ? "is-on" : ""}`} onClick={() => set({ playback_mode: soundOnly ? "" : "sound" })} />
+                                <span>Só o som do vídeo</span>
+                            </div>
+                            <span className="kx-meta">{soundOnly ? "As telas mostram a letra; o som do vídeo toca por baixo, no canal de áudio." : "O vídeo vai às telas de vídeo junto com a letra."}</span>
+                        </>}
+                        {soundMode === "youtube" && <span className="kx-meta">Um link do YouTube não toca escondido: para mostrar a letra com o som dele, use Baixar para a Mídia e escolha aqui o arquivo baixado.</span>}
                         <div className="ed-adv">
                             <span className="k">Avançar sozinha</span>
                             <Seg small label="Avançar sozinha" value={advance} onChange={(m) => set({ follow_mode: m })} options={FOLLOW_MODES} />

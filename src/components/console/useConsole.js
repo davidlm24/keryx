@@ -13,6 +13,7 @@ import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName, themeF
 import { styleMetrics } from "@/lib/console/fontMetrics";
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
+import { soundStays, undoSoundStays } from "@/lib/console/videoSound";
 import { withTransitions } from "@/lib/console/transitions";
 import { pagesProgressOf } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs } from "@/hooks/useUser";
@@ -311,6 +312,15 @@ export function useConsole() {
         setPrevState(stage);
     }, [say, pending]);
 
+    // Desfazer of a text sent over a video's sound (send, videoSound.js):
+    // the video back on the screens at the second it is, the text off.
+    const undoSound = useCallback(async (sent) => {
+        if (locked) { say(LOCKED_SAY); return; }
+        try {
+            for (const [op, args] of undoSoundStays(liveRef.current, sent)) await liveOp(op, args);
+        } catch { /* liveOp said why */ }
+    }, [locked, liveOp, say]);
+
     // Send: the Prévia (or the stage given) goes to the screens. Resolves
     // true when it went. keepPrev: a stage sent from elsewhere (the controle
     // remoto) leaves the operator's Prévia alone, unless it is that very
@@ -337,15 +347,21 @@ export function useConsole() {
         // The theme that dresses it may bring a background still coming.
         if (pendingUrls(args, pending, PENDING_SKIP).length) return refused({ status: 409, code: "syncing", message: PENDING_SAY });
         const ref = stage.args?.ref || {};
+        // A text over a video playing with sound: the video becomes sound
+        // only first, as the player's eye does (videoSound.js).
+        const sound = soundStays(op, stage, live) ? live.media.url : null;
+        let shown = null;
         try {
             if (!live?.session) await projection.startSession(ref.serviceId || null);
+            if (sound) await callOp("media.toAudio", {});
             if (stage.video) await callOp("video.show", { kind: "video", url: stage.video, title: stage.title });
-            // A song's playback: the audio channel, with the player (Rodada D4).
-            if (stage.playback) await callOp("audio.show", { kind: "audio", url: stage.playback, title: stage.title });
+            // A song's playback: the audio channel, with the player (Rodada
+            // D4); a video there when the song plays only its sound.
+            if (stage.playback) await callOp("audio.show", { kind: stage.playbackKind || "audio", url: stage.playback, title: stage.title });
             // The item's own background (its own, its theme's, the default
             // theme's) goes to the Fundo layer first, unless the padlock
             // holds it (backgroundSpec.js fundoOps).
-            for (const [o, a] of fundoOps(op, args, live)) await callOp(o, a);
+            for (const [o, a] of fundoOps(op, args, live)) shown = await callOp(o, a);
             if (ref.serviceItemId) await callOp("session.item", { itemId: ref.serviceItemId, index: ref.serviceItemIndex ?? null }).catch(() => {});
         } catch (err) {
             // callOp said why on the console; the sender hears it too.
@@ -353,8 +369,12 @@ export function useConsole() {
             return false;
         }
         if (clearsPrev) setPrevState(null);
+        if (sound) {
+            const startedAt = shown?.content?.startedAt ?? null;
+            say("O vídeo saiu das telas · o som continua.", { label: "Desfazer", undo: true, run: () => undoSound({ url: sound, startedAt }) });
+        }
         return true;
-    }, [prev, locked, live, callOp, say, stamp, setThemeId, pending]);
+    }, [prev, locked, live, callOp, say, stamp, setThemeId, pending, undoSound]);
 
     // Desfazer (the toast after Esc / Encerrar): what the screens showed goes
     // straight back, and the player's music at the second Esc stopped it
