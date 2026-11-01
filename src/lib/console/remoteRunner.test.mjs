@@ -525,6 +525,19 @@ test("chat.send / request.send: a row of the culto, quietly; the same again with
         assert.equal(d.made.at(-1).mediaId, undefined, song);
     }
     assert.equal(d.made.at(-1).songId, "s1", "the song wins");
+    // A link alone (vistoria 31/10): named from YouTube, else "Vídeo do YouTube";
+    // two different videos are two pedidos.
+    d.youtubeTitle = async (link) => (link.endsWith("dQw4w9WgXcQ") ? "  Never Gonna\tGive You Up " : "");
+    await send("request.send", { from: "Júlia", link: "https://youtu.be/dQw4w9WgXcQ" });
+    assert.equal(d.made.at(-1).song, "Never Gonna Give You Up");
+    const n = d.made.length;
+    await send("request.send", { from: "Júlia", link: "https://youtu.be/aaaaaaaaaaa" });
+    assert.equal(d.made.length, n + 1, "another video is another pedido");
+    assert.equal(d.made.at(-1).song, "Vídeo do YouTube");
+    d.youtubeTitle = () => Promise.reject(new Error("offline"));
+    await send("request.send", { from: "Júlia", link: "https://youtu.be/bbbbbbbbbbb" });
+    assert.equal(d.made.at(-1).song, "Vídeo do YouTube");
+    assert.equal((await send("request.send", { from: "Júlia" })).status, 400, "neither song nor link");
     // Only YouTube links.
     assert.deepEqual(await send("chat.send", { from: "Ana", text: "Olha", link: "https://evil.example/youtube.com/watch?v=dQw4w9WgXcQ" }), { ok: false, message: M.notYouTube, status: 400 });
     assert.equal((await send("chat.send", { from: "Ana", text: "Olha", link: "javascript:alert(1)" })).status, 400);

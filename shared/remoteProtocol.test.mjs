@@ -111,6 +111,11 @@ test("the Equipe's actions only read or send its messages", () => {
         if (a.team !== undefined) assert.equal(a.team, true, `${name}: team is true or absent`);
         if (a.cap === "requests") assert.equal(a.team, true, `${name}: the chat is the Equipe's`);
     }
+    // A pedido may be a YouTube link alone (vistoria 31/10): the song is
+    // optional, the link stays, and who asks is always required.
+    assert.equal(actions["request.send"].args.song.required, undefined);
+    assert.equal(actions["request.send"].args.link.type, "str");
+    assert.equal(actions["request.send"].args.from.required, true);
     // The Mídia only as videos and audios to pick for a pedido (S15).
     assert.deepEqual(actions["library"].teamArgs, { tab: ["songs", "media"], kind: ["video", "audio"] });
     assert.deepEqual(actions["library"].teamNeeds, [{ when: { tab: "media" }, give: ["kind"] }]);

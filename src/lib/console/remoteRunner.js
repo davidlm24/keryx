@@ -330,7 +330,9 @@ async function sendMessage({ d, args, action, recent }) {
     const now = typeof d.now === "function" ? d.now() : Date.now();
     const row = messageRow(action, args, new Date(now).toISOString());
     if (row.error) return refuse(M.notYouTube, 400);
-    if (!row.sender || (row.kind === "chat" ? !row.text : !row.song)) return refuse("Comando inválido.", 400);
+    if (!row.sender || (row.kind === "chat" ? !row.text : !row.song && !row.link)) return refuse("Comando inválido.", 400);
+    // A YouTube link with no name: the video's title, else "Vídeo do YouTube".
+    if (row.kind === "pedido" && !row.song) row.song = await youtubeName(d, row.link);
     // A song the console no longer has: the typed name stays, the id goes.
     if (row.songId && !(d.songs || []).some((s) => s.id === row.songId)) delete row.songId;
     // A video or an audio of the Mídia (S15): one the console has, of those
@@ -342,6 +344,18 @@ async function sendMessage({ d, args, action, recent }) {
     const made = await d.createMessage({ ...row, serviceId });
     recent.rows = [...recent.rows.filter((r) => Math.abs(now - Date.parse(r.sentAt || "")) <= PROTOCOL.limits.dedupeMs), made];
     return ok("", { id: made.id, at: made.sentAt });
+}
+
+// The title YouTube gives a link (d.youtubeTitle: the oEmbed check), cut
+// to a pedido's song; blocked, offline or slower than 2 s -> "Vídeo do YouTube".
+const YOUTUBE_NAME_MS = 2000;
+async function youtubeName(d, link) {
+    let timer;
+    const late = new Promise((done) => { timer = setTimeout(done, YOUTUBE_NAME_MS, ""); });
+    let title = "";
+    try { title = await Promise.race([Promise.resolve(d.youtubeTitle?.(link)), late]); } catch { title = ""; }
+    clearTimeout(timer);
+    return String(title || "").replace(/\s+/g, " ").trim().slice(0, 80) || "Vídeo do YouTube";
 }
 
 async function step({ d, live, action }) {

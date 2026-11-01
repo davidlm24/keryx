@@ -369,7 +369,6 @@
 .console .ped-c-time { font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; }
 .console .ped-c-l2 { grid-column: 2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--fs-meta); color: var(--fg-3); }
 .console .ped-c-acts { grid-column: 3; display: flex; justify-content: flex-end; gap: 2px; }
-.console .ped-card > .ped-link { grid-column: 2 / -1; }
 .console .ped-song { display: flex; align-items: baseline; gap: 7px; font-size: var(--fs-content-lg); line-height: 1.35; color: var(--fg-1); overflow-wrap: anywhere; }
 .console .ped-song > svg { flex: none; align-self: center; width: 15px; height: 15px; color: var(--brand); }
 .console .ped-song > span { min-width: 0; }
@@ -383,7 +382,6 @@
 .console .ped-badge.is-done { background: var(--ok-tint); color: var(--ok-fg); }
 .console .ped-badge.is-warn { background: var(--warn-tint); color: var(--warn-fg); }
 .console .ped-link { display: flex; align-items: center; gap: var(--space-2); margin-top: 2px; }
-.console .ped-cover { flex: none; width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; background: var(--bg-4); }
 /* A trimmable tab row's dot (Pedidos' "novos"): after the name, the brand's gold. */
 .console .tabrow:not(.tabrow-close) .kx-t { display: inline-flex; align-items: center; gap: 6px; }
 .console .tabrow:not(.tabrow-close) .kx-tc-dot { flex: none; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--brand); }

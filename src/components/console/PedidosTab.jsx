@@ -6,8 +6,9 @@ import { useConfirm } from "./ConfirmDialog";
 import { stageFromSong, stageFromYouTube, stageFromMedia } from "@/lib/console/stage";
 import { mediaIcon } from "@/lib/console/libraryRows";
 import { mediaFromYouTube } from "@/lib/mediaImport";
-import { getYouTubeThumbnail } from "@/utils/youtube";
-import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, pedidoMediaTag, pedidoMediaWarn, pedidoBy, operatorPedido, pickRows, PICK_TABS, pedidoItem, PEDIDO_MAX } from "@/lib/console/pedidos";
+import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
+import { setDragGhost, stageGhost } from "./dragGhost";
+import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, pedidoMediaTag, pedidoMediaWarn, pedidoBy, operatorPedido, pickRows, PICK_TABS, pedidoItem, PEDIDO_MAX, withPedido, pedidoYouTube } from "@/lib/console/pedidos";
 
 // The Pedidos tab of the panel beside the Prévia (Rodada Q, PR2; the
 // owner's mockup "Q8 · Aba Pedidos no console", S6 = A, S8 = A; S12 = B
@@ -19,15 +20,20 @@ import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, ped
 // ServiceItem keeps who sings and the note, S13), else Procurar a letra…;
 // Atendido; Excluir…. The louvor may be a video or an audio of the Mídia
 // (S15 = A): its glyph and a "vídeo" / "áudio" tag, and Pôr na prévia and
-// Setlist take the file as the Biblioteca does. A YouTube link shows its cover with Pôr na prévia and
-// Adicionar à Mídia: nothing enters the Mídia by itself. Two lines a card
+// Setlist take the file as the Biblioteca does. A YouTube link is no cover
+// (vistoria 31/10, M1 = A): a link-only pedido wears the youtube glyph and
+// has Pôr na prévia, Setlist (the link under the pedido's name, who sings
+// kept) and Adicionar à Mídia — nothing enters the Mídia by itself; one with
+// a song too adds the link's Pôr na prévia. A card that can go to the
+// Setlist drags there too (M2 = ok), as a Biblioteca row, with who sings and
+// the note (withPedido). Two lines a card
 // (owner 2026-10-28, C1 = A): "X canta Y", its marks and the hour; then who
 // noted it and the note, cut with "…" (whole in the tooltip), and the
 // actions as glyphs, always on screen. "Novo pedido" on
 // top lets the operator note one (the phone's fields; the card says
 // "Anotado por você" with an "operador" badge, and the Equipe sees it too).
 // Every text came from a phone or a field and is rendered as plain text.
-export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, onAddMedia, onLyricsSearch, onWrite }) {
+export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, onAddMedia, onAddStage, onLyricsSearch, onWrite }) {
     const rows = pedidosOf(messages || []);
     const [noting, setNoting] = useState(false);
     const listRef = usePinnedList(rows.length);
@@ -64,9 +70,22 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                 const line = r.singer ? `${r.singer} canta ${what}` : what;
                                 const sub = [`${by.lead}${by.who}`, r.text && `“${r.text}”`].filter(Boolean).join(" · ");
                                 const ready = song || media;
+                                const yt = pedidoYouTube(r);
+                                const ytStage = yt ? stageFromYouTube(yt.url, yt.title) : null;
+                                const stage = withPedido(song ? stageFromSong(song, {}, data.themes) : media ? stageFromMedia(media) : ytStage, r);
+                                const drag = !done && stage ? {
+                                    draggable: true,
+                                    onDragStart: (e) => {
+                                        setDragStage(stage);
+                                        e.dataTransfer.setData(STAGE_MIME, stage.id || "1");
+                                        e.dataTransfer.effectAllowed = "copyMove";
+                                        setDragGhost(e, stageGhost(stage));
+                                    },
+                                    onDragEnd: () => clearDragStage(),
+                                } : {};
                                 return (
-                                    <div key={r.id} className={`ped-card ${done ? "is-done" : ""} ${by.operator ? "is-op" : ""}`}>
-                                        <Icon name={media ? mediaIcon(media) : "music"} className="ped-c-i" />
+                                    <div key={r.id} className={`ped-card ${done ? "is-done" : ""} ${by.operator ? "is-op" : ""}`} {...drag}>
+                                        <Icon name={media ? mediaIcon(media) : !ready && yt ? "youtube" : "music"} className="ped-c-i" />
                                         <span className="ped-c-l1" title={line}>{r.singer ? <><span className="ped-c-who">{r.singer} canta </span><b>{what}</b></> : <b>{what}</b>}</span>
                                         <span className="ped-c-meta">
                                             {tag && <span className="ped-badge is-kind">{tag}</span>}
@@ -74,7 +93,8 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                             {done
                                                 ? <span className="ped-badge is-done"><Icon name="check" size={12} />atendido</span>
                                                 : warn ? <span className="ped-badge is-warn">{warn}</span>
-                                                    : !ready && r.song ? <span className="ped-badge is-warn" title="Não está na biblioteca">fora da biblioteca</span> : null}
+                                                    : !ready && yt ? <span className="ped-badge is-kind">YouTube</span>
+                                                        : !ready && r.song ? <span className="ped-badge is-warn" title="Não está na biblioteca">fora da biblioteca</span> : null}
                                             <span className="ped-c-time">{sentTime(r)}</span>
                                         </span>
                                         <span className="ped-c-l2" title={sub}>{sub}</span>
@@ -83,11 +103,16 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                                 <IconBtn name="prev" small title={`Pôr ${ready.title} na prévia`} onClick={() => onPrepare(song ? stageFromSong(song, {}, data.themes) : stageFromMedia(media))} />
                                                 <IconBtn name="plus" small title={r.singer ? `Adicionar à setlist, com ${r.singer}` : "Adicionar à setlist"} aria-label={`Adicionar ${ready.title} à setlist`} onClick={() => (song ? onAddSong(song, pedidoItem(r)) : onAddMedia(media, pedidoItem(r)))} />
                                             </>}
-                                            {!done && !ready && r.song && <IconBtn name="search" small title="Procurar a letra na internet…" aria-label={`Procurar a letra de ${r.song} na internet`} onClick={() => onLyricsSearch(r.song)} />}
+                                            {!done && yt && ready && <IconBtn name="youtube" small title="Pôr o vídeo do link na prévia" aria-label={`Pôr o vídeo do link de ${what} na prévia`} onClick={() => onPrepare(ytStage)} />}
+                                            {!done && !ready && yt && <>
+                                                <IconBtn name="prev" small title="Pôr o vídeo na prévia" aria-label={`Pôr ${yt.title} na prévia`} onClick={() => onPrepare(ytStage)} />
+                                                {onAddStage && <IconBtn name="plus" small title={r.singer ? `Adicionar à setlist, com ${r.singer}` : "Adicionar à setlist"} aria-label={`Adicionar ${yt.title} à setlist`} onClick={() => onAddStage(stage)} />}
+                                                <IconBtn name="media" small title="Adicionar à Mídia" aria-label={`Guardar ${yt.title} na Mídia`} onClick={() => tools.saveLink(r)} />
+                                            </>}
+                                            {!done && !ready && !yt && r.song && <IconBtn name="search" small title="Procurar a letra na internet…" aria-label={`Procurar a letra de ${r.song} na internet`} onClick={() => onLyricsSearch(r.song)} />}
                                             {!done && <IconBtn name="check" small title="Marcar como atendido" aria-label={`Marcar o pedido de ${what} como atendido`} onClick={() => setDone(r, true)} />}
                                             <TrashBtn r={r} onRemove={tools.remove} />
                                         </span>
-                                        <YouTubeCard r={r} onPrepare={onPrepare} onSave={tools.saveLink} />
                                     </div>
                                 );
                             })}
@@ -241,7 +266,6 @@ export function YouTubeCard({ r, onPrepare, onSave }) {
     if (!r.link) return null;
     return (
         <span className="ped-link">
-            <img className="ped-cover" src={getYouTubeThumbnail(r.link) || undefined} alt="" loading="lazy" />
             <span className="ped-acts">
                 <Btn small onClick={() => onPrepare(stageFromYouTube(r.link))} title="Pôr o vídeo na prévia"><Icon name="prev" />Pôr na prévia</Btn>
                 <Btn small onClick={() => onSave(r)} title="Guardar o vídeo na Mídia"><Icon name="media" />Adicionar à Mídia</Btn>

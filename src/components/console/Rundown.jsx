@@ -88,7 +88,7 @@ export const plannedTimes = (service, items) => plan(service, items).rows.map((r
 // autoplay (the Setlist automática, Rodada N2): { on, pending, cancel,
 // endsAlone(item) } — the mark on the row on air, the countdown on the next
 // one, and each item's "Ao terminar" in its menu.
-export default function Rundown({ service, items, loaded = true, airItemId, airNow = true, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true, autoplay = null, picking, setPicking, media = [], askText = null }) {
+export default function Rundown({ service, items, loaded = true, airItemId, airNow = true, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true, autoplay = null, picking, setPicking, media = [], askText = null, onOpenMedia = null }) {
     // A YouTube link the player refused (or the check found blocked) says so
     // on its row, with Baixar para a Mídia in its menu (owner 2026-10-27).
     const mediaById = useMemo(() => new Map((media || []).map((m) => [m.id, m])), [media]);
@@ -225,6 +225,8 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                         ] }) : menu(e, { title: it.title || typeLabel(it.type), items: [
                             menuItem("porNaPrevia", { onSelect: () => onPrepare(it, i) }),
                             onPlan && menuItem("editarNoPlanejador", { onSelect: () => onPlan(it) }),
+                            // A file of the Mídia: Editar opens it chosen there (rename, category).
+                            linked && onOpenMedia && menuItem("editar", { onSelect: () => onOpenMedia(`select:${linked.id}`) }),
                             menuItem("enviarAoAr", { air: true, onSelect: () => onGo(it, i) }),
                             isYouTubeRow(linked) && menuItem("baixarParaMidia", { onSelect: () => downloadToMedia(linked, { askText, say: onSay }) }),
                             ...endItems(it),

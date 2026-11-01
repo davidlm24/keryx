@@ -43,6 +43,12 @@ export function useRemote({ c, data, service, items, rows, airItemId, airNow, ne
         // Rodada Q: setlist.add (the plan, never the air) and the Equipe's messages.
         addToSetlist, addPassage, ensureService, messages,
         createMessage: (fields) => keryx.entities.ServiceMessage.create(fields),
+        // A link-only pedido is named by YouTube's oEmbed (electron/youtube.cjs check).
+        youtubeTitle: async (url) => {
+            const r = await window.keryxDesktop?.youtube?.call?.("check", { url });
+            const check = r?.data || r;
+            return check?.state === "ok" ? check.title : "";
+        },
     };
     useEffect(() => {
         const remote = window.keryxDesktop?.remote;
