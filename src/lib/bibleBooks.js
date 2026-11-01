@@ -1,10 +1,12 @@
 // The 66 books (Portuguese names, short forms, verse counts per chapter), the
-// Bible versions the app offers, and a reference parser. Plain JS with no
-// imports so node --test can load it.
+// Bible versions the app offers, and a reference parser. Plain JS (one
+// relative import) so node --test can load it.
 //
 // Verse counts come from the NVI, ACF and AA texts: the largest of the three
 // per chapter, so every edition's verses are reachable. The earlier table was
 // wrong in ~165 chapters (Levítico 23 listed 9 verses instead of 44).
+
+import { renamedVersion, RETIRED_VERSIONS } from "./bibleRenames.js";
 
 export const bibleBooks = [
     { name: "Gênesis", short: "Gn", chapters: 50, verses: [31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26] },
@@ -106,11 +108,8 @@ export const BIBLE_VERSIONS = [
     { id: "BPM", name: "Bíblia Portuguesa Mundial", install: true, online: null, group: "open", holder: null, chip: "Domínio público", license: "Domínio público" },
     { id: "BLT", name: "Bíblia Livre Para Todos", install: true, online: null, group: "open", holder: "Free Bible Ministry, Inc.", chip: "CC BY-SA", license: "CC BY-SA 4.0", nt: true },
 ];
-// Editions that left the list, read as the one that took their place (the
-// King James Fiel 1611 was only ever online, from a source that closed).
-const RENAMED = { BKJ1611: "KJA" };
-export const renamedVersion = (id) => RENAMED[id] || id;
-export const RETIRED_VERSIONS = Object.keys(RENAMED);
+// Editions that left the list (bibleRenames.js).
+export { renamedVersion, RETIRED_VERSIONS };
 
 // Which edition to read, from the one the operator chose and the editions
 // installed on this computer (owner's decision 2026-10-10): an installed
