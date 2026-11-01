@@ -2,7 +2,8 @@
 // passage, a media file, a communication piece, a tool) as the live-state
 // operation that would put it on air, plus what the console needs to show it
 // (title, slides, a start index). Pure: no I/O, no React.
-import { songContent, passageContent, isVideoUrl } from "@/lib/console/content";
+import { songContent, passageContent } from "@/lib/console/content";
+import { songMedia } from "@/lib/console/videoSound";
 import { noticeLabel } from "@/lib/console/notice";
 import { materialStage, materialMeta } from "@/lib/console/school";
 import { passageOf, chapterOf, chapterOnAir, howOf, airPassage, slideWithVerse, verseNear } from "@/lib/console/bibleVerses";
@@ -11,10 +12,12 @@ import { chunkText } from "./textBudget.js";
 
 const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", presentation: "Apresentação", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
 
+// A song's media (Song.audio_url): a video goes to the video channel with
+// the lyrics, a playback to the audio channel; "Só o som do vídeo" plays
+// the video as the playback (`songMedia`, videoSound.js).
 export function stageFromSong(song, ref = {}, themes = []) {
     const content = songContent(song, ref, themes);
-    return { kind: "lyrics", id: `song:${song.id}`, title: song.title || "", meta: [song.artist, song.song_key, song.bpm && `${song.bpm} bpm`].filter(Boolean).join(" · "), slides: content.slides, index: 0, op: "content.show", args: { ...content, kind: "lyrics" }, video: isVideoUrl(song.audio_url) ? song.audio_url : null,
-        playback: song.audio_url && !isVideoUrl(song.audio_url) ? song.audio_url : null };
+    return { kind: "lyrics", id: `song:${song.id}`, title: song.title || "", meta: [song.artist, song.song_key, song.bpm && `${song.bpm} bpm`].filter(Boolean).join(" · "), slides: content.slides, index: 0, op: "content.show", args: { ...content, kind: "lyrics" }, ...songMedia(song) };
 }
 
 export function stageFromPassage(passage, ref = {}) {
