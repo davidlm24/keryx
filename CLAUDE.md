@@ -820,9 +820,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Backup e atualizações.
   **The top bar's left side** (owner 2026-10-15, Rodada D4 + "O topo", pick
   B): the logo, then **the menu bar** (no divider). **CONSOLE | BÍBLIA is a
-  segmented pill in the CENTRE, right AFTER the search** (Rodada R
+  segmented pill in the CENTRE, right BEFORE the search** (Rodada R
   2026-10-29, owner's mark R1 = C; moved after the search and renamed
-  from KERYX the same day, owner's call; `.envtabs` in `.tb-c`: bold caps, no
+  from KERYX the same day, owner's call; moved before it, to its left,
+  2026-11-02, owner's call; `.envtabs` in `.tb-c`: bold caps, no
   icons, the active segment filled `fg-1` — places, not commands; still a
   tablist). The menu bar: Culto, Música,
   Mídia, Ferramentas, Ajuda (`MenuBar.jsx`; the model is
