@@ -6,6 +6,7 @@ import { useConfirm } from "./ConfirmDialog";
 import { stageFromSong, stageFromYouTube, stageFromMedia } from "@/lib/console/stage";
 import { mediaIcon } from "@/lib/console/libraryRows";
 import { mediaFromYouTube } from "@/lib/mediaImport";
+import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { setDragGhost, stageGhost } from "./dragGhost";
 import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, pedidoMediaTag, pedidoMediaWarn, pedidoBy, operatorPedido, pickRows, PICK_TABS, pedidoItem, PEDIDO_MAX, withPedido, pedidoYouTube } from "@/lib/console/pedidos";
@@ -248,9 +249,12 @@ export function useMessageTools(c, data) {
         try { await keryx.entities.ServiceMessage.delete(r.id); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
     };
     const saveLink = async (r) => {
-        if ((data.media || []).some((m) => m.file_url === r.link)) { c.say("Esse vídeo já está na Mídia."); return; }
+        // By the video's id, in any form of the link and once downloaded too
+        // (mediaRepeats.js); asks before a second copy.
+        const there = youtubeRow(r.link, data.media);
+        if (there && !(await confirm(repeatQuestion([there.title], { link: true })))) { c.say(`Esse vídeo já está na Mídia: "${there.title}".`); return; }
         try {
-            const row = await mediaFromYouTube(r.link, { title: r.song?.trim() || "Vídeo do YouTube" });
+            const row = await mediaFromYouTube(r.link, { title: r.song?.trim() || "Vídeo do YouTube", force: Boolean(there) });
             c.say(`Salvo na Mídia: "${row.title}".`);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };

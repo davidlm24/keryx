@@ -21,7 +21,8 @@ import { mediaFromYouTube } from "@/lib/mediaImport";
 import { isYouTubeRow, jobMeta, jobFraction } from "@/lib/youtubeLinks";
 import { downloadToMedia, useYouTubeJobs } from "@/hooks/useYouTubeJobs";
 import { stripChords } from "@/lib/chords";
-import { importMediaFiles, importSummary } from "@/lib/mediaImport";
+import { importMediaFiles, importSummary, pickRepeats } from "@/lib/mediaImport";
+import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
 import { useCopyingFiles } from "@/hooks/useCopyingFiles";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
@@ -188,8 +189,11 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const toggleFav = (s) => keryx.entities.Song.update(s.id, { is_favorite: !s.is_favorite }).catch((err) => c.say(err?.message || "Não foi possível."));
     // "+ › Do computador" in Mídia: videos, audio, images, PDF, PowerPoint.
     const importMedia = async (files) => {
-        c.say(`Copiando ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}…`);
-        c.say(importSummary(await importMediaFiles(files), " à Mídia"));
+        // What is already in the Mídia asks first (mediaRepeats.js).
+        const { list, skipped } = await pickRepeats(files, data.media, confirm);
+        if (!list.length) { if (skipped) c.say(importSummary({}, "", skipped)); return; }
+        c.say(`Copiando ${list.length} ${list.length === 1 ? "arquivo" : "arquivos"}…`);
+        c.say(importSummary(await importMediaFiles(list), " à Mídia", skipped));
     };
     // The media tabs (Imagens, Vídeos, and Áudios and Apresentações when the
     // (+) shows them): which Media types each lists (panelTabs.js).
@@ -364,7 +368,14 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 const saveYt = async () => {
                     if (!/youtu/.test(yt)) { c.say("Cole um link do YouTube."); return; }
                     try {
-                        const row = await mediaFromYouTube(yt.trim());
+                        // Already in the Mídia: asks first (mediaRepeats.js).
+                        const there = youtubeRow(yt.trim(), data.media);
+                        if (there && !(await confirm(repeatQuestion([there.title], { link: true })))) {
+                            setYt("");
+                            c.say(`Esse vídeo já está na Mídia: "${there.title}".`);
+                            return;
+                        }
+                        const row = await mediaFromYouTube(yt.trim(), { force: Boolean(there) });
                         setYt("");
                         c.say(`Salvo em Vídeos: "${row.title}" · arraste para a setlist, ou dois cliques tocam.`);
                     } catch (err) { c.say(err?.message || "Não foi possível salvar."); }

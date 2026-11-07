@@ -6,7 +6,9 @@ import { useDialogFocus } from "./useDialogFocus";
 // "Excluir…" from a right-click menu (songs, images, videos, avisos, themes)
 // asks first (owner's request 2026-10-13): one dialog the console holds,
 // awaited like the background library.
-//   confirm({ title, text, ok = "Excluir", danger, list, warn }) -> Promise<boolean>
+//   confirm({ title, text, ok = "Excluir", no = "Cancelar", danger, list, warn }) -> Promise<boolean>
+// `no`: the other button's word when it is a choice, not a way out
+// ("Pular", Já está na Mídia: src/lib/mediaRepeats.js); Esc still answers it.
 // `list`: names of what goes (several at once, src/lib/console/bulkDelete.js);
 // `warn`: lines on what is in use (a Setlist, the default theme), in amber.
 // Esc or Cancelar answer no; Enter on the focused button answers it. A
@@ -40,7 +42,7 @@ export default function ConfirmDialog({ request, onAnswer }) {
                 </div>
                 <div className="acts">
                     <button ref={okRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => onAnswer(true)}>{request.ok || "Excluir"}</button>
-                    <button ref={noRef} type="button" className="kx-btn kx-t" onClick={() => onAnswer(false)}>Cancelar</button>
+                    <button ref={noRef} type="button" className="kx-btn kx-t" onClick={() => onAnswer(false)}>{request.no || "Cancelar"}</button>
                 </div>
             </div>
         </>

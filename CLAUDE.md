@@ -477,6 +477,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`library/BackgroundLibrary.jsx`: Temas · Imagens · Vídeos · Gerados ·
   Cor; awaited with `useLibraryPicker()`, the chip `library/BgChip.jsx`);
   don't add a gallery of thumbnails to a form.
+  **Nothing enters the Mídia twice without a question** (owner 2026-11-07,
+  `src/lib/mediaRepeats.js`, tested): a picked file with the same kind, title
+  and size as a Mídia row (`pickRepeats` in mediaImport.js: the Mídia's Do
+  computador… and the Biblioteca's +), or a YouTube link whose video id is
+  already there — in any form of the link, or downloaded (`source_url`):
+  `youtubeRow`, also what `mediaFromYouTube` reuses (`force` makes a copy) —
+  asks "Já está na Mídia": Pular (Enter, Esc) or Adicionar mesmo assim; the
+  new ones of a pick go in either way, the toast says how many stayed out.
+  Compared only with `useLibrary().media` (no backgrounds, no fonts).
   **The background library is separate from the Mídia** (2026-10-13): files
   sent there are Media rows of category "background" (`isBackgroundMedia`),
   left out of `useLibrary().media` (Biblioteca, media library, editors) and
@@ -1534,8 +1543,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   page), drops in and leaves fading (T2); an **important** one — a new
   pedido or chat message (`usePedidos`), `say(text, action, { important })`
   — shows 6 s at least, a plain toast never swallows it, and two gold rings
-  leave its border 3 times, then one thin ring stays (T3/T4; reduced motion
-  and forced colours keep only the ring). Only the pedido and the chat message are
+  (2 px) leave its border 3 times, then one thin ring stays (T3/T4; reduced motion
+  and forced colours keep only the ring). **It waits to be seen** (owner
+  2026-11-07: the rings ran out while the operator was on the phone): its 6 s
+  start, and its rings play, at the first sign of someone at the console after
+  it arrived — the window's focus, the page shown again, the mouse or a key —
+  the rings again if they had already played out (`waitsToBeSeen`,
+  `replaysWave`, `WAVE_MS` in toastQueue.js; `useToast`'s `toastWave`). Only the pedido and the chat message are
   important for now (owner's S11); a disconnected screen has no toast (the
   banner and the Saídas popover say it). Camadas' eyes on Texto principal and Fundo
   hide the layer and keep it on air (`layers.hide`/`layers.show`,

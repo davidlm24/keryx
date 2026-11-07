@@ -2,6 +2,7 @@ import { keryx } from "@/api/keryxClient";
 import { PPTX_HINT } from "@/lib/presentation";
 import { FONTS_IN_EDITOR_HINT, FONT_EXTENSIONS } from "@/lib/fonts";
 import { readVideoCodec, fileReader, codecFields, codecRefusal, refusalSummary } from "@/lib/videoCodec";
+import { youtubeRow, repeatedFiles, repeatQuestion, skippedSay } from "@/lib/mediaRepeats";
 
 // The Media type of a picked file, by MIME type and extension.
 export function mediaTypeOf(file) {
@@ -18,17 +19,31 @@ export function mediaTypeOf(file) {
     return "other";
 }
 
+// Before files go into the Mídia: those already there (mediaRepeats.js) ask
+// once, "Já está na Mídia" — Pular (the default, Esc) or Adicionar mesmo
+// assim. `media`: the Mídia's rows (useLibrary().media, with their sizes);
+// `confirm`: useConfirm(). -> { list: the files to import, skipped: how many
+// were left out, there: the rows already in the Mídia they repeat }
+export async function pickRepeats(files, media, confirm) {
+    const all = Array.from(files || []);
+    const { fresh, repeated } = repeatedFiles(all, media, mediaTypeOf);
+    if (!repeated.length || await confirm(repeatQuestion(repeated.map((x) => x.file.name)))) return { list: all, skipped: 0, there: [] };
+    return { list: fresh, skipped: repeated.length, there: repeated.map((x) => x.row).filter(Boolean) };
+}
+
 // Files from the computer into the media library: each one is copied (on
 // desktop, into the media folder) and becomes a Media row. One failure does
 // not stop the rest. -> { created: [rows], failed: [{ name, message }] }
 // A YouTube link as a Media row, so the Setlist and the planner can hold
-// it; a link already in the library is reused, never duplicated. `state`:
-// what the Link do YouTube check found (Media.youtube_state).
-export async function mediaFromYouTube(url, { title = "Vídeo do YouTube", category = "other", state } = {}) {
+// it; a video already in the library (by its id, the link in any form, or
+// the file it was downloaded to: youtubeRow in mediaRepeats.js) is reused,
+// unless `force` (the operator's "Adicionar mesmo assim"). `state`: what
+// the Link do YouTube check found (Media.youtube_state).
+export async function mediaFromYouTube(url, { title = "Vídeo do YouTube", category = "other", state, force = false } = {}) {
     const u = String(url || "").trim();
     if (!/youtu\.?be/.test(u)) throw new Error("Cole um link do YouTube.");
-    const existing = await keryx.entities.Media.filter({ file_url: u });
-    if (existing?.[0]) {
+    const existing = force ? [] : [youtubeRow(u, (await keryx.entities.Media.filter({ type: "video" })).filter((m) => m.category !== "background"))].filter(Boolean);
+    if (existing[0]) {
         if (state && existing[0].youtube_state !== state) return keryx.entities.Media.update(existing[0].id, { youtube_state: state });
         return existing[0];
     }
@@ -186,12 +201,14 @@ export function refusedSummary(refused = []) {
 
 // What the Mídia says after an import: the files refused first (what to do
 // with them is what matters, and a toast is one line), then how many came in
-// and which failed (and why, when it is one reason).
-export function importSummary({ created = [], failed = [], refused = [] }, where = "") {
+// and which failed (and why, when it is one reason). `skipped`: how many
+// were already in the Mídia and left out (pickRepeats).
+export function importSummary({ created = [], failed = [], refused = [] }, where = "", skipped = 0) {
     const parts = [];
     const no = refusedSummary(refused);
     if (no) parts.push(no);
-    if (created.length || !refused.length) parts.push(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${where}`);
+    if (created.length || (!refused.length && !skipped)) parts.push(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${where}`);
+    if (skipped) parts.push(skippedSay(skipped));
     if (failed.length) parts.push(`falhou: ${failed.map((x) => x.name).join(", ")}`);
     const why = failureReason(failed);
     if (why) parts.push(why);
