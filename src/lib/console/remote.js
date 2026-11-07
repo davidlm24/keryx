@@ -120,7 +120,7 @@ function hash(text) {
 // v: the request's protocol version (1 = an old page: service is its title).
 export function remoteState({
     v = 1, app = "", caps = REMOTE_CAPS, service = null, items = [], rows = null, media = [], progressOf = null,
-    airItemId = null, nextItemId = null, backItemId = null, live = null, bible = null, timers = [], alerts = [],
+    airItemId = null, nextItemId = null, backItemId = null, prevItemId = null, live = null, bible = null, timers = [], alerts = [],
 }) {
     const { title, pos } = captionParts(live);
     const at = new Map((rows || []).map((r) => [r.item?.id, r.at]));
@@ -145,6 +145,8 @@ export function remoteState({
         airItemId,
         nextItemId,
         backItemId,
+        // The item before in Setlist order (vistoria 07/11: Apresentar's Item anterior).
+        prevItemId,
         items: list,
         truncated: items.length > limits.items,
         bible: bible ? { version: String(bible.version || ""), installed: [...(bible.installed || [])] } : null,

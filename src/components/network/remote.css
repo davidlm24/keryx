@@ -117,6 +117,32 @@
 .rm-tag.is-next { background: var(--bg-3); color: var(--fg-2); box-shadow: var(--next-ring); }
 .rm-tag.is-last { color: var(--fg-3); }
 .rm-tag.is-warn { background: var(--warn-tint); color: var(--warn-fg); }
+/* The Setlist (vistoria 2026-11-07, S1/S2): its title, the count and the +;
+   each row a card holding the item and its grip; the row held lifts and
+   the others make room. */
+.rm-slh { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 2px; }
+.rm-slh b { flex: 0 1 auto; min-width: 0; color: var(--fg-1); font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-slh small { flex: none; font-size: 12px; color: var(--fg-3); }
+.rm-b.rm-plus { flex: none; margin-left: auto; width: 44px; min-height: 44px; padding: 0; border-radius: 12px; }
+.rm-srow { position: relative; display: flex; align-items: center; border: 1px solid transparent; border-radius: 12px; background: var(--bg-1); list-style: none; }
+.rm-srow > .rm-item { flex: 1 1 auto; min-width: 0; border: 0; background: none; padding-right: 4px; }
+.rm-srow.is-sel { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 14%, var(--bg-1)); }
+.rm-srow.is-air { background: var(--live-bg); box-shadow: var(--live-ring); }
+.rm-srow.is-sec { background: none; }
+.rm-srow.is-sec > .rm-sec { flex: 1 1 auto; min-width: 0; }
+.rm-grip { flex: none; width: 44px; height: 48px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--fg-3); cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
+.rm-grip:active { cursor: grabbing; color: var(--fg-1); }
+.rm-srow.is-lifted { z-index: 2; background: var(--bg-2); box-shadow: 0 0 0 1px var(--line-strong), 0 14px 32px #000a; }
+.rm-srow.is-lifted .rm-grip { color: var(--fg-1); }
+.rm-scroll.is-dragging .rm-srow:not(.is-lifted) { transition: transform .15s ease-out; }
+/* Adicionar à setlist: a + on each row; Passagem da Bíblia… at the end. */
+.rm-item.rm-addrow { padding-right: 4px; }
+.rm-b.rm-addb { flex: none; width: 44px; min-height: 44px; padding: 0; border-radius: 10px; }
+.rm-added { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; color: var(--ok-fg); font-size: 12px; font-weight: 600; }
+.rm-item.rm-bible-row { font-family: inherit; border-color: var(--line-strong); color: var(--fg-2); }
+/* Apresentar's strip: the arrow beside its word. */
+.rm-sstrip .rm-b.is-two small { display: inline-flex; align-items: center; gap: 3px; }
+
 /* The confirm that sends what was picked, stuck to the bottom of the tab. */
 .rm-sticky { position: sticky; bottom: -16px; z-index: 2; margin: auto calc(-1 * max(12px, env(safe-area-inset-right))) -16px calc(-1 * max(12px, env(safe-area-inset-left))); padding: 14px max(12px, env(safe-area-inset-right)) 12px max(12px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 6px; background: linear-gradient(180deg, transparent, var(--bg-0) 26%); }
 /* A page whose list scrolls under what stays put (Mídia): the chips and the
@@ -129,39 +155,35 @@
 .rm-sendrow { display: flex; gap: 8px; }
 .rm-sendrow > .rm-b.is-go { flex: 1 1 auto; min-width: 0; }
 .rm-b.is-plan { flex: none; padding: 0 14px; }
+.rm-b.is-plan.is-added { color: var(--ok-fg); border-color: color-mix(in srgb, var(--ok-fg) 45%, transparent); }
 .rm-foot .rm-b.is-go, .rm-sticky .rm-b.is-go { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 52px; padding: 0 16px; }
 .rm-foot .rm-b.is-go > .kx-i, .rm-sticky .rm-b.is-go > .kx-i { display: inline-block; margin-right: 8px; vertical-align: -3px; }
-/* The dock folded (owner 2026-10-28, M2 = A; was the No ar bar, Rodada Q):
-   ⏮ · the slide on air and the next · ⏭ · ⌃; the middle and ⌃ open the
-   controls (a sheet, or the dock itself on Apresentar). */
-.rm-now { flex: none; display: flex; align-items: center; gap: 2px; min-height: 58px; padding: 0 max(4px, env(safe-area-inset-right)) 0 max(4px, env(safe-area-inset-left)); border-top: 1px solid var(--line); background: var(--bg-1); }
-.rm-b.rm-now-arr { flex: none; width: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 12px; background: none; }
-.rm-now-mid { font-family: inherit; flex: 1 1 auto; min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 4px 8px; border: 0; border-radius: 12px; background: none; color: var(--fg-1); text-align: left; touch-action: manipulation; }
-.rm-now-mid:active { background: var(--bg-3); }
+/* The dock (owner's vistoria 2026-11-07, D1/D2 = A): always on screen while
+   something is on air, the last thing on every section. Lyrics or a passage:
+   what is on air · Player ▸ · Encerrar, then Anterior | Próximo across the
+   whole width. A video or an audio: ⏯ · the title and its progress · Letra ▸
+   · the eye · Encerrar. */
+.rm-dockwrap { flex: none; position: relative; }
+.rm-dock { display: flex; flex-direction: column; gap: 8px; padding: 8px max(10px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); background: var(--bg-1); border-top: 1px solid var(--line); }
+.rm-dk1 { display: flex; align-items: center; gap: 6px; min-height: 52px; }
+.rm-dk-mid { font-family: inherit; flex: 1 1 auto; min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; padding: 2px 6px; border: 0; border-radius: 12px; background: none; color: var(--fg-1); text-align: left; touch-action: manipulation; }
+.rm-dk-mid:active { background: var(--bg-3); }
 .rm-now-a { display: flex; align-items: center; gap: 6px; max-width: 100%; font-size: 13.5px; font-weight: 600; }
 .rm-now-a .rm-dot { width: 8px; height: 8px; box-shadow: none; }
-.rm-now.is-amber .rm-dot { background: var(--warn-fg); }
-.rm-now.is-grey .rm-dot { background: var(--fg-3); }
+.rm-head.is-amber ~ .rm-body .rm-now-a .rm-dot { background: var(--warn-fg); }
+.rm-head.is-grey ~ .rm-body .rm-now-a .rm-dot { background: var(--fg-3); }
 .rm-now-t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rm-now-a em { flex: none; font-style: normal; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; font-weight: 500; color: var(--fg-2); }
 .rm-now-b { max-width: 100%; font-size: 12px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rm-fold { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--fg-3); touch-action: manipulation; }
-.rm-fold:active { background: var(--bg-3); }
-
-/* The dock open (M2 = A, on Apresentar): Letra | Player, then the arrows or
-   the player, then Tela preta · Logo · Limpar · Encerrar. In a sheet (the
-   other tabs) the same body without its own frame. */
-.rm-dock { flex: none; padding: 8px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); background: var(--bg-1); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; }
-.rm-dockb { display: flex; flex-direction: column; gap: 8px; }
-.rm-dock-top { display: flex; align-items: center; gap: 8px; min-height: 40px; }
-.rm-dseg { flex: none; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 3px; border-radius: 11px; border: 1px solid var(--line); background: var(--bg-0); }
-.rm-dseg button { font-family: inherit; min-height: 34px; padding: 0 16px; border: 0; border-radius: 8px; background: none; color: var(--fg-3); font-size: 13px; font-weight: 600; touch-action: manipulation; }
-.rm-dseg button[aria-pressed="true"] { background: var(--bg-4); color: var(--fg-1); }
-.rm-dseg button:disabled { opacity: .38; }
-.rm-dock-what { flex: 1 1 auto; min-width: 0; text-align: right; font-size: 12px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rm-arrows { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.rm-b.rm-arr { min-height: 64px; font-size: 16px; }
-.rm-acts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.rm-dk-prog { display: flex; align-items: center; gap: 6px; width: 100%; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--fg-3); }
+.rm-dk-prog .rm-bar { flex: 1 1 auto; height: 4px; }
+.rm-dk-swap { font-family: inherit; flex: none; display: inline-flex; align-items: center; gap: 2px; height: 36px; padding: 0 6px 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--bg-2); color: var(--fg-2); font-size: 12px; font-weight: 600; touch-action: manipulation; }
+.rm-dk-swap:active { background: var(--bg-3); }
+.rm-b.rm-dk-play { flex: none; width: 52px; min-height: 52px; padding: 0; background: var(--fg-1); border-color: var(--fg-1); color: var(--bg-0); }
+.rm-b.rm-dk-eye { flex: none; width: 48px; min-height: 52px; padding: 0; }
+.rm-b.rm-act.rm-dk-end { flex: none; min-width: 72px; min-height: 52px; }
+.rm-dk2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rm-b.rm-dk-arr { min-height: 56px; font-size: 16px; }
 .rm-b.rm-act { min-height: 56px; flex-direction: column; gap: 3px; padding: 0 4px; border-radius: 12px; font-size: 11.5px; font-weight: 500; }
 .rm-b.rm-act > span { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
 .rm-b.rm-act.is-end { color: var(--danger-fg); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
@@ -171,6 +193,19 @@
 .rm-b.rm-act.is-done { background: var(--bg-3); }
 .rm-b.rm-act.is-done em { font-style: normal; font-family: var(--font-mono, ui-monospace, monospace); color: var(--fg-3); }
 .rm-b.rm-act.is-done > span { flex-direction: row; gap: 4px; }
+/* Mais › Tela: Tela preta, Logo, Limpar (they left the dock, 2026-11-07). */
+.rm-screen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+/* The sections behind the ☰ at the header's left (2026-11-07: no tab bar). */
+.rm-menu { flex: none; width: 40px; height: 40px; margin: -6px 0 -6px -8px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--fg-1); touch-action: manipulation; }
+.rm-menu:active, .rm-menu.is-open { background: var(--bg-3); }
+.rm-scrim.is-menu { background: none; }
+.rm-mnu { position: fixed; z-index: 21; top: calc(46px + env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); width: min(260px, calc(100% - 16px)); display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 14px; background: var(--bg-2); box-shadow: 0 0 0 1px var(--line-strong), 0 14px 40px #000a; }
+.rm-mrow { font-family: inherit; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border: 0; border-radius: 10px; background: none; color: var(--fg-2); font-size: 15px; font-weight: 500; text-align: left; touch-action: manipulation; }
+.rm-mrow:active { background: var(--bg-3); }
+.rm-mrow[aria-current="page"] { background: var(--bg-3); color: var(--fg-1); }
+.rm-mrow[aria-current="page"] .kx-i { color: var(--brand); }
+
 /* The player in the dock. */
 .rm-pad { display: flex; flex-direction: column; gap: 8px; }
 .rm-prog { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; color: var(--fg-3); }
@@ -206,9 +241,9 @@
 .rm-empty { margin: 24px 0; font-size: 14px; color: var(--fg-3); text-align: center; }
 
 /* Chips, fields. */
-.rm-chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
+.rm-chips { flex: none; display: flex; gap: 6px; overflow-x: auto; margin: 0 -4px; padding: 2px 4px; scrollbar-width: none; }
 .rm-chips::-webkit-scrollbar { display: none; }
-.rm-chips.is-wrap { flex-wrap: wrap; overflow: visible; }
+.rm-chips.is-wrap { flex-wrap: wrap; overflow: visible; margin: 0; padding: 2px 0; }
 .rm-chip, .rm-b.rm-chip { font-family: inherit; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--bg-1); color: var(--fg-2); font-size: 13px; font-weight: 500; }
 .rm-chip[aria-pressed="true"] { background: var(--bg-3); color: var(--fg-1); border-color: var(--fg-3); }
 .rm-field { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-2); color: var(--fg-1); }
@@ -271,11 +306,12 @@ button.rm-vrow:active { background: var(--bg-2); }
 .rm-sheet .rm-item { background: var(--bg-1); }
 .rm-tlock { position: fixed; inset: 0; z-index: 30; background: #000c; touch-action: none; }
 
-/* What the last command said, over the tab bar. */
+/* What the last command said (a refusal, Encerrar, the hold hint). */
 .rm-toast { position: fixed; z-index: 25; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(68px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; min-height: 52px; border-radius: 12px; background: var(--bg-3); box-shadow: 0 0 0 1px var(--line-strong), 0 10px 28px #000a; color: var(--fg-1); font-size: 13.5px; line-height: 1.3; }
-.rm.has-now .rm-toast { bottom: calc(128px + env(safe-area-inset-bottom)); }
-/* With the dock open the answer comes under the header, never over the controls. */
-.rm.has-dock .rm-toast { top: calc(60px + env(safe-area-inset-top)); bottom: auto; }
+/* The Controle's (2026-11-07): right above the dock, never over it; with
+   nothing on air, at the bottom of the screen. */
+.rm-toast.is-docked { position: absolute; z-index: 25; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(100% + 8px); top: auto; }
+.rm-dockwrap:not(:has(.rm-dock)) > .rm-toast.is-docked { bottom: calc(12px + env(safe-area-inset-bottom)); }
 .rm-toast.is-bad { color: var(--warn-fg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 50%, transparent), 0 10px 28px #000a; }
 .rm-toast > span { flex: 1 1 auto; min-width: 0; }
 .rm-toast-act { font-family: inherit; flex: none; min-height: 40px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--brand); color: var(--on-brand); font-weight: 600; }
@@ -425,7 +461,7 @@ button.rm-vrow:active { background: var(--bg-2); }
     .rm-sticky { margin-left: -12px; padding-left: 12px; }
     .rm-sheet { left: 50%; right: auto; width: min(560px, 100%); transform: translateX(-50%); }
     .rm-toast { left: calc(88px + env(safe-area-inset-left)); bottom: calc(12px + env(safe-area-inset-bottom)); max-width: 560px; }
-    .rm.has-now .rm-toast { bottom: calc(70px + env(safe-area-inset-bottom)); }
+    .rm-toast.is-docked { left: 12px; right: auto; width: min(560px, calc(100% - 24px)); }
     .rm-main.is-split { padding: 0; }
     .rm-slides { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
     .rm-dock { border-radius: 0; }
@@ -440,8 +476,10 @@ button.rm-vrow:active { background: var(--bg-2); }
     .rm-sticky .rm-b.is-go { min-height: 44px; line-height: 44px; }
     .rm-sticky .rm-b + .rm-hint, .rm-sticky .rm-sendrow + .rm-hint { display: none; }
     .rm-foot .rm-b.is-go, .rm-sendrow > .rm-b { min-height: 44px; line-height: 44px; }
-    .rm-now { min-height: 48px; }
-    .rm-b.rm-arr { min-height: 52px; }
+    .rm-dock { flex-direction: row; align-items: center; gap: 10px; padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+    .rm-dk1 { flex: 1 1 auto; min-width: 0; min-height: 48px; }
+    .rm-dk2 { flex: none; width: min(320px, 40%); }
+    .rm-b.rm-dk-arr, .rm-b.rm-act.rm-dk-end, .rm-b.rm-dk-play, .rm-b.rm-dk-eye { min-height: 48px; }
     .rm-b.rm-act { min-height: 48px; }
 }
 
@@ -449,6 +487,7 @@ button.rm-vrow:active { background: var(--bg-2); }
     .rm-hold.is-holding .rm-hold-fill { transition: none; transform: scaleX(1); opacity: .6; }
     .rm-b.is-busy, .rm-tg.is-busy { animation: none; }
     .rm-tg::after { transition: none; }
+    .rm-scroll.is-dragging .rm-srow:not(.is-lifted) { transition: none; }
 }
 @media (forced-colors: active) {
     .rm-tab[aria-selected="true"]::after, .rm-tg[aria-checked="true"]::before { background: Highlight; }
@@ -466,7 +505,7 @@ button.rm-vrow:active { background: var(--bg-2); }
     .rm-b.rm-slide.is-air { background: Highlight; color: HighlightText; forced-color-adjust: none; }
     .rm-b.rm-slide.is-air .rm-slide-k, .rm-b.rm-slide.is-air .rm-slide-t { color: HighlightText; }
     .rm-b.rm-slide.is-next { outline: 2px dotted CanvasText; outline-offset: -2px; }
-    .rm-vrow.is-sel, .rm-vrow.is-in, .rm-cells button.is-sel, .rm-dseg button[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+    .rm-vrow.is-sel, .rm-vrow.is-in, .rm-cells button.is-sel, .rm-srow.is-sel, .rm-srow.is-air, .rm-mrow[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }
     .rm-b.rm-act.is-end:not(.is-off) { border: 2px solid ButtonText; }
     .rm-b.rm-act.is-end .rm-hold-fill { background: Highlight; }
 }

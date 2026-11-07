@@ -1,12 +1,14 @@
 import React from "react";
 import Icon from "@/components/console/Icon";
 import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
-import { allowed, SWAP_TO } from "@/lib/network/remoteView";
+import { allowed, canRun, onAirNow, SWAP_TO } from "@/lib/network/remoteView";
 import { Cmd, HoldButton, Toggle } from "./parts";
 import { SendLaunchers } from "./liveParts";
 
-// Mais: Enviar (Slides, Aviso, Timer: Rodada Q moved them from Ao vivo),
-// Travar telas (a tap; destravar is held, owner's pick "segurar"),
+// Mais: Telas (Tela preta, Logo, Limpar: they left the dock in the owner's
+// vistoria of 2026-11-07, which keeps only Encerrar; then Travar telas, a
+// tap — destravar is held, owner's pick "segurar"),
+// Enviar (Slides, Aviso, Timer: Rodada Q moved them from Ao vivo),
 // Camadas (the main text, the logo in the corner, the Fundo while there is
 // one; owner 2026-10-28, K5 = A: the Vídeo switch never worked), and
 // this phone's own: Travar toques, Manter a tela ligada, the version.
@@ -20,10 +22,19 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
         const off = !allowed("layer", args, c.flags) || (which === "corner" && c.flags.locked);
         return { on: shown, disabled: off, busy: c.busy.has(key), onChange: () => c.run(key, "layer", args) };
     };
+    const screen = live?.screen || "show";
     return (
         <div className="rm-main">
-            <SendLaunchers live={live} state={state} caps={caps} c={c} />
-            {caps.has("lock") && <h2 className="rm-sec">Telas</h2>}
+            {(canRun(caps, "black") || caps.has("lock")) && <h2 className="rm-sec is-top">Telas</h2>}
+            {canRun(caps, "black") && (
+                <>
+                    <div className="rm-screen">
+                        <Cmd c={c} action="black" args={{ on: screen !== "black" }} className={`rm-act ${screen === "black" ? "is-on" : ""}`} pressed={screen === "black"}><Icon name="black" size={20} />Tela preta</Cmd>
+                        <Cmd c={c} action="logo" args={{ on: screen !== "logo" }} className={`rm-act ${screen === "logo" ? "is-on" : ""}`} pressed={screen === "logo"}><Icon name="logo" size={20} />Logo</Cmd>
+                        <Cmd c={c} action="clear" className="rm-act" disabled={!onAirNow(live)}><Icon name="eraser" size={20} />Limpar</Cmd>
+                    </div>
+                </>
+            )}
             {caps.has("lock") && (locked
                 ? (
                     <>
@@ -37,6 +48,7 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
                         <Cmd c={c} action="lock" args={{ locked: true }}><Icon name="lock" size={20} />Travar telas</Cmd>
                     </>
                 ))}
+            <SendLaunchers live={live} state={state} caps={caps} c={c} />
 
             {caps.has("layers") && (
                 <>

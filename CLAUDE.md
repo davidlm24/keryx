@@ -2053,8 +2053,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   its code (`sendBlock`, src/lib/console/sendBlock.js). **The phone's
   page** (Rodada G6 PR3, the owner's picks of 17/10) is `src/pages/RemoteView.jsx` +
   `src/components/network/remote/` (styles `remote.css`; what it shows is
-  `src/lib/network/remoteView.js`, tested): tabs at the bottom (a left
-  rail at 600 px and up), a section only when `state.caps` has its cap
+  `src/lib/network/remoteView.js`, tested): the sections behind a ☰ at the
+  header's left (owner's vistoria 2026-11-07: no tab bar at the bottom,
+  `SectionsMenu` in RemoteView.jsx; the Equipe keeps its tabs), a section only when `state.caps` has its cap
   (a v1 console: `isV1`), only the control pressed busy, S actions off
   while locked or stale (25 s without a frame), T always on; new items are
   picked, then sent from the sticky "Enviar ao ar · título"; Encerrar and
@@ -2065,16 +2066,38 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **Apresentar** (`PresentTab.jsx`: every slide of the item on air as a
   big card, `presentRows`, the one on air green and kept in view, the next
   with the grey ring, a tap = `goto`; the letra automática, a timer on air
-  and Enviar o próximo / Voltar; with nothing on air, Enviar o próximo and
-  Abrir a Biblioteca), Bíblia, Setlist, Mais — never a chat tab (that is
-  the Equipe's). Slides, Aviso and Timer are Mais › Enviar. **The controls
-  are the dock at the bottom** (`ControlDock.jsx`): open on Apresentar —
-  Letra | Player (`dockModes`: Player by itself when only something plays,
-  the operator's pick kept while it means something), the big arrows or
-  the player (⏮ −10 ⏯ +10 ⏭, the eye, the volume), then Tela preta · Logo ·
-  Limpar · Encerrar —, its ⌄ folds it; on every other tab, while something
-  is on air, it is one line (⏮ · the slide on air with "3/9" and the next ·
-  ⏭ · ⌃, `nowBarInfo`) whose middle opens the same controls in a sheet.
+  and the **Setlist strip**, Item anterior | Próximo item in SETLIST order
+  as the console's Setlist footer (vistoria 2026-11-07, P1 = A;
+  `setlistStrip`, `state.prevItemId` — additive; an older console's Voltar
+  stands in); with no slides on air (a video, an audio: P2 = A) the
+  Setlist fills the page around the item on air, a tap picks and the
+  strip's gold side sends; with nothing on air, the strip and Abrir a
+  Biblioteca), Bíblia, Setlist, Mais — never a chat tab (that is
+  the Equipe's). Mais starts with **Telas** (Tela preta, Logo, Limpar —
+  they left the dock — and Travar telas), then Enviar (Slides, Aviso, Timer). **The controls
+  are the dock at the bottom of every section while something is on air**
+  (`ControlDock.jsx`, vistoria 2026-11-07, D1/D2 = A; no fold, no sheet of
+  controls): lyrics or a passage — what is on air (`nowBarInfo`, a tap
+  opens Apresentar) · "Player ▸" when a sound plays too · Encerrar, then
+  Anterior | Próximo across the whole width; a video or an audio — ⏯ · the
+  title and its progress (a tap opens the player sheet: ⏮ −10 +10 ⏭, the
+  volume) · "Letra ▸" · the eye · Encerrar (`dockModes`: Player by itself
+  when only something plays, the operator's pick kept while it means
+  something). After this phone's Encerrar the dock stays for its Desfazer.
+  **The phone shows no toast for what went well** (vistoria 2026-11-07:
+  "Próximo slide." covered the controls): only refusals, "Projeção
+  encerrada" and the hold hint, right above the dock (`Toast docked`,
+  `.rm-dockwrap`); "+ Setlist" says "Na setlist" on its own button. The
+  console says only what a phone put on air or in the Setlist, an aviso
+  rápido and Travar ("Celular: enviou …"); every other handler of
+  remoteRunner.js is `quiet`. **The Setlist drags** (S1 = A): each row's
+  grip (pointer events; ↑/↓ on a focused grip) runs `setlist.move { itemId,
+  to }` (T, cap `plan`, the index the row ends at; `moveToIndex` in
+  dropOrder.js, tested; the console renumbers as the Setlist panel does,
+  `moveItem` in useRemote.js), the order held on the phone until the next
+  `state`; its header's + (S2 = A) opens "Adicionar à setlist" (Músicas ·
+  Vídeos · Áudios over `library`, `setlist.add`; Passagem da Bíblia… opens
+  the Bíblia, whose + Setlist adds the verses marked).
   **Encerrar has four states** (`endState`, tested): off with nothing on
   air, a red outline on air (held 1,5 s; a short tap says "Segure para
   encerrar tudo."), the fill while held, and for 8 s after this phone ended
@@ -2084,7 +2107,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   all; `verseRows`, `chapterArgs`) — a tap marks one, another makes the
   range (gold, selecionado) — with a compact bar at the bottom, Livro ▾ ·
   Capítulo ▾ · Versão ▾ · the lupa, each opening "Escolher a passagem"
-  (the reference typed, or books → chapters, eight cells across); an older
+  (the reference typed, or books → chapters, eight cells across, Livro |
+  Capítulo a `.rm-seg.is-sheet` segment); an older
   console sends no `verses` and the phone falls back to the prose and the
   number grid. The Biblioteca keeps its search and chips still and scrolls
   only the list (`rm-main is-split`: `rm-fix`, `rm-scroll` — the paging
@@ -2094,8 +2118,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the `plan` cap; it is T, so a row can be picked for it while locked. Only
   the dock is in the page's first load: every tab, the Biblioteca included,
   is a lazy chunk (the outputs' budget: with the Biblioteca in it, CI
-  measured /Remote at 400.0 kB). The smoke opens on "Biblioteca",
-  then presses Tela preta in Apresentar's dock. **The Equipe's page** (Rodada Q PR4, the owner's mockup, S8 = A)
+  measured /Remote at 400.0 kB). The smoke opens on "Biblioteca", reads
+  the sections from the ☰ (`.rm-mrow`), then presses Tela preta in Mais
+  (`.rm-screen`). **The Equipe's page** (Rodada Q PR4, the owner's mockup, S8 = A)
   is the same `/Remote` signed in with the Equipe's code: `state.role`
   "team" draws `remote/EquipeView.jsx` (a lazy chunk) instead (`roleOf`;
   the role last seen kept in localStorage `keryx.remote.role`, so a reload

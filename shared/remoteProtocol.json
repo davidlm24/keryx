@@ -290,6 +290,16 @@
       "oneOf": [["kind", "id"], ["book", "chapter", "verseStart", "verseEnd", "version"]],
       "$comment": "Rodada Q: an item at the end of the culto's Setlist (none chosen: today's starts), as the Biblioteca's drop and the palette's Adicionar. It writes the plan, never the live state (no ops), so it works locked. A passage needs its verses (a chapter alone is 400): it becomes a BiblePassage, never the whole chapter. 404 not_found when the row or the reference does not exist."
     },
+    "setlist.move": {
+      "kind": "T",
+      "cap": "plan",
+      "label": "mudou a ordem da setlist",
+      "args": {
+        "itemId": { "type": "id", "required": true },
+        "to": { "type": "int", "min": 0, "max": 999, "required": true }
+      },
+      "$comment": "Vistoria 07/11: the phone's Setlist drags a row, as the console's does. to is the index the item ends at in the Setlist as state.items lists it (sections included; past the end = the last place). It writes the plan (ServiceItem.order), never the live state (no ops), so it works locked; the console says nothing (its Setlist moves on screen). 404 not_found when the item left the Setlist."
+    },
     "chat.send": {
       "kind": "T",
       "cap": "requests",
@@ -353,6 +363,7 @@
       "airItemId": "id | null (v1)",
       "nextItemId": "id | null (v1)",
       "backItemId": "id | null: the item Voltar ao anterior goes back to",
+      "prevItemId": "id | null: the playable item before the Setlist item sent last (on air or not, as nextItemId), in SETLIST order (sections and disabled items skipped), as the console's Item anterior (vistoria 07/11); null when none was sent or none is before",
       "items": "[<= limits.items] { id, title (<= limits.itemTitle), type, section (v1), at, dur, st: ok | missing | syncing | blocked, progress?: str (<= 160) a PDF's pages in the console's words, \"Preparando páginas 3/12\" or why they failed; only while there is something to say }",
       "truncated": "bool: items stopped at limits.items",
       "bible": "{ version, installed: str[] }",

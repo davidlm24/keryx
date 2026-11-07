@@ -14,7 +14,7 @@
 // (remoteRunner.test.mjs).
 import { pedidoMediaKind } from "./pedidos.js";
 import { PROTOCOL, EMERGENCY, remoteKind, remoteState, remoteSay, passagePreview, refFromArgs, libraryPage, backItemOf, remoteRoleAllows, teamState, messageRow, sameMessage, requestsPage, songTextOf } from "./remote.js";
-import { isSection } from "./setlist.js";
+import { isSection, neighbours } from "./setlist.js";
 import { playerLayer, playerLayers, playerOp, videoSwap, followsItem, clockFollow } from "./player.js";
 import { followAction } from "./followWords.js";
 import { referenceNums } from "./bibleVerses.js";
@@ -93,7 +93,11 @@ async function reference(d, args) {
 
 // One entry per action of the contract (remoteProtocol.test checks the
 // list). run({ d, live, args, v, send }) → the answer. quiet: the console
-// says nothing (a volume step, a seek, a slide picked). locks(…): refused
+// says nothing. Since the vistoria of 07/11 (owner: "Próximo slide" on the
+// console is noise) only what puts something on air or in the Setlist, an
+// aviso rápido and Travar are said ("Celular: enviou …"); the slides, Tela
+// preta, Logo, Limpar, Tirar, the player, the layers and the switches move
+// what the operator already sees. locks(…): refused
 // while locked although the contract's kind says T (what the live state
 // refuses anyway: bringing the video back, the corner logo).
 export const REMOTE_HANDLERS = {
@@ -105,6 +109,8 @@ export const REMOTE_HANDLERS = {
             return ok("", remoteState({
                 v, app: d.app?.() || "", service: d.service, items, rows: d.rows, media: d.media, progressOf: d.progressOf,
                 airItemId: airNow ? airItemId : null, nextItemId: d.nextItem?.id || null, backItemId: backItemOf(live, items, airNow ? airItemId : null),
+                // As the console's Setlist footer: around the item sent last, on air or not.
+                prevItemId: neighbours(items, airItemId).prev?.id || null,
                 live, bible: await d.bible?.().catch(() => null), timers: timerChoices(d.timerPresets), alerts: orderPresets(d.alertPresets),
             }));
         },
@@ -112,8 +118,8 @@ export const REMOTE_HANDLERS = {
     library: {
         run: ({ d, args }) => ok("", libraryPage({ ...args, songs: d.songs, media: d.media, pieces: d.pieces, materials: d.materials, loaded: d.loaded, progressOf: d.progressOf })),
     },
-    next: { run: step },
-    prev: { run: step },
+    next: { quiet: true, run: step },
+    prev: { quiet: true, run: step },
     goto: {
         quiet: true,
         run: async ({ d, live, args }) => {
@@ -124,15 +130,17 @@ export const REMOTE_HANDLERS = {
             return ok(remoteSay("goto", `slide ${args.index + 1}`));
         },
     },
-    black: { run: screenMode },
-    logo: { run: screenMode },
+    black: { quiet: true, run: screenMode },
+    logo: { quiet: true, run: screenMode },
     clear: {
+        quiet: true,
         run: async ({ d, action }) => {
             await d.clearText();
             return ok(remoteSay(action));
         },
     },
     off: {
+        quiet: true,
         run: async ({ d, live, args }) => {
             if (!live?.[args.layer]) return fail("nothing", "Nada no ar nessa camada.");
             await d.callOp(`${args.layer}.clear`, {});
@@ -148,6 +156,7 @@ export const REMOTE_HANDLERS = {
         },
     },
     undo: {
+        quiet: true,
         run: async ({ d, action }) => (d.undo() ? ok(remoteSay(action)) : fail("nothing", M.nothingToUndo)),
     },
     sendNext: {
@@ -203,18 +212,20 @@ export const REMOTE_HANDLERS = {
         },
     },
     player: {
-        quiet: ({ args }) => args.do === "volume" || args.do === "seek",
+        quiet: true,
         locks: ({ live, args, d }) => args.do === "swap" && videoSwap(live, playerTarget(d, live, args))?.action === "showVideo",
         run: player,
     },
     // Version 1: the same as player { do: toggle }.
     play: {
+        quiet: true,
         run: async (ctx) => {
             const r = await player({ ...ctx, args: { do: "toggle" } });
             return r.ok ? ok(remoteSay("play")) : r;
         },
     },
     follow: {
+        quiet: true,
         run: async ({ d, live, args }) => {
             if (!live?.content?.follow) return fail("nothing", M.noFollow);
             await d.callOp("content.follow", { action: args.do });
@@ -224,6 +235,7 @@ export const REMOTE_HANDLERS = {
     layer: {
         // The corner logo is logo.set, which the live state refuses while locked either way.
         locks: ({ args }) => args.which === "corner",
+        quiet: true,
         run: async ({ d, live, args }) => {
             // "video" stays in the contract (additive only) but no page sends it since 2026-10-28.
             if (args.which === "video") return fail("nothing", "O celular ainda não controla a camada de vídeo.");
@@ -246,6 +258,7 @@ export const REMOTE_HANDLERS = {
         },
     },
     alertClear: {
+        quiet: true,
         run: async ({ d, live, action }) => {
             if (!live?.alert) return fail("nothing", "Nenhum aviso no ar.");
             await d.callOp("alert.clear", {});
@@ -260,6 +273,7 @@ export const REMOTE_HANDLERS = {
         },
     },
     timerAdjust: {
+        quiet: true,
         run: async ({ d, live, args }) => {
             if (live?.tool?.mode !== "timer") return fail("nothing", "Nenhum timer no ar.");
             await d.callOp("tool.adjust", { deltaMs: args.deltaMs });
@@ -275,6 +289,7 @@ export const REMOTE_HANDLERS = {
     },
     // Setlist automática (Rodada N2): the culto's switch, as the Setlist's header.
     "setlist.autoplay": {
+        quiet: true,
         run: async ({ d, args }) => {
             const word = args.on ? "avançar sozinho ligado" : "avançar sozinho desligado";
             if (Boolean(d.service?.autoplay) === args.on) return ok(remoteSay("setlist.autoplay", word));
@@ -307,6 +322,17 @@ export const REMOTE_HANDLERS = {
             const added = await d.addPassage(r);
             if (!added?.title) return notInBible(r.ref, r.version);
             return ok(remoteSay("setlist.add", `adicionou ${added.title} à setlist`), { title: added.title });
+        },
+    },
+    // Vistoria 07/11: the phone's Setlist drags a row, as the console's does;
+    // `to` is where it ends in the list (the plan, never the air).
+    "setlist.move": {
+        quiet: true,
+        run: async ({ d, args }) => {
+            const from = (d.items || []).findIndex((i) => i.id === args.itemId);
+            if (from < 0) return fail("not_found", M.notInSetlist);
+            await d.moveItem(args.itemId, args.to);
+            return ok(remoteSay("setlist.move"));
         },
     },
     // The Equipe's chat and song requests (Rodada Q): a ServiceMessage row,
@@ -394,6 +420,7 @@ const thrown = (err) => {
 //   setAutoplay(on)   the culto's Avançar sozinho (Service.autoplay)
 //   addToSetlist(stage) → { added: [title], left, error? }   at the end of the Setlist, no toast
 //   addPassage({ ref, version, verses, pair }) → { title } | null   a BiblePassage at the end of the Setlist
+//   moveItem(itemId, to)  the Setlist row ends at index `to` (renumbered)
 //   messages          the culto's ServiceMessage rows; createMessage(fields) → the row; ensureService() → id
 //   referenceVerses(ref, version?) → { version, verses }
 //   stages: { song, media, piece, material, verses, tool }   the stage builders (stage.js)

@@ -6,7 +6,7 @@ import { allowed } from "@/lib/network/remoteView";
 // way (a second tap is ignored); it is off while the screens are locked or
 // the link is dead when the command would put something on air.
 //   c: { busy, run, flags } from the page; k: its busy key (default: the action)
-export function Cmd({ c, k, action, args = {}, className = "", disabled = false, quiet = false, then, label, title, pressed, children }) {
+export function Cmd({ c, k, action, args = {}, className = "", disabled = false, then, label, title, pressed, children }) {
     const key = k || action;
     const busy = c.busy.has(key);
     const off = disabled || !allowed(action, args, c.flags);
@@ -20,7 +20,7 @@ export function Cmd({ c, k, action, args = {}, className = "", disabled = false,
             aria-pressed={pressed}
             title={title}
             onClick={async () => {
-                const r = await c.run(key, action, args, { quiet });
+                const r = await c.run(key, action, args);
                 if (r?.ok && then) then(r);
             }}
         >
@@ -104,12 +104,13 @@ export function Toggle({ title, sub, on, onChange, disabled = false, busy = fals
     );
 }
 
-// What the last command said, over the tab bar; after Encerrar tudo it
-// holds Desfazer for 8 s.
-export function Toast({ toast, onUndo, onClose, canUndo }) {
+// What the last command said; after Encerrar tudo it holds Desfazer for 8 s.
+// docked (the Controle, vistoria 2026-11-07): right above the dock, never
+// over it; the Equipe's sits under its strip.
+export function Toast({ toast, onUndo, onClose, canUndo, docked = false }) {
     if (!toast) return null;
     return (
-        <div className={`rm-toast ${toast.bad ? "is-bad" : ""}`} role="status" aria-live="polite" key={toast.id}>
+        <div className={`rm-toast ${docked ? "is-docked" : ""} ${toast.bad ? "is-bad" : ""}`} role="status" aria-live="polite" key={toast.id}>
             <span>{toast.text}</span>
             {toast.undo && canUndo
                 ? <button type="button" className="rm-toast-act" onClick={() => { onClose(); onUndo(); }}>Desfazer</button>

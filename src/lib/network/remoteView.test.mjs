@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { emptyState, applyOp } from "../../../shared/live-state.mjs";
 import {
     capsOf, isV1, canRun, kindOf, allowed, airHeader, bannerOf, slideInfo, slideRows, playerInfo, volumeStep,
-    followInfo, timerInfo, setlistRows, sayOf, SWAP_TO,
+    followInfo, timerInfo, setlistRows, dragTarget, dragShift, setlistStrip, SWAP_TO,
     MEDIA_CHIPS, libraryArgs, emptyList, joinPage, mediaRow, sendMediaArgs,
     fieldRef, fieldBook, tapVerse, refLabel, bibleArgs, BIBLE_SECTIONS, bibleVersions,
     nowBarInfo, addToSetlistArgs, biblePlanArgs,
@@ -138,10 +138,31 @@ test("the Setlist: sections as headers, time and length, no ar / próximo / últ
     assert.deepEqual(setlistRows(null), []);
 });
 
-test("what the phone says after a command", () => {
-    assert.equal(sayOf({ ok: true, message: "Celular: Tela preta ligado." }), "Tela preta ligado.");
-    assert.equal(sayOf({ ok: true, message: "" }), "Feito.");
-    assert.equal(sayOf({ ok: false, message: "Telas travadas: nada vai ao ar. Destrave em Saídas." }), "Telas travadas: nada vai ao ar. Destrave em Saídas.");
+test("the Setlist drag: where the row lands and how the others make room", () => {
+    // Four rows 50 px tall: middles 25, 75, 125, 175.
+    const mids = [25, 75, 125, 175];
+    assert.equal(dragTarget(mids, 0, 25), 0, "not moved");
+    assert.equal(dragTarget(mids, 0, 130), 2, "row 0 past the third middle");
+    assert.equal(dragTarget(mids, 3, 10), 0, "the last to the top");
+    assert.equal(dragTarget(mids, 1, 400), 3, "past the end: the last place");
+    // Row 0 held over index 2: rows 1 and 2 go up; row 3 stays.
+    assert.deepEqual([0, 1, 2, 3].map((j) => dragShift(j, 0, 2, 53)), [0, -53, -53, 0]);
+    // Row 3 held over index 1: rows 1 and 2 go down.
+    assert.deepEqual([0, 1, 2, 3].map((j) => dragShift(j, 3, 1, 53)), [0, 53, 53, 0]);
+    assert.equal(dragShift(2, -1, 0, 53), 0, "no drag");
+});
+
+test("Apresentar's strip: Item anterior and Próximo item in Setlist order", () => {
+    const items = [{ id: "a", title: "Hino" }, { id: "b", title: "", st: "missing" }, { id: "c", title: "Oferta" }];
+    assert.deepEqual(setlistStrip({ items, prevItemId: "a", nextItemId: "c", backItemId: "c" }), {
+        prev: { id: "a", title: "Hino", ok: true }, next: { id: "c", title: "Oferta", ok: true }, prevWord: "Item anterior", hasPrev: true,
+    });
+    assert.deepEqual(setlistStrip({ items, prevItemId: null, nextItemId: "b" }).next, { id: "b", title: "Sem título", ok: false });
+    // An older console: its Voltar (from the history) stands in.
+    const old = setlistStrip({ items, backItemId: "c" });
+    assert.equal(old.prev.id, "c");
+    assert.equal(old.prevWord, "Voltar");
+    assert.equal(setlistStrip({ items }).hasPrev, false, "a v1 console has neither");
 });
 
 test("Mídia: each chip's library page, a search, pages of 30", () => {

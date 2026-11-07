@@ -23,6 +23,8 @@ export default function BibleTab({ state, caps, c, readOnly = false }) {
     const [found, setFound] = useState(null);
     const [finding, setFinding] = useState(false);
     const [sheet, setSheet] = useState(null);
+    // The passage + Setlist just added (no toast since 2026-11-07: the button says so).
+    const [added, setAdded] = useState("");
     const seq = useRef(0);
     const scroller = useRef(null);
 
@@ -117,7 +119,9 @@ export default function BibleTab({ state, caps, c, readOnly = false }) {
                         : (
                             <div className="rm-sendrow">
                                 <Cmd c={c} k="bibleSend" action="bibleSend" args={bibleArgs(ref, version)} className="is-go" disabled={found ? !found.ok : false}>Enviar {label} · {sendVersion}</Cmd>
-                                {plan && <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" disabled={found ? !found.ok : false} label={`Adicionar ${label} à setlist`}><Icon name="plus" size={18} />Setlist</Cmd>}
+                                {plan && (added === `${label}|${version}`
+                                    ? <span className="rm-b is-plan is-added" role="status"><Icon name="check" size={18} />Na setlist</span>
+                                    : <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" disabled={found ? !found.ok : false} label={`Adicionar ${label} à setlist`} then={() => setAdded(`${label}|${version}`)}><Icon name="plus" size={18} />Setlist</Cmd>)}
                             </div>
                         )}
                 </div>
@@ -186,9 +190,11 @@ function PassageSheet({ start, current, onOpen, onClose }) {
             </form>
             {field.trim() && !typed && !fieldBook(field) && <p className="rm-hint is-left">Não entendi. Escreva como “jo 3 16” ou “Jo 3:16-18”.</p>}
             {typed && <p className="rm-hint is-left">Abre <b>{refLabel(typed)}</b></p>}
-            <div className="rm-chips" role="group" aria-label="Passo">
-                <button type="button" className="rm-chip is-sm" aria-pressed={step === "book"} onClick={() => setStep("book")}>{book && step === "chapter" ? book.name : "Livro"}</button>
-                <button type="button" className="rm-chip is-sm" aria-pressed={step === "chapter"} disabled={!book} onClick={() => setStep("chapter")}>Capítulo</button>
+            {/* Livro | Capítulo as one segment (vistoria 2026-11-07, G1: the
+                chips were squeezed and cut at the sheet's edge). */}
+            <div className="rm-seg is-sheet" role="group" aria-label="Passo">
+                <button type="button" aria-pressed={step === "book"} onClick={() => setStep("book")}>{book ? book.name : "Livro"}</button>
+                <button type="button" aria-pressed={step === "chapter"} disabled={!book} onClick={() => setStep("chapter")}>Capítulo</button>
             </div>
             {step === "book" && BIBLE_SECTIONS.map(([name, books]) => (
                 <section key={name} aria-label={name} className="rm-bsec">

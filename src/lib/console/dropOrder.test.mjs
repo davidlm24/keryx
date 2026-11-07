@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { overIndex, isNoop, shiftFor, placeIndex, moveTo, measureRows, roomFor, slotAt, slotTop, stepSlot, stepKey, moveManyTo, isGroupNoop, groupRoom, groupIdxs } from "./dropOrder.js";
+import { overIndex, isNoop, shiftFor, placeIndex, moveTo, moveToIndex, slotForIndex, measureRows, roomFor, slotAt, slotTop, stepSlot, stepKey, moveManyTo, isGroupNoop, groupRoom, groupIdxs } from "./dropOrder.js";
 
 test("overIndex: the slot is how many row middles are above the pointer", () => {
     const mids = [16, 48, 80];
@@ -161,4 +161,17 @@ test("isGroupNoop and groupRoom", () => {
     assert.equal(slotAt(geo, 10, -1, null, room), 0);
     assert.equal(slotAt(geo, 45, -1, null, room), 2);
     assert.equal(slotAt(geo, 200, -1, 3, room), 3);
+});
+
+// The phone's Setlist (vistoria 07/11): setlist.move says the index the row
+// ends at, not a slot between rows.
+test("moveToIndex: the row ends at the index asked, clamped to the list", () => {
+    const l = ["a", "b", "c", "d"];
+    assert.equal(slotForIndex(1, 3), 4);
+    assert.equal(slotForIndex(3, 1), 1);
+    assert.deepEqual(moveToIndex(l, 0, 2), ["b", "c", "a", "d"]);
+    assert.deepEqual(moveToIndex(l, 3, 0), ["d", "a", "b", "c"]);
+    assert.deepEqual(moveToIndex(l, 1, 3), ["a", "c", "d", "b"]);
+    assert.deepEqual(moveToIndex(l, 1, 99), ["a", "c", "d", "b"], "past the end: the last place");
+    assert.equal(moveToIndex(l, 2, 2), l, "the same place: the same list");
 });

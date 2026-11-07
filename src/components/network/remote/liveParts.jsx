@@ -2,30 +2,38 @@ import React, { useState } from "react";
 import Icon from "@/components/console/Icon";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { ADJUST_STEPS, BUILTIN_MINUTES, minutesLabel } from "@/lib/console/timerPresets";
-import { allowed, canRun, followInfo, slideInfo, slideRows, timerInfo } from "@/lib/network/remoteView";
+import { allowed, canRun, followInfo, setlistStrip, slideInfo, slideRows, timerInfo } from "@/lib/network/remoteView";
 import { Cmd, Sheet } from "./parts";
 
-// The pieces of Apresentar (Enviar o próximo, the letra automática, a timer
+// The pieces of Apresentar (the Setlist strip, the letra automática, a timer
 // on air) and the sheets of Mais › Enviar (Slides, Aviso, Timer). The slide
-// arrows, Tela preta / Logo / Limpar / Encerrar and the player are the dock's
-// (ControlDock.jsx, owner 2026-10-28).
+// arrows, Encerrar and the player are the dock's (ControlDock.jsx).
 
-// The Setlist's next item (and the one before), sent at once.
-export function SendNext({ state, caps, c }) {
+// Apresentar's strip (owner's vistoria 2026-11-07, P1 = A): Item anterior
+// and Próximo item in SETLIST order, as the console's Setlist footer, sent
+// at once. picked: an item chosen in the Setlist under a video on air (P2),
+// which takes the gold side as "Enviar ao ar · título".
+export function SetlistStrip({ state, caps, c, picked = null, onSent }) {
     if (!canRun(caps, "sendNext")) return null;
-    const items = state?.items || [];
-    const next = items.find((i) => i.id === state?.nextItemId) || null;
-    const back = items.find((i) => i.id === state?.backItemId) || null;
+    const s = setlistStrip(state);
     return (
-        <div className="rm-pair">
-            <Cmd c={c} action="sendNext" className="is-go is-two" disabled={!next || next.st && next.st !== "ok"}>
-                <small>Enviar o próximo</small><b>{next ? next.title || "Sem título" : "Nada depois na setlist"}</b>
-            </Cmd>
-            {state?.backItemId !== undefined && (
-                <Cmd c={c} k="back" action="sendItem" args={{ itemId: back?.id || "" }} className="is-two is-narrow" disabled={!back} title={back ? `Voltar a ${back.title}` : "Nada antes"}>
-                    <small>Voltar</small><b>{back ? back.title || "Sem título" : "—"}</b>
+        <div className="rm-pair rm-sstrip">
+            {s.hasPrev && (
+                <Cmd c={c} k="prevItem" action="sendItem" args={{ itemId: s.prev?.id || "" }} className="is-two" disabled={!s.prev || !s.prev.ok} title={s.prev ? `${s.prevWord}: ${s.prev.title}` : "Nada antes na setlist"}>
+                    <small><Icon name="chevron-left" size={14} />{s.prevWord}</small><b>{s.prev ? s.prev.title : "Nada antes"}</b>
                 </Cmd>
             )}
+            {picked
+                ? (
+                    <Cmd c={c} k="sendItem" action="sendItem" args={{ itemId: picked.id }} className="is-go is-two" then={onSent} title={`Enviar ao ar: ${picked.title}`}>
+                        <small>Enviar ao ar</small><b>{picked.title}</b>
+                    </Cmd>
+                )
+                : (
+                    <Cmd c={c} action="sendNext" className="is-go is-two" disabled={!s.next || !s.next.ok} title={s.next ? `Próximo item: ${s.next.title}` : "Nada depois na setlist"}>
+                        <small>Próximo item<Icon name="chevron-right" size={14} /></small><b>{s.next ? s.next.title : "Nada depois na setlist"}</b>
+                    </Cmd>
+                )}
         </div>
     );
 }
@@ -88,7 +96,7 @@ export function SlidesSheet({ content, c, onClose }) {
         <Sheet title="Ir para o slide" onClose={onClose}>
             <div className="rm-list">
                 {rows.map((r) => (
-                    <Cmd key={r.i} c={c} k="goto" action="goto" args={{ index: r.i }} className={`rm-item ${r.air ? "is-sel" : ""}`} quiet then={onClose}>
+                    <Cmd key={r.i} c={c} k="goto" action="goto" args={{ index: r.i }} className={`rm-item ${r.air ? "is-sel" : ""}`} then={onClose}>
                         <span className="rm-item-t"><b>{r.i + 1} · {r.title}</b>{r.sub && <small>{r.sub}</small>}</span>
                         {r.air && <span className="rm-tag is-air">no ar</span>}
                     </Cmd>
