@@ -384,8 +384,8 @@ test("writes go one at a time; reads and the emergency lane never wait", async (
 test("answer: the console says what the phone did; a throw keeps its status", async () => {
     const d = fakeConsole();
     const runner = createRemoteRunner(() => d);
-    await runner.answer({ action: "clear", v: 2 });
-    assert.deepEqual(d.said, [["Celular: limpou o texto.", undefined]]);
+    await runner.answer({ action: "sendItem", args: { itemId: "a" }, v: 2 });
+    assert.deepEqual(d.said, [['Celular: enviou "Hino".', undefined]]);
     // Reads and refusals say nothing on the console.
     await runner.answer({ action: "state", v: 2 });
     await runner.answer({ action: "library", args: { tab: "songs" }, v: 2 });
@@ -571,4 +571,60 @@ test("requests: a page back from the newest; songText: a song's parts with chord
     const song = await asTeam(d, "songText", { id: "s1" });
     assert.deepEqual(song.data, { id: "s1", title: "Hino", artist: "X", key: "G", parts: [{ name: "Verso 1", lines: ["[G]Grande é o [D]Senhor"] }, { name: "Refrão", lines: ["Santo"] }], truncated: false });
     assert.equal((await asTeam(d, "songText", { id: "gone" })).code, "not_found");
+});
+
+// Vistoria 07/11 (owner: "Próximo slide" on the console is noise): only what
+// puts something on air or in the Setlist, an aviso rápido and Travar are
+// said; what moves what the operator already sees is quiet.
+test("answer: the console says only sends, the Setlist, the aviso and Travar", async () => {
+    const quietOnes = [
+        ["next"], ["prev"], ["black", { on: true }], ["logo", { on: true }], ["clear"], ["off", { layer: "content" }],
+        ["layer", { which: "text", on: false }], ["timerAdjust", { deltaMs: 60000 }], ["setlist.autoplay", { on: true }],
+        ["setlist.move", { itemId: "t", to: 0 }],
+    ];
+    for (const [action, args] of quietOnes) {
+        const d = fakeConsole({ moveItem: async () => {}, setAutoplay: async () => {} });
+        d.cur = { ...d.cur, tool: { mode: "timer" } };
+        const r = await createRemoteRunner(d).answer({ action, args, v: 2 });
+        assert.equal(r.ok, true, action);
+        assert.equal(d.said.length, 0, `${action} says nothing on the console`);
+    }
+    const p = playing(fakeConsole());
+    await createRemoteRunner(p).answer({ action: "player", args: { do: "toggle" }, v: 2 });
+    assert.equal(p.said.length, 0, "the player says nothing");
+    const said = fakeConsole();
+    const runner = createRemoteRunner(said);
+    await runner.answer({ action: "alert", args: { message: "Carro" }, v: 2 });
+    await runner.answer({ action: "lock", args: { locked: true }, v: 2 });
+    assert.deepEqual(said.said.map(([m]) => m), ["Celular: aviso rápido no ar.", "Celular: telas travadas."]);
+});
+
+test("setlist.move: the row ends where the phone dropped it, the plan only", async () => {
+    const moved = [];
+    const d = fakeConsole({ moveItem: async (id, to) => { moved.push([id, to]); } });
+    const r = await run(d, "setlist.move", { itemId: "t", to: 1 });
+    assert.equal(r.ok, true);
+    assert.deepEqual(moved, [["t", 1]]);
+    assert.equal(d.calls.length, 0, "no live-state op");
+    // Locked screens: still moves (it is the plan).
+    const l = lock(fakeConsole({ moveItem: async () => { moved.push("locked"); } }));
+    assert.equal((await run(l, "setlist.move", { itemId: "a", to: 0 })).ok, true);
+    assert.equal(moved.at(-1), "locked");
+    // An item that left the Setlist.
+    assert.deepEqual(await run(fakeConsole({ moveItem: async () => {} }), "setlist.move", { itemId: "gone", to: 0 }), { ok: false, message: M.notInSetlist, status: 404, code: "not_found" });
+});
+
+test("state: prevItemId is the playable item before the one sent last, in Setlist order", async () => {
+    const items = [
+        { id: "sec", type: "SECTION", title: "Louvor" },
+        { id: "a", type: "SONG", title: "Hino" },
+        { id: "off", type: "TEXT", title: "Desligado", enabled: false },
+        { id: "t", type: "TEXT", title: "Avisos" },
+    ];
+    const d = fakeConsole({ items, airItemId: "t", airNow: { id: "t" } });
+    assert.equal((await run(d, "state")).data.prevItemId, "a", "the disabled one is skipped");
+    assert.equal((await run(fakeConsole({ items, airItemId: "a", airNow: { id: "a" } }), "state")).data.prevItemId, null, "the first has none before");
+    // As the console's footer: around the item sent last, even off the air (after Esc, a video).
+    assert.equal((await run(fakeConsole({ items, airItemId: "t", airNow: null }), "state")).data.prevItemId, "a", "the last sent, off the air");
+    assert.equal((await run(fakeConsole({ items, airItemId: null, airNow: null }), "state")).data.prevItemId, null, "nothing sent yet");
 });

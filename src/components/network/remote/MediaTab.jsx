@@ -23,6 +23,8 @@ export default function MediaTab({ caps, c, setGate }) {
     const [failed, setFailed] = useState("");
     const [pick, setPick] = useState(null);
     const [where, setWhere] = useState(false);
+    // The row + Setlist just added (no toast since 2026-11-07: the button says so).
+    const [added, setAdded] = useState(null);
     const keyRef = useRef(key);
     const asking = useRef(false);
     const sentinel = useRef(null);
@@ -122,7 +124,9 @@ export default function MediaTab({ caps, c, setGate }) {
                             {chip === "video"
                                 ? <button type="button" className="rm-b is-go" disabled={!canPick} onClick={() => setWhere(true)}>Enviar ao ar · {picked.title}</button>
                                 : <Cmd c={c} k="sendMedia" action="sendMedia" args={sendMediaArgs(chip, picked.id)} className="is-go" then={done}>Enviar ao ar · {picked.title}</Cmd>}
-                            {plan && <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" label={`Adicionar ${picked.title} à setlist`}><Icon name="plus" size={18} />Setlist</Cmd>}
+                            {plan && (added === picked.id
+                                ? <span className="rm-b is-plan is-added" role="status"><Icon name="check" size={18} />Na setlist</span>
+                                : <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" label={`Adicionar ${picked.title} à setlist`} then={() => setAdded(picked.id)}><Icon name="plus" size={18} />Setlist</Cmd>)}
                         </div>
                     )
                     : <p className="rm-hint">Toque num item para escolher.</p>}

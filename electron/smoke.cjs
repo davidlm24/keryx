@@ -3286,16 +3286,19 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             await phone.webContents.session.cookies.set({ url: base, name, value });
             await phone.loadURL(`${base}/Remote`);
             result.remote.page = await waitFor(phone, "Biblioteca", 8000);
-            // The page itself (Rodada G6 PR3; the redesign of 2026-10-28): it
-            // opens on the Biblioteca, and Tela preta in Apresentar's dock
-            // reaches the live state through the console.
+            // The page itself (Rodada G6 PR3; the redesign of 2026-10-28; the
+            // vistoria of 2026-11-07): it opens on the Biblioteca, its ☰ lists
+            // the sections, and Tela preta in Mais reaches the live state
+            // through the console.
             const pageJs = (code) => phone.webContents.executeJavaScript(code).catch(() => null);
-            const tabs = (await pageJs(`[...document.querySelectorAll(".rm-tab")].map((b) => b.textContent.trim()).join("|")`)) || "";
+            await pageJs(`document.querySelector(".rm-menu")?.click()`);
+            await sleep(300);
+            const tabs = (await pageJs(`[...document.querySelectorAll(".rm-mrow")].map((b) => b.textContent.trim()).join("|")`)) || "";
             result.remote.tabs = tabs.startsWith("Biblioteca") && tabs.includes("Apresentar") && tabs.includes("Setlist") && tabs.includes("Mais");
             live.call("screen.set", { mode: "show" });
-            await pageJs(`[...document.querySelectorAll(".rm-tab")].find((b) => b.textContent.includes("Apresentar"))?.click()`);
-            await waitFor(phone, "Encerrar", 8000);
-            await pageJs(`[...document.querySelectorAll(".rm-acts .rm-b")].find((b) => b.textContent.includes("Tela preta"))?.click()`);
+            await pageJs(`[...document.querySelectorAll(".rm-mrow")].find((b) => b.textContent.includes("Mais"))?.click()`);
+            await waitFor(phone, "Tela preta", 8000);
+            await pageJs(`[...document.querySelectorAll(".rm-screen .rm-b")].find((b) => b.textContent.includes("Tela preta"))?.click()`);
             const blackUntil = Date.now() + 5000;
             while (Date.now() < blackUntil && live.get().screen !== "black") await sleep(150);
             result.remote.pageBlack = live.get().screen === "black";

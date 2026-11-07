@@ -273,13 +273,41 @@ export function setlistRows(state, live = null) {
 }
 export const TAG_TEXT = { air: "no ar", next: "próximo", last: "último" };
 
-// What a command's answer says on the phone ("Celular: Tela preta" without
-// its "Celular: ", which the console's log needs).
-export function sayOf(r) {
-    if (!r) return "";
-    if (!r.ok) return r.message || "Não foi possível.";
-    const text = String(r.message || "").replace(/^Celular: /, "").replace(/\.$/, "");
-    return text ? `${text[0].toUpperCase()}${text.slice(1)}.` : "Feito.";
+// Dragging a Setlist row by its grip (vistoria 2026-11-07, S1): where it
+// lands is the number of other rows whose middle is above the dragged
+// row's middle now (`mids`: each row's middle when the drag began) — the
+// index setlist.move takes.
+export function dragTarget(mids, from, center) {
+    let to = 0;
+    for (let j = 0; j < mids.length; j++) if (j !== from && mids[j] < center) to++;
+    return to;
+}
+// How far row j moves aside while row `from` is held over `to`: the rows
+// between give up the dragged row's pitch (its height and the gap).
+export function dragShift(j, from, to, pitch) {
+    if (j === from || from < 0) return 0;
+    if (from < to && j > from && j <= to) return -pitch;
+    if (to < from && j >= to && j < from) return pitch;
+    return 0;
+}
+
+// Apresentar's strip (P1 = A): Item anterior and Próximo item in SETLIST
+// order, as the console's Setlist footer. An older console sends no
+// prevItemId: its Voltar (the last one sent, from the history) takes the
+// place. -> { prev, next, prevWord } each { id, title, ok } | null
+export function setlistStrip(state) {
+    const items = state?.items || [];
+    const find = (id) => {
+        const it = id ? items.find((i) => i.id === id) : null;
+        return it ? { id: it.id, title: it.title || "Sem título", ok: !it.st || it.st === "ok" } : null;
+    };
+    const ownPrev = state?.prevItemId !== undefined;
+    return {
+        prev: find(ownPrev ? state.prevItemId : state?.backItemId),
+        next: find(state?.nextItemId),
+        prevWord: ownPrev ? "Item anterior" : "Voltar",
+        hasPrev: ownPrev || state?.backItemId !== undefined,
+    };
 }
 
 // ---- Mídia (PR3b) ----------------------------------------------------------

@@ -7,6 +7,7 @@ import { reportedDuration } from "@/components/console/meterStore";
 import { installedVersions } from "@/lib/bibleText";
 import { getPrefs } from "@/hooks/useUser";
 import { pagesProgressOf } from "@/hooks/usePagesBackfill";
+import { moveToIndex } from "@/lib/console/dropOrder";
 
 const STAGES = { song: stageFromSong, media: stageFromMedia, piece: stageFromPiece, material: stageFromMaterial, verses: stageFromVerses, tool: stageFromTool };
 
@@ -42,6 +43,15 @@ export function useRemote({ c, data, service, items, rows, airItemId, airNow, ne
         setAutoplay: async (on) => keryx.entities.Service.update(service?.id || await ensureService(), { autoplay: Boolean(on) }),
         // Rodada Q: setlist.add (the plan, never the air) and the Equipe's messages.
         addToSetlist, addPassage, ensureService, messages,
+        // The phone's Setlist dragged a row (vistoria 07/11): the rows
+        // renumbered as the Setlist panel's drop does (Rundown.jsx).
+        moveItem: async (id, to) => {
+            const from = items.findIndex((i) => i.id === id);
+            if (from < 0) return;
+            const next = moveToIndex(items, from, to);
+            if (next === items) return;
+            await Promise.all(next.map((x, i) => (x.order !== i ? keryx.entities.ServiceItem.update(x.id, { order: i }) : null)));
+        },
         createMessage: (fields) => keryx.entities.ServiceMessage.create(fields),
         // A link-only pedido is named by YouTube's oEmbed (electron/youtube.cjs check).
         youtubeTitle: async (url) => {

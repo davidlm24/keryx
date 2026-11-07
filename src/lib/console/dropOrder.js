@@ -91,6 +91,16 @@ export function moveTo(list, from, over) {
     return out;
 }
 
+// The slot that leaves row `from` at index `to` once moved (what a phone
+// asks: setlist.move says where the row ends, not a slot between rows).
+export const slotForIndex = (from, to) => (to > from ? to + 1 : to);
+// The list with row `from` moved so it ends at index `to` (clamped to the
+// list); the same list when it would not move.
+export function moveToIndex(list, from, to) {
+    const end = Math.max(0, Math.min(list.length - 1, to));
+    return moveTo(list, from, slotForIndex(from, end));
+}
+
 // Subir / Descer without dragging (a row's menu, Alt+↑ / Alt+↓ on a focused
 // row; audit C-16): the slot that moves row `from` one place up (dir -1) or
 // down (+1) in a list of `n`, or null at the end it cannot pass.

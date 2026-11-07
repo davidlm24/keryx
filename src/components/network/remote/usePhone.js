@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { remoteCall } from "@/lib/console/remoteClient";
-import { STALE_MS, STATE_EVERY_MS, UNDO_MS, sayOf } from "@/lib/network/remoteView";
+import { STALE_MS, STATE_EVERY_MS, UNDO_MS } from "@/lib/network/remoteView";
 import { startAwake } from "@/lib/network/keepAwake";
 
 const signIn = () => { window.location.href = "/lan/remote-code"; };
@@ -82,7 +82,9 @@ export function useStale() {
 
 // One command at a time per control: the control pressed is busy (and a
 // second tap on it is ignored) until its answer; every other control stays
-// as it was. Answers show in a toast; nothing is ever sent again by itself.
+// as it was. Only a refusal shows in a toast (and Encerrar's): what went
+// well shows on the page itself (owner's vistoria 2026-11-07: "Próximo
+// slide." was noise over the controls). Nothing is ever sent again by itself.
 export function useCommands({ setGate }) {
     const inflight = useRef(new Set());
     const [busy, setBusy] = useState(() => new Set());
@@ -97,7 +99,7 @@ export function useCommands({ setGate }) {
         timer.current = setTimeout(() => setToast(null), undo ? UNDO_MS : bad ? 4500 : 3200);
     }, []);
     useEffect(() => () => clearTimeout(timer.current), []);
-    const run = useCallback(async (key, action, args = {}, { quiet = false } = {}) => {
+    const run = useCallback(async (key, action, args = {}) => {
         if (inflight.current.has(key)) return null;
         inflight.current.add(key);
         setBusy(new Set(inflight.current));
@@ -117,7 +119,6 @@ export function useCommands({ setGate }) {
         // An unknown outcome is the banner's ("Não sei se foi"), not a toast too.
         if (!r.ok) { if (!r.unknown) say(r.message, { bad: true }); else setToast(null); }
         else if (action === "end") { say("Projeção encerrada."); setEnded({ at: Date.now(), undo: Boolean(r.result?.undo) }); }
-        else if (!quiet) say(sayOf(r));
         if (r.ok && action !== "end") setEnded(null);
         return r;
     }, [say, setGate]);
