@@ -5,7 +5,10 @@ import React, { useEffect, useState } from "react";
 // it goes it stays mounted for the exit (`is-leaving`: fades and rises), so
 // the entrance and the exit are both seen. Each new toast is a new element
 // (key = its id) and replays the entrance. An important one (a new pedido or chat message)
-// wears two gold waves that leave its border (CSS draws them).
+// wears two gold waves that leave its border (CSS draws them), started when
+// someone is at the console to see them (c.toastWave counts the starts:
+// useToast waits for the focus, the mouse or a key, owner 2026-11-07); each
+// start is a new key on the rings, so the animation runs again.
 // Its time stands still while the pointer or the focus is on it (design audit
 // C-13), so Desfazer can be reached; Ctrl+Z runs an undo action too (keys.js
 // "undo"). Its words are said by the page's live region (useLiveRegion,
@@ -32,7 +35,7 @@ export default function Toast({ c }) {
         <div key={shown.id} className={`toast kx-toast${shown.important ? " is-important" : ""}${gone ? " is-leaving" : ""}`}
             onMouseEnter={() => hold(true)} onMouseLeave={() => hold(false)}
             onFocus={() => hold(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) hold(false); }}>
-            {shown.important && <><span className="kx-toast-wave" aria-hidden="true" /><span className="kx-toast-wave is-2" aria-hidden="true" /></>}
+            {shown.important && c.toast && c.toastWave > 0 && <React.Fragment key={c.toastWave}><span className="kx-toast-wave" aria-hidden="true" /><span className="kx-toast-wave is-2" aria-hidden="true" /></React.Fragment>}
             <span className="toast-t kx-toast-t">{shown.text}</span>
             {a && !gone && <button type="button" className="kx-btn kx-t toast-act kx-toast-act" title={a.undo ? `${a.label} · Ctrl+Z` : undefined} onClick={() => a.run()}>{a.label}</button>}
         </div>
