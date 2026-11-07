@@ -1878,6 +1878,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .fg-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--space-2); align-content: start; }
 .console .fg-tile { display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: left; border-radius: var(--radius-control); }
 .console .fg-img { position: relative; aspect-ratio: 16 / 10; border-radius: var(--radius-control); overflow: hidden; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); }
+/* A theme's thumb is a screen (16:9, ScreenRenderer): its frame is 16:9 too, or the frame's bg-2 showed as a grey strip under it (owner 2026-11-07). */
+.console .fg-img:has(> .lib-thumb), .console .cfg .tmg-new .fg-img { aspect-ratio: 16 / 9; }
 .console .fg-img img, .console .fg-img video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .console .fg-kind { position: absolute; right: 3px; bottom: 3px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--radius-control); background: var(--chrome-on-screen); color: var(--fg-1); }
 .console .fg-tile.is-on .fg-img { box-shadow: 0 0 0 2px var(--fg-1); }
@@ -2222,7 +2224,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .tm-slot { display: contents; }
 .console .tm-grid.is-large { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .console .tm-tile .fg-name { font-size: var(--fs-meta); }
-.console .tm-empty { aspect-ratio: 16 / 10; width: 100%; border-radius: var(--radius-control); border: 1px dashed var(--line-strong); background: none; color: var(--fg-3); display: grid; place-items: center; }
+.console .tm-empty { aspect-ratio: 16 / 9; width: 100%; border-radius: var(--radius-control); border: 1px dashed var(--line-strong); background: none; color: var(--fg-3); display: grid; place-items: center; }
 .console .tm-empty:hover, .console .tm-empty:focus-visible { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
 /* The library's Gerados: the background alone, big and moving, while it is edited. */
 .console .lib-big { display: flex; flex-direction: column; gap: var(--space-1); }
