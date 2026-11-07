@@ -3285,7 +3285,8 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             const [name, value] = cookie.split("=");
             await phone.webContents.session.cookies.set({ url: base, name, value });
             await phone.loadURL(`${base}/Remote`);
-            result.remote.page = await waitFor(phone, "Biblioteca", 8000);
+            // The Biblioteca opens first: its chips (the section names live in the ☰, closed).
+            result.remote.page = await waitFor(phone, "Músicas", 8000);
             // The page itself (Rodada G6 PR3; the redesign of 2026-10-28; the
             // vistoria of 2026-11-07): it opens on the Biblioteca, its ☰ lists
             // the sections, and Tela preta in Mais reaches the live state
