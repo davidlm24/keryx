@@ -13,6 +13,17 @@ export const toastMs = (text, action, important) => {
 };
 // An important toast (a new pedido or chat message) shows at least this long.
 export const IMPORTANT_MS = 6000;
+// An important toast waits to be seen (owner 2026-11-07: the wave played
+// while the operator was on the phone and was over before they looked):
+// its time only starts at the first sign of someone at the console after
+// it arrived (focus, the window shown again, the mouse or a key), and its
+// wave plays then, again if it already played out unseen.
+export const waitsToBeSeen = (toast) => Boolean(toast?.important);
+// How long the wave runs: three rings of 9 × --dur-fold (180 ms), the
+// second 2 × --dur-fold behind (bundle.css, kx-toast-wave).
+export const WAVE_MS = 3 * 9 * 180 + 2 * 180;
+// At that first sign: a wave that never played, or played out, plays again.
+export const replaysWave = (playedAt, now) => !playedAt || now - playedAt >= WAVE_MS;
 // Plain toasts waiting behind an action: the last few, the oldest dropped.
 export const TOAST_QUEUE = 3;
 

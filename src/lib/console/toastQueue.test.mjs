@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pushToast, nextToast, dropToast, toastMs, emptyToasts, TOAST_QUEUE } from "./toastQueue.js";
+import { pushToast, nextToast, dropToast, toastMs, emptyToasts, TOAST_QUEUE, waitsToBeSeen, replaysWave, WAVE_MS } from "./toastQueue.js";
 
 const undo = { label: "Desfazer", run: () => {} };
 
@@ -60,4 +60,14 @@ test("an important toast shows 6 s at least and is never swallowed by a plain on
     assert.equal(nextToast(after).cur.id, 2, "and shows after it");
     assert.equal(pushToast(imp, { id: 3, text: "Mensagem de Rui", important: true }).cur.id, 3, "a newer important one takes the place");
     assert.equal(pushToast(imp, { id: 4, text: "Cancelado", replace: true }).cur.id, 4);
+});
+
+test("an important toast waits to be seen, and its wave plays again if it ran out unseen", () => {
+    assert.equal(waitsToBeSeen({ text: "Pedido de Ana", important: true }), true);
+    assert.equal(waitsToBeSeen({ text: "Tema em uso." }), false, "a plain toast counts from the start");
+    assert.equal(waitsToBeSeen(null), false);
+    assert.equal(replaysWave(0, 1000), true, "it never played (the console was hidden): it plays when seen");
+    assert.equal(replaysWave(1000, 1000 + 200), false, "the operator is right there: no second wave");
+    assert.equal(replaysWave(1000, 1000 + WAVE_MS), true, "it played out unseen: once more");
+    assert.ok(WAVE_MS > 4000 && WAVE_MS < 6000, "about five seconds, three rings");
 });

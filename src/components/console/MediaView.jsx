@@ -7,7 +7,8 @@ import { useMultiSelect } from "./useMultiSelect";
 import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
 import { deleteSeveral } from "./bulkActions";
 import { usePackages } from "./packages";
-import { importMediaFiles, importSummary, mediaFromYouTube, uploadFile } from "@/lib/mediaImport";
+import { importMediaFiles, importSummary, mediaFromYouTube, uploadFile, pickRepeats } from "@/lib/mediaImport";
+import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import { codecFields } from "@/lib/videoCodec";
 import { playsInSequence } from "@/lib/presentation";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
@@ -143,13 +144,18 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         c.say(`${visual.length} em sequência nas telas${audios.length ? " · os áudios ficam de fora (use Áudios)" : ""}${skipped ? ` · ${skipped === 1 ? "a apresentação fica" : "as apresentações ficam"} de fora (envie uma por vez)` : ""} · Esc interrompe.`);
     };
     const upload = async (files) => {
-        const list = Array.from(files || []);
-        if (!list.length) return;
+        // What is already in the Mídia asks first (mediaRepeats.js, owner
+        // 2026-11-07): Pular (the default) or Adicionar mesmo assim.
+        const { list, skipped, there } = await pickRepeats(files, media, confirm);
+        if (!list.length) {
+            if (skipped) { c.say(importSummary({}, "", skipped)); if (there.length) ms.set(there.map((m) => m.id)); }
+            return;
+        }
         setUploads({ names: list.map((f) => f.name), at: 0, failed: [] });
         const result = await importMediaFiles(list, { category: into, onProgress: (i) => setUploads((u) => (u ? { ...u, at: i } : u)) });
         const { created } = result;
         setUploads(null);
-        c.say(importSummary(result));
+        c.say(importSummary(result, "", skipped));
         if (created.length) ms.set(created.map((r) => r.id));
     };
     // Link do YouTube… (the bar): the url comes from one question
@@ -177,7 +183,17 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         if (!answer?.url) return;
         try {
             const title = answer.check?.title || undefined;
-            const row = await mediaFromYouTube(answer.url, { category: into, title, state: stateOfCheck(answer.check) });
+            // Already in the Mídia (the link, or the file it was downloaded
+            // to): asks first. Downloading a link row that is there is not a
+            // copy: that row becomes the file.
+            const there = youtubeRow(answer.url, media);
+            const copy = there && !(answer.action === "download" && getYouTubeId(there.file_url || ""));
+            if (copy && !(await confirm(repeatQuestion([there.title], { link: true })))) {
+                ms.set([there.id]);
+                c.say(`Esse vídeo já está na Mídia: "${there.title}".`);
+                return;
+            }
+            const row = await mediaFromYouTube(answer.url, { category: into, title, state: stateOfCheck(answer.check), force: Boolean(copy) });
             ms.set([row.id]);
             if (answer.action === "download") { await download(row); return; }
             if (title) c.say(`Link adicionado: "${row.title}".`);
