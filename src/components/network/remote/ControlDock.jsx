@@ -105,9 +105,9 @@ function PlayerPad({ p, state, caps, c }) {
                 <>
                     <div className="rm-ctl">
                         <Cmd c={c} k="p-prev" action="player" args={{ do: "prev", layer }} label="Anterior" disabled={!p.list}><Icon name="skip-back" size={22} /></Cmd>
-                        <Cmd c={c} k="p-back" action="player" args={{ do: "back", layer }} label="Voltar 10 segundos">−10</Cmd>
+                        <Cmd c={c} k="p-back" action="player" args={{ do: "back", layer }} label="Voltar 10 segundos"><Icon name="undo" size={18} />10 s</Cmd>
                         <Cmd c={c} k="p-toggle" action="player" args={{ do: "toggle", layer }} className="is-play" label={p.paused ? "Tocar" : "Pausar"}><Icon name={p.paused ? "play" : "pause"} size={24} /></Cmd>
-                        <Cmd c={c} k="p-fwd" action="player" args={{ do: "forward", layer }} label="Avançar 10 segundos">+10</Cmd>
+                        <Cmd c={c} k="p-fwd" action="player" args={{ do: "forward", layer }} label="Avançar 10 segundos"><Icon name="redo" size={18} />10 s</Cmd>
                         <Cmd c={c} k="p-next" action="player" args={{ do: "next", layer }} label="Próximo" disabled={!p.list}><Icon name="skip-fwd" size={22} /></Cmd>
                     </div>
                     <div className="rm-vol2">
@@ -119,8 +119,8 @@ function PlayerPad({ p, state, caps, c }) {
                             )
                             : <span />}
                         <span className="rm-vol-n" aria-live="polite">{muted ? "mudo" : `${p.volume}%`}</span>
-                        <Cmd c={c} k="p-vol" action="player" args={vol(volumeStep(p.volume, -10))} label="Volume menos 10" disabled={muted}>−</Cmd>
-                        <Cmd c={c} k="p-vol" action="player" args={vol(volumeStep(muted ? 0 : p.volume, 10))} label="Volume mais 10">+</Cmd>
+                        <Cmd c={c} k="p-vol" action="player" args={vol(volumeStep(p.volume, -10))} label="Volume menos 10" disabled={muted}><Icon name="minus" size={18} /></Cmd>
+                        <Cmd c={c} k="p-vol" action="player" args={vol(volumeStep(muted ? 0 : p.volume, 10))} label="Volume mais 10"><Icon name="plus" size={18} /></Cmd>
                         <Cmd c={c} k="p-mute" action="player" args={vol(muted ? lastVolume.current : 0)} className={muted ? "is-on" : ""} label={muted ? "Tirar o mudo" : "Mudo"} pressed={muted}>
                             <Icon name={muted ? "volume-off" : "volume"} size={20} />
                         </Cmd>

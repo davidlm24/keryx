@@ -45,3 +45,17 @@ export function countdown(expires, now = Date.now()) {
     const s = Math.max(0, Math.ceil((expires - now) / 1000));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+
+// The invite's message (owner 2026-11-08, N9 = A): which side, that it opens
+// on the church Wi-Fi, until when it is good and for how many phones. The
+// link is the computer's address (info.urls, never window.location) and
+// the ticket's path.
+export function inviteText({ role, link, expires }) {
+    const d = new Date(expires);
+    const two = (n) => String(n).padStart(2, "0");
+    const when = Number.isNaN(d.getTime()) ? "" : `${two(d.getDate())}/${two(d.getMonth() + 1)}, ${two(d.getHours())}:${two(d.getMinutes())}`;
+    const side = role === "team" ? "Equipe (pedidos, chat e letras)" : "Controle (o controle remoto das telas)";
+    return `Entre no KERYX como ${side}. Abra no Wi-Fi da igreja:\n${link}\nO link vale${when ? ` até ${when}` : " 24 horas"} e serve para um celular.`;
+}
+// WhatsApp's share link with the message (it opens in the system's browser).
+export const whatsappUrl = (text) => `https://wa.me/?text=${encodeURIComponent(text)}`;

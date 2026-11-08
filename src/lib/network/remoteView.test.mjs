@@ -337,7 +337,7 @@ test("+ Setlist: songs, files and materials go; avisos never; a passage only wit
 // ---- The Equipe (Rodada Q PR4) ----
 import {
     roleOf, tabsFor, teamStrip, cleanName, youtubeId, youtubeUrl, youtubeCover, pedidoArgs, chatArgs, PEDIDO_LIMITS,
-    messageRows, PICK_CHIPS, pedidoGlyph, teamSetlistRows, lyricParts, hasChords, songSub, hasUnseen, newestAt, requestsEvery, REQUESTS_CHAT_MS, REQUESTS_EVERY_MS,
+    messageRows, PICK_CHIPS, pedidoGlyph, teamSetlistRows, lyricParts, hasChords, songSub, hasUnseen, newestAt, requestsEvery, REQUESTS_CHAT_MS, REQUESTS_EVERY_MS, threadRows,
 } from "./remoteView.js";
 import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" };
 
@@ -346,13 +346,17 @@ test("the role picks the environment and its tabs", () => {
     assert.equal(roleOf({ caps: [] }), "control");
     assert.equal(roleOf({ role: "team", caps: [] }), "team");
     const team = tabsFor({ role: "team", caps: PROTOCOL.teamCaps });
-    assert.deepEqual(team.map(([k]) => k), ["pedidos", "songs", "bible", "setlist"]);
+    assert.deepEqual(team.map(([k]) => k), ["chat", "songs", "setlist"], "N8: Chat (with the pedidos), Biblioteca, Setlist; no Bíblia");
+    assert.deepEqual(team.map(([, label]) => label), ["Chat", "Biblioteca", "Setlist"]);
     const control = tabsFor({ role: "control", caps: PROTOCOL.caps.filter((c) => c !== "requests") });
     assert.deepEqual(control.map(([k]) => k), ["library", "present", "bible", "setlist", "more"], "the Biblioteca first (owner 2026-10-28, M1)");
+    assert.equal(control[1][1], "No ar", "Apresentar is No ar (N1)");
     // A team never gets a projection tab, whatever caps say.
     assert.ok(!tabsFor({ role: "team", caps: PROTOCOL.caps }).some(([k]) => ["present", "library", "more"].includes(k)));
-    // A console without requests: no Pedidos tab.
-    assert.ok(!tabsFor({ role: "team", caps: ["library", "bible"] }).some(([k]) => k === "pedidos"));
+    // The Equipe's page before the console answers: its own tabs, never the Controle's.
+    assert.deepEqual(tabsFor(null, "team").map(([k]) => k), ["chat", "songs", "setlist"]);
+    // A console without requests: no Chat tab.
+    assert.ok(!tabsFor({ role: "team", caps: ["library", "bible"] }).some(([k]) => k === "chat"));
 });
 
 test("every action an Equipe tab may run is one the contract lets the team run", () => {
@@ -500,4 +504,19 @@ test("SWAP_TO: each side opens the sign-in on the other, never signed in by itse
     // lan.cjs codePage reads ?role= (control | team) and asks for THAT side's code.
     assert.equal(SWAP_TO.team, "/lan/remote-code?role=team");
     assert.equal(SWAP_TO.control, "/lan/remote-code?role=control");
+});
+
+test("the Equipe's one thread: pedidos and chat merged by when they were sent (N8)", () => {
+    const pages = {
+        pedido: { total: 3, rows: [{ id: "p1", kind: "pedido", at: "2026-11-08T19:02:00Z" }, { id: "p2", kind: "pedido", at: "2026-11-08T19:10:00Z" }] },
+        chat: { total: 2, rows: [{ id: "c1", kind: "chat", at: "2026-11-08T19:01:00Z" }, { id: "c2", kind: "chat", at: "2026-11-08T19:05:00Z" }] },
+    };
+    const t = threadRows(pages);
+    assert.deepEqual(t.rows.map((r) => r.id), ["c1", "p1", "c2", "p2"]);
+    assert.equal(t.more, true, "the computer keeps an older pedido");
+    assert.equal(t.ready, true);
+    assert.deepEqual(threadRows({ pedido: null, chat: null }), { rows: [], more: false, ready: false });
+    assert.deepEqual(threadRows({ chat: { total: 1, rows: [{ id: "x", at: "1" }] } }).rows.map((r) => r.id), ["x"], "one kind alone");
+    // A tie in time: the id decides, the same order every time.
+    assert.deepEqual(threadRows({ pedido: { rows: [{ id: "b", at: "t" }] }, chat: { rows: [{ id: "a", at: "t" }] } }).rows.map((r) => r.id), ["a", "b"]);
 });

@@ -1,11 +1,11 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/console/Icon";
 import { useLiveNow, useLiveState } from "@/hooks/useLiveState";
 import { useChurch } from "@/hooks/useChurch";
 import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
 import { airHeader, bannerOf, canRun, capsOf, roleOf, tabsFor } from "@/lib/network/remoteView";
 import { useCommands, useKeepAwake, usePhoneState, useStale } from "@/components/network/remote/usePhone";
-import { Cmd, HoldButton, Toast } from "@/components/network/remote/parts";
+import { Cmd, HoldButton, TabBar, Toast } from "@/components/network/remote/parts";
 import ControlDock from "@/components/network/remote/ControlDock";
 
 // Only the dock draws at once; every tab, the Biblioteca the phone opens on
@@ -16,6 +16,8 @@ const PresentTab = lazy(() => import("@/components/network/remote/PresentTab"));
 const SetlistTab = lazy(() => import("@/components/network/remote/SetlistTab"));
 const BibleTab = lazy(() => import("@/components/network/remote/BibleTab"));
 const MoreTab = lazy(() => import("@/components/network/remote/MoreTab"));
+// Telas (N2): loaded the first time its button is pressed.
+const TelasSheet = lazy(() => import("@/components/network/remote/TelasSheet"));
 // The Equipe (Rodada Q PR4): a phone signed in with the Equipe's code.
 const EquipeView = lazy(() => import("@/components/network/remote/EquipeView"));
 
@@ -23,17 +25,19 @@ const EquipeView = lazy(() => import("@/components/network/remote/EquipeView"));
 // service. Only on the network, only while the operator turned it on, only
 // with its code (electron/lan.cjs). Every button asks the console, which
 // runs it as its own key would and answers (shared/remoteProtocol.json);
-// what is on air comes from the live state, like the screens. Tabs at the
-// bottom, in reach of the thumb (owner's pick); a left rail in landscape and
-// on a tablet (remote.css). Sections the console does not run (its `caps`)
-// are not shown. It opens on the Biblioteca and stays there after a send
-// (owner 2026-10-28, M1 = A); Apresentar is what is on air, big (M3). The
-// owner's vistoria of 2026-11-07: the sections are a ☰ menu at the left of
-// the header (no tab bar at the bottom), and the controls are the dock at
-// the bottom of every section while something is on air (ControlDock), the
-// last thing on screen, nearest the thumb. The phone shows no toast for
-// what went well: only refusals, Encerrar's and the hold hint, right above
-// the dock.
+// what is on air comes from the live state, like the screens. The sections
+// are a tab bar at the bottom, in reach of the thumb, the same as the
+// Equipe's (owner 2026-11-08, "mais simples" N1 = A — it replaced the ☰ of
+// the 07/11 vistoria); a left rail in landscape and on a tablet (remote.css).
+// A section stays mounted once seen, hidden while another shows, so the
+// Biblioteca's search and chip and the Bíblia's marks are where they were.
+// Sections the console does not run (its `caps`) are not shown. It opens on
+// the Biblioteca and stays there after a send (owner 2026-10-28, M1 = A); "No
+// ar" (the old Apresentar) is what is on air, big (M3). Tela preta, Logo,
+// Limpar and Travar telas are the header's Telas button (N2 = A). The
+// controls are the dock above the tab bar while something is on air
+// (ControlDock). The phone shows no toast for what went well: only
+// refusals, Encerrar's and the hold hint, right above the dock.
 // The code that signed the phone in decides which page it is (state.role):
 // the Controle, or the Equipe's (EquipeView, Rodada Q PR4). The role last
 // seen is kept on the phone, so a reload draws the right one at once; a
@@ -51,6 +55,9 @@ export default function RemoteView() {
     const cmd = useCommands({ setGate });
     const awake = useKeepAwake();
     const [tab, setTab] = useState("library");
+    const [telas, setTelas] = useState(false);
+    // The sections seen so far: each stays mounted (hidden) after.
+    const [seen, setSeen] = useState(() => new Set(["library"]));
     const [touchLocked, setTouchLocked] = useState(false);
     // The dock's side, Letra or Player, when the operator picked one.
     const [dockMode, setDockMode] = useState(null);
@@ -59,6 +66,10 @@ export default function RemoteView() {
     const c = { busy: cmd.busy, run: cmd.run, flags: { stale, locked } };
     const tabs = tabsFor(state);
     const shown = tabs.some(([k]) => k === tab) ? tab : tabs[0]?.[0] || "more";
+    useEffect(() => { setSeen((cur) => (cur.has(shown) ? cur : new Set([...cur, shown]))); }, [shown]);
+    const pane = (k, node) => (seen.has(k) || shown === k) && tabs.some(([t]) => t === k) && (
+        <div className="rm-sect" hidden={shown !== k} key={k}>{node}</div>
+    );
     const banner = bannerOf({ stale, unknown: cmd.unknown, locked, canUnlock: caps.has("lock") });
     const again = () => { cmd.clearUnknown(); setGate(null); refresh(); };
     const [kept] = useState(storedRole);
@@ -91,7 +102,7 @@ export default function RemoteView() {
 
     return (
         <div className="net rm">
-            <Header live={live} stale={stale} c={c} church={church.name} tabs={tabs} shown={shown} onTab={setTab} />
+            <Header live={live} stale={stale} c={c} church={church.name} onTelas={canRun(caps, "black") || caps.has("lock") ? () => setTelas(true) : null} />
             {banner && (
                 <div className={`rm-ban is-${banner.tone}`} role="status">
                     <span>{banner.text}</span>
@@ -101,11 +112,11 @@ export default function RemoteView() {
             <div className="rm-body">
                 <div className="rm-pane">
                     <Suspense fallback={<div className="rm-main" aria-busy="true" />}>
-                        {shown === "library" && <MediaTab caps={caps} c={c} setGate={setGate} />}
-                        {shown === "present" && <PresentTab live={live} state={state} caps={caps} c={c} onLibrary={() => setTab("library")} />}
-                        {shown === "setlist" && <SetlistTab live={live} state={state} caps={caps} c={c} onRefresh={refresh} onBible={() => setTab("bible")} />}
-                        {shown === "bible" && <BibleTab state={state} caps={caps} c={c} />}
-                        {shown === "more" && <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />}
+                        {pane("library", <MediaTab caps={caps} c={c} setGate={setGate} />)}
+                        {pane("present", <PresentTab live={live} state={state} caps={caps} c={c} onLibrary={() => setTab("library")} />)}
+                        {pane("setlist", <SetlistTab live={live} state={state} caps={caps} c={c} onRefresh={refresh} onBible={() => setTab("bible")} />)}
+                        {pane("bible", <BibleTab state={state} caps={caps} c={c} />)}
+                        {pane("more", <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />)}
                     </Suspense>
                     {/* The answer sits right above the dock, never over it. */}
                     <div className="rm-dockwrap">
@@ -115,7 +126,13 @@ export default function RemoteView() {
                             ended={cmd.ended} onUndo={() => cmd.run("undo", "undo")} onShort={() => cmd.say("Segure para encerrar tudo.")} />
                     </div>
                 </div>
+                <TabBar tabs={tabs} shown={shown} onTab={setTab} label="Seções do controle remoto" />
             </div>
+            {telas && (
+                <Suspense fallback={null}>
+                    <TelasSheet live={live} caps={caps} c={c} onClose={() => setTelas(false)} />
+                </Suspense>
+            )}
             {touchLocked && (
                 <div className="rm-tlock">
                     <div className="rm-sheet" role="dialog" aria-modal="true" aria-label="Toques travados">
@@ -132,19 +149,23 @@ export default function RemoteView() {
 
 // What is on air, sticky on top: red on air, amber for Tela preta, Logo or
 // locked screens, grey with nothing (or no link); one chip per layer with
-// its Tirar. The ☰ at its left opens the sections (vistoria 2026-11-07).
-function Header({ live, stale, c, church, tabs, shown, onTab }) {
+// its Tirar. At its right the Telas button (N2 = A): Tela preta, Logo,
+// Limpar and Travar telas in a sheet, two taps from any section.
+function Header({ live, stale, c, church, onTelas }) {
     const now = useLiveNow(1000, Boolean(live) && !stale);
     const h = airHeader(live, { stale, now });
-    const current = tabs.find(([k]) => k === shown);
     return (
         <header className={`rm-head is-${h.tone}`}>
             <div className="rm-air">
-                <SectionsMenu tabs={tabs} shown={shown} onTab={onTab} label={current ? `Seções: ${current[1]}` : "Seções"} />
                 <span className="rm-dot" aria-hidden="true" />
                 <span className="rm-air-t" aria-live="polite">{h.title}</span>
                 {h.pos && <span className="rm-air-pos">{h.pos}</span>}
                 {h.since ? <span className="rm-air-since">há {h.since}</span> : <span className="rm-air-since">{church || "KERYX"}</span>}
+                {onTelas && (
+                    <button type="button" className="rm-telas" aria-label="Telas: Tela preta, Logo, Limpar e Travar telas" aria-haspopup="dialog" onClick={onTelas}>
+                        <Icon name="black" size={22} />
+                    </button>
+                )}
             </div>
             {(h.chips.length > 0 || h.locked) && (
                 <div className="rm-chiprow">
@@ -158,42 +179,5 @@ function Header({ live, stale, c, church, tabs, shown, onTab }) {
                 </div>
             )}
         </header>
-    );
-}
-
-// The sections (Biblioteca, Apresentar, Bíblia, Setlist, Mais) behind the ☰
-// at the header's left (owner 2026-11-07: no tab bar at the bottom, the dock
-// is the last thing on screen). Esc, the scrim or a pick closes it; the focus
-// goes back to the ☰.
-function SectionsMenu({ tabs, shown, onTab, label }) {
-    const [open, setOpen] = useState(false);
-    const button = useRef(null);
-    const list = useRef(null);
-    useEffect(() => {
-        if (!open) return undefined;
-        list.current?.querySelector("[aria-current='page']")?.focus() || list.current?.querySelector("button")?.focus();
-        const key = (e) => { if (e.key === "Escape") { setOpen(false); button.current?.focus(); } };
-        document.addEventListener("keydown", key);
-        return () => document.removeEventListener("keydown", key);
-    }, [open]);
-    const pick = (k) => { setOpen(false); onTab(k); button.current?.focus(); };
-    return (
-        <>
-            <button type="button" ref={button} className={`rm-menu ${open ? "is-open" : ""}`} aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-                <Icon name="menu" size={22} />
-            </button>
-            {open && (
-                <>
-                    <div className="rm-scrim is-menu" onClick={() => setOpen(false)} aria-hidden="true" />
-                    <nav className="rm-mnu" ref={list} aria-label="Seções do controle remoto">
-                        {tabs.map(([k, name, icon]) => (
-                            <button type="button" key={k} className="rm-mrow" aria-current={shown === k ? "page" : undefined} onClick={() => pick(k)}>
-                                <Icon name={icon} size={22} />{name}
-                            </button>
-                        ))}
-                    </nav>
-                </>
-            )}
-        </>
     );
 }

@@ -1,19 +1,17 @@
 import React from "react";
 import Icon from "@/components/console/Icon";
-import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
-import { allowed, canRun, onAirNow, SWAP_TO } from "@/lib/network/remoteView";
-import { Cmd, HoldButton, Toggle } from "./parts";
+import { allowed, SWAP_TO } from "@/lib/network/remoteView";
+import { Toggle } from "./parts";
 import { SendLaunchers } from "./liveParts";
 
-// Mais: Telas (Tela preta, Logo, Limpar: they left the dock in the owner's
-// vistoria of 2026-11-07, which keeps only Encerrar; then Travar telas, a
-// tap — destravar is held, owner's pick "segurar"),
-// Enviar (Slides, Aviso, Timer: Rodada Q moved them from Ao vivo),
-// Camadas (the main text, the logo in the corner, the Fundo while there is
-// one; owner 2026-10-28, K5 = A: the Vídeo switch never worked), and
-// this phone's own: Travar toques, Manter a tela ligada, the version.
+// Mais, only the rare things (owner 2026-11-08, "mais simples" N6 = A):
+// Enviar (Aviso, Timer — the slides are No ar's), Na tela (the main text,
+// the logo in the corner, the Fundo while there is one; owner 2026-10-28,
+// K5 = A: the Vídeo switch never worked), this phone's own (its name when
+// paired, Travar toques, Manter a tela ligada, Entrar como Equipe…), then
+// Sobre (the version, Atualizar, Adicionar à tela inicial). Tela preta,
+// Logo, Limpar and Travar telas are the header's Telas button (N2 = A).
 export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefresh }) {
-    const locked = Boolean(live?.locked);
     const hidden = live?.hiddenLayers || [];
     // A layer's switch: on = shown now; a tap asks for the other.
     const layer = (which, shown, key = `layer-${which}`) => {
@@ -22,37 +20,14 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
         const off = !allowed("layer", args, c.flags) || (which === "corner" && c.flags.locked);
         return { on: shown, disabled: off, busy: c.busy.has(key), onChange: () => c.run(key, "layer", args) };
     };
-    const screen = live?.screen || "show";
+    const device = state?.device?.name || "";
     return (
         <div className="rm-main">
-            {(canRun(caps, "black") || caps.has("lock")) && <h2 className="rm-sec is-top">Telas</h2>}
-            {canRun(caps, "black") && (
-                <>
-                    <div className="rm-screen">
-                        <Cmd c={c} action="black" args={{ on: screen !== "black" }} className={`rm-act ${screen === "black" ? "is-on" : ""}`} pressed={screen === "black"}><Icon name="black" size={20} />Tela preta</Cmd>
-                        <Cmd c={c} action="logo" args={{ on: screen !== "logo" }} className={`rm-act ${screen === "logo" ? "is-on" : ""}`} pressed={screen === "logo"}><Icon name="logo" size={20} />Logo</Cmd>
-                        <Cmd c={c} action="clear" className="rm-act" disabled={!onAirNow(live)}><Icon name="eraser" size={20} />Limpar</Cmd>
-                    </div>
-                </>
-            )}
-            {caps.has("lock") && (locked
-                ? (
-                    <>
-                        <div className="rm-row2"><span className="rm-row2-t"><b>Telas travadas</b><small>Nada novo vai ao ar. Segure 1 s para destravar.</small></span></div>
-                        <HoldButton ms={UNLOCK_HOLD_MS} label="Segure para destravar" icon="unlock" onDone={() => c.run("lock", "lock", { locked: false })} />
-                    </>
-                )
-                : (
-                    <>
-                        <div className="rm-row2"><span className="rm-row2-t"><b>Travar telas</b><small>Nada novo vai ao ar. Tela preta, Logo e Limpar continuam.</small></span></div>
-                        <Cmd c={c} action="lock" args={{ locked: true }}><Icon name="lock" size={20} />Travar telas</Cmd>
-                    </>
-                ))}
-            <SendLaunchers live={live} state={state} caps={caps} c={c} />
+            <SendLaunchers live={live} state={state} caps={caps} c={c} slides={false} top />
 
             {caps.has("layers") && (
                 <>
-                    <h2 className="rm-sec">Camadas</h2>
+                    <h2 className="rm-sec">Na tela</h2>
                     <Toggle title="Texto principal" sub="A letra ou o versículo no ar" {...layer("text", !hidden.includes("content"))} />
                     <Toggle title="Logo no canto" sub="O logo da igreja sobre a tela" {...layer("corner", Boolean(live?.logo?.visible))} />
                     {live?.background && <Toggle title="Fundo" sub="O papel de parede ou o fundo do item" {...layer("bg", !hidden.includes("background"))} />}
@@ -60,6 +35,13 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
             )}
 
             <h2 className="rm-sec">Este celular</h2>
+            {/* Este aparelho (M5 = A): a phone paired by QR is told its name (lan.cjs). */}
+            {device && (
+                <div className="rm-row2">
+                    <Icon name="tablet" size={20} />
+                    <span className="rm-row2-t"><b>{device}</b><small>Controle · conectado a este computador</small></span>
+                </div>
+            )}
             <Toggle title="Travar toques" sub="Evita toques no bolso. Segure para liberar." on={touchLock.on} onChange={touchLock.lock} />
             <Toggle
                 title="Manter a tela ligada"
@@ -67,20 +49,19 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
                 on={awake.on}
                 onChange={() => (awake.on ? awake.stop() : awake.start())}
             />
-            <div className="rm-row2">
-                <span className="rm-row2-t">
-                    <b>KERYX {state?.app || ""}</b>
-                    {/* Este aparelho (M5 = A): a phone paired by QR is told its name (lan.cjs). */}
-                    <small>{state?.device?.name
-                        ? <>{state.device.name} · Controle · conectado a este computador.</>
-                        : <>Controle remoto ligado com o código da igreja. <a href="/lan/remote-code">Digitar o código de novo</a></>}</small>
-                </span>
-                <button type="button" className="rm-b is-sm" onClick={onRefresh}><Icon name="refresh" size={18} />Atualizar</button>
-            </div>
             {/* To the Equipe (owner 2026-10-30, C = A): its own code, never this one's. */}
             <a className="rm-row2 rm-swap-row" href={SWAP_TO.team}>
                 <span className="rm-row2-t"><b>Entrar como Equipe…</b><small>Pedidos, chat e letras, com o código da equipe.</small></span>
             </a>
+
+            <h2 className="rm-sec">Sobre</h2>
+            <div className="rm-row2">
+                <span className="rm-row2-t">
+                    <b>KERYX {state?.app || ""}</b>
+                    {!device && <small>Ligado com o código da igreja. <a href="/lan/remote-code">Digitar o código de novo</a></small>}
+                </span>
+                <button type="button" className="rm-b is-sm" onClick={onRefresh}><Icon name="refresh" size={18} />Atualizar</button>
+            </div>
             <details className="rm-install">
                 <summary>Adicionar à tela inicial</summary>
                 <p><b>Android (Chrome):</b> menu ⋮ › <em>Adicionar à tela inicial</em>.</p>

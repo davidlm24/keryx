@@ -17,6 +17,12 @@
 //     never rewrites settings.json.
 //   - a device not seen for 180 days leaves by itself (M2 = A); 30 at most per
 //     computer (the oldest seen goes first).
+//   - an invite (owner 2026-11-08, "mais simples" N9 = A): the same ticket
+//     sent as a link (WhatsApp, Copiar link) so nobody walks to the sound
+//     booth — 24 hours, one phone. Unlike the QR it outlives a restart (the
+//     link is sent on Saturday, the computer starts on Sunday): kept in
+//     "network".invites as the sha256 of the ticket, never the ticket; 20 at
+//     most, the oldest goes first.
 //
 // Pure Node, unit tested (phoneDevices.test.cjs).
 
@@ -24,6 +30,8 @@ const crypto = require("node:crypto");
 
 const ROLES = new Set(["control", "team"]);
 const TICKET_MS = 5 * 60 * 1000;
+const INVITE_MS = 24 * 60 * 60 * 1000;
+const MAX_INVITES = 20;
 const MAX_TICKETS = 4;
 const MAX_DEVICES = 30;
 const STALE_MS = 180 * 24 * 60 * 60 * 1000;
@@ -64,8 +72,16 @@ function normalizeDevices(list, now = Date.now()) {
         .map((d) => ({ id: d.id, role: d.role, name: cleanName(d.name) || deviceName(d.agent), hash: d.hash, createdAt: d.createdAt || "", lastSeen: d.lastSeen || d.createdAt || "", agent: String(d.agent || "").slice(0, 120) }));
 }
 
-// load() -> the saved array; save(array) writes it. now() for the tests.
-function createDevices({ load, save, now = () => Date.now() } = {}) {
+// load() -> the saved array; save(array) writes it; loadInvites/saveInvites
+// the same for the invites (none given: invites live in memory). now() for
+// the tests.
+function createDevices({ load, save, loadInvites = null, saveInvites = null, now = () => Date.now() } = {}) {
+    const memInvites = { rows: [] };
+    const invites = () => (loadInvites ? loadInvites() : memInvites.rows)
+        .filter((v) => v && typeof v.hash === "string" && ROLES.has(v.role) && Number(v.expires) > now());
+    const keepInvites = (rows) => { if (saveInvites) saveInvites(rows); else memInvites.rows = rows; };
+    // The invite a link names, if it is still good.
+    const inviteOf = (ticket) => { const h = hashOf(String(ticket || "")); return invites().find((v) => sameHex(v.hash, h)) || null; };
     const tickets = new Map(); // ticket -> { role, expires, deviceId }
     const pending = new Map(); // id -> lastSeen not saved yet
     const savedAt = new Map(); // id -> when its lastSeen was saved
@@ -77,9 +93,16 @@ function createDevices({ load, save, now = () => Date.now() } = {}) {
 
     return {
         // A new QR for one door. Older open ones stay (two tabs of the
-        // console), up to four.
-        ticket(role) {
+        // console), up to four. invite: a link that lasts 24 h (N9).
+        ticket(role, { invite = false } = {}) {
             if (!ROLES.has(role)) throw Object.assign(new Error("Porta desconhecida."), { status: 400 });
+            if (invite) {
+                const ticket = crypto.randomBytes(16).toString("base64url");
+                const expires = now() + INVITE_MS;
+                const rows = [...invites(), { hash: hashOf(ticket), role, expires }].slice(-MAX_INVITES);
+                keepInvites(rows);
+                return { ticket, role, expires, invite: true };
+            }
             dropOld();
             const open = [...tickets.entries()].filter(([, v]) => !v.deviceId);
             while (open.length >= MAX_TICKETS) tickets.delete(open.shift()[0]);
@@ -104,13 +127,22 @@ function createDevices({ load, save, now = () => Date.now() } = {}) {
         // The phone's page asks: is this QR still good? (never spends it)
         peek(ticket) {
             const t = tickets.get(String(ticket || ""));
-            return t && !t.deviceId && t.expires > now() ? { role: t.role } : null;
+            if (t) return !t.deviceId && t.expires > now() ? { role: t.role } : null;
+            const v = inviteOf(ticket);
+            return v ? { role: v.role, invite: true } : null;
         },
         // Conectar: the ticket is spent, the phone gets its key.
         redeem(ticket, { name = "", agent = "" } = {}) {
             const key = String(ticket || "");
-            const t = tickets.get(key);
-            if (!t || t.deviceId || t.expires <= now()) return null;
+            let t = tickets.get(key);
+            if (!t) {
+                // An invite: spent here, gone from the list (one phone).
+                const v = inviteOf(key);
+                if (!v) return null;
+                keepInvites(invites().filter((x) => x.hash !== v.hash));
+                t = { role: v.role, expires: v.expires, deviceId: null, invite: true };
+            }
+            if (t.deviceId || t.expires <= now()) return null;
             const id = crypto.randomBytes(8).toString("hex");
             const secret = crypto.randomBytes(32).toString("base64url");
             const at = iso();
@@ -164,4 +196,4 @@ function createDevices({ load, save, now = () => Date.now() } = {}) {
     };
 }
 
-module.exports = { createDevices, deviceName, cleanName, normalizeDevices, hashOf, TICKET_MS, MAX_DEVICES, STALE_MS, SAVE_EVERY_MS, NAME_MAX };
+module.exports = { createDevices, deviceName, cleanName, normalizeDevices, hashOf, TICKET_MS, INVITE_MS, MAX_INVITES, MAX_DEVICES, STALE_MS, SAVE_EVERY_MS, NAME_MAX };

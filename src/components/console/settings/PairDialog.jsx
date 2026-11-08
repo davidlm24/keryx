@@ -4,7 +4,7 @@ import QRCode from "react-qr-code";
 import { Btn } from "../kx";
 import Icon from "../Icon";
 import { useDialogFocus } from "../useDialogFocus";
-import { countdown } from "@/lib/console/phoneDevices";
+import { countdown, inviteText, whatsappUrl } from "@/lib/console/phoneDevices";
 
 // Conectar um aparelho… (owner 2026-11-08, mockup board 2, marks M1–M5 = A):
 // a QR that pairs one phone, for 5 minutes. Main makes the ticket
@@ -77,6 +77,26 @@ export default function PairDialog({ role, url, network, onClose, onPaired, say 
 
     const door = DOOR_NAME[role] || "Controle";
     const link = ticket && url ? `${url}${ticket.path}` : "";
+    // A new invite for each click (one per person): its message to WhatsApp
+    // (the system's browser) or to the clipboard. Main keeps only its hash.
+    const [inviting, setInviting] = useState(false);
+    const invite = async (how) => {
+        setInviting(true);
+        try {
+            const res = await network.call("pairStart", { role, invite: true });
+            if (res?.error) { cb.current.say?.(res.error.message); return; }
+            const text = inviteText({ role, link: `${url}${res.data.path}`, expires: res.data.expires });
+            if (how === "whatsapp") {
+                window.open(whatsappUrl(text), "_blank", "noopener");
+                cb.current.say?.("Convite aberto no WhatsApp: escolha para quem mandar.");
+            } else {
+                await navigator.clipboard.writeText(text);
+                cb.current.say?.("Convite copiado: cole no WhatsApp ou numa mensagem. Vale 24 horas, um celular.");
+            }
+        } catch (err) {
+            cb.current.say?.(err?.message || "Não foi possível fazer o convite.");
+        } finally { setInviting(false); }
+    };
     const expired = status.state === "expired";
     const done = status.state === "done";
     const dialog = (
@@ -106,6 +126,17 @@ export default function PairDialog({ role, url, network, onClose, onPaired, say 
                                 <span className="kx-meta pair-count" aria-live="off">{ticket ? `Aguardando o celular… ${countdown(ticket.expires, now)} · vale uma vez` : "Gerando o QR…"}</span>
                             </>
                         )}
+                    </div>
+                )}
+                {/* Convite (N9 = A): a link that lasts 24 h, one phone, so nobody walks to the sound booth. */}
+                {url && (
+                    <div className="pair-invite">
+                        <span className="pair-or">ou mande um convite</span>
+                        <div className="pair-invite-acts">
+                            <Btn kind="brand" disabled={inviting} onClick={() => invite("whatsapp")}>Enviar pelo WhatsApp</Btn>
+                            <Btn disabled={inviting} onClick={() => invite("copy")}><Icon name="copy" />Copiar link</Btn>
+                        </div>
+                        <span className="kx-meta">O link vale 24 horas e conecta um celular. Precisa estar no Wi-Fi da igreja ao abrir.</span>
                     </div>
                 )}
                 <div className="acts pair-acts">

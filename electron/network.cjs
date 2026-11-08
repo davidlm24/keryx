@@ -30,7 +30,11 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
     const save = (patch) => settings.set(SETTINGS_KEY, { ...config(), ...patch });
 
     // The phones paired by QR ("network".devices, this computer's alone).
-    const devices = createDevices({ load: () => config().devices || [], save: (rows) => save({ devices: rows }) });
+    const devices = createDevices({
+        load: () => config().devices || [], save: (rows) => save({ devices: rows }),
+        // Invite links (N9): only their hash, kept so a link outlives a restart.
+        loadInvites: () => config().invites || [], saveInvites: (rows) => save({ invites: rows }),
+    });
     const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), devices, onRemote, log: (m) => logger.warn(m) });
     // Whether Windows lets the phones in on this network (firewall.cjs).
     const firewall = createFirewall({ log: (m) => logger.warn(m) });
@@ -142,14 +146,14 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             // Conectar um aparelho… (owner 2026-11-08): a ticket for one door,
             // its link for the QR (the console puts the address in front),
             // what became of it, and the paired phones' Renomear/Desconectar.
-            pairStart: async (_event, { role } = {}) => {
+            pairStart: async (_event, { role, invite = false } = {}) => {
                 const door = role === "team" ? "team" : role === "control" ? "remote" : "";
                 if (!door) throw Object.assign(new Error("Porta desconhecida."), { status: 400 });
                 if (!(config().phones?.enabled !== false && (door === "team" ? team() : remote()).enabled)) {
                     throw Object.assign(new Error(door === "team" ? "Ligue a Equipe primeiro." : "Ligue o Controle primeiro."), { status: 409 });
                 }
-                const t = devices.ticket(role);
-                return { ticket: t.ticket, role: t.role, expires: t.expires, path: `/lan/pair?t=${t.ticket}` };
+                const t = devices.ticket(role, { invite: Boolean(invite) });
+                return { ticket: t.ticket, role: t.role, expires: t.expires, invite: Boolean(t.invite), path: `/lan/pair?t=${t.ticket}` };
             },
             pairStatus: async (_event, { ticket } = {}) => devices.status(ticket),
             pairCancel: async (_event, { ticket } = {}) => { devices.cancel(ticket); return { ok: true }; },

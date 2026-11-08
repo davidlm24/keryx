@@ -441,27 +441,29 @@ export function bibleVersions(bible) {
 // waits a moment for it (RemoteView), then draws the Controle.
 export const roleOf = (state) => (!state ? null : state.role === "team" ? "team" : "control");
 
-// The tabs of each environment: [key, label, icon, cap]. The Controle opens
-// on the Biblioteca (owner 2026-10-28, M1 = A: it never leaves it by itself),
-// what is on air is Apresentar; the Equipe has four (the owner's mockup:
-// Pedidos, Músicas, Bíblia, Setlist) and never a projection.
+// The tabs of each environment: [key, label, icon, cap], a bar at the bottom
+// for both (owner 2026-11-08, "mais simples" N1 = A; replaced the ☰ of the
+// 07/11 vistoria). The Controle opens on the Biblioteca (owner 2026-10-28,
+// M1 = A: it never leaves it by itself); what is on air is "No ar" (the old
+// Apresentar). The Equipe has three (N8: Chat — its pedidos inside —,
+// Biblioteca, Setlist; no Bíblia, owner 2026-11-08) and never a projection.
 export const CONTROL_TABS = [
     ["library", "Biblioteca", "media", "library"],
-    ["present", "Apresentar", "monitor", "live"],
+    ["present", "No ar", "monitor", "live"],
     ["bible", "Bíblia", "book", "bible"],
     ["setlist", "Setlist", "list", "setlist"],
     ["more", "Mais", "more", null],
 ];
 export const TEAM_TABS = [
-    ["pedidos", "Pedidos", "chat", "requests"],
-    ["songs", "Músicas", "music", "library"],
-    ["bible", "Bíblia", "book", "bible"],
+    ["chat", "Chat", "chat", "requests"],
+    ["songs", "Biblioteca", "media", "library"],
     ["setlist", "Setlist", "list", null],
 ];
 // The tabs a phone shows: its role's, those whose cap the console runs
-// (all of them while no state came yet).
-export function tabsFor(state) {
-    const tabs = roleOf(state) === "team" ? TEAM_TABS : CONTROL_TABS;
+// (all of them while no state came yet). role: the page drawn (the Equipe's
+// before its first answer, so it never shows the Controle's tabs).
+export function tabsFor(state, role = null) {
+    const tabs = (roleOf(state) || role) === "team" ? TEAM_TABS : CONTROL_TABS;
     if (!state) return tabs;
     const caps = capsOf(state);
     return tabs.filter(([, , , cap]) => !cap || caps.has(cap));
@@ -610,10 +612,21 @@ export function messageRows(rows = [], me = "") {
     });
 }
 
-// What this phone has not seen yet (the gold dots of Pedidos | Chat and of
-// the Pedidos tab, S12): a row it did not send, newer than the last one it
+// What this phone has not seen yet (the Chat tab's gold dot, N8; both kinds:
+// the pedidos and the messages): a row it did not send, newer than the last one it
 // saw there (`seen`, an ISO time kept per kind in SEEN_KEY).
 export const SEEN_KEY = "keryx.remote.seen";
+// The Equipe's one conversation (owner 2026-11-08, N8): the pedidos and the
+// chat of the culto in one thread, oldest first — the two pages of
+// `requests` (each kind asked on its own, the contract unchanged) merged by
+// when each was sent, the id breaking a tie. `more`: the computer keeps
+// older ones than either page shows.
+export function threadRows(pages = {}) {
+    const rows = [...(pages.pedido?.rows || []), ...(pages.chat?.rows || [])];
+    rows.sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")) || String(a.id || "").localeCompare(String(b.id || "")));
+    const more = ["pedido", "chat"].some((k) => pages[k] && pages[k].total > (pages[k].rows || []).length);
+    return { rows, more, ready: Boolean(pages.pedido || pages.chat) };
+}
 export function newestAt(rows = []) {
     return rows.reduce((m, r) => (String(r.at || "") > m ? String(r.at || "") : m), "");
 }

@@ -104,3 +104,34 @@ test("names: what a phone calls itself, and what a person types", () => {
     assert.equal(cleanName("a\nb\u0000c"), "a b c");
     assert.equal(cleanName("x".repeat(60)).length, 40);
 });
+
+test("an invite link (N9): 24 hours, one phone, kept as a hash so it outlives a restart", () => {
+    const { INVITE_MS, MAX_INVITES } = require("./phoneDevices.cjs");
+    let saved = [];
+    let invites = [];
+    const clock = { t: Date.parse("2026-11-08T12:00:00Z") };
+    const make = () => createDevices({ load: () => saved, save: (r) => { saved = r; }, loadInvites: () => invites, saveInvites: (r) => { invites = r; }, now: () => clock.t });
+    const d = make();
+    const inv = d.ticket("team", { invite: true });
+    assert.equal(inv.invite, true);
+    assert.equal(inv.expires - clock.t, INVITE_MS);
+    assert.ok(!JSON.stringify(invites).includes(inv.ticket), "never the ticket itself");
+    // A restart: a new store reads the same invite.
+    clock.t += 20 * 3600 * 1000;
+    const again = make();
+    assert.deepEqual(again.peek(inv.ticket), { role: "team", invite: true });
+    assert.deepEqual(again.peek(inv.ticket), { role: "team", invite: true }, "looking is free (WhatsApp's preview)");
+    const made = again.redeem(inv.ticket, { name: "Celular da Bia" });
+    assert.equal(made.device.role, "team");
+    assert.equal(again.redeem(inv.ticket, {}), null, "one phone");
+    assert.deepEqual(invites, []);
+    // Past 24 hours: gone.
+    const late = again.ticket("control", { invite: true });
+    clock.t += INVITE_MS + 1;
+    assert.equal(again.peek(late.ticket), null);
+    // 20 at most: the oldest goes.
+    const many = Array.from({ length: MAX_INVITES + 2 }, () => again.ticket("control", { invite: true }).ticket);
+    assert.equal(invites.length, MAX_INVITES);
+    assert.equal(again.peek(many[0]), null);
+    assert.ok(again.peek(many.at(-1)));
+});

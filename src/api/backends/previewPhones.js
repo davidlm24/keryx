@@ -39,9 +39,11 @@ const ops = {
     firewall: () => ({ blocked: false }),
     revealRemoteCode: () => ({ code: "246813" }),
     revealTeamCode: () => ({ code: "975310" }),
-    pairStart: ({ role }) => {
+    pairStart: ({ role, invite = false }) => {
         n += 1;
         const ticket = `preview${n}`;
+        // An invite (N9) lasts 24 h and is never "scanned" here.
+        if (invite) return { ticket, role, expires: Date.now() + 24 * 3600000, invite: true, path: `/lan/pair?t=${ticket}` };
         tickets.set(ticket, { role, expires: Date.now() + 5 * 60000, at: Date.now() });
         return { ticket, role, expires: tickets.get(ticket).expires, path: `/lan/pair?t=${ticket}` };
     },
