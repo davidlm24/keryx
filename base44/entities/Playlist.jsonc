@@ -1,0 +1,51 @@
+{
+  "name": "Playlist",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome da lista de louvor"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do culto"
+    },
+    "service_type": {
+      "type": "string",
+      "enum": [
+        "Culto de Celebra\u00e7\u00e3o",
+        "Culto de Ora\u00e7\u00e3o",
+        "Culto de Jovens",
+        "Escola Dominical",
+        "Evento Especial",
+        "Outro"
+      ],
+      "default": "Culto de Celebra\u00e7\u00e3o"
+    },
+    "songs": {
+      "type": "array",
+      "description": "IDs das m\u00fasicas na ordem de apresenta\u00e7\u00e3o",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre o culto"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Planejado",
+        "Em Andamento",
+        "Conclu\u00eddo"
+      ],
+      "default": "Planejado"
+    }
+  },
+  "required": [
+    "name",
+    "date"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "name": "BibleNote",
+  "type": "object",
+  "properties": {
+    "reference": {
+      "type": "string",
+      "description": "Refer\u00eancia b\u00edblica (ex: Jo\u00e3o 3:16)"
+    },
+    "book": {
+      "type": "string",
+      "description": "Livro da B\u00edblia"
+    },
+    "chapter": {
+      "type": "number",
+      "description": "Cap\u00edtulo"
+    },
+    "verse": {
+      "type": "number",
+      "description": "Vers\u00edculo"
+    },
+    "verse_text": {
+      "type": "string",
+      "description": "Texto do vers\u00edculo"
+    },
+    "note_type": {
+      "type": "string",
+      "enum": [
+        "favorite",
+        "highlight",
+        "note"
+      ],
+      "default": "note",
+      "description": "Tipo: favorito, destaque ou anota\u00e7\u00e3o"
+    },
+    "note_text": {
+      "type": "string",
+      "description": "Texto da anota\u00e7\u00e3o"
+    },
+    "highlight_color": {
+      "type": "string",
+      "default": "#fbbf24",
+      "description": "Cor do destaque"
+    }
+  },
+  "required": [
+    "reference",
+    "note_type"
+  ]
+}

@@ -1,0 +1,42 @@
+# Checks every push and pull request: unit tests, lint and the production
+# build. The desktop smoke (npm run desktop:smoke) opens real windows and
+# needs a desktop session, so it stays a local check (see CLAUDE.md).
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Windows, where KERYX runs: paths and the file system behave as on the church PC.
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      # The tests never open the app: no need for the Electron binary.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # node:sqlite (the local store) needs a recent Node; development uses 24.
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Tests (store, live state, outputs, network, preview server, console helpers, schema drift)
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

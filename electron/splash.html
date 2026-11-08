@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src file:">
+<title>KERYX</title>
+<!-- The opening window (electron/splash.cjs). Its colours are the design
+     system's (docs/design-system/tokens.json: bg-0, fg-1, brand, on-brand and
+     brand-gradient, copied here: this page loads no bundle);
+     electron/splash.test.cjs holds them in step. -->
+<style>
+  :root {
+    color-scheme: dark;
+    --bg-0: #0d0d0c;
+    --fg-1: #f4f1ea;
+    --brand: #c19959;
+    --on-brand: #20180c;
+    --brand-gradient: radial-gradient(ellipse 62% 70% at 50% 42%, #c1995961, #c1995914 55%, transparent 75%);
+  }
+  html, body { margin: 0; height: 100%; overflow: hidden; user-select: none; cursor: default; }
+  body {
+    background: var(--brand-gradient), var(--bg-0);
+    color: var(--fg-1);
+    font-family: "Geist", "Segoe UI", system-ui, sans-serif;
+    display: grid;
+    place-items: center;
+    -webkit-app-region: drag;
+  }
+  .inner { display: grid; justify-items: center; gap: 8px; margin-top: -12px; }
+  .k {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--brand); color: var(--on-brand);
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 24px; line-height: 1;
+  }
+  .name { font-weight: 600; font-size: 18px; letter-spacing: .32em; padding-left: .32em; margin-top: 4px; }
+  .ver { font-size: 11px; opacity: .6; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .status { position: absolute; left: 24px; right: 24px; bottom: 20px; display: grid; gap: 8px; }
+  .status span { font-size: 12px; opacity: .72; min-height: 1.3em; }
+  .bar { height: 2px; border-radius: 2px; overflow: hidden; background: #ffffff1f; }
+  .bar i { display: block; height: 100%; width: 4%; background: var(--brand); border-radius: inherit; transition: width .5s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+  <div class="inner">
+    <div class="k" aria-hidden="true">K</div>
+    <div class="name">KERYX</div>
+    <div class="ver" id="ver"></div>
+  </div>
+  <div class="status" role="status" aria-live="polite">
+    <span id="step">Abrindo…</span>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var font = q.get("font");
+    if (font) {
+      var st = document.createElement("style");
+      st.textContent = '@font-face { font-family: "Geist"; src: url("' + font.replace(/"/g, "") + '") format("woff2"); font-weight: 100 900; font-display: block; }';
+      document.head.appendChild(st);
+    }
+    var ver = q.get("version");
+    if (ver) document.getElementById("ver").textContent = "versão " + ver;
+    // Main calls this before each long step and waits for the paint
+    // (electron/splash.cjs step()): two frames, so the line is on screen.
+    window.keryxSplash = function (text, at) {
+      document.getElementById("step").textContent = text;
+      document.getElementById("bar").style.width = Math.round(Math.max(0, Math.min(1, at)) * 100) + "%";
+      return new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+    };
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "name": "AlertMessage",
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "Texto do alerta ou mensagem sobreposta"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "alert",
+        "message"
+      ],
+      "default": "alert",
+      "description": "alert = alerta de ber\u00e7\u00e1rio (destaque vermelho), message = mensagem livre"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active",
+      "description": "Se ativo, mostra sobre todas as proje\u00e7\u00f5es"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Unix ms \u2014 para ordenar o mais recente"
+    }
+  },
+  "required": [
+    "message",
+    "timestamp"
+  ]
+}

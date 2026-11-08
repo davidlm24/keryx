@@ -1,0 +1,13 @@
+{
+  "name": "TimerPreset",
+  "type": "object",
+  "properties": {
+    "minutes": {
+      "type": "integer",
+      "description": "Minutos de um timer pronto guardado pelo operador (além de 5, 10, 15, 30 e 60 min, que já vêm)"
+    }
+  },
+  "required": [
+    "minutes"
+  ]
+}

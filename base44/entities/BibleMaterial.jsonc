@@ -1,0 +1,162 @@
+{
+  "name": "BibleMaterial",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo do material"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "slides",
+        "quiz",
+        "video",
+        "image",
+        "text",
+        "truefalse",
+        "blanks",
+        "memorize",
+        "discussion"
+      ],
+      "default": "slides",
+      "description": "Tipo: slides did\u00e1ticos, quiz, v\u00eddeo b\u00edblico, imagem, texto, verdadeiro ou falso, complete a frase, versículo para memorizar ou discussão com timer"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "ID da turma associada (opcional)"
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Nome da turma (para exibi\u00e7\u00e3o r\u00e1pida)"
+    },
+    "age_group": {
+      "type": "string",
+      "enum": [
+        "children",
+        "teens",
+        "youth",
+        "adults",
+        "seniors",
+        "all"
+      ],
+      "default": "all"
+    },
+    "subject": {
+      "type": "string",
+      "description": "T\u00f3pico/Li\u00e7\u00e3o (ex: Cria\u00e7\u00e3o, Arca de No\u00e9)"
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string",
+            "description": "Imagem ilustrativa do slide (opcional)"
+          },
+          "ref": {
+            "type": "string",
+            "description": "Referência do versículo (complete a frase, memorizar, discussão)"
+          },
+          "blanks": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Complete a frase: as palavras (posição, a partir de 0) que viram lacunas"
+          },
+          "rounds": {
+            "type": "number",
+            "description": "Memorizar: cliques até apagar todas as palavras"
+          },
+          "minutes": {
+            "type": "number",
+            "description": "Discussão: minutos do timer"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Nota do professor deste slide (só no console e no palco)"
+          }
+        }
+      },
+      "description": "Slides de texto did\u00e1tico com imagem opcional"
+    },
+    "quiz_question": {
+      "type": "string",
+      "description": "Pergunta do quiz (primeira pergunta, para retrocompatibilidade)"
+    },
+    "quiz_options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Op\u00e7\u00f5es da primeira pergunta (retrocompatibilidade)"
+    },
+    "quiz_correct": {
+      "type": "number",
+      "description": "\u00cdndice da resposta correta da primeira pergunta (0-based)"
+    },
+    "quiz_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correct": {
+            "type": "number",
+            "description": "A opção certa (0-based); no verdadeiro ou falso, 0 = verdadeiro, 1 = falso"
+          },
+          "explain": {
+            "type": "string",
+            "description": "Referência ou explicação, na tela ao revelar"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Nota do professor desta pergunta (só no console e no palco)"
+          }
+        }
+      },
+      "description": "M\u00faltiplas perguntas de quiz sobre o tema"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "URL do v\u00eddeo b\u00edblico"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL da imagem"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o/notas do material"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff"
+    },
+    "background_image": {
+      "type": "string"
+    },
+    "background_color": {
+      "type": "string",
+      "description": "Cor de fundo da proje\u00e7\u00e3o",
+      "default": "#0f172a"
+    }
+  },
+  "required": [
+    "title",
+    "type"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "AlertPreset",
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "Texto da mensagem pronta do Aviso rápido (Chamar pessoa, Kids, Carro...); o operador a escolhe e a projeta direto nas telas"
+    }
+  },
+  "required": [
+    "message"
+  ]
+}
