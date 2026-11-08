@@ -8,8 +8,9 @@ const schema = require("./db/schema.json");
 const { createLanServer, lanAddresses, safeNext, remoteCommand, roleAllows, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, REMOTE_ACTIONS } = require("./lan.cjs");
 const PROTOCOL = require("../shared/remoteProtocol.json");
 const { createLive, loadLiveRules } = require("./live.cjs");
+const { createDevices } = require("./phoneDevices.cjs");
 
-async function fixture(config = { pin: "", secret: "s3cret" }, { onRemote = null, heartbeatMs } = {}) {
+async function fixture(config = { pin: "", secret: "s3cret" }, { onRemote = null, heartbeatMs, pairing = false } = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-lan-"));
     const dist = path.join(root, "dist");
     fs.mkdirSync(path.join(dist, "assets"), { recursive: true });
@@ -27,9 +28,11 @@ async function fixture(config = { pin: "", secret: "s3cret" }, { onRemote = null
     fs.writeFileSync(path.join(root, "secret.txt"), "nope");
     const store = createStore({ file: ":memory:", schema, log: () => {} });
     const cfg = { ...config };
+    // Phones paired by QR (phoneDevices.cjs), kept in cfg.devices as network.cjs keeps them.
+    const devices = pairing ? createDevices({ load: () => cfg.devices || [], save: (rows) => { cfg.devices = rows; } }) : null;
     const live = createLive({ file: path.join(root, "live.json"), rules: await loadLiveRules(), log: () => {} });
-    const lan = createLanServer({ distDir: dist, mediaDir: media, bundledDir: null, store, live, getConfig: () => cfg, onRemote, heartbeatMs });
-    return { lan, store, live, cfg };
+    const lan = createLanServer({ distDir: dist, mediaDir: media, bundledDir: null, store, live, getConfig: () => cfg, devices, onRemote, heartbeatMs });
+    return { lan, store, live, cfg, devices };
 }
 
 async function started(config, opts) {
@@ -757,4 +760,113 @@ test("equipe: messages have a bucket of their own, 3 in a row then one every 2 s
     now += 1000;
     assert.equal(gate.message("a", "chat.send").ok, true);
     assert.equal(gate.message("a", "chat.send").ok, false);
+});
+
+// -- Parear por QR (owner 2026-11-08, marks M1–M5 = A) -----------------------
+
+const form = (body) => ({ method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded" }, body });
+async function paired(f, role = "control", name = "Celular do João") {
+    const { ticket } = f.devices.ticket(role);
+    const res = await fetch(`${f.base}/lan/pair`, form(`t=${ticket}&name=${encodeURIComponent(name)}`));
+    assert.equal(res.status, 303);
+    assert.equal(res.headers.get("location"), "/Remote");
+    const set = res.headers.get("set-cookie");
+    assert.match(set, /keryx_dev=[a-f0-9]{16}\.[A-Za-z0-9_-]{43}; Max-Age=34560000; Path=\/; HttpOnly; SameSite=Lax/);
+    assert.match(set, /keryx_remote=; Max-Age=0/);
+    assert.match(set, /keryx_team=; Max-Age=0/);
+    assert.match(set, new RegExp(`keryx_side=${role}`));
+    return { ticket, cookie: set.split(";")[0] };
+}
+
+test("parear: the QR's page never spends the ticket; Conectar does, once; a phone enters with its own key", async (t) => {
+    const f = await started(TEAM, { pairing: true, onRemote: async (action) => ({ ok: true, data: action === "state" ? { v: 2, role: "control" } : undefined }) });
+    t.after(() => f.lan.stop());
+    const { ticket } = f.devices.ticket("control");
+    for (let i = 0; i < 2; i += 1) {
+        const res = await page(f.base, `/lan/pair?t=${ticket}`, { "user-agent": "Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari" });
+        assert.equal(res.status, 200);
+        const text = await res.text();
+        assert.match(text, /Conectar este aparelho ao KERYX/);
+        assert.match(text, /value="Android · Chrome"/);
+        assert.match(text, /Controle/);
+    }
+    const res = await fetch(`${f.base}/lan/pair`, form(`t=${ticket}&name=${encodeURIComponent("<b>Celular</b>")}`));
+    assert.equal(res.status, 303);
+    const cookie = res.headers.get("set-cookie").split(";")[0];
+    // Spent: the link and the button say so (board 3c).
+    const again = await fetch(`${f.base}/lan/pair`, form(`t=${ticket}&name=x`));
+    assert.equal(again.status, 410);
+    assert.match(await again.text(), /já foi usado ou venceu/);
+    assert.equal((await page(f.base, `/lan/pair?t=${ticket}`)).status, 410);
+    assert.equal((await page(f.base, "/lan/pair?t=nope")).status, 410);
+    // In, as the Controle, and the state tells it its name (M5 = A).
+    assert.equal((await page(f.base, "/Remote", { cookie })).status, 200);
+    const state = await (await send(f, { v: 2, action: "state" }, { cookie })).json();
+    assert.deepEqual(state.data.result.device, { name: "<b>Celular</b>" });
+    assert.equal((await send(f, { v: 2, action: "next" }, { cookie })).status, 200);
+    // A phone that typed the code is not told a name.
+    const coded = await remoteSignedIn(f);
+    assert.equal((await (await send(f, { v: 2, action: "state" }, { cookie: coded })).json()).data.result.device, undefined);
+    // The name a person typed is escaped on the page.
+    const other = f.devices.ticket("control").ticket;
+    const shown = await (await page(f.base, `/lan/pair?t=${other}`, { "user-agent": "\"><script>x</script>" })).text();
+    assert.ok(!shown.includes("<script>x"), "nothing from the phone runs on the page");
+});
+
+test("parear: an Equipe phone keeps the Equipe's limits; a closed door or a spent clock refuses", async (t) => {
+    const f = await started({ ...TEAM, pin: "4321" }, { pairing: true, onRemote: async () => ({ ok: true }) });
+    t.after(() => f.lan.stop());
+    const { cookie } = await paired(f, "team");
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 200);
+    assert.equal((await send(f, { v: 2, action: "next" }, { cookie })).status, 403, "the Equipe never changes the air");
+    assert.equal((await fetch(`${f.base}/api/screens`, { headers: { cookie } })).status, 401, "only what its page reads");
+    // The Equipe's door off: that phone is out, the QR of that door too.
+    f.cfg.team = { ...f.cfg.team, enabled: false };
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 401);
+    const { ticket } = f.devices.ticket("team");
+    assert.equal((await page(f.base, `/lan/pair?t=${ticket}`)).status, 410);
+    // Back on: the same phone, no scan (Desligar is not Desconectar).
+    f.cfg.team = { ...f.cfg.team, enabled: true };
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 200);
+    // Everything off: nothing there.
+    f.cfg.phones = { enabled: false };
+    assert.equal((await page(f.base, `/lan/pair?t=${ticket}`)).status, 404);
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 404);
+});
+
+test("parear: a new code keeps the paired phones (M1 = A); Desconectar ends that phone's stream and key", async (t) => {
+    const f = await started(TEAM, { pairing: true, onRemote: async () => ({ ok: true }), heartbeatMs: 100 });
+    t.after(() => f.lan.stop());
+    const { cookie } = await paired(f, "control", "Celular do Davi");
+    const coded = await remoteSignedIn(f);
+    // Trocar o código: the code's cookie stops, the paired phone goes on.
+    f.cfg.remote = { ...f.cfg.remote, code: "135790", secret: "n3w" };
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie: coded })).status, 401);
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 200);
+    // Its stream is listed with its device, then dropped alone.
+    const events = await fetch(`${f.base}/api/events?screen=/Remote`, { headers: { cookie } });
+    const reader = events.body.getReader();
+    await reader.read();
+    const id = f.devices.list()[0].id;
+    assert.deepEqual(f.lan.clients().filter((cl) => cl.screen === "/Remote").map((cl) => [cl.deviceId, cl.label]), [[id, "Controle"]]);
+    f.devices.remove(id);
+    f.lan.dropDevice(id);
+    let done = false;
+    for (let i = 0; i < 10 && !done; i += 1) done = (await reader.read()).done;
+    assert.equal(done, true, "the stream ends");
+    assert.equal(f.lan.clients().length, 0);
+    assert.equal((await send(f, { v: 2, action: "state" }, { cookie })).status, 401);
+    assert.equal((await page(f.base, "/Remote", { cookie })).headers.get("location"), "/lan/remote-code");
+});
+
+test("parear: a code typed later wins over the pairing, which stays underneath", async (t) => {
+    const f = await started(TEAM, { pairing: true, onRemote: async (action, _args, ctx) => ({ ok: true, data: action === "state" ? { role: ctx.role } : undefined }) });
+    t.after(() => f.lan.stop());
+    const { cookie } = await paired(f, "control");
+    const team = await teamSignedIn(f);
+    const both = `${cookie}; ${team}`;
+    assert.equal((await (await send(f, { v: 2, action: "state" }, { cookie: both })).json()).data.result.role, "team");
+    // The team's code changed: back to the pairing, no scan.
+    f.cfg.team = { ...f.cfg.team, code: "864201", secret: "x" };
+    assert.equal((await (await send(f, { v: 2, action: "state" }, { cookie: both })).json()).data.result.role, "control");
 });

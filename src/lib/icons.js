@@ -15,8 +15,8 @@ import {
     Ellipsis, Eraser, ExternalLink, Eye, EyeOff, Film, Folder, Footprints, Globe, GripVertical, History, Image, Info,
     Keyboard, Layers, LayoutGrid, LayoutPanelLeft, Library, Link, List, ListChecks, Lock, LockOpen, Megaphone, Menu, MessageSquare, Minus, Monitor, Music,
     Palette, Pause, Pencil, Pin, Play, Plus, Power, Presentation, Projector, Redo2, RefreshCw, Rows2, Save,
-    Search, SendHorizontal, SkipBack, SkipForward, SlidersHorizontal, Square, Star, Tablet, Trash2, TriangleAlert, Tv,
-    Type, Undo2, User, Volume2, VolumeX, Wifi, WifiOff, X, Youtube,
+    QrCode, Search, SendHorizontal, SkipBack, SkipForward, SlidersHorizontal, Square, Star, Tablet, Trash2, TriangleAlert, Tv,
+    Type, Undo2, Unplug, User, Volume2, VolumeX, Wifi, WifiOff, X, Youtube,
 } from "lucide";
 
 // The stroke at 16 px, in the 24-unit box (1.5 = one pixel; Lucide's own
@@ -61,6 +61,9 @@ export const ICON_NODES = {
     eraser: Eraser,
     stop: Square,
     power: Power,
+    // KERYX no celular: Conectar um aparelho… (the QR) and Desconectar… (a paired phone).
+    qr: QrCode,
+    unplug: Unplug,
     eye: Eye,
     "eye-off": EyeOff,
     lock: Lock,

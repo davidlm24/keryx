@@ -363,6 +363,7 @@
       "airItemId": "id | null (v1)",
       "nextItemId": "id | null (v1)",
       "backItemId": "id | null: the item Voltar ao anterior goes back to",
+      "device": "{ name } | absent: added by the network server for a phone paired by QR (Este aparelho, owner 2026-11-08); a phone that typed the code gets none",
       "prevItemId": "id | null: the playable item before the Setlist item sent last (on air or not, as nextItemId), in SETLIST order (sections and disabled items skipped), as the console's Item anterior (vistoria 07/11); null when none was sent or none is before",
       "items": "[<= limits.items] { id, title (<= limits.itemTitle), type, section (v1), at, dur, st: ok | missing | syncing | blocked, progress?: str (<= 160) a PDF's pages in the console's words, \"Preparando páginas 3/12\" or why they failed; only while there is something to say }",
       "truncated": "bool: items stopped at limits.items",

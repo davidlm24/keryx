@@ -5,6 +5,7 @@
 const crypto = require("node:crypto");
 const { createLanServer, lanAddresses } = require("./lan.cjs");
 const { createFirewall } = require("./firewall.cjs");
+const { createDevices } = require("./phoneDevices.cjs");
 
 const SETTINGS_KEY = "network";
 const DEFAULT_PORT = 7701;
@@ -28,7 +29,9 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
     };
     const save = (patch) => settings.set(SETTINGS_KEY, { ...config(), ...patch });
 
-    const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), onRemote, log: (m) => logger.warn(m) });
+    // The phones paired by QR ("network".devices, this computer's alone).
+    const devices = createDevices({ load: () => config().devices || [], save: (rows) => save({ devices: rows }) });
+    const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), devices, onRemote, log: (m) => logger.warn(m) });
     // Whether Windows lets the phones in on this network (firewall.cjs).
     const firewall = createFirewall({ log: (m) => logger.warn(m) });
     // The controle remoto's settings ("network".remote): on/off, its code and
@@ -78,6 +81,8 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             error: lastError,
             urls: running ? lanAddresses().map((a) => ({ name: a.name, url: `http://${a.address}:${boundPort}` })) : [],
             clients: lan.clients(),
+            // Aparelhos: the paired phones, connected now or not (never a key).
+            devices: (() => { const now = new Set(lan.clients().map((cl) => cl.deviceId).filter(Boolean)); return devices.list().map((d) => ({ ...d, online: now.has(d.id) })); })(),
             screens: lan.screens ? lan.screens() : lan.NETWORK_SCREENS,
         };
     }
@@ -87,7 +92,7 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
         async startIfEnabled() {
             if (config().enabled) await start();
         },
-        stop: () => lan.stop(),
+        stop: () => { devices.flush(); lan.stop(); },
         ops: {
             info: async () => info(),
             setEnabled: async (_event, enabled) => {
@@ -118,8 +123,11 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
                 logger.info(`[keryx-lan] controle remoto ${enabled ? "ligado" : "desligado"}`);
                 return info();
             },
+            // A new code signs out the phones that typed the old one; the
+            // phones paired by QR stay (M1 = A: the code is for newcomers).
             newRemoteCode: async () => { saveRemote({ code: codeOtherThan(team().code), secret: newRemoteSecret() }); lan.dropRemotes("control"); return info(); },
-            disconnectRemotes: async () => { saveRemote({ secret: newRemoteSecret() }); lan.dropRemotes("control"); return info(); },
+            // Desconectar todos: the paired phones go too (the panic button).
+            disconnectRemotes: async () => { saveRemote({ secret: newRemoteSecret() }); devices.removeRole("control"); lan.dropRemotes("control"); return info(); },
             revealRemoteCode: async () => ({ code: remote().code || "" }),
             // The Equipe (Rodada Q): the same four, on its own code and key;
             // changing one never signs the other's phones out.
@@ -130,7 +138,30 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
                 return info();
             },
             newTeamCode: async () => { saveTeam({ code: codeOtherThan(remote().code), secret: newRemoteSecret() }); lan.dropRemotes("team"); return info(); },
-            disconnectTeam: async () => { saveTeam({ secret: newRemoteSecret() }); lan.dropRemotes("team"); return info(); },
+            disconnectTeam: async () => { saveTeam({ secret: newRemoteSecret() }); devices.removeRole("team"); lan.dropRemotes("team"); return info(); },
+            // Conectar um aparelho… (owner 2026-11-08): a ticket for one door,
+            // its link for the QR (the console puts the address in front),
+            // what became of it, and the paired phones' Renomear/Desconectar.
+            pairStart: async (_event, { role } = {}) => {
+                const door = role === "team" ? "team" : role === "control" ? "remote" : "";
+                if (!door) throw Object.assign(new Error("Porta desconhecida."), { status: 400 });
+                if (!(config().phones?.enabled !== false && (door === "team" ? team() : remote()).enabled)) {
+                    throw Object.assign(new Error(door === "team" ? "Ligue a Equipe primeiro." : "Ligue o Controle primeiro."), { status: 409 });
+                }
+                const t = devices.ticket(role);
+                return { ticket: t.ticket, role: t.role, expires: t.expires, path: `/lan/pair?t=${t.ticket}` };
+            },
+            pairStatus: async (_event, { ticket } = {}) => devices.status(ticket),
+            pairCancel: async (_event, { ticket } = {}) => { devices.cancel(ticket); return { ok: true }; },
+            renameDevice: async (_event, { id, name } = {}) => { devices.rename(String(id || ""), name); return info(); },
+            removeDevice: async (_event, { id } = {}) => {
+                const key = String(id || "");
+                const d = devices.list().find((x) => x.id === key);
+                devices.remove(key);
+                lan.dropDevice(key);
+                if (d) logger.info(`[keryx-lan] aparelho desconectado: ${d.name}`);
+                return info();
+            },
             revealTeamCode: async () => ({ code: team().code || "" }),
             // KERYX no celular's firewall line (owner 2026-10-30, F = A):
             // read when the section opens; the rule is added only from the

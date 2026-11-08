@@ -31,7 +31,7 @@ const newPin = () => {
 // 2026-10-19): groups — Conexão (the switch and the PIN, static), Endereços,
 // KERYX no celular (PhonesBlock: the Controle and the Equipe, one group
 // since 2026-10-27) and Telas conectadas pela rede.
-export default function RedeSection({ c }) {
+export default function RedeSection({ c, askText = null }) {
     const look = useOutputLooks();
     const prefRows = useOutputPrefRows();
     const layoutRows = useLayoutRows();
@@ -160,7 +160,7 @@ export default function RedeSection({ c }) {
                 </React.Fragment>
             ))}
             </CfgGroup>
-            <PhonesBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} />
+            <PhonesBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} askText={askText} />
             <CfgGroup id="rede.conectadas" k="Telas conectadas pela rede" summary={connectedSummary(clients, info.running)}>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
             {clients.map((cl) => {

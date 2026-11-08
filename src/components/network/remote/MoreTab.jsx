@@ -70,7 +70,10 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
             <div className="rm-row2">
                 <span className="rm-row2-t">
                     <b>KERYX {state?.app || ""}</b>
-                    <small>Controle remoto ligado com o código da igreja. <a href="/lan/remote-code">Digitar o código de novo</a></small>
+                    {/* Este aparelho (M5 = A): a phone paired by QR is told its name (lan.cjs). */}
+                    <small>{state?.device?.name
+                        ? <>{state.device.name} · Controle · conectado a este computador.</>
+                        : <>Controle remoto ligado com o código da igreja. <a href="/lan/remote-code">Digitar o código de novo</a></>}</small>
                 </span>
                 <button type="button" className="rm-b is-sm" onClick={onRefresh}><Icon name="refresh" size={18} />Atualizar</button>
             </div>

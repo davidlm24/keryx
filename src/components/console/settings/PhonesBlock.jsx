@@ -4,6 +4,11 @@ import Icon from "../Icon";
 import { Btn } from "../kx";
 import { phonesSummary } from "@/lib/console/cfgSummaries";
 import { FormRow, Switch, CfgGroup, CfgKey } from "./parts";
+import { useConfirm } from "../ConfirmDialog";
+import { useContextMenu } from "../ContextMenu";
+import { menuItem } from "@/lib/console/menuLabels";
+import { devicesOf, codePhonesOf, seenWords, codeLine } from "@/lib/console/phoneDevices";
+import PairDialog from "./PairDialog";
 
 // How long Mostrar código keeps the code on screen.
 const SHOW_MS = 30000;
@@ -97,7 +102,23 @@ function FirewallLine({ c, network }) {
 
 // One door's card: its switch, its code (shown on demand, renewed) and the
 // phones that entered by it.
-function Door({ c, network, info, setInfo, role }) {
+// One phone paired by QR (owner 2026-11-08, mockup board 1): its dot (green
+// while connected now), its name and when it was seen; ⋯ or a right click
+// opens Renomear… and Desconectar….
+function DeviceRow({ device, onMenu }) {
+    return (
+        <div className="kx-row cfg-dev" onContextMenu={onMenu} title={device.agent || device.name}>
+            <span className={`cfg-dev-dot ${device.online ? "is-on" : ""}`} aria-hidden="true" />
+            <span className="cfg-dev-t">
+                <span className="cfg-dev-n">{device.name}</span>
+                <span className="kx-meta">{seenWords(device)}</span>
+            </span>
+            <button type="button" className="kx-btn kx-t kx-btn-icon" aria-label={`Opções de ${device.name}`} onClick={onMenu}><Icon name="more" /></button>
+        </div>
+    );
+}
+
+function Door({ c, network, info, setInfo, role, url, askText }) {
     const d = DOORS[role];
     const state = info[d.key] || { enabled: false, hasCode: false };
     const [run, busy] = useRun(c, network, setInfo);
@@ -119,6 +140,27 @@ function Door({ c, network, info, setInfo, role }) {
         go();
     };
     const phones = phonesOf(info, role);
+    const paired = devicesOf(info, role);
+    const byCode = codePhonesOf(info, role);
+    const [pairing, setPairing] = useState(false);
+    const confirmAsk = useConfirm();
+    const menu = useContextMenu();
+    const rename = async (dv) => {
+        const name = await askText?.({ title: "Renomear o aparelho", initial: dv.name, placeholder: "Celular do João", ok: "Renomear" });
+        if (name && name.trim() && name.trim() !== dv.name) await run("renameDevice", { id: dv.id, name: name.trim() });
+    };
+    const disconnect = async (dv) => {
+        const yes = await confirmAsk({ title: `Desconectar ${dv.name}?`, text: "Este aparelho sai agora e, para voltar, escaneia um QR novo ou digita o código.", ok: "Desconectar", danger: true });
+        if (yes) await run("removeDevice", { id: dv.id }, `${dv.name} desconectado.`);
+    };
+    const deviceMenu = (dv) => (e) => {
+        e.preventDefault();
+        menu(e, { title: dv.name, items: [
+            // F2 does nothing here: no key in the menu (a key only where it works).
+            menuItem("renomear", { kbd: undefined, onSelect: () => rename(dv) }),
+            { label: "Desconectar…", icon: "unplug", air: true, onSelect: () => disconnect(dv) },
+        ] });
+    };
     const head = (
         <>
             <Icon name={d.icon} />
@@ -136,16 +178,25 @@ function Door({ c, network, info, setInfo, role }) {
                     <FormRow k="Código">
                         {code ? <span className="kx-countdown cfg-pin">{code.split("").join(" ")}</span> : <span className="kx-meta cfg-pin" aria-hidden="true">••••••</span>}
                         <Btn disabled={busy} on={Boolean(code)} onClick={reveal}>{code ? "Ocultar" : "Mostrar código"}</Btn>
-                        <Btn kind={confirm === "code" ? "air" : ""} disabled={busy} onClick={() => twice("code", "Clique de novo em Trocar o código: os celulares que usavam este código vão pedir o novo.", async () => { await run(d.ops.code, undefined, "Código novo. Esses celulares precisam digitá-lo de novo."); setCode(""); })}>{confirm === "code" ? "Trocar mesmo" : "Trocar o código"}</Btn>
-                    </FormRow>
-                    <FormRow k="Conectados">
-                        <Btn kind={confirm === "drop" ? "air" : ""} disabled={busy || !phones.length} onClick={() => twice("drop", "Clique de novo para desconectar estes celulares.", () => run(d.ops.drop, undefined, "Celulares desconectados. Eles precisam digitar o código de novo."))}>
-                            {confirm === "drop" ? "Desconectar mesmo" : "Desconectar todos"}
-                        </Btn>
-                        <span className="kx-meta">{phones.length ? `${phones.length} · ${phones.map((p) => p.ip).join(", ")}` : "nenhum agora"}</span>
+                        <Btn kind={confirm === "code" ? "air" : ""} disabled={busy} onClick={() => twice("code", "Clique de novo em Trocar o código: os celulares que digitaram este código vão pedir o novo. Os conectados por QR continuam.", async () => { await run(d.ops.code, undefined, "Código novo. Esses celulares precisam digitá-lo de novo."); setCode(""); })}>{confirm === "code" ? "Trocar mesmo" : "Trocar o código"}</Btn>
                     </FormRow>
                 </div>
             )}
+            {state.enabled && (
+                <div className="cfg-devs" aria-label={`Aparelhos do ${d.k}`}>
+                    <span className="kx-meta cfg-devs-h">Aparelhos · {paired.length}</span>
+                    {paired.map((dv) => <DeviceRow key={dv.id} device={dv} onMenu={deviceMenu(dv)} />)}
+                    <span className="kx-meta cfg-devs-code"><Icon name="lock" />{codeLine(byCode)}</span>
+                    {/* The settings search jumps here (settingsSearch.js): the Controle's comes first. */}
+                    <CfgKey k="Conectar um aparelho" className="cfg-devs-acts">
+                        <Btn kind="brand" disabled={busy || !url} title={url ? "" : "Ligue as telas na rede para o celular encontrar o KERYX"} onClick={() => setPairing(true)}><Icon name="qr" />Conectar um aparelho…</Btn>
+                        <Btn kind={confirm === "drop" ? "air" : ""} disabled={busy || (!phones.length && !paired.length)} onClick={() => twice("drop", "Clique de novo para desconectar todos: os conectados por QR também.", () => run(d.ops.drop, undefined, "Aparelhos desconectados. Para voltar, cada um escaneia um QR novo ou digita o código."))}>
+                            {confirm === "drop" ? "Desconectar mesmo" : "Desconectar todos"}
+                        </Btn>
+                    </CfgKey>
+                </div>
+            )}
+            {pairing && <PairDialog role={role} url={url} network={network} say={c.say} onClose={() => setPairing(false)} onPaired={() => network.call("info").then((res) => res?.data && setInfo(res.data)).catch(() => {})} />}
         </section>
     );
 }
@@ -153,7 +204,7 @@ function Door({ c, network, info, setInfo, role }) {
 // KERYX no celular (owner 2026-10-27, one group for the Controle and the
 // Equipe): the main switch, the one address and its QR code, then the two
 // doors side by side, either of which can stay off.
-export default function PhonesBlock({ c, network, info, setInfo, url }) {
+export default function PhonesBlock({ c, network, info, setInfo, url, askText = null }) {
     const [run, busy] = useRun(c, network, setInfo);
     const on = Boolean(info.phones?.enabled);
     const phones = phonesOf(info);
@@ -183,10 +234,10 @@ export default function PhonesBlock({ c, network, info, setInfo, url }) {
             {on && (
                 <>
                     <div className="cfg-doors">
-                        <Door c={c} network={network} info={info} setInfo={setInfo} role="control" />
-                        <Door c={c} network={network} info={info} setInfo={setInfo} role="team" />
+                        <Door c={c} network={network} info={info} setInfo={setInfo} role="control" url={info.running ? url : ""} askText={askText} />
+                        <Door c={c} network={network} info={info} setInfo={setInfo} role="team" url={info.running ? url : ""} askText={askText} />
                     </div>
-                    <div className="listhead"><span className="kx-meta">Cada código tem 6 números, pedidos uma vez em cada celular. Os dois nunca são iguais e não são o PIN das telas. Trocar um código desconecta só quem usava aquele.</span></div>
+                    <div className="listhead"><span className="kx-meta">Cada código tem 6 números, pedidos uma vez em cada celular. Os dois nunca são iguais e não são o PIN das telas. Trocar um código desconecta só quem o digitou; os aparelhos conectados por QR continuam. Se o endereço deste computador mudar, eles escaneiam de novo: reserve o IP dele no roteador.</span></div>
                 </>
             )}
         </CfgGroup>

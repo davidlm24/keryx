@@ -104,3 +104,33 @@ test("KERYX no celular: a church from before the switch keeps its open doors", (
     const n = net({ network: { secret: "s", team: { enabled: true, code: "975310", secret: "t" } } });
     assert.deepEqual(n.info().phones, { enabled: true });
 });
+
+test("parear por QR: a ticket only for an open door; info() lists the phones, never a key; Desconectar todos takes them, a new code keeps them", async () => {
+    const n = net({ network: { secret: "s" } });
+    await assert.rejects(() => n.ops.pairStart(null, { role: "control" }), /Ligue o Controle/);
+    await assert.rejects(() => n.ops.pairStart(null, { role: "x" }), /Porta/);
+    await n.ops.setRemote(null, true);
+    await n.ops.setTeam(null, true);
+    const t = await n.ops.pairStart(null, { role: "control" });
+    assert.match(t.path, /^\/lan\/pair\?t=[A-Za-z0-9_-]{22}$/);
+    assert.equal((await n.ops.pairStatus(null, { ticket: t.ticket })).state, "waiting");
+    await n.ops.pairCancel(null, { ticket: t.ticket });
+    assert.equal((await n.ops.pairStatus(null, { ticket: t.ticket })).state, "expired");
+    assert.deepEqual(n.info().devices, []);
+    // A phone paired (as lan.cjs would, through the same store).
+    n.saved.network = { ...n.saved.network, devices: [
+        { id: "a".repeat(16), role: "control", name: "Celular do Davi", hash: "1".repeat(64), createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(), agent: "" },
+        { id: "b".repeat(16), role: "team", name: "Tablet do louvor", hash: "2".repeat(64), createdAt: new Date(Date.now() - 60000).toISOString(), lastSeen: new Date(Date.now() - 60000).toISOString(), agent: "" },
+    ] };
+    const listed = n.info().devices;
+    assert.deepEqual(listed.map((d) => [d.name, d.role, d.online]), [["Celular do Davi", "control", false], ["Tablet do louvor", "team", false]]);
+    assert.ok(!JSON.stringify(n.info()).includes("1".repeat(64)), "never the hash");
+    await n.ops.renameDevice(null, { id: "a".repeat(16), name: "Celular da Ana" });
+    assert.equal(n.info().devices[0].name, "Celular da Ana");
+    await n.ops.newRemoteCode();
+    assert.equal(n.info().devices.length, 2, "M1 = A: a new code keeps the paired phones");
+    await n.ops.disconnectTeam();
+    assert.deepEqual(n.info().devices.map((d) => d.role), ["control"], "Desconectar todos takes that door's");
+    await n.ops.removeDevice(null, { id: "a".repeat(16) });
+    assert.deepEqual(n.info().devices, []);
+});
