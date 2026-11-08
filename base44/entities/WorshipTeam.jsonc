@@ -1,0 +1,45 @@
+{
+  "name": "WorshipTeam",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do membro"
+    },
+    "phone": {
+      "type": "string",
+      "description": "N\u00famero de WhatsApp (com c\u00f3digo do pa\u00eds)"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "vocalist",
+        "guitarist",
+        "bassist",
+        "drummer",
+        "keyboardist",
+        "worship_leader",
+        "other"
+      ],
+      "default": "other",
+      "description": "Fun\u00e7\u00e3o no louvor"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email do membro"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre o membro"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Membro ativo"
+    }
+  },
+  "required": [
+    "name",
+    "phone"
+  ]
+}

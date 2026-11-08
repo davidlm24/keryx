@@ -1,0 +1,68 @@
+{
+  "name": "BibleSchoolClass",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome da turma"
+    },
+    "age_group": {
+      "type": "string",
+      "enum": [
+        "children",
+        "teens",
+        "youth",
+        "adults",
+        "seniors"
+      ],
+      "default": "children"
+    },
+    "teacher_name": {
+      "type": "string"
+    },
+    "assistant_name": {
+      "type": "string"
+    },
+    "room": {
+      "type": "string"
+    },
+    "students": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "age": {
+            "type": "number"
+          },
+          "parent_phone": {
+            "type": "string"
+          },
+          "attendance": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        }
+      }
+    },
+    "meeting_time": {
+      "type": "string"
+    },
+    "curriculum": {
+      "type": "string",
+      "description": "T\u00f3pico/curr\u00edculo atual"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "age_group"
+  ]
+}

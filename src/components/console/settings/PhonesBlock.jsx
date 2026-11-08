@@ -1,0 +1,245 @@
+import React, { useEffect, useState } from "react";
+import QRCode from "react-qr-code";
+import Icon from "../Icon";
+import { Btn } from "../kx";
+import { phonesSummary } from "@/lib/console/cfgSummaries";
+import { FormRow, Switch, CfgGroup, CfgKey } from "./parts";
+import { useConfirm } from "../ConfirmDialog";
+import { useContextMenu } from "../ContextMenu";
+import { menuItem } from "@/lib/console/menuLabels";
+import { devicesOf, codePhonesOf, seenWords, codeLine } from "@/lib/console/phoneDevices";
+import PairDialog from "./PairDialog";
+
+// How long Mostrar código keeps the code on screen.
+const SHOW_MS = 30000;
+
+// The two doors a phone enters by (electron/network.cjs, lan.cjs): the same
+// address, the phone picks Controle or Equipe and types that side's code,
+// and the server checks it against that side alone. Each has its own switch,
+// code and key: changing one signs out only the phones that used it.
+const DOORS = {
+    // Controle: a phone on the church Wi-Fi that conducts the service —
+    // slides, Tela preta, Logo, the Setlist, a Bíblia reference, Encerrar
+    // (held down). The console runs what it asks as its own keys would
+    // (useRemote.js).
+    control: {
+        key: "remote", k: "Controle", icon: "monitor",
+        ops: { set: "setRemote", reveal: "revealRemoteCode", code: "newRemoteCode", drop: "disconnectRemotes" },
+        switchLabel: "Ligar o Controle",
+        on: "Controle ligado: no celular, escolha Controle e digite o código.", off: "Controle desligado.",
+        none: "Desligado · nenhum celular pode mexer nas telas",
+        what: "Muda o que está no ar: slides, Tela preta, Logo, a setlist, versículos e Encerrar (segurando o botão). Com as telas travadas, nada novo vai ao ar. Cada comando aparece aqui no console.",
+    },
+    // The Equipe: the worship team's phones — song requests, messages to the
+    // operator, the lyrics, the Bíblia and the Setlist to read. Never the
+    // air nor the setlist (lan.cjs refuses it, not only the phone).
+    team: {
+        key: "team", k: "Equipe", icon: "user",
+        ops: { set: "setTeam", reveal: "revealTeamCode", code: "newTeamCode", drop: "disconnectTeam" },
+        switchLabel: "Ligar a Equipe",
+        on: "Equipe ligada: no celular, escolha Equipe e digite o código da equipe.", off: "Equipe desligada.",
+        none: "Desligada · nenhum celular da equipe entra",
+        what: "Para a equipe de louvor: pedidos, chat, letras, Bíblia e a setlist. Só lê: nunca mexe no ar.",
+    },
+};
+
+const phonesOf = (info, role) => (info.clients || []).filter((cl) => cl.screen === "/Remote" && (!role || (cl.role || "control") === role));
+
+// One network call: the toast says the outcome, the info that comes back
+// redraws the section.
+function useRun(c, network, setInfo) {
+    const [busy, setBusy] = useState(false);
+    const run = async (op, args, done) => {
+        setBusy(true);
+        try {
+            const res = await network.call(op, args);
+            if (res?.error) { c.say(res.error.message); return null; }
+            if (res?.data?.port !== undefined || res?.data?.remote) setInfo(res.data);
+            if (done) c.say(done);
+            return res?.data ?? null;
+        } catch (err) {
+            c.say(err?.message || "Não foi possível mudar o celular.");
+            return null;
+        } finally { setBusy(false); }
+    };
+    return [run, busy];
+}
+
+// The firewall of Windows (owner 2026-10-30, F = A): on 30/10 it allowed
+// KERYX only on Public networks while the Wi-Fi was Private, and every phone
+// was refused while the QR looked fine. Read once when the block shows
+// (electron/firewall.cjs); "Liberar no firewall…" asks Windows, which asks
+// for the administrator's password — nothing changes without that click.
+function FirewallLine({ c, network }) {
+    const [fw, setFw] = useState(null);
+    const [busy, setBusy] = useState(false);
+    useEffect(() => {
+        let alive = true;
+        network.call("firewall").then((res) => { if (alive && res?.data) setFw(res.data); }).catch(() => {});
+        return () => { alive = false; };
+    }, [network]);
+    if (!fw?.blocked) return null;
+    const allow = async () => {
+        setBusy(true);
+        try {
+            const res = await network.call("allowFirewall");
+            if (res?.error) { c.say(res.error.message); return; }
+            setFw(res.data);
+            c.say(res.data?.blocked ? "O firewall ainda bloqueia: faça à mão, como diz abaixo." : "Liberado: os celulares já entram nesta rede.");
+        } finally { setBusy(false); }
+    };
+    return (
+        <div className="cfg-fw" role="status">
+            <span>O firewall do Windows está bloqueando os celulares nesta rede.</span>
+            <Btn small kind="brand" disabled={busy} onClick={allow} title="O Windows pede a senha de administrador">Liberar no firewall…</Btn>
+            <details>
+                <summary>Como fazer à mão</summary>
+                Segurança do Windows › Firewall e proteção de rede › Permitir um aplicativo pelo firewall › Alterar configurações › na linha KERYX, marque Privada e Pública › OK.
+            </details>
+        </div>
+    );
+}
+
+// One door's card: its switch, its code (shown on demand, renewed) and the
+// phones that entered by it.
+// One phone paired by QR (owner 2026-11-08, mockup board 1): its dot (green
+// while connected now), its name and when it was seen; ⋯ or a right click
+// opens Renomear… and Desconectar….
+function DeviceRow({ device, onMenu }) {
+    return (
+        <div className="kx-row cfg-dev" onContextMenu={onMenu} title={device.agent || device.name}>
+            <span className={`cfg-dev-dot ${device.online ? "is-on" : ""}`} aria-hidden="true" />
+            <span className="cfg-dev-t">
+                <span className="cfg-dev-n">{device.name}</span>
+                <span className="kx-meta">{seenWords(device)}</span>
+            </span>
+            <button type="button" className="kx-btn kx-t kx-btn-icon" aria-label={`Opções de ${device.name}`} onClick={onMenu}><Icon name="more" /></button>
+        </div>
+    );
+}
+
+function Door({ c, network, info, setInfo, role, url, askText }) {
+    const d = DOORS[role];
+    const state = info[d.key] || { enabled: false, hasCode: false };
+    const [run, busy] = useRun(c, network, setInfo);
+    const [code, setCode] = useState("");
+    const [confirm, setConfirm] = useState(null);
+    useEffect(() => {
+        if (!code) return undefined;
+        const t = setTimeout(() => setCode(""), SHOW_MS);
+        return () => clearTimeout(t);
+    }, [code]);
+    const reveal = async () => {
+        if (code) { setCode(""); return; }
+        const data = await run(d.ops.reveal);
+        if (data?.code) setCode(data.code);
+    };
+    const twice = (key, message, go) => {
+        if (confirm !== key) { setConfirm(key); c.say(message); return; }
+        setConfirm(null);
+        go();
+    };
+    const phones = phonesOf(info, role);
+    const paired = devicesOf(info, role);
+    const byCode = codePhonesOf(info, role);
+    const [pairing, setPairing] = useState(false);
+    const confirmAsk = useConfirm();
+    const menu = useContextMenu();
+    const rename = async (dv) => {
+        const name = await askText?.({ title: "Renomear o aparelho", initial: dv.name, placeholder: "Celular do João", ok: "Renomear" });
+        if (name && name.trim() && name.trim() !== dv.name) await run("renameDevice", { id: dv.id, name: name.trim() });
+    };
+    const disconnect = async (dv) => {
+        const yes = await confirmAsk({ title: `Desconectar ${dv.name}?`, text: "Este aparelho sai agora e, para voltar, escaneia um QR novo ou digita o código.", ok: "Desconectar", danger: true });
+        if (yes) await run("removeDevice", { id: dv.id }, `${dv.name} desconectado.`);
+    };
+    const deviceMenu = (dv) => (e) => {
+        e.preventDefault();
+        menu(e, { title: dv.name, items: [
+            // F2 does nothing here: no key in the menu (a key only where it works).
+            menuItem("renomear", { kbd: undefined, onSelect: () => rename(dv) }),
+            { label: "Desconectar…", icon: "unplug", air: true, onSelect: () => disconnect(dv) },
+        ] });
+    };
+    const head = (
+        <>
+            <Icon name={d.icon} />
+            <span className="cfg-door-t">{d.k}</span>
+            <Switch on={state.enabled} small disabled={busy} label={d.switchLabel} onChange={(on) => run(d.ops.set, on, on ? d.on : d.off)} />
+        </>
+    );
+    return (
+        <section className="cfg-door" aria-label={d.k}>
+            {/* Each k written out: the settings search finds them by it (settingsSearch.js). */}
+            {role === "team" ? <CfgKey k="Equipe" className="cfg-door-h">{head}</CfgKey> : <CfgKey k="Controle" className="cfg-door-h">{head}</CfgKey>}
+            <span className="kx-meta">{state.enabled ? d.what : d.none}</span>
+            {state.enabled && (
+                <div className="frm">
+                    <FormRow k="Código">
+                        {code ? <span className="kx-countdown cfg-pin">{code.split("").join(" ")}</span> : <span className="kx-meta cfg-pin" aria-hidden="true">••••••</span>}
+                        <Btn disabled={busy} on={Boolean(code)} onClick={reveal}>{code ? "Ocultar" : "Mostrar código"}</Btn>
+                        <Btn kind={confirm === "code" ? "air" : ""} disabled={busy} onClick={() => twice("code", "Clique de novo em Trocar o código: os celulares que digitaram este código vão pedir o novo. Os conectados por QR continuam.", async () => { await run(d.ops.code, undefined, "Código novo. Esses celulares precisam digitá-lo de novo."); setCode(""); })}>{confirm === "code" ? "Trocar mesmo" : "Trocar o código"}</Btn>
+                    </FormRow>
+                </div>
+            )}
+            {state.enabled && (
+                <div className="cfg-devs" aria-label={`Aparelhos do ${d.k}`}>
+                    <span className="kx-meta cfg-devs-h">Aparelhos · {paired.length}</span>
+                    {paired.map((dv) => <DeviceRow key={dv.id} device={dv} onMenu={deviceMenu(dv)} />)}
+                    <span className="kx-meta cfg-devs-code"><Icon name="lock" />{codeLine(byCode)}</span>
+                    {/* The settings search jumps here (settingsSearch.js): the Controle's comes first. */}
+                    <CfgKey k="Conectar um aparelho" className="cfg-devs-acts">
+                        <Btn kind="brand" disabled={busy || !url} title={url ? "" : "Ligue as telas na rede para o celular encontrar o KERYX"} onClick={() => setPairing(true)}><Icon name="qr" />Conectar um aparelho…</Btn>
+                        <Btn kind={confirm === "drop" ? "air" : ""} disabled={busy || (!phones.length && !paired.length)} onClick={() => twice("drop", "Clique de novo para desconectar todos: os conectados por QR também.", () => run(d.ops.drop, undefined, "Aparelhos desconectados. Para voltar, cada um escaneia um QR novo ou digita o código."))}>
+                            {confirm === "drop" ? "Desconectar mesmo" : "Desconectar todos"}
+                        </Btn>
+                    </CfgKey>
+                </div>
+            )}
+            {pairing && <PairDialog role={role} url={url} network={network} say={c.say} onClose={() => setPairing(false)} onPaired={() => network.call("info").then((res) => res?.data && setInfo(res.data)).catch(() => {})} />}
+        </section>
+    );
+}
+
+// KERYX no celular (owner 2026-10-27, one group for the Controle and the
+// Equipe): the main switch, the one address and its QR code, then the two
+// doors side by side, either of which can stay off.
+export default function PhonesBlock({ c, network, info, setInfo, url, askText = null }) {
+    const [run, busy] = useRun(c, network, setInfo);
+    const on = Boolean(info.phones?.enabled);
+    const phones = phonesOf(info);
+    const address = url ? `${url}/Remote` : "";
+    return (
+        <CfgGroup id="rede.celular" k="KERYX no celular" summary={phonesSummary(info, phones.length)}>
+            <div className="frm">
+                <FormRow k="Celulares">
+                    <Switch on={on} disabled={busy} label="Ligar o KERYX no celular" onChange={(next) => run("setPhones", next, next ? "KERYX no celular ligado: abra o endereço no celular, escolha Controle ou Equipe e digite o código." : "KERYX no celular desligado. Os celulares conectados saíram.")} />
+                    <span className={on ? "kx-prev" : "kx-meta"}>
+                        {on ? `Ligado · ${phones.length} ${phones.length === 1 ? "celular conectado" : "celulares conectados"}` : "Desligado · nenhum celular entra"}
+                    </span>
+                </FormRow>
+            </div>
+            {on && info.running && address && (
+                <div className="cfg-qr">
+                    <div className="cfg-qr-box"><QRCode value={address} size={132} /></div>
+                    <div className="cfg-qr-list">
+                        <span className="kx-meta">No celular, abra:</span>
+                        <div className="cfg-url"><code className="is-main">{address}</code><Icon name="tablet" /></div>
+                        <span className="kx-meta">Um endereço só: no celular a pessoa escolhe Controle ou Equipe e digita o código daquele.</span>
+                    </div>
+                </div>
+            )}
+            {on && info.running && <FirewallLine c={c} network={network} />}
+            {on && !info.running && <div className="listhead"><span className="kx-warn">Ligue as telas na rede (acima) para o celular encontrar o KERYX.</span></div>}
+            {on && (
+                <>
+                    <div className="cfg-doors">
+                        <Door c={c} network={network} info={info} setInfo={setInfo} role="control" url={info.running ? url : ""} askText={askText} />
+                        <Door c={c} network={network} info={info} setInfo={setInfo} role="team" url={info.running ? url : ""} askText={askText} />
+                    </div>
+                    <div className="listhead"><span className="kx-meta">Cada código tem 6 números, pedidos uma vez em cada celular. Os dois nunca são iguais e não são o PIN das telas. Trocar um código desconecta só quem o digitou; os aparelhos conectados por QR continuam. Se o endereço deste computador mudar, eles escaneiam de novo: reserve o IP dele no roteador.</span></div>
+                </>
+            )}
+        </CfgGroup>
+    );
+}

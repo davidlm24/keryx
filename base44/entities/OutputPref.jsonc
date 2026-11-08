@@ -1,0 +1,90 @@
+{
+  "name": "OutputPref",
+  "type": "object",
+  "properties": {
+    "screen_path": {
+      "type": "string",
+      "description": "Página da saída (/Projection, /LyricProjection, ...): a janela no computador e as telas na rede que mostram essa página"
+    },
+    "name": {
+      "type": "string",
+      "default": "",
+      "description": "Nome desta saída no console e nas telas na rede; vazio usa o padrão"
+    },
+    "icon": {
+      "type": "string",
+      "default": "",
+      "description": "Ícone da saída (nome do ícone do design system); vazio usa o padrão"
+    },
+    "options": {
+      "type": "object",
+      "default": {},
+      "description": "Opções próprias da página (Palco: cifra, relógio, notas, próximo; Pastor: relógio, quantos próximos)"
+    },
+    "content": {
+      "type": "string",
+      "enum": [
+        "",
+        "all",
+        "lyrics",
+        "video",
+        "notices"
+      ],
+      "default": "",
+      "description": "Antigo (até a Rodada H2): a vista que a saída desenhava; lido só pela migração para content_rule. Nada escreve mais aqui"
+    },
+    "hidden_kinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "lyrics",
+          "bible",
+          "text",
+          "media",
+          "tool",
+          "communication",
+          "alert"
+        ]
+      },
+      "default": [],
+      "description": "Antigo (até a Rodada H2): tipos que a saída não mostrava; lido só pela migração para content_rule. Nada escreve mais aqui"
+    },
+    "content_rule": {
+      "type": "object",
+      "description": "O que esta tela recebe (Rodada H2 / G10): { kinds: [letras, Bíblia, texto, imagens, vídeos, YouTube, apresentações, relógio e timer, avisos], top: { alert, logo } (por cima de tudo: Aviso rápido e Logo no canto), empty: wall | black | logo (o que mostra sem nada da lista no ar) }. Vazio = a regra da própria página com os antigos content, hidden_kinds e show_logo aplicados (applyRule/ruleOf em src/lib/outputPrefs.js)"
+    },
+    "text_scale": {
+      "type": "number",
+      "default": 100,
+      "description": "Escala do texto em % (80 a 140)"
+    },
+    "margin_pct": {
+      "type": "number",
+      "default": 0,
+      "description": "Margem extra do texto em % da largura (0 a 10)"
+    },
+    "show_logo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Antigo (até a Rodada H2): mostrar o logo da camada Logo nesta saída; lido só pela migração (agora top.logo de content_rule)"
+    },
+    "theme_id": {
+      "type": "string",
+      "default": "",
+      "description": "Tema próprio da saída (ProjectionTheme); vazio herda o da projeção"
+    },
+    "layout_id": {
+      "type": "string",
+      "default": "",
+      "description": "Antigo (até 2026-10-13): o ScreenLayout que a tela desenhava; lido só quando design está vazio (designOf em src/lib/outputPrefs.js). Nada escreve mais aqui."
+    },
+    "design": {
+      "type": "object",
+      "description": "O desenho desta tela (owner 2026-10-13: cada tela é dona do seu desenho; o catálogo de layouts morreu): { elements, background } no formato de normalizeLayout (src/lib/layouts.js); vazio = a página padrão"
+    }
+  },
+  "required": [
+    "screen_path"
+  ]
+}

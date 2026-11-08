@@ -1,0 +1,40 @@
+{
+  "name": "Poll",
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string",
+      "description": "Pergunta da enquete"
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "votes": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      },
+      "description": "Op\u00e7\u00f5es com contagem de votos"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enquete ativa"
+    },
+    "is_multi_select": {
+      "type": "boolean",
+      "default": false,
+      "description": "Permite m\u00faltipla sele\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "question",
+    "options"
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "name": "ProjectionState",
+  "type": "object",
+  "properties": {
+    "active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Proje\u00e7\u00e3o ativa ou em standby"
+    },
+    "current_type": {
+      "type": "string",
+      "enum": [
+        "song",
+        "bible",
+        "media",
+        "blank",
+        "logo"
+      ],
+      "description": "Tipo de conte\u00fado atual"
+    },
+    "song_id": {
+      "type": "string",
+      "description": "ID da m\u00fasica sendo projetada"
+    },
+    "slide_index": {
+      "type": "number",
+      "default": 0,
+      "description": "\u00cdndice do slide atual"
+    },
+    "bible_reference": {
+      "type": "string",
+      "description": "Refer\u00eancia b\u00edblica (ex: Jo\u00e3o 3:16)"
+    },
+    "bible_text": {
+      "type": "string",
+      "description": "Texto do vers\u00edculo"
+    },
+    "media_url": {
+      "type": "string",
+      "description": "URL da m\u00eddia sendo exibida"
+    },
+    "custom_background": {
+      "type": "string",
+      "description": "Fundo personalizado tempor\u00e1rio"
+    },
+    "operator_name": {
+      "type": "string",
+      "description": "Nome do operador atual"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": []
+}
