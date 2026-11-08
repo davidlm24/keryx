@@ -118,3 +118,20 @@ export function Toast({ toast, onUndo, onClose, canUndo, docked = false }) {
         </div>
     );
 }
+
+// The sections, a bar at the bottom in reach of the thumb, the same for the
+// Controle and the Equipe (owner 2026-11-08, "mais simples" N1 = A; a rail on
+// the left in landscape, remote.css). tabs: [key, label, icon]; dots: the
+// keys with something new (the Equipe's Chat).
+export function TabBar({ tabs, shown, onTab, label, dots = {} }) {
+    return (
+        <nav className="rm-tabs" role="tablist" aria-label={label}>
+            {tabs.map(([k, name, icon]) => (
+                <button type="button" key={k} role="tab" aria-selected={shown === k} className="rm-tab" onClick={() => onTab(k)}>
+                    <Icon name={icon} size={22} />{name}
+                    {dots[k] && <span className="rm-new is-tab"><span className="rm-sr">· novas</span></span>}
+                </button>
+            ))}
+        </nav>
+    );
+}

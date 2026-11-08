@@ -39,17 +39,20 @@ export function SetlistStrip({ state, caps, c, picked = null, onSent }) {
 }
 
 // Mais › Enviar: Slides, Aviso and Timer, each opening its sheet.
-export function SendLaunchers({ live, state, caps, c }) {
+// slides: the Slides launcher too (Mais has none since N6: No ar has the
+// slides); top: the first heading of its page.
+export function SendLaunchers({ live, state, caps, c, slides = true, top = false }) {
     const [sheet, setSheet] = useState(null);
     const content = live?.content || null;
     const s = slideInfo(content);
     const can = (a) => canRun(caps, a);
-    if (!can("goto") && !can("alert") && !can("tool")) return null;
+    const withSlides = slides && can("goto");
+    if (!withSlides && !can("alert") && !can("tool")) return null;
     return (
         <>
-            <h2 className="rm-sec">Enviar</h2>
-            <div className="rm-trio">
-                {can("goto") && <button type="button" className="rm-b" disabled={!s.has || s.count < 2 || !allowed("goto", {}, c.flags)} onClick={() => setSheet("slides")}><Icon name="list" size={22} />Slides</button>}
+            <h2 className={`rm-sec ${top ? "is-top" : ""}`}>Enviar</h2>
+            <div className={withSlides ? "rm-trio" : "rm-pair"}>
+                {withSlides && <button type="button" className="rm-b" disabled={!s.has || s.count < 2 || !allowed("goto", {}, c.flags)} onClick={() => setSheet("slides")}><Icon name="list" size={22} />Slides</button>}
                 {can("alert") && <button type="button" className="rm-b" disabled={!allowed("alert", {}, c.flags) && !live?.alert} onClick={() => setSheet("alert")}><Icon name="bell" size={22} />Aviso</button>}
                 {can("tool") && <button type="button" className="rm-b" disabled={!allowed("tool", {}, c.flags)} onClick={() => setSheet("timer")}><Icon name="clock" size={22} />Timer</button>}
             </div>

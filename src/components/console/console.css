@@ -1434,6 +1434,12 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .pair-qr.is-expired { opacity: 0.18; }
 .console .pair-qr-wait { display: block; width: 196px; height: 196px; }
 .console .pair-count { font-variant-numeric: tabular-nums; }
+/* Convite (N9): a link by WhatsApp or the clipboard, under the QR. */
+.console .pair-invite { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; }
+.console .pair-or { display: flex; align-items: center; gap: var(--space-2); align-self: stretch; color: var(--fg-3); font-size: var(--fs-ui); }
+.console .pair-or::before, .console .pair-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.console .pair-invite-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+.console .pair-invite-acts .kx-btn { gap: var(--space-1); }
 .console .pair-ok { display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok-fg); }
 .console .pair-ok .kx-i { width: 28px; height: 28px; }
 .console .cfg .cfg-logo { width: 40px; height: 40px; object-fit: contain; border-radius: var(--radius-control); background: var(--bg-2); }

@@ -42,3 +42,12 @@ test("the QR's countdown", () => {
     assert.equal(countdown(1000 + 292000, 1000), "4:52");
     assert.equal(countdown(0, 5000), "0:00");
 });
+
+test("the invite's message: the side, the Wi-Fi, until when, one phone (N9)", async () => {
+    const { inviteText, whatsappUrl } = await import("./phoneDevices.js");
+    const at = new Date(2026, 10, 9, 19, 40).getTime();
+    const t = inviteText({ role: "team", link: "http://192.168.0.15:7701/lan/pair?t=abc", expires: at });
+    assert.equal(t, "Entre no KERYX como Equipe (pedidos, chat e letras). Abra no Wi-Fi da igreja:\nhttp://192.168.0.15:7701/lan/pair?t=abc\nO link vale até 09/11, 19:40 e serve para um celular.");
+    assert.match(inviteText({ role: "control", link: "x", expires: NaN }), /Controle .* vale 24 horas/s);
+    assert.equal(whatsappUrl("a b\nc"), "https://wa.me/?text=a%20b%0Ac");
+});

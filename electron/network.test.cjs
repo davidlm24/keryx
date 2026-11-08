@@ -114,6 +114,11 @@ test("parear por QR: a ticket only for an open door; info() lists the phones, ne
     const t = await n.ops.pairStart(null, { role: "control" });
     assert.match(t.path, /^\/lan\/pair\?t=[A-Za-z0-9_-]{22}$/);
     assert.equal((await n.ops.pairStatus(null, { ticket: t.ticket })).state, "waiting");
+    const inv = await n.ops.pairStart(null, { role: "team", invite: true });
+    assert.equal(inv.invite, true);
+    assert.ok(inv.expires - Date.now() > 23 * 3600 * 1000, "an invite lasts 24 h (N9)");
+    assert.equal(n.saved.network.invites.length, 1);
+    assert.ok(!JSON.stringify(n.saved.network).includes(inv.ticket), "only its hash is kept");
     await n.ops.pairCancel(null, { ticket: t.ticket });
     assert.equal((await n.ops.pairStatus(null, { ticket: t.ticket })).state, "expired");
     assert.deepEqual(n.info().devices, []);

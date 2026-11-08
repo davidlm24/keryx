@@ -2102,9 +2102,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   its code (`sendBlock`, src/lib/console/sendBlock.js). **The phone's
   page** (Rodada G6 PR3, the owner's picks of 17/10) is `src/pages/RemoteView.jsx` +
   `src/components/network/remote/` (styles `remote.css`; what it shows is
-  `src/lib/network/remoteView.js`, tested): the sections behind a ☰ at the
-  header's left (owner's vistoria 2026-11-07: no tab bar at the bottom,
-  `SectionsMenu` in RemoteView.jsx; the Equipe keeps its tabs), a section only when `state.caps` has its cap
+  `src/lib/network/remoteView.js`, tested): **the sections are a tab bar at
+  the bottom, the same for the Controle and the Equipe** (owner 2026-11-08,
+  mockup "KERYX no celular · mais simples", N1 = A — reverses the ☰ of the
+  07/11 vistoria; `TabBar` in remote/parts.jsx, a rail in landscape), each
+  section kept mounted once seen and hidden while another shows (`.rm-sect`:
+  the Biblioteca's search and the Bíblia's marks survive a tab switch), a section only when `state.caps` has its cap
   (a v1 console: `isV1`), only the control pressed busy, S actions off
   while locked or stale (25 s without a frame), T always on; new items are
   picked, then sent from the sticky "Enviar ao ar · título"; Encerrar and
@@ -2112,7 +2115,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   2026-10-28, mockup "Celular · redesign", M1–M6 = A; it replaced Rodada
   Q's Ao vivo and No ar bar): **Biblioteca** (where the phone opens and
   stays after a send — `MediaTab.jsx`, the search then the chips),
-  **Apresentar** (`PresentTab.jsx`: every slide of the item on air as a
+  **No ar** (the old Apresentar, N1; `PresentTab.jsx`: every slide of the item on air as a
   big card, `presentRows`, the one on air green and kept in view, the next
   with the grey ring, a tap = `goto`; the letra automática, a timer on air
   and the **Setlist strip**, Item anterior | Próximo item in SETLIST order
@@ -2122,8 +2125,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Setlist fills the page around the item on air, a tap picks and the
   strip's gold side sends; with nothing on air, the strip and Abrir a
   Biblioteca), Bíblia, Setlist, Mais — never a chat tab (that is
-  the Equipe's). Mais starts with **Telas** (Tela preta, Logo, Limpar —
-  they left the dock — and Travar telas), then Enviar (Slides, Aviso, Timer). **The controls
+  the Equipe's). **Tela preta, Logo, Limpar and Travar telas are the
+  header's Telas button** (N2 = A; `.rm-telas`, a bottom sheet,
+  `TelasSheet.jsx`, lazy; two taps from any section). **Mais keeps only the
+  rare** (N6 = A): Enviar (Aviso, Timer — the slides are No ar's), Na tela
+  (the layers), Este celular (its name when paired, Travar toques, Manter a
+  tela ligada, Entrar como Equipe…), Sobre (the version, Atualizar,
+  Adicionar à tela inicial). Every target is at least 44 px (48 where the
+  thumb works) and text at least 12 px (remote.css). **The controls
   are the dock at the bottom of every section while something is on air**
   (`ControlDock.jsx`, vistoria 2026-11-07, D1/D2 = A; no fold, no sheet of
   controls): lyrics or a passage — what is on air (`nowBarInfo`, a tap
@@ -2168,24 +2177,28 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the dock is in the page's first load: every tab, the Biblioteca included,
   is a lazy chunk (the outputs' budget: with the Biblioteca in it, CI
   measured /Remote at 400.0 kB). The smoke opens on "Biblioteca", reads
-  the sections from the ☰ (`.rm-mrow`), then presses Tela preta in Mais
-  (`.rm-screen`). **The Equipe's page** (Rodada Q PR4, the owner's mockup, S8 = A)
+  the sections from the tab bar (`.rm-tabs .rm-tab`), then presses Tela
+  preta in the Telas sheet (`.rm-telas`, `.rm-screen`). **The Equipe's page** (Rodada Q PR4, the owner's mockup, S8 = A)
   is the same `/Remote` signed in with the Equipe's code: `state.role`
   "team" draws `remote/EquipeView.jsx` (a lazy chunk) instead (`roleOf`;
   the role last seen kept in localStorage `keryx.remote.role`, so a reload
   draws the right page at once; a phone that never had an answer waits
-  1.5 s for one, then draws the Controle). Four tabs (`TEAM_TABS`,
-  `tabsFor`): Pedidos, Músicas, Bíblia, Setlist; on top a strip with no
+  1.5 s for one, then draws the Controle). **Three tabs** (`TEAM_TABS`,
+  `tabsFor(state, "team")`; owner 2026-11-08, N8 = A): **Chat**, Biblioteca
+  (the old Músicas), Setlist — no Bíblia; on top a strip with no
   buttons, "No ar · título · 3/9 · só leitura" (`teamStrip`), never the
-  dock. Pedidos is a **Pedidos | Chat** switch (S12; `.rm-seg`, each side
-  with its gold dot, the Pedidos tab's dot for both, `hasUnseen` against
-  `keryx.remote.seen`), each the culto's `requests` page of its kind
+  dock. **The Chat is one conversation with the pedidos inside** (N8; was
+  the Pedidos | Chat switch of S12): `threadRows` merges the two kinds by
+  time, each pedido a card with its state, "♪ Pedir" (`.rm-pedir`) beside the
+  message field opens the pedido sheet, a pedido sent from the Biblioteca or
+  the Setlist brings the phone to the Chat; one gold dot on the Chat tab
+  (`hasUnseen` of both kinds against `keryx.remote.seen`). The console
+  keeps its Pedidos and Chat tabs apart. Each kind is still the culto's `requests` page of its kind
   (asked at once, every 15 s, the chat every 5 s while it is open —
   `requestsEvery` — and after a send; `messageRows`: this phone's own on
   the right as "Você", the operator's on the left in gold as "Operador", a
   pedido's "Pedido de X" / "Você pediu" / "Anotado pelo operador" and its
-  "✓ Atendido"): the pedidos with "Pedir um louvor" at the foot, the chat
-  with its composer (`chatArgs`: a YouTube link alone goes as "Vídeo do
+  "✓ Atendido"), with the composer (`chatArgs`: a YouTube link alone goes as "Vídeo do
   YouTube"); the "Pedido de louvor" sheet (Quem canta, O louvor typed or "Escolher da
   biblioteca" — Letras · Vídeos · Áudios, S15 = A, `PICK_CHIPS`, a video or
   an audio sent as `mediaId` —, the link, Observação; `pedidoArgs`, the
@@ -2209,7 +2222,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (400 days, HttpOnly, Lax); lastSeen saved at most every 10 min; 180 days
   unseen leaves by itself (M2), 30 at most. **GET /lan/pair never spends the
   ticket** (WhatsApp and the camera open links by themselves): only the page's
-  Conectar (POST, the phone's name, M4) does. `whoOf` in lan.cjs: a code
+  Conectar (POST, the phone's name, M4) does. **The invite link** (owner
+  2026-11-08, N9 = A): the dialog's "Enviar pelo WhatsApp" (wa.me, the
+  system's browser) and "Copiar link" make a new ticket each, valid **24 h**
+  for one phone (`ticket(role, { invite: true })`, `pairStart({ invite })`),
+  kept only as its hash in settings.json `network.invites` (20 at most) so
+  it outlives a restart; the message names the side, the church Wi-Fi and
+  until when (`inviteText` in src/lib/console/phoneDevices.js, tested). `whoOf` in lan.cjs: a code
   cookie first (Entrar como Equipe… keeps the pairing underneath), then the
   paired phone, only while its door is open — the same role, the same limits.
   **Trocar o código keeps the paired phones** (M1; only who typed it leaves);
