@@ -1237,30 +1237,29 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         result.verifyClosed = await waitFor(() => js("!document.querySelector('.verif-overlay')")) && Boolean(live.get().content);
 
-        // Tela ociosa: Preto leaves the projector clean after Encerrar. The
-        // status click toggles, so make sure the popover really opened.
+        // The Saídas popover (owner 2026-11-08, mockup P1 = A, I1 = A): no
+        // Tela ociosa (Temas e fundos has it), Identificar saídas in the
+        // footer, and Recebe and Destino on one line with no words.
         for (let i = 0; i < 3 && !(await js("Boolean(document.querySelector('.pop-outs'))")); i += 1) { await click(".kx-status", ""); await sleep(400); }
-        await click(".kx-pop .kx-seg button", "Preto");
-        result.idleSet = await waitFor(() => live.get().idle === "black");
-        // When the click misses, say where it went.
-        if (!result.idleSet) {
-            result.idleDiag = await js(`(() => {
-                const b = [...document.querySelectorAll(".kx-pop .kx-seg button")].find((n) => n.textContent.includes("Preto"));
-                const r = b ? b.getBoundingClientRect() : null;
-                const at = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
-                const name = (el) => (el ? el.tagName + "." + String(el.className || "").slice(0, 40) : null);
-                return { button: r ? [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)] : null, atCentre: name(at), atIsButton: Boolean(b && at && b.contains(at)), pops: [...document.querySelectorAll(".kx-pop, .pop, .scrim, .dialog, .verif-overlay")].map(name), win: [innerWidth, innerHeight] };
-            })()`);
-            result.idleDiag.idle = live.get().idle;
-        }
+        result.outsLean = await js(`(() => {
+            const p = document.querySelector(".pop-outs");
+            if (!p) return { open: false };
+            const text = p.textContent;
+            const ctl = [...p.querySelectorAll(".kx-out-ctl")];
+            const oneLine = ctl.every((c) => { const k = [...c.children]; return k.length < 2 || k.every((x) => Math.abs(x.getBoundingClientRect().top - k[0].getBoundingClientRect().top) < 2); });
+            const ok = !text.includes("Tela ociosa") && text.includes("Identificar saídas") && !/Recebe:|Destino:/.test(text) && ctl.length > 0 && oneLine;
+            return ok || { tela: text.includes("Tela ociosa"), identify: text.includes("Identificar saídas"), words: /Recebe:|Destino:/.test(text), rows: ctl.length, oneLine };
+        })()`);
         await press("Escape"); // closes the popover
+
+        // Tela ociosa: Preto leaves the projector clean after Encerrar.
+        live.call("idle.set", { mode: "black" });
+        result.idleSet = await waitFor(() => live.get().idle === "black");
         await press("Escape"); // ends the projection
         await waitFor(() => !live.get().content);
         result.idleBlack = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("Boolean(document.querySelector('.ks-black')) && !document.querySelector('.ks-idle img')").catch(() => false));
-        await click(".kx-status", "");
-        await click(".kx-pop .kx-seg button", "Logo da igreja");
+        live.call("idle.set", { mode: "logo" });
         await waitFor(() => live.get().idle === "logo");
-        await press("Escape");
         // Fundo de espera: the wallpaper the operator chose is what the idle
         // projector shows, cover and without the logo on it, and the image
         // really loads; Logo brings the logo back.
@@ -3041,7 +3040,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.systemFonts && result.churchFont && result.churchFontOutput && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.outsLean === true && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
         && result.deleteAsks && result.deleteSafeFocus && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows

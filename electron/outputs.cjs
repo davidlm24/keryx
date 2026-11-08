@@ -179,6 +179,17 @@ function normalizeAssignment(value) {
     return { target: "auto", openAtLaunch, removed };
 }
 
+// Identificar saídas (owner 2026-11-08, mockup I1 = A): over each open
+// output, for a few seconds, a dark veil with its screen's number (or
+// "Janela") big and the output's name under it, in the brand's gold. Only
+// those two lines. Text only, escaped: the name may be one the church typed.
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function identifyHtml({ where, name }) {
+    return "<!doctype html><html lang=\"pt-BR\"><meta charset=\"utf-8\"><body style=\"margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;background:rgba(0,0,0,.72);font-family:Geist,'Segoe UI',system-ui,sans-serif;overflow:hidden\">"
+        + `<div style="font-size:17vh;font-weight:700;color:#fff;line-height:1">${escapeHtml(where)}</div>`
+        + `<div style="font-size:5.6vh;font-weight:500;color:#e2c08a;line-height:1.1">${escapeHtml(name)}</div></body></html>`;
+}
+
 // The main projection is the output the console mirrors (the Prévia) and
 // auto-opens on send: KERYX without it is not a use case, so it cannot be
 // removed from the list.
@@ -197,4 +208,5 @@ module.exports = {
     windowedBounds,
     normalizeAssignment,
     canRemove,
+    identifyHtml,
 };

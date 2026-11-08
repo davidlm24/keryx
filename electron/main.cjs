@@ -9,6 +9,7 @@ const { createOutputManager, createReloadLimiter } = require("./outputs-manager.
 const { createSettings } = require("./settings.cjs");
 const { outputKeyForUrl, outputForKey } = require("./outputs.cjs");
 const { createSoundEngine, ROUTE: SOUND_ROUTE } = require("./soundEngine.cjs");
+const { registerSoundOut } = require("./soundOut.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
 const { createRendererLog } = require("./rendererLog.cjs");
 const { applyPendingImport } = require("./archive.cjs");
@@ -861,6 +862,14 @@ app.whenReady().then(async () => {
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
         log: (m) => console.error(m),
+    });
+    // Saída de som: the device the sound engine plays on (electron/soundOut.cjs).
+    registerSoundOut({
+        ipcMain,
+        settings,
+        isTrusted: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
+        broadcast,
+        engine: () => (soundEngine ? soundEngine.window() : null),
     });
 
     // A backup restored, or an export imported, on a computer that syncs:

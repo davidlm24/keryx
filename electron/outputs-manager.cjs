@@ -8,7 +8,7 @@
 
 const { BrowserWindow, powerSaveBlocker } = require("electron");
 const {
-    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, autoScreens, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
+    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, autoScreens, resolvePlacement, windowedBounds, normalizeAssignment, canRemove, identifyHtml,
 } = require("./outputs.cjs");
 
 const SETTINGS_KEY = "outputs";
@@ -391,9 +391,40 @@ function createOutputManager({
         });
     }
 
+    // Identificar saídas: each open output that is on screen gets the veil
+    // over its own box, "Tela N" (the number Identificar telas shows) or
+    // "Janela", and its name (`names`: the console's, which knows a name
+    // the church gave it; else the factory one). Above the output, which may
+    // be on top of everything itself.
+    function identifyOutputs(names = {}, durationMs = 3000) {
+        const current = displays();
+        let shownCount = 0;
+        for (const [key, out] of windows) {
+            if (out.isDestroyed() || !out.isVisible()) continue;
+            const full = shown.get(out) === "fullscreen";
+            const n = full ? current.findIndex((d) => d.id === heldOn.get(out)) + 1 : 0;
+            const where = n ? `Tela ${n}` : "Janela";
+            const name = typeof names[key] === "string" && names[key].trim() ? names[key].trim().slice(0, 80) : outputForKey(key).label;
+            const b = out.getBounds();
+            const win = new Win({
+                x: b.x, y: b.y, width: b.width, height: b.height,
+                frame: false, transparent: true, focusable: false, skipTaskbar: true, alwaysOnTop: true, show: false,
+                webPreferences: { sandbox: true, contextIsolation: true, javascript: false },
+            });
+            win.setIgnoreMouseEvents(true);
+            if (win.setAlwaysOnTop) win.setAlwaysOnTop(true, "screen-saver");
+            win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(identifyHtml({ where, name }))}`);
+            win.once("ready-to-show", () => { if (!win.isDestroyed()) win.showInactive(); });
+            setTimeout(() => { if (!win.isDestroyed()) win.close(); }, durationMs);
+            shownCount += 1;
+        }
+        return shownCount;
+    }
+
     return {
         windowOptions,
         track,
+        identifyOutputs,
         list,
         setAssignment,
         open,

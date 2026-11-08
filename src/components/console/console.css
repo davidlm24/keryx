@@ -1371,7 +1371,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .pop-outs .kx-out-front { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .console .pop-outs .kx-out-front:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* What the row's output receives: a button to the four shortcuts (owner 2026-10-27, S1 = A). */
-.console .pop-outs .kx-out-ctl { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin-top: var(--space-1); }
+.console .pop-outs .kx-out-ctl { display: flex; flex-wrap: nowrap; gap: var(--space-1) var(--space-2); margin-top: var(--space-1); }
 .console .pop-outs .kx-out-recv { position: relative; display: inline-flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-2); font: 500 var(--fs-meta)/1 var(--font-sans); white-space: nowrap; }
 .console .pop-outs .kx-out-recv b { color: var(--fg-1); font-weight: 600; }
 .console .pop-outs .kx-out-recv:hover { background: var(--bg-4); color: var(--fg-1); }

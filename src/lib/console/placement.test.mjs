@@ -44,6 +44,10 @@ test("the popover's word: the mode, the monitor's number, or the off size in amb
     assert.deepEqual(placementWord({ target: "window" }, displays), { text: "Janela", off: false });
     assert.deepEqual(placementWord({ target: D2 }, displays), { text: "Tela 2", off: false });
     assert.deepEqual(placementWord({ target: gone }, displays), { text: "1280×720 (desligada)", off: true });
+    // Automático says what it chose (2026-11-08).
+    assert.deepEqual(placementWord({ target: "auto" }, displays, { mode: "fullscreen", displayId: 22 }), { text: "Automático · Tela 2", off: false });
+    assert.deepEqual(placementWord({ target: "auto" }, displays, { mode: "window", displayId: null }), { text: "Automático · janela", off: false });
+    assert.deepEqual(placementWord({ target: "auto" }, displays, { mode: "hidden", missing: true }), { text: "Automático", off: false });
 });
 
 test("a monitor's size in pixels, with the Windows scale beside it when not 100 % (2026-11-08)", () => {

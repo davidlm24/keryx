@@ -15,6 +15,7 @@ import { useLayoutRows } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
 import { outputsSummary } from "@/lib/console/outputs";
 import { pixelSize } from "@/lib/console/placement";
+import { soundDevices, soundOutOptions } from "@/lib/console/soundOut";
 import { CHIME_VOLUMES, somSummary, ARQUIVO_SUMMARY } from "@/lib/console/cfgSummaries";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm } from "../ConfirmDialog";
@@ -31,6 +32,7 @@ function SomBlock({ c }) {
     return (
         <CfgGroup id="telas.som" k="Som e YouTube" defaultOpen={false} summary={somSummary(prefs)}>
             <div className="frm">
+                <SoundOutRow c={c} />
                 <FormRow k="Som do aviso">
                     <Switch on={prefs.chime_on} onChange={(on) => save({ chime_on: on }, on ? "O sino dos avisos toca." : "Sino dos avisos desligado em todas as telas.")} label="Tocar o sino dos avisos" />
                     <Seg small label="Volume do sino" value={CHIME_VOLUMES.some(([v]) => v === vol) ? vol : "35"} options={CHIME_VOLUMES} onChange={(v) => save({ chime_volume: Number(v) })} />
@@ -44,6 +46,52 @@ function SomBlock({ c }) {
                 <YouTubeToolsRow c={c} />
             </div>
         </CfgGroup>
+    );
+}
+
+// Saída de som (owner 2026-11-08, mockup S1 = A): the device every sound of
+// KERYX comes out of — the sound engine's (electron/soundOut.cjs), so one
+// choice covers videos, audios, avisos and the bell. Per computer. The
+// devices are the browser's audio outputs; a device chosen before that is
+// not connected now stays listed, disabled, and the sound goes to Windows'
+// default meanwhile. Testar som rings the bell in the engine, on that device.
+function SoundOutRow({ c }) {
+    const bridge = React.useRef(window.keryxDesktop?.sound || null);
+    const [choice, setChoice] = useState({ id: "", label: "" });
+    const [devices, setDevices] = useState([]);
+    React.useEffect(() => {
+        const sound = bridge.current;
+        if (!sound) return undefined;
+        let alive = true;
+        sound.get().then((r) => { if (alive && r?.data) setChoice(r.data); }).catch(() => {});
+        const off = sound.onChange((next) => setChoice(next || { id: "", label: "" }));
+        const media = navigator.mediaDevices;
+        const read = () => media?.enumerateDevices?.().then((list) => {
+            if (alive) setDevices(soundDevices(list));
+        }).catch(() => {});
+        read();
+        media?.addEventListener?.("devicechange", read);
+        return () => { alive = false; off(); media?.removeEventListener?.("devicechange", read); };
+    }, []);
+    if (!bridge.current) return <FormRow k="Saída de som"><span className="kx-meta">{desktopOnly}</span></FormRow>;
+    const options = soundOutOptions(devices, choice);
+    const pick = (id) => {
+        const label = devices.find((d) => d.id === id)?.label || "";
+        bridge.current.set({ id, label }).then((r) => {
+            if (r?.error) { c.say(r.error.message); return; }
+            setChoice(r.data);
+            c.say(id ? `Todo o som do KERYX sai em ${label}.` : "Todo o som do KERYX sai no som padrão do Windows.");
+        }).catch(() => c.say("Não foi possível trocar a saída de som."));
+    };
+    const test = () => bridge.current.test().then((r) => { if (r?.error) c.say(r.error.message); }).catch(() => {});
+    return (
+        <FormRow k="Saída de som">
+            <select className="cfg-select" value={choice.id} onChange={(e) => pick(e.target.value)} aria-label="Saída de som do KERYX">
+                {options.map((op) => <option key={op.value || "default"} value={op.value} disabled={op.disabled}>{op.label}</option>)}
+            </select>
+            <Btn small onClick={test} title="Toca o sino na saída de som escolhida">Testar som</Btn>
+            <span className="kx-meta">onde todo o som do KERYX sai: vídeos, áudios, avisos e o sino. Um link do YouTube (sem baixar) toca no som padrão do Windows.</span>
+        </FormRow>
     );
 }
 

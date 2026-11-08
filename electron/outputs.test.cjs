@@ -179,3 +179,12 @@ test("an output stays on top only full screen off the console's monitor (0.2.18)
     assert.equal(staysOnTop({ mode: "hidden", missing: true }, 1), false);
     assert.equal(staysOnTop(null, 1), false);
 });
+
+test("Identificar saídas: the screen and the name, escaped, nothing else (2026-11-08)", () => {
+    const { identifyHtml } = require("./outputs.cjs");
+    const html = identifyHtml({ where: "Tela 2", name: "Letras <do palco>" });
+    assert.ok(html.includes(">Tela 2<"));
+    assert.ok(html.includes("Letras &lt;do palco&gt;"));
+    assert.ok(!html.includes("<script"));
+    assert.ok(!/som sai/i.test(html));
+});

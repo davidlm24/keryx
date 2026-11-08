@@ -53,11 +53,19 @@ export function placementOptions(displays = [], assignment = null) {
 
 // The short word for the popover's button: "Automático", "Janela", "Tela 2",
 // or the off monitor's size ("1280×720 (desligada)"), with `off` set so the
-// button turns amber.
-export function placementWord(assignment, displays = []) {
+// button turns amber. With the main process's `placement` ({ mode,
+// displayId, missing }: where the output is, or would go if it opened now),
+// Automático says what it chose (owner 2026-11-08, mockup P1):
+// "Automático · Tela 3" or "Automático · janela".
+export function placementWord(assignment, displays = [], placement = null) {
     const t = assignment?.target;
     if (t === "window") return { text: "Janela", off: false };
-    if (!t || t === "auto" || typeof t !== "object") return { text: "Automático", off: false };
+    if (!t || t === "auto" || typeof t !== "object") {
+        const n = placement?.mode === "fullscreen" ? displays.findIndex((d) => d.id === placement.displayId) + 1 : 0;
+        if (n) return { text: `Automático · Tela ${n}`, off: false };
+        if (placement?.mode === "window") return { text: "Automático · janela", off: false };
+        return { text: "Automático", off: false };
+    }
     const n = displays.findIndex((d) => d.id === t.id) + 1;
     return n ? { text: `Tela ${n}`, off: false } : { text: `${t.width}×${t.height} (desligada)`, off: true };
 }

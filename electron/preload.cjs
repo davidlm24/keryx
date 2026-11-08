@@ -69,6 +69,21 @@ ipcRenderer.on("keryx:bible:setup", (_event, state) => {
     }
 });
 
+// Saída de som (electron/soundOut.cjs): the device chosen changed; the test
+// bell, rung in the sound engine.
+const soundListeners = new Set();
+const soundTestListeners = new Set();
+ipcRenderer.on("keryx:sound", (_event, choice) => {
+    for (const listener of soundListeners) {
+        try { listener(choice); } catch (err) { console.error("[keryx] sound listener failed:", err); }
+    }
+});
+ipcRenderer.on("keryx:sound-test", () => {
+    for (const listener of soundTestListeners) {
+        try { listener(); } catch (err) { console.error("[keryx] sound test listener failed:", err); }
+    }
+});
+
 // The console's zoom changed (Ctrl+= / Ctrl+− / Ctrl+0, electron/consoleZoom.cjs).
 const zoomListeners = new Set();
 ipcRenderer.on("keryx:zoom", (_event, zoom) => {
@@ -126,6 +141,7 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         open: (key) => ipcRenderer.invoke("keryx:displays:open", { key }),
         close: (key) => ipcRenderer.invoke("keryx:displays:close", { key }),
         identify: () => ipcRenderer.invoke("keryx:displays:identify"),
+        identifyOutputs: (names) => ipcRenderer.invoke("keryx:displays:identify-outputs", { names }),
         // Exportar / Importar ajustes das saídas: save the file the console built, read one back.
         exportFile: (json, name) => ipcRenderer.invoke("keryx:displays:export-file", { json, name }),
         importFile: () => ipcRenderer.invoke("keryx:displays:import-file"),
@@ -246,6 +262,20 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         onZoom(listener) {
             zoomListeners.add(listener);
             return () => zoomListeners.delete(listener);
+        },
+    },
+    // Saída de som: the device every sound of KERYX comes out of (the sound engine's).
+    sound: {
+        get: () => ipcRenderer.invoke("keryx:sound", { op: "get" }),
+        set: (choice) => ipcRenderer.invoke("keryx:sound", { op: "set", choice }),
+        test: () => ipcRenderer.invoke("keryx:sound", { op: "test" }),
+        onChange(listener) {
+            soundListeners.add(listener);
+            return () => soundListeners.delete(listener);
+        },
+        onTest(listener) {
+            soundTestListeners.add(listener);
+            return () => soundTestListeners.delete(listener);
         },
     },
     media: {

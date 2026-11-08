@@ -62,7 +62,6 @@ import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { WinEdges, useWinState, setWinState } from "@/components/console/winLayout";
 import { withSize } from "@/lib/console/winLayout";
 import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec, janelaName } from "@/lib/console/nav";
-import { setIdleMode } from "@/lib/console/idle";
 import { resolveSection } from "@/lib/console/settings";
 import { useSyncStatusSelect } from "@/hooks/useSyncStatus";
 import { useSyncJoinNote } from "@/hooks/useGoogleSync";
@@ -531,6 +530,15 @@ export default function Console() {
     // (electron/soundEngine.cjs); the browser preview has none, and its
     // Projeção tab plays the sound as the projector did before.
     const soundOut = keryx.isPreview ? Boolean(projector?.open) : true;
+    // Identificar saídas (owner 2026-11-08, mockup I1 = A): each open output
+    // shows its screen's number and its name, as the console calls it.
+    const identifyOutputs = () => {
+        const names = Object.fromEntries(outputs.map((o) => [o.key, o.label]));
+        Promise.resolve(window.keryxDesktop?.displays.identifyOutputs(names)).then((res) => {
+            if (res?.error) c.say(res.error.message);
+            else if (res && res.data === 0) c.say("Nenhuma saída aberta numa tela agora.");
+        }).catch(() => {});
+    };
 
     // The live state says where the service is; the Prévia says what is next in hand.
     // The session's item, and whether the screens still show it (after Esc it
@@ -1750,7 +1758,7 @@ export default function Console() {
             <SyncPop open={open} setOpen={setOpen} onSettings={openSettings} say={c.say} songsHere={data.songs.length} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} displays={monitors} outputs={outputs} onPlace={window.keryxDesktop ? placeOutput : null} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} onIdentify={window.keryxDesktop ? identifyOutputs : null} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} displays={monitors} outputs={outputs} onPlace={window.keryxDesktop ? placeOutput : null} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)}
                 songLine={songLine} onSongLine={(k, v) => setLayout({ ...layout, [SONG_LINE_KEYS[k]]: v })}
                 group={canGroup(libTabNow) ? layout.libGroup?.[libTabNow] === true : null} onGroup={(on) => setLibGroup(libTabNow, on)} />

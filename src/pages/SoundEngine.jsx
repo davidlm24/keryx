@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import LiveVideo from "@/components/projection/LiveVideo";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import { keryx } from "@/api/keryxClient";
@@ -9,6 +9,7 @@ import { usePrefs } from "@/hooks/useUser";
 import { leavingAudio, screenExitMs, videoExitMs } from "@/lib/exitFade";
 import { soundPlan, mediaSoundOf } from "@/lib/soundPlan";
 import { ringBell } from "@/lib/bell";
+import { applySink, setSoundSink } from "@/lib/soundSink";
 
 /**
  * The sound engine (owner 2026-11-08: after the service of 07/11 a video's
@@ -24,6 +25,7 @@ import { ringBell } from "@/lib/bell";
  */
 export default function SoundEngine() {
     const live = useLiveState();
+    useSoundOut();
     const plan = soundPlan(live, keryx.live.now());
     const [, setTick] = useState(0);
 
@@ -61,12 +63,30 @@ export default function SoundEngine() {
             {leavingVideo && <LiveVideo key={vghost.key} item={leavingVideo} fadeOut={{ at: vghost.at, until: vghost.until }} className="w-full h-full" />}
             {plan.media && <LiveMediaView media={plan.media} />}
             {leavingMedia && <LiveMediaView key={ghost.key} media={leavingMedia} fadeOut={{ at: ghost.at, until: ghost.until }} />}
-            {plan.track && <audio key={plan.track.key} src={plan.track.src} autoPlay />}
-            {plan.notice && <audio key={plan.notice.key} src={plan.notice.src} autoPlay loop />}
+            {plan.track && <audio key={plan.track.key} ref={applySink} src={plan.track.src} autoPlay />}
+            {plan.notice && <audio key={plan.notice.key} ref={applySink} src={plan.notice.src} autoPlay loop />}
             {plan.chime && <Chime key={plan.chime} />}
             <ActivityBell live={live} />
         </div>
     );
+}
+
+// Saída de som (electron/soundOut.cjs, owner 2026-11-08): every element
+// of this window goes to the device chosen on this computer, and follows a
+// new choice at once; Testar som rings the bell here, on it.
+function useSoundOut() {
+    const prefs = usePrefs();
+    const volume = useRef(prefs.chime_volume);
+    volume.current = prefs.chime_volume;
+    useEffect(() => {
+        const sound = window.keryxDesktop?.sound;
+        if (!sound) return undefined;
+        let alive = true;
+        sound.get().then((r) => { if (alive && r?.data) setSoundSink(r.data.id); }).catch(() => {});
+        const offChange = sound.onChange((choice) => setSoundSink(choice?.id || ""));
+        const offTest = sound.onTest(() => ringBell({ on: true, volume: volume.current }));
+        return () => { alive = false; offChange(); offTest(); };
+    }, []);
 }
 
 // An Escola activity's discussion time: the clock ticks only while one is on air.
