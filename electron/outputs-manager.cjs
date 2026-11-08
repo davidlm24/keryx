@@ -6,9 +6,8 @@
 // KERYX starts). Either way it is tracked (track) and moved when monitors
 // change or the operator reassigns it.
 
-const { BrowserWindow, powerSaveBlocker } = require("electron");
 const {
-    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
+    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, autoScreens, resolvePlacement, windowedBounds, normalizeAssignment, canRemove, identifyHtml,
 } = require("./outputs.cjs");
 
 const SETTINGS_KEY = "outputs";
@@ -29,11 +28,12 @@ function createReloadLimiter({ max = 3, windowMs = 60000, now = Date.now } = {})
     };
 }
 
-// BrowserWindow and powerSaveBlocker are injectable for tests (in plain
-// Node, require("electron") is a path, and both are undefined).
+// BrowserWindow and powerSaveBlocker are injectable for tests. Electron is
+// loaded only when one is not given: in plain Node, with the binary skipped
+// (CI), require("electron") tries to download it and fails when GitHub does.
 function createOutputManager({
     screen, settings, getOrigin, openWindow = null, operatorWindow = () => null, log = console.warn,
-    BrowserWindow: Win = BrowserWindow, powerSaveBlocker: blocker = powerSaveBlocker,
+    BrowserWindow: Win = require("electron").BrowserWindow, powerSaveBlocker: blocker = require("electron").powerSaveBlocker,
 }) {
     const windows = new Map(); // output key -> BrowserWindow
     // What present (or track) last made of each window: "fullscreen",
@@ -41,6 +41,9 @@ function createOutputManager({
     // it when the monitor leaves (resolvePlacement's waiting).
     const shown = new WeakMap();
     const waiting = (win) => Boolean(win && !win.isDestroyed() && (shown.get(win) === "fullscreen" || shown.get(win) === "hidden"));
+    // The monitor each window was put full screen on: an output on
+    // "Automático" keeps it while it is free (autoScreens).
+    const heldOn = new WeakMap();
     // Windows this manager took off the taskbar (Electron has no getter).
     const offTaskbar = new WeakSet();
     // Outputs are not in the taskbar (as in Holyrics): only the console is.
@@ -88,7 +91,18 @@ function createOutputManager({
 
     const assignments = () => settings.get(SETTINGS_KEY, {});
     const assignmentFor = (key) => normalizeAssignment(assignments()[key]);
-    const placementFor = (key) => resolvePlacement(outputForKey(key), displays(), assignmentFor(key), { waiting: waiting(windows.get(key)) });
+    // The outputs open now, plus `key` (the one being opened, or asked about
+    // in the list: where it would go if it opened now).
+    const openNow = (key) => {
+        const open = [];
+        for (const [k, w] of windows) if (!w.isDestroyed()) open.push({ key: k, assignment: assignmentFor(k), held: heldOn.get(w) ?? null });
+        if (key && !open.some((o) => o.key === key)) open.push({ key, assignment: assignmentFor(key), held: null });
+        return open;
+    };
+    const placementFor = (key, current = displays()) => resolvePlacement(outputForKey(key), current, assignmentFor(key), {
+        waiting: waiting(windows.get(key)),
+        auto: autoScreens(openNow(key), current, operatorDisplayId()).get(key) ?? null,
+    });
 
     // Windows turns the displays off after a few idle minutes, and sleeps
     // later; Chromium holds a wake lock only while a video plays. A verse on
@@ -169,6 +183,7 @@ function createOutputManager({
                 if (!current.visible) setTimeout(() => giveBack(win), 50);
             }
             setPointer(win, true);
+            heldOn.set(win, placement.display.id);
         } else if (placement.mode === "hidden") {
             // Hidden first (Windows has moved it onto the console's monitor).
             // On Windows, leaving full screen shows a hidden window again, at
@@ -180,7 +195,9 @@ function createOutputManager({
                 if (win.isVisible()) win.hide();
             }
             setPointer(win, true);
+            heldOn.delete(win);
         } else {
+            heldOn.delete(win);
             if (win.isFullScreen()) win.setFullScreen(false);
             win.setBounds(windowedBounds(displays()));
             hideFromTaskbar(win);
@@ -210,6 +227,10 @@ function createOutputManager({
         keepAwake();
         // Whatever path created it (the options may not have said so).
         hideFromTaskbar(win);
+        // Silent, every one, Projeção included: every sound of this computer
+        // plays in the sound engine (soundEngine.cjs; owner 2026-11-08, after
+        // a video sounded once per open output on 07/11).
+        if (win.webContents.setAudioMuted) win.webContents.setAudioMuted(true);
 
         // Opening one (and going full screen) activates it on Windows, so
         // the keyboard goes back (giveBack) once it is up.
@@ -227,6 +248,7 @@ function createOutputManager({
         if (placement.mode === "fullscreen") {
             win.setFullScreen(true);
             applyOnTop(win, placement);
+            heldOn.set(win, placement.display.id);
         } else if (placement.mode === "hidden") {
             // Its monitor is off already: made hidden (windowOptions), it
             // waits; one made visible elsewhere is hidden here.
@@ -248,10 +270,14 @@ function createOutputManager({
         return key;
     }
 
+    // Every placement worked out first, then applied: one output moving
+    // never changes where the next goes in the same pass.
     function reapplyAll() {
-        for (const [key, win] of windows) {
+        const current = displays();
+        const placements = [...windows].map(([key, win]) => [key, win, placementFor(key, current)]);
+        for (const [key, win, placement] of placements) {
             try {
-                present(win, placementFor(key));
+                present(win, placement);
             } catch (err) {
                 log(`[keryx-outputs] não foi possível mover ${key}: ${err.message}`);
             }
@@ -269,7 +295,7 @@ function createOutputManager({
             outputs: OUTPUTS.map((o) => {
                 const win = windows.get(o.key);
                 const assignment = assignmentFor(o.key);
-                const placement = resolvePlacement(o, current, assignment, { waiting: waiting(win) });
+                const placement = placementFor(o.key, current);
                 return {
                     key: o.key,
                     label: o.label,
@@ -292,10 +318,10 @@ function createOutputManager({
         const next = normalizeAssignment({ ...assignmentFor(key), ...(assignment || {}) });
         settings.set(SETTINGS_KEY, { ...assignments(), [key]: next });
         const win = windows.get(key);
-        if (win && !win.isDestroyed()) {
-            if (next.removed) win.close();
-            else present(win, placementFor(key));
-        }
+        // Every open output again: one named on a monitor sends an output on
+        // "Automático" that was there to the next free one (autoScreens).
+        if (win && !win.isDestroyed() && next.removed) win.close();
+        else reapplyAll();
         return list();
     }
 
@@ -365,9 +391,40 @@ function createOutputManager({
         });
     }
 
+    // Identificar saídas: each open output that is on screen gets the veil
+    // over its own box, "Tela N" (the number Identificar telas shows) or
+    // "Janela", and its name (`names`: the console's, which knows a name
+    // the church gave it; else the factory one). Above the output, which may
+    // be on top of everything itself.
+    function identifyOutputs(names = {}, durationMs = 3000) {
+        const current = displays();
+        let shownCount = 0;
+        for (const [key, out] of windows) {
+            if (out.isDestroyed() || !out.isVisible()) continue;
+            const full = shown.get(out) === "fullscreen";
+            const n = full ? current.findIndex((d) => d.id === heldOn.get(out)) + 1 : 0;
+            const where = n ? `Tela ${n}` : "Janela";
+            const name = typeof names[key] === "string" && names[key].trim() ? names[key].trim().slice(0, 80) : outputForKey(key).label;
+            const b = out.getBounds();
+            const win = new Win({
+                x: b.x, y: b.y, width: b.width, height: b.height,
+                frame: false, transparent: true, focusable: false, skipTaskbar: true, alwaysOnTop: true, show: false,
+                webPreferences: { sandbox: true, contextIsolation: true, javascript: false },
+            });
+            win.setIgnoreMouseEvents(true);
+            if (win.setAlwaysOnTop) win.setAlwaysOnTop(true, "screen-saver");
+            win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(identifyHtml({ where, name }))}`);
+            win.once("ready-to-show", () => { if (!win.isDestroyed()) win.showInactive(); });
+            setTimeout(() => { if (!win.isDestroyed()) win.close(); }, durationMs);
+            shownCount += 1;
+        }
+        return shownCount;
+    }
+
     return {
         windowOptions,
         track,
+        identifyOutputs,
         list,
         setAssignment,
         open,

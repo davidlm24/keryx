@@ -28,6 +28,12 @@ test("downloadArgs: H.264 up to 1080p, merged to mp4, the runtime and ffmpeg nam
     const args = downloadArgs({ url: "https://youtu.be/aBcDeFgHiJk", outDir: "C:\\w\\dl", ffmpegDir: "C:\\r\\youtube", node: "C:\\KERYX\\KERYX.exe" });
     const after = (flag) => args[args.indexOf(flag) + 1];
     assert.match(after("-f"), /^bv\*\[height<=1080\]\[vcodec\^=avc1\]\+ba\[acodec\^=mp4a\]/);
+    // Separate streams (1080p, the best sound) always before a single file
+    // (YouTube's 360p with ~96 kbps sound): 2026-11-08.
+    const choices = after("-f").split("/");
+    const firstSingle = choices.findIndex((c) => c.startsWith("b["));
+    assert.ok(firstSingle >= 3 && choices.slice(0, firstSingle).every((c) => c.includes("+ba")), choices.join(" / "));
+    assert.ok(!args.some((a) => /recode|audio-quality|postprocessor-args/.test(a)), "never encoded again");
     assert.equal(after("--merge-output-format"), "mp4");
     assert.equal(after("--js-runtimes"), "node:C:\\KERYX\\KERYX.exe");
     assert.equal(after("--ffmpeg-location"), "C:\\r\\youtube");
@@ -43,6 +49,8 @@ test("parseLine: progress, info (a title with |), the file; anything else null",
     assert.deepEqual(parseLine("KX NA NA NA"), { kind: "progress", bytes: 0, total: null });
     assert.deepEqual(parseLine("INFO 288387264|596|Louvor | Ao Vivo"), { kind: "info", total: 288387264, duration: 596, title: "Louvor | Ao Vivo" });
     assert.deepEqual(parseLine("INFO NA|NA|NA"), { kind: "info", total: null, duration: null, title: "" });
+    assert.deepEqual(parseLine("FMT 137+140 1080 mp4a.40.2 129.478"), { kind: "format", id: "137+140", height: 1080, acodec: "mp4a.40.2", abr: 129.478 });
+    assert.deepEqual(parseLine("FMT 18 360 mp4a.40.2 NA"), { kind: "format", id: "18", height: 360, acodec: "mp4a.40.2", abr: null });
     assert.deepEqual(parseLine("FILE C:\\w\\dl\\aBc.mp4"), { kind: "file", path: "C:\\w\\dl\\aBc.mp4" });
     assert.equal(parseLine("[download] Destination: x"), null);
 });

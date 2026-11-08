@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { playbackPlan, playbackGain } from "@shared/live-state.mjs";
 import { createPool } from "@/lib/mediaPool";
+import { applySink } from "@/lib/soundSink";
 import { getYouTubeId, loadYouTubeApi } from "@/utils/youtube";
 import { usePrefs } from "@/hooks/useUser";
 import { clipRate, tapGate } from "@/lib/network/screenStage";
@@ -29,6 +30,7 @@ const videos = createPool({
         el.playsInline = true;
         el.preload = "auto";
         el.src = url;
+        applySink(el);
         return el;
     },
     dispose(el) {

@@ -56,7 +56,8 @@ function Meters() {
 // The volume: a mute toggle and a slider. While it is dragged the slider
 // follows the hand; the operation goes out at most every 80 ms. Where the
 // sound goes is the mute's tooltip (Rodada N1, owner's pick A); with the
-// projector window closed (`silent`) the speaker wears an amber dot.
+// sound unable to come out (`silent`: the browser preview's Projeção tab
+// closed) the speaker wears an amber dot.
 function Volume({ volume, onVolume, disabled, where, silent }) {
     const [drag, setDrag] = useState(null);
     const lastSent = useRef(0);
@@ -82,7 +83,7 @@ function Volume({ volume, onVolume, disabled, where, silent }) {
     return (
         <span className="pl-vol">
             <span className="pl-spk">
-                <IconBtn name={muted ? "volume-off" : "volume"} title={`${muted ? "Ligar o som" : "Mudo"}${silent ? " · o projetor está fechado: o som não sai" : where ? ` · o som sai: ${where}` : ""}`} onClick={toggleMute} disabled={disabled} />
+                <IconBtn name={muted ? "volume-off" : "volume"} title={`${muted ? "Ligar o som" : "Mudo"}${silent ? " · a Projeção está fechada: o som não sai" : where ? ` · o som sai: ${where}` : ""}`} onClick={toggleMute} disabled={disabled} />
                 {silent && <i className="pl-spk-dot" aria-hidden="true" />}
             </span>
             <input type="range" min={0} max={100} step={1} value={value} disabled={disabled} aria-label="Volume"
@@ -224,7 +225,7 @@ function Seek({ value, duration, can, scrubbing, ticks, frames, cover, onScrub, 
 // meters. Always there, so the monitors never move; idle when nothing plays
 // (only its icon, the controls dimmed). Acts on the document the console
 // drives (the live state; while the screens are locked its controls are refused).
-export default function PlayerBar({ c, picked, setPicked, videoScreens, projectorOpen }) {
+export default function PlayerBar({ c, picked, setPicked, projectorOpen }) {
     const { cur } = c;
     const layers = playerLayers(cur);
     const layer = playerLayer(cur, picked);
@@ -283,8 +284,11 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
     const swap = videoSwap(cur, layer);
     // A video playing as sound only: the eye is red and pressed.
     const soundOnly = swap?.action === "showVideo";
-    const where = layer === "video" ? (videoScreens || "telas de vídeo") : layer === "media" ? "Projetor" : layer === "audio" ? "Computador do projetor" : "";
-    const silent = (layer === "audio" || layer === "media") && !projectorOpen;
+    // Every layer's sound comes out of this computer, from the sound engine
+    // (SoundEngine.jsx, owner 2026-11-08); `projectorOpen` is false only in
+    // the browser preview with its Projeção tab closed (no engine there).
+    const where = layer ? "este computador" : "";
+    const silent = Boolean(layer) && !projectorOpen;
     // The hover tip's picture (tipPicture): a video file's frames, a YouTube
     // link's cover, nothing for an audio file (the time and the slide).
     const picture = tipPicture(media);

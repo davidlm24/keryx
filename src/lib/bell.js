@@ -1,3 +1,5 @@
+import { sinkOptions } from "./soundSink.js";
+
 // A short two-note chime for avisos with "Som de alerta", made with Web
 // Audio (no file to ship or lose). It plays on the output's speakers like
 // any other sound, so the console's meters (system loopback) see it. The
@@ -20,7 +22,9 @@ export function ringBell(prefs = {}) {
     try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
-        const ctx = new Ctx();
+        // On the Saída de som in the sound engine (soundSink.js); a browser
+        // without sinkId ignores the option.
+        const ctx = new Ctx(sinkOptions());
         const t0 = ctx.currentTime + 0.02;
         for (const { freq, at, gain: peak } of notes) {
             const osc = ctx.createOscillator();

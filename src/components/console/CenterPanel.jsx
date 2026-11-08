@@ -151,10 +151,10 @@ export function ScreenActions({ c, onEnd, className = "" }) {
 // dimmed while idle (owner's decision 2026-10-13; it drives what is on air;
 // reserved, so the monitor never moves). It rides under the Programa unless
 // the console's arrangement puts it somewhere else.
-export function PlayerSlot({ c, picked, setPicked, videoScreens, projectorOpen }) {
+export function PlayerSlot({ c, picked, setPicked, projectorOpen }) {
     return (
         <div className="pslot">
-            <PlayerBar c={c} picked={picked} setPicked={setPicked} videoScreens={videoScreens} projectorOpen={projectorOpen} />
+            <PlayerBar c={c} picked={picked} setPicked={setPicked} projectorOpen={projectorOpen} />
         </div>
     );
 }

@@ -17,7 +17,7 @@ export default function LyricProjection() {
     useScreenKeys(live);
     return (
         <>
-            <TabletVideoReceiver />
+            <TabletVideoReceiver muted />
             <OutputScreen page="/LyricProjection" live={live} now={now} logoUrl={logo} audio={false} />
         </>
     );

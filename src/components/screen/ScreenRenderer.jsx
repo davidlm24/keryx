@@ -110,7 +110,7 @@ function Screen({ state, now, logoUrl = "", preview = false, motion = false, aud
                     : <Content content={state.content} showTitle={showTitle} still={still} />)}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
                 {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={sound} />}
-                {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} fadeOut={fadeOut} />)}
+                {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} fadeOut={fadeOut} muted={!audio} />)}
             </div>
             {!preview && sound && layer === "content" && state.content.audio && (
                 <audio key={state.content.startedAt} src={state.content.audio} autoPlay className="hidden" />

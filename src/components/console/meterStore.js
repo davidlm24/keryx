@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { retryDelay, wokeUp, START_TIMEOUT_MS, DEVICE_SETTLE_MS } from "@/lib/console/meterRetry";
 
 // The player's level meters and reported durations.
 //
@@ -24,18 +25,81 @@ let capture = "idle"; // "idle" | "starting" | "on" | "off"
 let analysers = null;
 const buf = typeof Float32Array === "undefined" ? null : new Float32Array(FFT);
 
+// The capture never stays off (meterRetry.js, owner 2026-11-08): one that
+// fails, never answers or ends tries again on a backoff, and the devices
+// changing (a projector's HDMI, a mixer's USB: Windows' default output moves
+// and the old capture goes silent) or the PC waking start it over at once.
+let session = null; // { stream, ctx }
+let pending = null; // the attempt in flight
+let attempt = 0;
+let retryTimer = null;
+let watching = false;
+
+const supported = () => typeof window !== "undefined" && Boolean(window.keryxDesktop) && !window.keryxDesktop.isPreview
+    && typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getDisplayMedia);
+
+function stopCapture() {
+    pending = null;
+    if (session) {
+        session.stream.getTracks().forEach((t) => t.stop());
+        session.ctx.close().catch(() => {});
+    }
+    session = null;
+    analysers = null;
+}
+
+function failed() {
+    stopCapture();
+    capture = "off";
+    if (retryTimer) return;
+    retryTimer = setTimeout(() => { retryTimer = null; startCapture(); }, retryDelay(attempt));
+    attempt += 1;
+}
+
+function restart() {
+    if (!supported()) return;
+    clearTimeout(retryTimer);
+    retryTimer = null;
+    attempt = 0;
+    stopCapture();
+    capture = "idle";
+    startCapture();
+}
+
+function watch() {
+    if (watching) return;
+    watching = true;
+    let settle = null;
+    navigator.mediaDevices.addEventListener?.("devicechange", () => {
+        clearTimeout(settle);
+        settle = setTimeout(restart, DEVICE_SETTLE_MS);
+    });
+    let last = Date.now();
+    setInterval(() => {
+        const now = Date.now();
+        if (wokeUp(last, now)) restart();
+        last = now;
+    }, 5000);
+}
+
 function startCapture() {
+    if (capture === "starting" || capture === "on") return;
     // The browser preview (npm run dev) has no system loopback: no meters
     // there, and no capture prompt.
-    if (capture !== "idle" || typeof window === "undefined" || !window.keryxDesktop || window.keryxDesktop.isPreview) {
-        if (capture === "idle") capture = "off";
-        return;
-    }
+    if (!supported()) { capture = "off"; return; }
+    watch();
     capture = "starting";
+    const token = {};
+    pending = token;
+    const timeout = setTimeout(() => { if (pending === token) failed(); }, START_TIMEOUT_MS);
     navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }).then((stream) => {
+        clearTimeout(timeout);
+        if (pending !== token) { stream.getTracks().forEach((t) => t.stop()); return; }
+        pending = null;
         // Only the sound matters; the granted video track (our own frame) goes.
         stream.getVideoTracks().forEach((t) => t.stop());
-        if (stream.getAudioTracks().length === 0) { capture = "off"; return; }
+        const track = stream.getAudioTracks()[0];
+        if (!track) { stream.getTracks().forEach((t) => t.stop()); failed(); return; }
         const ctx = new AudioContext();
         const source = ctx.createMediaStreamSource(stream);
         const split = ctx.createChannelSplitter(2);
@@ -46,10 +110,19 @@ function startCapture() {
             split.connect(a, channel);
             return a;
         });
-        const done = () => { capture = "off"; analysers = null; ctx.close().catch(() => {}); };
-        stream.getAudioTracks()[0].addEventListener("ended", done);
+        session = { stream, ctx };
+        track.addEventListener("ended", () => { if (session && session.stream === stream) failed(); });
+        // Windows may suspend the context (a device change, the PC asleep):
+        // the analysers would read silence. Back to running at once.
+        const wake = () => { if (ctx.state === "suspended" || ctx.state === "interrupted") ctx.resume().catch(() => {}); };
+        ctx.addEventListener("statechange", wake);
+        wake();
         capture = "on";
-    }).catch(() => { capture = "off"; });
+        attempt = 0;
+    }).catch(() => {
+        clearTimeout(timeout);
+        if (pending === token) failed();
+    });
 }
 
 const peak = (a) => {

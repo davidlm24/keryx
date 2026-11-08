@@ -191,6 +191,7 @@ export function createPreviewBridge() {
         },
         async close(key) { windows.get(key)?.close(); windows.delete(key); return { data: true }; },
         identify: async () => ({ data: true }),
+        identifyOutputs: async () => ({ data: 0 }),
         // Exportar / Importar ajustes das saídas, the browser's way: a download
         // and a file picker (the app uses its own save and open dialogs).
         async exportFile(json, name) {

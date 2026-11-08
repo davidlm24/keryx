@@ -36,6 +36,7 @@ export const SETTINGS_INDEX = [
     e("telas", "Por tipo de conteúdo", "a transição de cada tipo: padrão, corte ou suave (o timer vem em corte)", ["transição", "tipo", "conteúdo", "exceção", ...TRANSITION_TYPES.map((t) => t.label), "timer", "relógio", "cronômetro", "pdf", "gif", "youtube"]),
     e("telas", "Entre áudios e vídeos", "quando um começa, o que tocava para: corte, suave ou tocar junto", ["transição", "áudio", "vídeo", "música", "som", "um de cada vez", "tocar junto", "corte", "suave", "crossfade", "esmaecer", "duração"]),
     e("telas", "Tela preta e Logo", "entram e saem com a transição de Ao tirar do ar", ["transição", "tela preta", "preto", "logo", "suave", "esmaecer"]),
+    e("telas", "Saída de som", "o aparelho por onde sai todo o som do KERYX: vídeos, áudios, avisos e o sino; testar", ["Som e YouTube", "som", "saída de som", "alto-falante", "caixa de som", "fone", "hdmi", "mesa de som", "áudio", "testar som"]),
     e("telas", "Som do aviso", "o sino dos avisos: ligar, desligar, volume, testar", ["Som e YouTube", "som", "sino", "alerta", "volume", "testar som", "áudio"] ),
     e("telas", "Título do YouTube", "esconder a faixa de título que o YouTube põe sobre o vídeo", ["youtube", "canal", "faixa", "esconder", "título"]),
     e("telas", "Download do YouTube", "Baixar para a Mídia: as ferramentas (yt-dlp, ffmpeg) e Atualizar agora", ["youtube", "baixar", "download", "yt-dlp", "ffmpeg", "atualizar", "Som e YouTube"]),

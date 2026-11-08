@@ -92,6 +92,8 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
     ipcMain.handle("keryx:displays:close", outputsOp(({ key }) => { outputs.close(key); return outputs.list(); }));
     ipcMain.handle("keryx:displays:open", outputsOp(({ key }) => outputs.open(key)));
     ipcMain.handle("keryx:displays:identify", outputsOp(() => { outputs.identify(); return true; }));
+    // Identificar saídas: the names the console shows (a renamed output's).
+    ipcMain.handle("keryx:displays:identify-outputs", outputsOp(({ names }) => outputs.identifyOutputs(names && typeof names === "object" ? names : {})));
     // Exportar / Importar ajustes das saídas (src/lib/outputsFile.js): the main
     // process only saves the file the console built and reads one back; the
     // console checks it and applies it through displays.set and OutputPref.

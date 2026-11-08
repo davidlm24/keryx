@@ -8,6 +8,8 @@ const { registerDataIpc } = require("./data-ipc.cjs");
 const { createOutputManager, createReloadLimiter } = require("./outputs-manager.cjs");
 const { createSettings } = require("./settings.cjs");
 const { outputKeyForUrl, outputForKey } = require("./outputs.cjs");
+const { createSoundEngine, ROUTE: SOUND_ROUTE } = require("./soundEngine.cjs");
+const { registerSoundOut } = require("./soundOut.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
 const { createRendererLog } = require("./rendererLog.cjs");
 const { applyPendingImport } = require("./archive.cjs");
@@ -110,6 +112,8 @@ let network = null;
 let live = null;
 let sync = null;
 let youtube = null;
+// The hidden window that plays every sound (electron/soundEngine.cjs).
+let soundEngine = null;
 // running.json while KERYX runs (electron/runMarker.cjs): found at start, the
 // last run died instead of quitting.
 let runMarker = null;
@@ -429,7 +433,7 @@ function createMainWindow(settings) {
         const enabled = closeGuard.machinePrefs(appSettings?.get(closeGuard.MACHINE_KEY, {})).confirmClose;
         const onAir = Boolean(liveRules?.isOnAir && live && liveRules.isOnAir(live.get()));
         const asked = closeGuard.shouldConfirmClose({ enabled, quitting }) ? closeGuard.askClose(dialog, mainWindow, onAir) : Promise.resolve(true);
-        const others = () => BrowserWindow.getAllWindows().filter((w) => w !== mainWindow && !w.isDestroyed() && !outputKeyForUrl(w.webContents.getURL(), appOrigin));
+        const others = () => BrowserWindow.getAllWindows().filter((w) => w !== mainWindow && !w.isDestroyed() && !outputKeyForUrl(w.webContents.getURL(), appOrigin) && !(soundEngine && soundEngine.isEngine(w)));
         asked.then((close) => (close ? closeGuard.closeAll(others()) : false)).then((closed) => { if (closed) app.quit(); }, () => {});
     });
     mainWindow.on("closed", () => { mainWindow = null; });
@@ -859,6 +863,14 @@ app.whenReady().then(async () => {
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
         log: (m) => console.error(m),
     });
+    // Saída de som: the device the sound engine plays on (electron/soundOut.cjs).
+    registerSoundOut({
+        ipcMain,
+        settings,
+        isTrusted: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
+        broadcast,
+        engine: () => (soundEngine ? soundEngine.window() : null),
+    });
 
     // A backup restored, or an export imported, on a computer that syncs:
     // what the operator chose before the restart (system.cjs syncQuestion),
@@ -882,11 +894,16 @@ app.whenReady().then(async () => {
     // Outputs set to "Abrir ao iniciar" in Telas e saídas.
     // After a recent crash, also the ones that were open then.
     win.once("ready-to-show", () => outputs.openAtLaunch(crash && crash.lit ? crash.outputs : []));
+    // Every sound of this computer plays in one hidden window, the sound
+    // engine; the outputs are muted (owner 2026-11-08).
+    soundEngine = createSoundEngine({ BrowserWindow, url: appUrl + SOUND_ROUTE, webPreferences, log: logger });
+    win.once("ready-to-show", () => soundEngine.start());
     if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, settings, network, live, dataDir, importOutcome });
 });
 
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
+    if (soundEngine) soundEngine.stop();
     if (sync) sync.stop();
     if (youtube) youtube.stop();
     if (network) network.stop();

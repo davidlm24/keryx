@@ -263,3 +263,11 @@ test("a screen whose rule leaves out the item on air does not count as showing i
     const h4 = outputHealth({ outputs: [proj(true)], seen: remember({}, { outputs: [proj(true)], clients: [] }, at(19, 0)), leaving });
     assert.deepEqual(h4.onAir, { text: "em 1 tela", short: "1 tela", warn: false, why: [], filtered: false });
 });
+
+test("a full-screen output names its monitor by its number, never Electron's id (2026-11-08)", () => {
+    const big = { ...proj(true), placement: { mode: "fullscreen", displayId: 2779098405, missing: false } };
+    const displays = [{ id: 1, primary: true }, { id: 2779098405 }];
+    assert.equal(outputHealth({ outputs: [big], displays }).rows[0].meta, "Tela 2");
+    assert.equal(outputHealth({ outputs: [big] }).rows[0].meta, "Tela cheia");
+    assert.equal(outputHealth({ outputs: [stage(true)], displays }).rows[0].meta, "Janela");
+});

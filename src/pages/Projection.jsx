@@ -38,11 +38,14 @@ export default function Projection() {
     // same report from another screen).
     useNoticeAdvance(live?.communication);
 
-    // The audio channel plays here, on the KERYX computer only (a TV on the
-    // network showing this page stays silent), in whatever the screen shows.
+    // On the KERYX computer every sound plays in the sound engine, a hidden
+    // window of its own (SoundEngine.jsx, owner 2026-11-08: a video sounded
+    // once per open output): this page is silent there, as on a TV of the
+    // network. Only the browser preview has no engine: its Projeção tab
+    // plays the sound, as the projector did before.
     const audio = live?.audio || null;
     const audioIndex = audio?.playlistIndex ?? 0;
-    const playsAudio = keryx.isDesktop && !keryx.isNetworkScreen;
+    const playsAudio = keryx.isPreview && !keryx.isNetworkScreen;
     const audioPlayer = audio && playsAudio ? (
         <div className="hidden" aria-hidden="true">
             <LiveVideo item={audio} meter="audio" onEnded={() => { (audio.playlist ? projection.advanceAudio(audioIndex) : projection.audioEnded(audio.url)).catch(() => {}); }} />
@@ -67,8 +70,8 @@ export default function Projection() {
                     <LiveVideo item={e.item} fadeOut={{ at: e.at, until: e.until }} />
                 </div>
             ))}
-            <TabletVideoReceiver />
-            <OutputScreen page="/Projection" live={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />
+            <TabletVideoReceiver muted={!playsAudio} />
+            <OutputScreen page="/Projection" live={live} now={now} logoUrl={logo} audio={playsAudio} />
         </>
     );
 }

@@ -13,12 +13,13 @@ import { mediaType } from "@/lib/contentKinds";
  * reports that (media.advance, which ignores duplicate reports).
  * fadeOut ({ at, until }): the media is leaving (ScreenRenderer's ghost,
  * Transições): it plays on, quieter and quieter, and moves nothing on.
+ * muted: an output window (the sound engine plays it, SoundEngine.jsx).
  * On a network screen the screen is the 16:9 stage (ScreenStart), not the
  * tablet's viewport: the picture fills the stage's box.
  */
 const NET = keryx.isNetworkScreen;
 const box = NET ? "h-full" : "min-h-screen";
-export default function LiveMediaView({ media, fadeOut = null }) {
+export default function LiveMediaView({ media, fadeOut = null, muted = false }) {
     // An image's name over it only when the church wants titles (the legacy pref; the item title is the theme's since the Rodada B 2026-10-14).
     const prefs = usePrefs();
     const showTitle = prefs.show_item_title;
@@ -68,7 +69,7 @@ export default function LiveMediaView({ media, fadeOut = null }) {
             <div className={`${box} bg-black flex items-center justify-center relative`}>
                 {counter}
                 {/* Ends -> the playlist moves on, a single video leaves the screen. */}
-                <LiveVideo item={media} onEnded={advance} onRefused={refuse} meter={fadeOut ? null : "media"} fadeOut={fadeOut} className={NET ? "w-full h-full" : "w-full h-screen"} />
+                <LiveVideo item={media} muted={muted} onEnded={advance} onRefused={refuse} meter={fadeOut ? null : "media"} fadeOut={fadeOut} className={NET ? "w-full h-full" : "w-full h-screen"} />
             </div>
         );
     }

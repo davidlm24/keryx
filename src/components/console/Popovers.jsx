@@ -143,7 +143,7 @@ export function useAnchor(selector, width, active) {
 const TONE_DOT = { ok: "var(--ok)", rh: "var(--rh)", warn: "var(--warn)", off: "var(--fg-3)" };
 const TONE_CLS = { ok: "", rh: "is-rh", warn: "is-warn", off: "is-off" };
 
-export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, idle, onIdle, onSettings, ruleOf = null, onRule = null, displays = [], outputs = [], onPlace = null }) {
+export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, onIdentify = null, onSettings, ruleOf = null, onRule = null, displays = [], outputs = [], onPlace = null }) {
     const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
     const box = useFocusFirst(open === "outs");
@@ -193,26 +193,31 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                             {st.hint && <div className="kx-out-meta">{st.hint}</div>}
                             {/* What this output receives, changed right here (owner
                                 2026-10-27, S1 = A): the four shortcuts and the Editor.
-                                Palco, Pastor and Transmissão draw their own thing. */}
+                                Palco, Pastor and Transmissão draw their own thing.
+                                Recebe and Destino share one line, each its glyph and
+                                value, no word (owner 2026-11-08, mockup P1 = A): the
+                                eye what it receives, the monitor where it opens. */}
                             {(() => {
                                 const recv = ruleOf && onRule && PREF_OUTPUTS.includes(page);
                                 // Where it opens (owner 2026-11-02, D1 = A): every local
                                 // row but a removed one, Palco and Pastor too.
-                                const place = r.local && onPlace && outputs.find((o) => o.key === r.key)?.assignment;
+                                const out = r.local && outputs.find((o) => o.key === r.key);
+                                const place = onPlace && out?.assignment;
                                 if (!recv && !place) return null;
-                                const shown = place && (r.key in placing ? { ...place, target: placing[r.key] } : place);
-                                const word = place && placementWord(shown, displays);
+                                const moving = r.key in placing;
+                                const shown = place && (moving ? { ...place, target: placing[r.key] } : place);
+                                const word = place && placementWord(shown, displays, moving ? null : out.placement);
                                 return (
                                     <div className="kx-out-ctl">
                                         {recv && (
-                                            <button type="button" className="kx-t kx-out-recv" aria-haspopup="menu" title={`O que ${r.name} recebe: ${ruleSummary(ruleOf(page))}`} onClick={(e) => onRule(e, page, r.name)}>
-                                                Recebe: <b>{ruleLabel(ruleOf(page))}</b><Icon name="chevron-down" size={12} />
+                                            <button type="button" className="kx-t kx-out-recv" aria-haspopup="menu" aria-label={`Recebe: ${ruleLabel(ruleOf(page))}`} title={`O que ${r.name} recebe: ${ruleSummary(ruleOf(page))}`} onClick={(e) => onRule(e, page, r.name)}>
+                                                <Icon name="eye" size={12} /><b>{ruleLabel(ruleOf(page))}</b><Icon name="chevron-down" size={12} />
                                             </button>
                                         )}
                                         {place && (
-                                            <span className={`kx-out-recv kx-out-dest ${word.off ? "is-off" : ""}`} title={`Em qual tela ${r.name} abre`}>
-                                                Destino: <b>{word.text}</b><Icon name="chevron-down" size={12} />
-                                                <select value={placementValue(shown, displays)} onChange={(e) => pick(r.key, e.target.value)} aria-label={`Tela de ${r.name}`}>
+                                            <span className={`kx-out-recv kx-out-dest ${word.off ? "is-off" : ""}`} title={`Destino: em qual tela ${r.name} abre`}>
+                                                <Icon name="monitor" size={12} /><b>{word.text}</b><Icon name="chevron-down" size={12} />
+                                                <select value={placementValue(shown, displays)} onChange={(e) => pick(r.key, e.target.value)} aria-label={`Destino de ${r.name}: ${word.text}`}>
                                                     {placementOptions(displays, shown).map((op) => <option key={op.value} value={op.value} disabled={op.disabled}>{op.label}</option>)}
                                                 </select>
                                             </span>
@@ -254,15 +259,13 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                 <span className="kx-section">Travar telas</span><span style={{ flex: 1 }} />
                 <Seg small label="Travar telas" value={locked ? "on" : "off"} onChange={(v) => onLock?.(v === "on")} options={[["off", "Destravadas"], ["on", "Travadas"]]} />
             </div>
-            <div className="kx-menu-h"><span className="kx-section">Tela ociosa</span><span style={{ flex: 1 }} />
-                {/* Logo or Preto when nothing is on air and there is no Fundo; a
-                    picture for those moments is the papel de parede. */}
-                <Seg small label="Tela ociosa" value={idle === "black" ? "black" : "logo"} onChange={(m) => onIdle(m)}
-                    options={[["logo", "Logo da igreja"], ["black", "Preto"]]} />
-            </div>
             <div className="kx-menu-sep" />
             <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
                 <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo</Btn>
+                {/* Owner 2026-11-08 (mockup I1 = A): each open output shows, for
+                    3 s, its screen's number (or "Janela") and its name. */}
+                {onIdentify && <Btn kind="outline" onClick={onIdentify} title="Mostra em cada saída aberta o número da tela e o nome da saída">Identificar saídas</Btn>}
+                <span style={{ flex: 1 }} />
                 <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas</Btn>
             </div>
         </div>

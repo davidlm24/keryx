@@ -35,8 +35,9 @@ const ON_PROJECTOR = new Set(["VIDEO", "IMAGE", "PDF", "POWERPOINT"]);
 const hasMarks = (song) => (song?.slides || []).some((s) => Number.isFinite(s?.start));
 
 // Whether an item is heard: a video, an audio file, a song with its
-// playback or clip. The projector window plays the sound (Projection.jsx),
-// so with it closed the Setlist never moves on to (or from) one.
+// playback or clip. On the desktop the sound engine plays it, always
+// (SoundEngine.jsx); in the browser preview the Projeção tab does, so with
+// it closed the Setlist never moves on to (or from) one.
 export function hasSound(item, song = null) {
     const t = TYPE(item);
     return t === "VIDEO" || t === "AUDIO" || (t === "SONG" && Boolean(song?.audio_url));
@@ -126,8 +127,9 @@ export function nextPlayable(items, currentId) {
 }
 
 // Whether the Setlist may move on now. Locked: nothing new goes on air
-// (Travar telas). The projector window closed with something to hear: it
-// would "play" with nobody hearing it, so it stops and says so (amber).
+// (Travar telas). No way out for the sound (`projectorOpen` false: only the
+// browser preview with its Projeção tab closed; the desktop's sound engine
+// always plays) with something to hear: it stops and says so (amber).
 export function shouldAdvance({ locked = false, projectorOpen = true, hasSound: sound = false } = {}) {
     if (locked) return { ok: false, why: "locked" };
     if (!projectorOpen && sound) return { ok: false, why: "projector" };
