@@ -1,0 +1,40 @@
+{
+  "name": "SongHistory",
+  "type": "object",
+  "properties": {
+    "song_id": {
+      "type": "string",
+      "description": "ID da m\u00fasica tocada"
+    },
+    "song_title": {
+      "type": "string",
+      "description": "T\u00edtulo da m\u00fasica (para hist\u00f3rico r\u00e1pido)"
+    },
+    "song_artist": {
+      "type": "string",
+      "description": "Artista da m\u00fasica"
+    },
+    "played_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora em que foi tocada"
+    },
+    "service_id": {
+      "type": "string",
+      "description": "ID do culto em que foi tocada (opcional)"
+    },
+    "service_title": {
+      "type": "string",
+      "description": "Nome do culto (opcional)"
+    },
+    "operator_name": {
+      "type": "string",
+      "description": "Nome do operador que projetou"
+    }
+  },
+  "required": [
+    "song_id",
+    "song_title",
+    "played_at"
+  ]
+}

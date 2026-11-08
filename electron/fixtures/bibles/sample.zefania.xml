@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<XMLBIBLE xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" biblename="Bíblia Zefania de Exemplo">
+<INFORMATION><title>Exemplo</title><language>POR</language></INFORMATION>
+<BIBLEBOOK bnumber="1" bname="Genesis">
+<CHAPTER cnumber="1">
+<CAPTION>A criação</CAPTION>
+<VERS vnumber="1">No princípio criou Deus os céus e a terra.</VERS>
+<VERS vnumber="2">E a terra era sem forma<NOTE type="x-studynote">nota</NOTE> e vazia.</VERS>
+</CHAPTER>
+</BIBLEBOOK>
+<BIBLEBOOK bnumber="43" bname="John">
+<CHAPTER cnumber="3">
+<VERS vnumber="16">Porque Deus amou o mundo de tal maneira que deu o seu <STYLE css="color:red">Filho</STYLE> unigênito.</VERS>
+</CHAPTER>
+</BIBLEBOOK>
+<BIBLEBOOK bnumber="67" bname="Tobit"><CHAPTER cnumber="1"><VERS vnumber="1">Tobias fica de fora.</VERS></CHAPTER></BIBLEBOOK>
+</XMLBIBLE>

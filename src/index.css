@@ -1,0 +1,268 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* :root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+} */
+
+
+
+@layer base {
+  :root {
+    --background: 30 10% 9%;
+    --foreground: 96 18% 89%;
+    --card: 20 8% 13%;
+    --card-foreground: 96 18% 89%;
+    --popover: 20 8% 13%;
+    --popover-foreground: 96 18% 89%;
+    --primary: 78 9% 48%;
+    --primary-foreground: 30 10% 9%;
+    --secondary: 34 18% 36%;
+    --secondary-foreground: 96 18% 89%;
+    --muted: 20 8% 16%;
+    --muted-foreground: 46 10% 62%;
+    --accent: 39 48% 60%;
+    --accent-foreground: 30 10% 9%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 96 18% 89%;
+    --border: 30 8% 21%;
+    --input: 30 8% 21%;
+    --ring: 78 9% 48%;
+    --chart-1: 78 9% 48%;
+    --chart-2: 39 48% 60%;
+    --chart-3: 34 18% 36%;
+    --chart-4: 46 10% 62%;
+    --chart-5: 96 18% 89%;
+    --radius: 0.5rem;
+    --sidebar-background: 30 10% 9%;
+    --sidebar-foreground: 96 18% 89%;
+    --sidebar-primary: 78 9% 48%;
+    --sidebar-primary-foreground: 30 10% 9%;
+    --sidebar-accent: 20 8% 16%;
+    --sidebar-accent-foreground: 96 18% 89%;
+    --sidebar-border: 30 8% 21%;
+    --sidebar-ring: 78 9% 48%;
+    /* Geist ships with the app (src/fonts.css): no font comes from the internet.
+       --font-display is the design system's (tokens.css): a token it names is
+       never redefined here (src/lib/designTokens.test.mjs). */
+    --font-heading: "Geist", system-ui, sans-serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .dark {
+    --background: 30 10% 9%;
+    --foreground: 96 18% 89%;
+    --card: 20 8% 13%;
+    --card-foreground: 96 18% 89%;
+    --popover: 20 8% 13%;
+    --popover-foreground: 96 18% 89%;
+    --primary: 78 9% 48%;
+    --primary-foreground: 30 10% 9%;
+    --secondary: 34 18% 36%;
+    --secondary-foreground: 96 18% 89%;
+    --muted: 20 8% 16%;
+    --muted-foreground: 46 10% 62%;
+    --accent: 39 48% 60%;
+    --accent-foreground: 30 10% 9%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 96 18% 89%;
+    --border: 30 8% 21%;
+    --input: 30 8% 21%;
+    --ring: 78 9% 48%;
+    --chart-1: 78 9% 48%;
+    --chart-2: 39 48% 60%;
+    --chart-3: 34 18% 36%;
+    --chart-4: 46 10% 62%;
+    --chart-5: 96 18% 89%;
+    --sidebar-background: 30 10% 9%;
+    --sidebar-foreground: 96 18% 89%;
+    --sidebar-primary: 78 9% 48%;
+    --sidebar-primary-foreground: 30 10% 9%;
+    --sidebar-accent: 20 8% 16%;
+    --sidebar-accent-foreground: 96 18% 89%;
+    --sidebar-border: 30 8% 21%;
+    --sidebar-ring: 78 9% 48%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer base {
+  html,
+  body {
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+  }
+  /* Allow text selection only where it makes sense (inputs, editable areas) */
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    user-select: text;
+  }
+  /* Native-style: no text selection on interactive controls */
+  button,
+  a,
+  nav,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  img,
+  svg {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* Allow text selection on content elements (bible verses, lyrics, messages) */
+  pre,
+  .bible-content,
+  .chat-message-text,
+  [role='article'],
+  sup {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
+}
+
+@layer utilities {
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Scrollbars follow the console theme: thin, quiet track, warm thumb. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong, #4a4840) transparent;
+}
+
+/* Auto-hide scrollbars on scrollable containers for native mobile feel */
+.overflow-y-auto,
+.overflow-auto,
+.overflow-x-auto,
+.overflow-y-scroll,
+.overflow-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-y-scroll::-webkit-scrollbar,
+.overflow-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* The toast viewport (src/components/ui/toast.jsx, generated) is a fixed box
+   in the bottom-right corner, there even with no toast: it swallowed clicks
+   on whatever sits under it (a console control near the bottom edge). Clicks go
+   through it; the toasts themselves are pointer-events-auto. */
+.fixed.z-\[100\].max-h-screen.flex-col-reverse { pointer-events: none; }
+
+/* The browser preview's strip (PreviewBanner, npm run dev only). */
+.keryx-preview-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 10000; height: 20px; display: flex; align-items: center; justify-content: center; font: 600 10px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; color: #1a1300; background: #f5b83d; pointer-events: none; }
+html.keryx-preview .console { top: 20px; }
+/* Narrow windows lay the console out in the page flow instead. */
+html.keryx-preview #root { padding-top: 20px; }

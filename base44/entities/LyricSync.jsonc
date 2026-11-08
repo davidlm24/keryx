@@ -1,0 +1,122 @@
+{
+  "name": "LyricSync",
+  "type": "object",
+  "properties": {
+    "song_title": {
+      "type": "string",
+      "description": "T\u00edtulo da m\u00fasica"
+    },
+    "artist": {
+      "type": "string",
+      "description": "Artista da m\u00fasica"
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Slides da letra"
+    },
+    "slide_index": {
+      "type": "number",
+      "default": 0,
+      "description": "\u00cdndice do slide atual"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff"
+    },
+    "text_color_2": {
+      "type": "string"
+    },
+    "background_image": {
+      "type": "string"
+    },
+    "font_size": {
+      "type": "string",
+      "default": "large"
+    },
+    "font_family": {
+      "type": "string",
+      "default": "sans"
+    },
+    "text_effect": {
+      "type": "string",
+      "default": "shadow"
+    },
+    "overlays": {
+      "type": "array",
+      "description": "Camadas sobrepostas \u00e0 proje\u00e7\u00e3o principal (logos, an\u00fancios, texto)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "logo",
+              "announcement",
+              "text",
+              "image"
+            ],
+            "description": "Tipo de overlay"
+          },
+          "content": {
+            "type": "string",
+            "description": "URL para imagem/logo, texto para an\u00fancio/texto"
+          },
+          "x": {
+            "type": "number",
+            "description": "Posi\u00e7\u00e3o X em percentagem (0-100)"
+          },
+          "y": {
+            "type": "number",
+            "description": "Posi\u00e7\u00e3o Y em percentagem (0-100)"
+          },
+          "width": {
+            "type": "number",
+            "description": "Largura em percentagem (0-100)"
+          },
+          "opacity": {
+            "type": "number",
+            "default": 1
+          },
+          "z_index": {
+            "type": "number",
+            "default": 10
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "stopped"
+      ],
+      "default": "active",
+      "description": "Status da proje\u00e7\u00e3o de letra"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Unix ms - para ordenar o mais recente"
+    }
+  },
+  "required": [
+    "timestamp"
+  ]
+}

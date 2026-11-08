@@ -1,0 +1,71 @@
+// Where an output opens, as the select that picks it says it: Automático,
+// Sempre numa janela or one of the monitors (electron/outputs.cjs'
+// `assignment.target`: "auto" | "window" | { id, label, width, height }).
+// One module for the Editor da tela's Destino and the Saídas popover, so both
+// spell the choices the same way. Pure: no I/O, no React; console only.
+
+const sizeOf = (d) => ({ width: d.bounds?.width || d.width, height: d.bounds?.height || d.height });
+
+// A monitor's size as the church knows it (owner 2026-11-08: a 2880×1620
+// monitor at 200 % read 1440×810): Electron gives sizes in DIPs, the pixels
+// are those times the Windows scale, which goes beside them when it is not
+// 100 %. Only for showing: placement keeps DIPs (placementTarget, the main
+// process's findDisplay and the settings file).
+export function pixelSize(d) {
+    const { width, height } = sizeOf(d || {});
+    const scale = Number(d?.scaleFactor) > 0 ? Number(d.scaleFactor) : 1;
+    const size = `${Math.round(width * scale)}×${Math.round(height * scale)}`;
+    return scale === 1 ? size : `${size} · ${Math.round(scale * 100)} %`;
+}
+
+// The select's value for an assignment: "auto", "window", "d:<id>" (a monitor
+// that is on) or "gone:<id>" (the one chosen is off now).
+export function placementValue(assignment, displays = []) {
+    const t = assignment?.target;
+    if (t === "window") return "window";
+    if (!t || t === "auto" || typeof t !== "object") return "auto";
+    return displays.some((d) => d.id === t.id) ? `d:${t.id}` : `gone:${t.id}`;
+}
+
+// What choosing `value` asks of the main process (`displays.set(key, { target })`).
+// A monitor that is no longer there gives null: nothing to ask.
+export function placementTarget(value, displays = []) {
+    if (value === "auto" || value === "window") return value;
+    const d = String(value).startsWith("d:") ? displays.find((x) => `d:${x.id}` === value) : null;
+    return d ? { id: d.id, label: d.label, ...sizeOf(d) } : null;
+}
+
+// The options, in the Editor's order: the two modes, every monitor that is on
+// ("Tela N · L×A", N as the list counts them, the size in pixels: pixelSize) and, last and disabled, the one
+// the output was chosen for when it is off now.
+export function placementOptions(displays = [], assignment = null) {
+    const options = [
+        { value: "auto", label: "Automático" },
+        { value: "window", label: "Sempre numa janela" },
+        ...displays.map((d, i) => ({ value: `d:${d.id}`, label: `Tela ${i + 1} · ${pixelSize(d)}` })),
+    ];
+    const t = assignment?.target;
+    if (t && typeof t === "object" && !displays.some((d) => d.id === t.id)) {
+        options.push({ value: `gone:${t.id}`, label: `${t.width}×${t.height} (desligada)`, disabled: true });
+    }
+    return options;
+}
+
+// The short word for the popover's button: "Automático", "Janela", "Tela 2",
+// or the off monitor's size ("1280×720 (desligada)"), with `off` set so the
+// button turns amber. With the main process's `placement` ({ mode,
+// displayId, missing }: where the output is, or would go if it opened now),
+// Automático says what it chose (owner 2026-11-08, mockup P1):
+// "Automático · Tela 3" or "Automático · janela".
+export function placementWord(assignment, displays = [], placement = null) {
+    const t = assignment?.target;
+    if (t === "window") return { text: "Janela", off: false };
+    if (!t || t === "auto" || typeof t !== "object") {
+        const n = placement?.mode === "fullscreen" ? displays.findIndex((d) => d.id === placement.displayId) + 1 : 0;
+        if (n) return { text: `Automático · Tela ${n}`, off: false };
+        if (placement?.mode === "window") return { text: "Automático · janela", off: false };
+        return { text: "Automático", off: false };
+    }
+    const n = displays.findIndex((d) => d.id === t.id) + 1;
+    return n ? { text: `Tela ${n}`, off: false } : { text: `${t.width}×${t.height} (desligada)`, off: true };
+}

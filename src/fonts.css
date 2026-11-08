@@ -1,0 +1,14 @@
+/* The fonts KERYX ships with: one family for the console and every screen
+   (projector windows, network screens), so a lyric or a verse breaks into
+   the same lines everywhere and nothing depends on the internet.
+   Geist (variable, weights 100-900) by Vercel, SIL Open Font License 1.1:
+   the license ships in the build as /fonts/Geist-OFL.txt (public/fonts).
+   "block": a projected line never re-wraps when the font arrives; the file
+   is local, so the wait is not noticeable. */
+@font-face {
+  font-family: "Geist";
+  src: url("./assets/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}

@@ -1,0 +1,56 @@
+{
+  "name": "Quiz",
+  "type": "object",
+  "properties": {
+    "question": {
+      "type": "string",
+      "description": "Pergunta do quiz"
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Op\u00e7\u00f5es de resposta"
+    },
+    "correct_index": {
+      "type": "number",
+      "description": "\u00cdndice da resposta correta (0-based)"
+    },
+    "bible_reference": {
+      "type": "string",
+      "description": "Refer\u00eancia b\u00edblica relacionada (opcional)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "bible",
+        "general",
+        "music",
+        "history"
+      ],
+      "default": "bible",
+      "description": "Categoria do quiz"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ],
+      "default": "medium",
+      "description": "Dificuldade"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pergunta ativa para proje\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "question",
+    "options",
+    "correct_index"
+  ]
+}

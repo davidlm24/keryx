@@ -1,0 +1,32 @@
+{
+  "name": "VideoControl",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "play",
+        "pause",
+        "seek",
+        "volume"
+      ],
+      "description": "A\u00e7\u00e3o de controlo do v\u00eddeo"
+    },
+    "time": {
+      "type": "number",
+      "description": "Timestamp para seek (em segundos)"
+    },
+    "volume": {
+      "type": "number",
+      "description": "Volume (0 a 1)"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Timestamp Unix para evitar comandos duplicados"
+    }
+  },
+  "required": [
+    "action",
+    "timestamp"
+  ]
+}

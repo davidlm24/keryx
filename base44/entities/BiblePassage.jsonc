@@ -1,0 +1,113 @@
+{
+  "name": "BiblePassage",
+  "type": "object",
+  "properties": {
+    "reference": {
+      "type": "string",
+      "description": "Refer\u00eancia b\u00edblica (ex: Jo\u00e3o 3:16-17)"
+    },
+    "book": {
+      "type": "string",
+      "description": "Livro da B\u00edblia"
+    },
+    "chapter": {
+      "type": "number",
+      "description": "Cap\u00edtulo"
+    },
+    "verses": {
+      "type": "string",
+      "description": "Vers\u00edculos (ex: 16-17)"
+    },
+    "text": {
+      "type": "string",
+      "description": "Texto completo da passagem"
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Dura\u00e7\u00e3o do slide em segundos"
+          }
+        }
+      },
+      "description": "Slides individuais com dura\u00e7\u00e3o"
+    },
+    "version": {
+      "type": "string",
+      "enum": [
+        "NVI",
+        "ARC",
+        "ARA",
+        "NAA",
+        "NTLH"
+      ],
+      "default": "NVI",
+      "description": "Vers\u00e3o da B\u00edblia"
+    },
+    "font_size": {
+      "type": "string",
+      "enum": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge"
+      ],
+      "default": "large",
+      "description": "Tamanho da letra na proje\u00e7\u00e3o"
+    },
+    "font_family": {
+      "type": "string",
+      "enum": [
+        "sans",
+        "serif",
+        "mono",
+        "cursive",
+        "arial",
+        "georgia",
+        "times",
+        "verdana"
+      ],
+      "default": "sans",
+      "description": "Tipo de fonte na proje\u00e7\u00e3o"
+    },
+    "text_effect": {
+      "type": "string",
+      "enum": [
+        "shadow",
+        "glow",
+        "outline",
+        "double-shadow",
+        "3d",
+        "neon",
+        "none"
+      ],
+      "default": "shadow",
+      "description": "Efeito visual do texto"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "description": "Cor do texto"
+    },
+    "text_color_2": {
+      "type": "string",
+      "description": "Segunda cor para gradiente (opcional)"
+    },
+    "background_image": {
+      "type": "string",
+      "description": "URL da imagem de fundo personalizada"
+    }
+  },
+  "required": [
+    "reference",
+    "text"
+  ]
+}

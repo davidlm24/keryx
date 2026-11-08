@@ -1,0 +1,140 @@
+{
+  "name": "ProjectionDevice",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do dispositivo"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "projector",
+        "tv",
+        "tablet",
+        "pc"
+      ],
+      "default": "projector",
+      "description": "Tipo de dispositivo"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "lyrics",
+        "media",
+        "control",
+        "bible",
+        "announcements",
+        "mixed"
+      ],
+      "default": "lyrics",
+      "description": "Fun\u00e7\u00e3o do dispositivo"
+    },
+    "pairing_code": {
+      "type": "string",
+      "description": "C\u00f3digo de pareamento"
+    },
+    "is_online": {
+      "type": "boolean",
+      "default": false,
+      "description": "Dispositivo online"
+    },
+    "last_seen": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u00daltima atividade"
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "text_color": {
+          "type": "string",
+          "default": "#ffffff"
+        },
+        "text_color_2": {
+          "type": "string"
+        },
+        "font_family": {
+          "type": "string",
+          "default": "sans"
+        },
+        "font_size": {
+          "type": "string",
+          "default": "large"
+        },
+        "text_effect": {
+          "type": "string",
+          "default": "shadow"
+        },
+        "background_image": {
+          "type": "string"
+        },
+        "transition": {
+          "type": "string",
+          "default": "fade"
+        }
+      }
+    },
+    "current_output": {
+      "type": "object",
+      "properties": {
+        "content_type": {
+          "type": "string",
+          "enum": [
+            "lyrics",
+            "bible",
+            "video",
+            "image",
+            "announcement",
+            "countdown",
+            "blank",
+            "logo"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "slides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "slide_index": {
+          "type": "number",
+          "default": 0
+        },
+        "media_url": {
+          "type": "string"
+        },
+        "background_image": {
+          "type": "string"
+        },
+        "bible_reference": {
+          "type": "string"
+        },
+        "countdown_duration": {
+          "type": "number"
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}

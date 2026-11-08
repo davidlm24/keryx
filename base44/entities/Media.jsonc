@@ -1,0 +1,104 @@
+{
+  "name": "Media",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo da m\u00eddia"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "video",
+        "powerpoint",
+        "image",
+        "pdf",
+        "gif",
+        "audio",
+        "font"
+      ],
+      "description": "Tipo de m\u00eddia; font = uma face de fonte da igreja (Rodada HF1), fora de toda lista de m\u00eddia"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL do arquivo"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "URL da miniatura"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "O link do YouTube de onde o arquivo foi baixado (Baixar para a Mídia, 2026-10-27); vazio = veio do computador"
+    },
+    "youtube_state": {
+      "type": "string",
+      "enum": ["ok", "blocked", "missing"],
+      "description": "Um link do YouTube: ok = toca fora do YouTube, blocked = o dono não deixa (só baixado), missing = privado ou apagado; vazio = ainda não conferido"
+    },
+    "video_codec": {
+      "type": "string",
+      "enum": ["avc1", "hvc1", "hev1", "av01", "vp09", "webm", "other"],
+      "description": "O codec de um vídeo, lido dos bytes do arquivo (src/lib/videoCodec.js): avc1 = H.264, hvc1/hev1 = H.265 (HEVC), av01 = AV1, vp09 = VP9; vazio = ainda não lido"
+    },
+    "video_bit_depth": {
+      "type": "number",
+      "description": "Bits por amostra do vídeo (8, 10, 12), quando o arquivo diz"
+    },
+    "video_chroma": {
+      "type": "string",
+      "enum": ["420", "422", "444", "400"],
+      "description": "Como a cor do vídeo é amostrada (4:2:0 é o que as telas tocam), quando o arquivo diz"
+    },
+    "duration": {
+      "type": "number",
+      "description": "Dura\u00e7\u00e3o em segundos (para v\u00eddeos)"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Imagem da p\u00e1gina (arquivo na pasta de m\u00eddia)"
+          },
+          "w": {
+            "type": "number",
+            "description": "Largura da imagem em px"
+          },
+          "h": {
+            "type": "number",
+            "description": "Altura da imagem em px"
+          }
+        }
+      },
+      "description": "As p\u00e1ginas de um PDF como imagens, na ordem, feitas pelo console ao importar (Apresenta\u00e7\u00f5es)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o da m\u00eddia"
+    },
+    "category": {
+      "type": "string",
+      "default": "Outros",
+      "description": "A categoria da igreja na M\u00eddia, pelo nome (User.media_categories); as linhas antigas guardam sermon, worship, announcement, testimony ou other, lidas como Prega\u00e7\u00e3o, Louvor, Avisos, Testemunho e Outros (src/lib/console/mediaCategories.js); background = a biblioteca de fundos, font = as fontes da igreja"
+    },
+    "font": {
+      "type": "object",
+      "properties": {
+        "family": { "type": "string", "description": "O nome da fam\u00edlia, como o tema a chama (ProjectionTheme.font_family)" },
+        "weight": { "type": "string", "description": "O peso desta face: 100 a 900, ou uma faixa (\"100 900\") numa fonte vari\u00e1vel" },
+        "style": { "type": "string", "enum": ["normal", "italic"], "description": "Normal ou it\u00e1lica" },
+        "face": { "type": "string", "description": "O nome da face no computador de onde veio (Regular, Bold Italic\u2026)" },
+        "origin": { "type": "string", "enum": ["pc", "file"], "description": "De onde veio: a lista de fontes do computador ou um arquivo escolhido" }
+      },
+      "description": "Uma face de fonte da igreja (type e category font): o arquivo \u00e9 file_url, copiado para a pasta de m\u00eddia, sincronizado e servido a toda tela (src/lib/fonts.js)"
+    }
+  },
+  "required": [
+    "title",
+    "type",
+    "file_url"
+  ]
+}

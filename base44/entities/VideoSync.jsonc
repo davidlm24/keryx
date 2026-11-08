@@ -1,0 +1,31 @@
+{
+  "name": "VideoSync",
+  "type": "object",
+  "properties": {
+    "video_url": {
+      "type": "string",
+      "description": "URL do v\u00eddeo a reproduzir"
+    },
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo da m\u00fasica"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Timestamp para sincroniza\u00e7\u00e3o"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "played"
+      ],
+      "default": "active",
+      "description": "Status do v\u00eddeo"
+    }
+  },
+  "required": [
+    "video_url",
+    "timestamp"
+  ]
+}
