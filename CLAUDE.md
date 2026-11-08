@@ -2110,8 +2110,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the Biblioteca's search and the Bíblia's marks survive a tab switch), a section only when `state.caps` has its cap
   (a v1 console: `isV1`), only the control pressed busy, S actions off
   while locked or stale (25 s without a frame), T always on; new items are
-  picked, then sent from the sticky "Enviar ao ar · título"; Encerrar and
-  Destravar are held. **The Controle's five tabs** (the redesign, owner
+  picked, then sent from **one send bar, the dock's first row** (owner
+  2026-11-08, "mais simples" N3 = A: the Biblioteca, the Bíblia and the
+  Setlist put it in the dock's slot — `SendSlot`/`SendBar` in remote/parts.jsx,
+  a portal —, the "no ar" line giving way while it is there, × undoing the
+  pick); Encerrar and Destravar are held. **What is on air is controlled
+  from the page you are on** (N7 = A): the Biblioteca shows the song on air
+  (`kind` lyrics) as a row and its slides right there (`AirSlides.jsx`, a tap
+  = `goto`, opened by itself after this phone sends a song); the Bíblia's
+  chapter on air marks its verse on air and the next (`bibleOnAir`, from the
+  slides' "v. 14" labels; a tap = `goto`; marking verses is for a chapter not
+  on air); the dock's arrows name the verses (`arrowLabels`); **No ar is the
+  Presenter**: the slide on air big on a stage, the next under it, big
+  Anterior | Próximo (the dock's arrows give way, `.rm.is-presenter`),
+  "Slides" for every card, then the Setlist strip. **The Controle's five tabs** (the redesign, owner
   2026-10-28, mockup "Celular · redesign", M1–M6 = A; it replaced Rodada
   Q's Ao vivo and No ar bar): **Biblioteca** (where the phone opens and
   stays after a send — `MediaTab.jsx`, the search then the chips),
@@ -2138,10 +2150,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   controls): lyrics or a passage — what is on air (`nowBarInfo`, a tap
   opens Apresentar) · "Player ▸" when a sound plays too · Encerrar, then
   Anterior | Próximo across the whole width; a video or an audio — ⏯ · the
-  title and its progress (a tap opens the player sheet: ⏮ −10 +10 ⏭, the
-  volume) · "Letra ▸" · the eye · Encerrar (`dockModes`: Player by itself
+  title and its progress · "Letra ▸" · Encerrar, then **the player's rows in
+  the dock, no sheet** (N5 = A): ⏮ ↺10 ⏯ 10↻ ⏭ with their words, and the
+  eye, the volume and mute (`dockModes`: Player by itself
   when only something plays, the operator's pick kept while it means
   something). After this phone's Encerrar the dock stays for its Desfazer.
+  **Glass on what floats** (N10 = A): the header, the dock, the tab bar and
+  the sheets are translucent with a blur; in portrait the dock and the tab
+  bar float over the lists, which pad by their heights (`--rm-tabs`,
+  `--rm-dock`, `useBottomBars` in parts.jsx); lists and text stay solid; a
+  device that reduces transparency or a browser without backdrop-filter
+  gets the solid ground; landscape keeps its rail in the flow.
   **The phone shows no toast for what went well** (vistoria 2026-11-07:
   "Próximo slide." covered the controls): only refusals, "Projeção
   encerrada" and the hold hint, right above the dock (`Toast docked`,
@@ -2163,8 +2182,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Bíblia** reads the chapter verse by verse (`bibleFind` with `whole`: the
   chapter's `verses`, each ≤ `limits.verseText`, ≤ `limits.chapterText` in
   all; `verseRows`, `chapterArgs`) — a tap marks one, another makes the
-  range (gold, selecionado) — with a compact bar at the bottom, Livro ▾ ·
-  Capítulo ▾ · Versão ▾ · the lupa, each opening "Escolher a passagem"
+  range (gold, selecionado) — with **its bar on top**, under the header
+  (N4 = A: "Mateus 5 ▾" — book and chapter in one —, Versão ▾ and the lupa;
+  the empty page starts on Escrever a referência), each opening "Escolher a passagem"
   (the reference typed, or books → chapters, eight cells across, Livro |
   Capítulo a `.rm-seg.is-sheet` segment); an older
   console sends no `verses` and the phone falls back to the prose and the

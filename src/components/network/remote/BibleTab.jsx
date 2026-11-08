@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "@/components/console/Icon";
 import { remoteCall } from "@/lib/console/remoteClient";
-import { BIBLE_SECTIONS, bibleArgs, biblePlanArgs, bibleVersions, bookOf, chapterArgs, fieldBook, fieldRef, refLabel, tapVerse, verseRows } from "@/lib/network/remoteView";
-import { Cmd, Sheet } from "./parts";
+import { BIBLE_SECTIONS, bibleArgs, bibleOnAir, biblePlanArgs, bibleVersions, bookOf, canRun, chapterArgs, fieldBook, fieldRef, refLabel, tapVerse, verseRows } from "@/lib/network/remoteView";
+import { Cmd, SendBar, Sheet } from "./parts";
 
 // Bíblia (owner 2026-10-28, M4 = A): the chapter's text takes the screen,
 // verse by verse — a tap marks one, a tap on another makes the range — and a
@@ -15,7 +15,13 @@ import { Cmd, Sheet } from "./parts";
 // "+ Setlist" beside it (a console with the `plan` cap) only with verses.
 // readOnly (the Equipe, Rodada Q PR4): the text to read, nothing to mark or
 // send — the Equipe never touches the air.
-export default function BibleTab({ state, caps, c, readOnly = false }) {
+// "Mais simples" (owner 2026-11-08): the bar is on top, under the header
+// (N4 = A: "Mateus 5 ▾" — book and chapter in one —, the version, the lupa),
+// so the bottom is only the send bar and the dock; the send bar is the dock's
+// first row (N3); and the chapter on air controls itself (N7 = A): its verse
+// on air green, the next with the grey ring, a tap puts that verse on air —
+// marking verses is for a chapter that is not on air.
+export default function BibleTab({ live = null, state, caps, c, readOnly = false, active = true }) {
     const versions = bibleVersions(state?.bible);
     const [version, setVersion] = useState("");
     const shownVersion = version || state?.bible?.version || versions[0]?.id || "";
@@ -60,23 +66,47 @@ export default function BibleTab({ state, caps, c, readOnly = false }) {
     const plan = !readOnly && caps.has("plan") ? biblePlanArgs(ref, version) : null;
     const rows = found?.ok ? verseRows(found.verses, ref) : [];
     const marked = ref?.verseStart != null;
-    const tap = (n) => !readOnly && setRef((r) => tapVerse(r, n));
+    // N7: this chapter on air, a tap goes to that verse's slide.
+    const air = readOnly ? null : bibleOnAir(live?.content, ref);
+    const canGoto = canRun(caps, "goto");
+    const tap = (n) => {
+        if (readOnly) return;
+        if (air && !marked && canGoto && air.slideOf(n) != null) { c.run(`goto-${n}`, "goto", { index: air.slideOf(n) }); return; }
+        setRef((r) => tapVerse(r, n));
+    };
 
+    const bar = (
+        <div className="rm-bbar is-top">
+            <button type="button" className="rm-pick is-grow" onClick={() => setSheet({ step: book ? "chapter" : "book", book: ref?.book || null })} aria-label={`Passagem: ${book ? `${book.name} ${ref?.chapter || ""}` : "escolher"}`}>
+                <span>{book ? `${book.name}${ref?.chapter ? ` ${ref.chapter}` : ""}` : "Livro e capítulo"}</span><Icon name="chevron-down" size={15} />
+            </button>
+            {versions.length > 1 && (
+                <button type="button" className="rm-pick" onClick={() => setSheet({ step: "version" })} aria-label={`Versão: ${shownVersion}`}>
+                    <span>{shownVersion}</span><Icon name="chevron-down" size={15} />
+                </button>
+            )}
+            <button type="button" className="rm-pick is-icon" onClick={() => setSheet({ step: "book", book: null, typing: true })} aria-label="Escrever a referência"><Icon name="search" size={19} /></button>
+        </div>
+    );
+    // The send bar: marked verses, or a chapter that is not the one on air.
+    const sending = !readOnly && ref?.chapter && (marked || !air);
     return (
         <div className="rm-main is-split">
+            {bar}
             <div className="rm-scroll rm-btext" ref={scroller}>
                 {!ref?.chapter && (
                     <div className="rm-pempty">
                         <span className="rm-pring" aria-hidden="true"><Icon name="book" size={26} /></span>
                         <b>Escolha a passagem</b>
-                        <span>Pelo livro e o capítulo na barra de baixo, ou escreva como “jo 3 16”.</span>
-                        <button type="button" className="rm-b" onClick={() => setSheet({ step: ref?.book ? "chapter" : "book", book: ref?.book || null })}>Escolher a passagem</button>
+                        <span>Escreva como “jo 3 16”, ou escolha o livro e o capítulo.</span>
+                        <button type="button" className="rm-b is-go" onClick={() => setSheet({ step: "book", book: null, typing: true })}><Icon name="search" size={18} />Escrever a referência</button>
+                        <button type="button" className="rm-b" onClick={() => setSheet({ step: ref?.book ? "chapter" : "book", book: ref?.book || null })}>Escolher o livro</button>
                     </div>
                 )}
                 {ref?.chapter && (
                     <div className="rm-pttl">
                         <b>{book ? `${book.name} ${ref.chapter}` : label}</b>
-                        <small>{readOnly || !rows.length ? sendVersion : marked ? `${ref.verseStart === ref.verseEnd ? `versículo ${ref.verseStart}` : `versículos ${ref.verseStart}–${ref.verseEnd}`} · ${sendVersion}` : `Toque para marcar · ${sendVersion}`}</small>
+                        <small>{readOnly || !rows.length ? sendVersion : marked ? `${ref.verseStart === ref.verseEnd ? `versículo ${ref.verseStart}` : `versículos ${ref.verseStart}–${ref.verseEnd}`} · ${sendVersion}` : air ? `No ar · toque num versículo para passar · ${sendVersion}` : `Toque para marcar · ${sendVersion}`}</small>
                     </div>
                 )}
                 {ref?.chapter && finding && !found && <p className="rm-hint">Buscando no computador…</p>}
@@ -86,7 +116,7 @@ export default function BibleTab({ state, caps, c, readOnly = false }) {
                         {rows.map((v) => readOnly
                             ? <p key={v.n} className="rm-vrow" data-v={v.n}><span className="rm-vn">{v.n}</span><span className="rm-vt">{v.text}</span></p>
                             : (
-                                <button key={v.n} type="button" data-v={v.n} className={`rm-vrow ${v.mark ? `is-${v.mark}` : ""}`} aria-pressed={Boolean(v.mark)} onClick={() => tap(v.n)}>
+                                <button key={v.n} type="button" data-v={v.n} className={`rm-vrow ${v.mark ? `is-${v.mark}` : ""} ${!marked && air?.stateOf(v.n) ? `is-on-${air.stateOf(v.n)}` : ""}`} aria-pressed={Boolean(v.mark)} onClick={() => tap(v.n)}>
                                     <span className="rm-vn">{v.n}</span><span className="rm-vt">{v.text}</span>
                                 </button>
                             ))}
@@ -112,34 +142,18 @@ export default function BibleTab({ state, caps, c, readOnly = false }) {
                     </>
                 )}
             </div>
-            {ref?.chapter && (
-                <div className="rm-foot">
-                    {readOnly
-                        ? <p className="rm-hint">Só leitura: quem põe no ar é o operador.</p>
-                        : (
+            {ref?.chapter && readOnly && <div className="rm-foot"><p className="rm-hint">Só leitura: quem põe no ar é o operador.</p></div>}
+            {sending && (
+                <SendBar active={active}>
                             <div className="rm-sendrow">
                                 <Cmd c={c} k="bibleSend" action="bibleSend" args={bibleArgs(ref, version)} className="is-go" disabled={found ? !found.ok : false}>Enviar {label} · {sendVersion}</Cmd>
                                 {plan && (added === `${label}|${version}`
                                     ? <span className="rm-b is-plan is-added" role="status"><Icon name="check" size={18} />Na setlist</span>
                                     : <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" disabled={found ? !found.ok : false} label={`Adicionar ${label} à setlist`} then={() => setAdded(`${label}|${version}`)}><Icon name="plus" size={18} />Setlist</Cmd>)}
+                                {marked && <button type="button" className="rm-b rm-unpick" onClick={() => setRef((r) => ({ ...r, verseStart: null, verseEnd: null }))} aria-label="Desmarcar os versículos"><Icon name="x" size={18} /></button>}
                             </div>
-                        )}
-                </div>
+                </SendBar>
             )}
-            <div className="rm-bbar">
-                <button type="button" className="rm-pick is-grow" onClick={() => setSheet({ step: "book", book: ref?.book || null })} aria-label={`Livro: ${book?.name || "escolher"}`}>
-                    <span>{book?.name || "Livro"}</span><Icon name="chevron-down" size={15} />
-                </button>
-                <button type="button" className="rm-pick" disabled={!book} onClick={() => setSheet({ step: "chapter", book: book?.name || null })} aria-label={`Capítulo: ${ref?.chapter || "escolher"}`}>
-                    <span>{ref?.chapter || "Cap."}</span><Icon name="chevron-down" size={15} />
-                </button>
-                {versions.length > 1 && (
-                    <button type="button" className="rm-pick" onClick={() => setSheet({ step: "version" })} aria-label={`Versão: ${shownVersion}`}>
-                        <span>{shownVersion}</span><Icon name="chevron-down" size={15} />
-                    </button>
-                )}
-                <button type="button" className="rm-pick is-icon" onClick={() => setSheet({ step: "book", book: null, typing: true })} aria-label="Escrever a referência"><Icon name="search" size={19} /></button>
-            </div>
 
             {sheet && sheet.step !== "version" && <PassageSheet start={sheet} current={ref} onOpen={open} onClose={() => setSheet(null)} />}
             {sheet?.step === "version" && (

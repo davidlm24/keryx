@@ -7,7 +7,7 @@ import {
     PEDIDO_LIMITS, pedidoArgs, PICK_CHIPS, chipOf, requestsEvery, SEARCH_DEBOUNCE_MS, SEEN_KEY, songSub, tabsFor, TAG_TEXT, teamSetlistRows, teamStrip,
     threadRows,
 } from "@/lib/network/remoteView";
-import { Sheet, TabBar, Toast } from "./parts";
+import { Sheet, TabBar, Toast, useBottomBars } from "./parts";
 import { SWAP_TO } from "@/lib/network/remoteView";
 
 // The Equipe (Rodada Q PR4; the owner's mockup, S8 = A): the same /Remote
@@ -25,6 +25,9 @@ import { SWAP_TO } from "@/lib/network/remoteView";
 // drawn as plain text.
 export default function EquipeView({ live, state, stale, cmd }) {
     const [tab, setTab] = useState("chat");
+    // N10: the glass tab bar floats over the lists (portrait).
+    const [root, setRoot] = useState(null);
+    useBottomBars(root);
     const [name, setName] = useStoredName();
     const [asking, setAsking] = useState(null);
     const [pedido, setPedido] = useState(null);
@@ -63,7 +66,7 @@ export default function EquipeView({ live, state, stale, cmd }) {
     const pedidoSent = () => { setPedido(null); setTab("chat"); };
 
     return (
-        <div className="net rm is-team">
+        <div className="net rm is-team" ref={setRoot}>
             <div className={`rm-strip is-${strip.tone}`}>
                 <span className="rm-dot" aria-hidden="true" />
                 <b aria-live="polite">{strip.text}</b>

@@ -153,6 +153,41 @@ export function presentRows(content) {
     }));
 }
 
+// Controls on the page (owner 2026-11-08, "mais simples" N7 = A): the
+// passage on air controls itself from the Bíblia — the chapter open on the
+// phone is the one on air, so each verse knows its slide (the slides' "v. 14"
+// / "v. 14–16" labels, a split "(1/2)" counting as its first verse) and a tap
+// goes there. null when another chapter (or nothing of the Bíblia) is on air.
+//   -> null | { at, slideOf(n), stateOf(n) -> "air" | "next" | null }
+const VERSE_LABEL = /^v\.\s*(\d+)(?:\s*[–-]\s*(\d+))?/;
+export function bibleOnAir(content, ref) {
+    const r = content?.ref;
+    if (!r || !ref?.chapter || content?.kind !== "bible") return null;
+    if (String(r.book || "") !== String(ref.book || "") || Number(r.chapter) !== Number(ref.chapter)) return null;
+    const slides = content.slides || [];
+    const of = new Map();
+    slides.forEach((sl, i) => {
+        const m = VERSE_LABEL.exec(String(sl?.label || ""));
+        if (!m) return;
+        const from = Number(m[1]);
+        const to = Number(m[2] || m[1]);
+        for (let n = from; n <= to; n += 1) if (!of.has(n)) of.set(n, i);
+    });
+    if (!of.size) return null;
+    const at = content.index || 0;
+    const slideOf = (n) => (of.has(n) ? of.get(n) : null);
+    return { at, slideOf, stateOf: (n) => (slideOf(n) === at ? "air" : slideOf(n) === at + 1 ? "next" : null) };
+}
+// What the dock's arrows say: the verses of a passage ("v. 14" / "v. 16"),
+// else Anterior / Próximo.
+export function arrowLabels(content) {
+    const slides = content?.slides || [];
+    const at = content?.index || 0;
+    const verse = (i) => { const m = VERSE_LABEL.exec(String(slides[i]?.label || "")); return m ? `v. ${m[1]}` : ""; };
+    const bible = content?.kind === "bible";
+    return { prev: (bible && at > 0 && verse(at - 1)) || "Anterior", next: (bible && at + 1 < slides.length && verse(at + 1)) || "Próximo" };
+}
+
 // The dock's two sides (M2 = A): Letra while slides are on air, Player while
 // the console's player has something. The side the operator chose stays
 // while it still means something; else slides first, then the player.

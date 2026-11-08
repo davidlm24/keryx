@@ -3,9 +3,9 @@ import Icon from "@/components/console/Icon";
 import { useLiveNow, useLiveState } from "@/hooks/useLiveState";
 import { useChurch } from "@/hooks/useChurch";
 import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
-import { airHeader, bannerOf, canRun, capsOf, roleOf, tabsFor } from "@/lib/network/remoteView";
+import { airHeader, bannerOf, canRun, capsOf, presentRows, roleOf, tabsFor } from "@/lib/network/remoteView";
 import { useCommands, useKeepAwake, usePhoneState, useStale } from "@/components/network/remote/usePhone";
-import { Cmd, HoldButton, TabBar, Toast } from "@/components/network/remote/parts";
+import { Cmd, HoldButton, SendSlot, TabBar, Toast, useBottomBars } from "@/components/network/remote/parts";
 import ControlDock from "@/components/network/remote/ControlDock";
 
 // Only the dock draws at once; every tab, the Biblioteca the phone opens on
@@ -58,6 +58,12 @@ export default function RemoteView() {
     const [telas, setTelas] = useState(false);
     // The sections seen so far: each stays mounted (hidden) after.
     const [seen, setSeen] = useState(() => new Set(["library"]));
+    // N3: the dock's send slot, filled by the section on screen.
+    const [slot, setSlot] = useState(null);
+    // N10: the glass bars float over the lists (portrait); their heights
+    // keep the last row clear of them.
+    const [root, setRoot] = useState(null);
+    useBottomBars(root);
     const [touchLocked, setTouchLocked] = useState(false);
     // The dock's side, Letra or Player, when the operator picked one.
     const [dockMode, setDockMode] = useState(null);
@@ -100,8 +106,12 @@ export default function RemoteView() {
         );
     }
 
+    // N7: on No ar with slides on air the page is the Presenter, its own big
+    // arrows: the dock's give way (remote.css).
+    const presenter = shown === "present" && presentRows(live?.content).length > 0;
     return (
-        <div className="net rm">
+        <SendSlot.Provider value={slot}>
+        <div className={`net rm ${presenter ? "is-presenter" : ""}`} ref={setRoot}>
             <Header live={live} stale={stale} c={c} church={church.name} onTelas={canRun(caps, "black") || caps.has("lock") ? () => setTelas(true) : null} />
             {banner && (
                 <div className={`rm-ban is-${banner.tone}`} role="status">
@@ -112,15 +122,16 @@ export default function RemoteView() {
             <div className="rm-body">
                 <div className="rm-pane">
                     <Suspense fallback={<div className="rm-main" aria-busy="true" />}>
-                        {pane("library", <MediaTab caps={caps} c={c} setGate={setGate} />)}
+                        {pane("library", <MediaTab live={live} caps={caps} c={c} setGate={setGate} active={shown === "library"} />)}
                         {pane("present", <PresentTab live={live} state={state} caps={caps} c={c} onLibrary={() => setTab("library")} />)}
-                        {pane("setlist", <SetlistTab live={live} state={state} caps={caps} c={c} onRefresh={refresh} onBible={() => setTab("bible")} />)}
-                        {pane("bible", <BibleTab state={state} caps={caps} c={c} />)}
+                        {pane("setlist", <SetlistTab live={live} state={state} caps={caps} c={c} onRefresh={refresh} onBible={() => setTab("bible")} active={shown === "setlist"} />)}
+                        {pane("bible", <BibleTab live={live} state={state} caps={caps} c={c} active={shown === "bible"} />)}
                         {pane("more", <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />)}
                     </Suspense>
                     {/* The answer sits right above the dock, never over it. */}
                     <div className="rm-dockwrap">
                         <Toast toast={cmd.toast} onClose={cmd.closeToast} canUndo={canRun(caps, "undo")} onUndo={() => cmd.run("undo", "undo")} docked />
+                        <div className="rm-sendslot" ref={setSlot} />
                         <ControlDock live={live} state={state} caps={caps} c={c}
                             mode={dockMode} setMode={setDockMode} onPresent={() => setTab("present")}
                             ended={cmd.ended} onUndo={() => cmd.run("undo", "undo")} onShort={() => cmd.say("Segure para encerrar tudo.")} />
@@ -144,6 +155,7 @@ export default function RemoteView() {
                 </div>
             )}
         </div>
+        </SendSlot.Provider>
     );
 }
 
@@ -181,3 +193,4 @@ function Header({ live, stale, c, church, onTelas }) {
         </header>
     );
 }
+

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "@/components/console/Icon";
 import { remoteCall } from "@/lib/console/remoteClient";
 import { addToSetlistArgs, allowed, chipOf, emptyList, joinPage, libraryArgs, MEDIA_CHIPS, mediaRow, SEARCH_DEBOUNCE_MS, sendMediaArgs } from "@/lib/network/remoteView";
-import { Cmd, Sheet } from "./parts";
+import { Cmd, SendBar, Sheet } from "./parts";
+import AirSlides from "./AirSlides";
 
 // Biblioteca (the first tab, where the phone opens: owner 2026-10-28, M1 = A;
 // it was the Mídia tab): the console's library a page at a time (`library`, pages of 30, the
@@ -12,8 +13,12 @@ import { Cmd, Sheet } from "./parts";
 // asks where it plays (the projector or the video screens). The chips and
 // the search stay put and only the list scrolls (Rodada Q); "+ Setlist"
 // beside Enviar adds the row at the end of the culto's Setlist (`setlist.add`,
-// a console with the `plan` cap; avisos never).
-export default function MediaTab({ caps, c, setGate }) {
+// a console with the `plan` cap; avisos never). The send bar is the dock's
+// first row while something is picked (owner 2026-11-08, N3 = A), and a song
+// on air shows its slides right here (N7 = A: a tap goes to that slide; "‹"
+// back to the list) — opened by itself after this phone sends one.
+export default function MediaTab({ live, caps, c, setGate, active = true }) {
+    const [slidesOpen, setSlidesOpen] = useState(false);
     const [chip, setChip] = useState("songs");
     const [q, setQ] = useState("");
     const [query, setQuery] = useState("");
@@ -78,10 +83,25 @@ export default function MediaTab({ caps, c, setGate }) {
     // + Setlist never touches the air: a row can be picked for it while locked.
     const canPlan = caps.has("plan") && Boolean(addToSetlistArgs(chip, "x"));
     const done = () => { setPick(null); setWhere(false); };
+    // A song on air: its slides on this page (N7).
+    const song = live?.content?.kind === "lyrics" && (live.content.slides || []).length > 0 ? live.content : null;
+    const sentSong = () => { done(); if (chip === "songs") setSlidesOpen(true); };
     const plan = picked && caps.has("plan") ? addToSetlistArgs(chip, picked.id) : null;
     // A new chip or search starts the list from the top.
     useEffect(() => { if (scroller.current) scroller.current.scrollTop = 0; }, [key]);
 
+    if (slidesOpen && song) {
+        return (
+            <div className="rm-main is-split">
+                <div className="rm-fix rm-airhead">
+                    <button type="button" className="rm-back" onClick={() => setSlidesOpen(false)} aria-label="Voltar à lista"><Icon name="chevron-left" size={18} />Lista</button>
+                    <b>{song.title || "No ar"}</b>
+                    <span className="rm-tag is-air">no ar</span>
+                </div>
+                <div className="rm-scroll"><AirSlides live={live} caps={caps} c={c} /></div>
+            </div>
+        );
+    }
     return (
         <div className="rm-main is-split">
             <div className="rm-fix">
@@ -94,6 +114,13 @@ export default function MediaTab({ caps, c, setGate }) {
                 </div>
             </div>
             <div className="rm-scroll" ref={scroller}>
+                {song && chip === "songs" && (
+                    <button type="button" className="rm-onair" onClick={() => setSlidesOpen(true)}>
+                        <span className="rm-dot" aria-hidden="true" />
+                        <span className="rm-item-t"><b>{song.title || "No ar"}</b><small>No ar · toque para ver e passar os slides</small></span>
+                        <Icon name="chevron-right" size={18} />
+                    </button>
+                )}
                 <ul className="rm-list" role="list" aria-busy={loading || undefined}>
                     {rows.map((r) => (
                         <li key={r.id}>
@@ -117,20 +144,19 @@ export default function MediaTab({ caps, c, setGate }) {
                 {loading && <p className="rm-hint">Carregando…</p>}
                 {!list.done && !failed && <div ref={sentinel} className="rm-sentinel" aria-hidden="true" />}
             </div>
-            <div className="rm-foot">
-                {picked
-                    ? (
-                        <div className="rm-sendrow">
-                            {chip === "video"
-                                ? <button type="button" className="rm-b is-go" disabled={!canPick} onClick={() => setWhere(true)}>Enviar ao ar · {picked.title}</button>
-                                : <Cmd c={c} k="sendMedia" action="sendMedia" args={sendMediaArgs(chip, picked.id)} className="is-go" then={done}>Enviar ao ar · {picked.title}</Cmd>}
-                            {plan && (added === picked.id
-                                ? <span className="rm-b is-plan is-added" role="status"><Icon name="check" size={18} />Na setlist</span>
-                                : <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" label={`Adicionar ${picked.title} à setlist`} then={() => setAdded(picked.id)}><Icon name="plus" size={18} />Setlist</Cmd>)}
-                        </div>
-                    )
-                    : <p className="rm-hint">Toque num item para escolher.</p>}
-            </div>
+            {picked && (
+                <SendBar active={active}>
+                    <div className="rm-sendrow">
+                        {chip === "video"
+                            ? <button type="button" className="rm-b is-go" disabled={!canPick} onClick={() => setWhere(true)}>Enviar ao ar · {picked.title}</button>
+                            : <Cmd c={c} k="sendMedia" action="sendMedia" args={sendMediaArgs(chip, picked.id)} className="is-go" then={sentSong}>Enviar ao ar · {picked.title}</Cmd>}
+                        {plan && (added === picked.id
+                            ? <span className="rm-b is-plan is-added" role="status"><Icon name="check" size={18} />Na setlist</span>
+                            : <Cmd c={c} k="setlistAdd" action="setlist.add" args={plan} className="is-plan" label={`Adicionar ${picked.title} à setlist`} then={() => setAdded(picked.id)}><Icon name="plus" size={18} />Setlist</Cmd>)}
+                        <button type="button" className="rm-b rm-unpick" onClick={() => setPick(null)} aria-label="Desfazer a escolha"><Icon name="x" size={18} /></button>
+                    </div>
+                </SendBar>
+            )}
             {where && picked && (
                 <Sheet title="Onde passa o vídeo?" onClose={() => setWhere(false)}>
                     <p className="rm-hint is-left">{picked.title}</p>
