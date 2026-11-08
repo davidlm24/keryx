@@ -520,3 +520,20 @@ test("the Equipe's one thread: pedidos and chat merged by when they were sent (N
     // A tie in time: the id decides, the same order every time.
     assert.deepEqual(threadRows({ pedido: { rows: [{ id: "b", at: "t" }] }, chat: { rows: [{ id: "a", at: "t" }] } }).rows.map((r) => r.id), ["a", "b"]);
 });
+
+test("N7: the passage on air controls itself from the Bíblia; the arrows name its verses", async () => {
+    const { bibleOnAir, arrowLabels } = await import("./remoteView.js");
+    const content = { kind: "bible", ref: { book: "Mateus", chapter: 5 }, index: 1, slides: [{ label: "v. 13" }, { label: "v. 14–15" }, { label: "v. 16 (1/2)" }, { label: "v. 16 (2/2)" }] };
+    const air = bibleOnAir(content, { book: "Mateus", chapter: 5 });
+    assert.equal(air.slideOf(13), 0);
+    assert.equal(air.slideOf(15), 1);
+    assert.equal(air.slideOf(16), 2, "a split verse goes to its first part");
+    assert.equal(air.slideOf(20), null);
+    assert.deepEqual([13, 14, 15, 16].map(air.stateOf), [null, "air", "air", "next"]);
+    assert.equal(bibleOnAir(content, { book: "Mateus", chapter: 6 }), null, "another chapter");
+    assert.equal(bibleOnAir({ ...content, kind: "song" }, { book: "Mateus", chapter: 5 }), null);
+    assert.equal(bibleOnAir(content, null), null);
+    assert.deepEqual(arrowLabels(content), { prev: "v. 13", next: "v. 16" });
+    assert.deepEqual(arrowLabels({ ...content, index: 0 }), { prev: "Anterior", next: "v. 14" });
+    assert.deepEqual(arrowLabels({ kind: "song", slides: [{ label: "Refrão" }, {}], index: 0 }), { prev: "Anterior", next: "Próximo" });
+});

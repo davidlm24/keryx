@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "@/components/console/Icon";
 import { allowed } from "@/lib/network/remoteView";
 
@@ -134,4 +135,41 @@ export function TabBar({ tabs, shown, onTab, label, dots = {} }) {
             ))}
         </nav>
     );
+}
+
+// One "Enviar" (owner 2026-11-08, "mais simples" N3 = A): the page with
+// something picked (the Biblioteca, the Bíblia, the Setlist) puts its send
+// bar in one place, the dock's first row — the "no ar" line gives way while
+// it is there (remote.css, :has) and comes back after the send or ×. The
+// slot is the dock's (RemoteView); only the section on screen (active) fills it.
+export const SendSlot = createContext(null);
+export function SendBar({ active, children }) {
+    const slot = useContext(SendSlot);
+    if (!active || !slot) return null;
+    return createPortal(<div className="rm-sendbar">{children}</div>, slot);
+}
+
+// N10 (owner 2026-11-08): in portrait the dock and the tab bar float over
+// the lists, glass; the root keeps their heights as --rm-tabs and --rm-dock,
+// which the lists pad by and the dock sits above (remote.css). In landscape
+// the rail is in the flow and the CSS ignores them.
+// el: the page's root element (a callback ref: the page may draw a gate
+// first and its root only later).
+export function useBottomBars(el) {
+    useEffect(() => {
+        if (!el || typeof ResizeObserver === "undefined") return undefined;
+        const measure = () => {
+            const tabs = el.querySelector(":scope .rm-tabs");
+            const dock = el.querySelector(":scope .rm-dockwrap");
+            el.style.setProperty("--rm-tabs", `${tabs ? tabs.offsetHeight : 0}px`);
+            el.style.setProperty("--rm-dock", `${dock ? dock.offsetHeight : 0}px`);
+        };
+        const ro = new ResizeObserver(measure);
+        const watch = () => { ro.disconnect(); for (const n of el.querySelectorAll(".rm-tabs, .rm-dockwrap")) ro.observe(n); measure(); };
+        watch();
+        // The dock comes and goes with what is on air: watch it again then.
+        const mo = new MutationObserver(watch);
+        mo.observe(el, { childList: true, subtree: true });
+        return () => { ro.disconnect(); mo.disconnect(); };
+    }, [el]);
 }

@@ -3,7 +3,7 @@ import Icon from "@/components/console/Icon";
 import { remoteCall } from "@/lib/console/remoteClient";
 import { moveToIndex } from "@/lib/console/dropOrder";
 import { addToSetlistArgs, allowed, canRun, chipOf, dragShift, dragTarget, emptyList, joinPage, libraryArgs, mediaRow, SEARCH_DEBOUNCE_MS, setlistRows, TAG_TEXT } from "@/lib/network/remoteView";
-import { Cmd, Sheet, Toggle } from "./parts";
+import { Cmd, SendBar, Sheet, Toggle } from "./parts";
 
 // The Setlist (owner's pick "escolher"): a tap picks an item, then the sticky
 // "Enviar ao ar · título" sends it — never a send by a stray tap. Sections
@@ -17,7 +17,7 @@ import { Cmd, Sheet, Toggle } from "./parts";
 // opens the Bíblia for a passage (setlist.add; a console with the `plan` cap).
 const GAP = 3; // .rm-list's gap
 const EDGE = 56; // the drag scrolls the list this close to its edges
-export default function SetlistTab({ live, state, caps, c, onRefresh, onBible }) {
+export default function SetlistTab({ live, state, caps, c, onRefresh, onBible, active = true }) {
     const [pick, setPick] = useState(null);
     const [adding, setAdding] = useState(false);
     // The order the phone dropped, until the console's next state answers.
@@ -137,11 +137,15 @@ export default function SetlistTab({ live, state, caps, c, onRefresh, onBible })
                 </ul>
                 {state.truncated && <p className="rm-hint">A setlist continua no computador.</p>}
             </div>
-            <div className="rm-foot">
-                {picked
-                    ? <Cmd c={c} k="sendItem" action="sendItem" args={{ itemId: picked.id }} className="is-go is-wide" then={() => setPick(null)}>Enviar ao ar · {picked.title}</Cmd>
-                    : <p className="rm-hint">{canMove ? "Toque num item para escolher · arraste pela alça para mudar a ordem." : "Toque num item para escolher."}</p>}
-            </div>
+            {/* The send bar is the dock's first row (N3 = A). */}
+            {picked && (
+                <SendBar active={active}>
+                    <div className="rm-sendrow">
+                        <Cmd c={c} k="sendItem" action="sendItem" args={{ itemId: picked.id }} className="is-go" then={() => setPick(null)}>Enviar ao ar · {picked.title}</Cmd>
+                        <button type="button" className="rm-b rm-unpick" onClick={() => setPick(null)} aria-label="Desfazer a escolha"><Icon name="x" size={18} /></button>
+                    </div>
+                </SendBar>
+            )}
             {adding && <AddSheet c={c} onClose={() => setAdding(false)} onAdded={() => onRefresh?.()} onBible={() => { setAdding(false); onBible?.(); }} />}
         </div>
     );

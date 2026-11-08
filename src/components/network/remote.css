@@ -170,7 +170,8 @@
    whole width. A video or an audio: ⏯ · the title and its progress · Letra ▸
    · the eye · Encerrar. */
 .rm-dockwrap { flex: none; position: relative; }
-.rm-dock { display: flex; flex-direction: column; gap: 8px; padding: 8px max(10px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); background: var(--bg-1); border-top: 1px solid var(--line); }
+.rm-dock { display: flex; flex-direction: column; gap: 8px; padding: 8px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)); }
+.rm-dockwrap:has(.rm-dock), .rm-dockwrap:has(.rm-sendslot:not(:empty)) { background: var(--bg-1); border-top: 1px solid var(--line); }
 .rm-dk1 { display: flex; align-items: center; gap: 6px; min-height: 52px; }
 .rm-dk-mid { font-family: inherit; flex: 1 1 auto; min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; padding: 2px 6px; border: 0; border-radius: 12px; background: none; color: var(--fg-1); text-align: left; touch-action: manipulation; }
 .rm-dk-mid:active { background: var(--bg-3); }
@@ -486,6 +487,75 @@ button.rm-vrow:active { background: var(--bg-2); }
     .rm-dk2 { flex: none; width: min(320px, 40%); }
     .rm-b.rm-dk-arr, .rm-b.rm-act.rm-dk-end, .rm-b.rm-dk-play, .rm-b.rm-dk-eye { min-height: 48px; }
     .rm-b.rm-act { min-height: 48px; }
+}
+
+/* ---- "Mais simples" PR 2 (owner 2026-11-08, N3 N4 N5 N7 N10 = A) ---- */
+/* N3 · one send bar, the dock's first row while something is picked: the
+   "no ar" line gives way to it; × undoes the pick. */
+.rm-sendslot:not(:empty) { padding: 8px max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
+.rm-dockwrap:not(:has(.rm-dock)) .rm-sendslot:not(:empty) { padding-bottom: 8px; }
+.rm-dockwrap:has(.rm-sendslot:not(:empty)) .rm-dk1 { display: none; }
+.rm-sendbar .rm-b.is-go { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 52px; padding: 0 16px; }
+.rm-sendrow > .rm-unpick { flex: 0 0 52px; padding: 0; }
+/* N4 · the Bíblia's bar on top. */
+.rm-bbar.is-top { border-top: 0; border-bottom: 1px solid var(--line); background: var(--bg-1); }
+/* N7 · the chapter on air: its verse green, the next with the grey ring. */
+.rm-vrow.is-on-air { background: var(--live-bg); box-shadow: var(--live-ring); }
+.rm-vrow.is-on-next { box-shadow: var(--next-ring); }
+/* N7 · the Biblioteca: the song on air, its slides here. */
+.rm-onair { font-family: inherit; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 12px; border: 0; border-radius: 12px; background: var(--live-bg); box-shadow: var(--live-ring); color: var(--fg-1); text-align: left; touch-action: manipulation; }
+.rm-onair .rm-dot { flex: none; }
+.rm-fix.rm-airhead { flex-direction: row; align-items: center; gap: 10px; }
+.rm-airhead b { flex: 1 1 auto; min-width: 0; color: var(--fg-1); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* N7 · No ar is the Presenter: the slide on air on a stage, the next under
+   it, the big arrows; the dock's arrows give way. */
+.rm.is-presenter .rm-dk2 { display: none; }
+.rm-stage { display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 180px; padding: 18px 16px; border-radius: 18px; background: linear-gradient(160deg, color-mix(in srgb, var(--air) 22%, var(--bg-1)), var(--bg-1) 70%); box-shadow: var(--live-ring); }
+.rm-stage-k { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--air-fg); }
+.rm-stage-t { margin: 0; color: var(--fg-1); font-size: 28px; font-weight: 600; line-height: 1.35; white-space: pre-line; overflow-wrap: anywhere; }
+.rm-nextc { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border-radius: 14px; background: var(--bg-1); box-shadow: var(--next-ring); }
+.rm-nextc-t { color: var(--fg-2); font-size: 15px; line-height: 1.4; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.rm-pfoot { gap: 8px; }
+.rm-huge { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rm-huge > .rm-b { min-height: 104px; border-radius: 16px; font-size: 17px; }
+.rm-huge > .rm-b.is-go { background: var(--fg-1); border-color: var(--fg-1); color: var(--bg-0); }
+/* N5 · the player in the dock, no sheet: icons with their words. */
+.rm-dk-mid.is-static:active { background: none; }
+.rm-pad.is-dock { gap: 6px; }
+.rm-pad.is-dock .rm-ctl > .rm-b { min-height: 52px; flex-direction: column; gap: 2px; }
+.rm-ctl > .rm-b small { font-size: 12px; font-weight: 500; }
+
+/* N10 · glass on what floats: the header, the dock, the tab bar, the sheets
+   (lists and text stay solid). In portrait the dock and the tab bar float
+   over the lists, which pad by their heights (--rm-tabs, --rm-dock, kept by
+   useBottomBars); landscape keeps its rail in the flow. A device that
+   reduces transparency, or a browser with no backdrop-filter, gets the
+   solid ground. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .rm-head, .rm-strip, .rm-tabs, .rm-dockwrap:has(.rm-dock), .rm-dockwrap:has(.rm-sendslot:not(:empty)), .rm-bbar.is-top {
+        background: color-mix(in srgb, var(--bg-1) 62%, transparent);
+        -webkit-backdrop-filter: blur(22px) saturate(160%);
+        backdrop-filter: blur(22px) saturate(160%);
+    }
+    .rm-sheet {
+        background: color-mix(in srgb, var(--bg-2) 72%, transparent);
+        -webkit-backdrop-filter: blur(28px) saturate(170%);
+        backdrop-filter: blur(28px) saturate(170%);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg-1) 10%, transparent), 0 -14px 40px #000c;
+    }
+}
+@media (prefers-reduced-transparency: reduce) {
+    .rm-head, .rm-strip, .rm-tabs, .rm-dockwrap:has(.rm-dock), .rm-dockwrap:has(.rm-sendslot:not(:empty)), .rm-bbar.is-top { background: var(--bg-1); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .rm-sheet { background: var(--bg-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@container rm (max-width: 599px) {
+    .rm-body { position: relative; }
+    .rm .rm-tabs { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; }
+    .rm .rm-dockwrap { position: absolute; z-index: 2; left: 0; right: 0; bottom: var(--rm-tabs, 0px); }
+    .rm-sect > .rm-main:not(.is-split) { padding-bottom: calc(16px + var(--rm-tabs, 0px) + var(--rm-dock, 0px)); }
+    .rm-sect > .rm-main.is-split > .rm-scroll:last-child { padding-bottom: calc(12px + var(--rm-tabs, 0px) + var(--rm-dock, 0px)); }
+    .rm-sect > .rm-main.is-split > .rm-foot { margin-bottom: calc(var(--rm-tabs, 0px) + var(--rm-dock, 0px)); }
+    .rm.is-team .rm-sect > .rm-main.is-split > .rm-foot { margin-bottom: var(--rm-tabs, 0px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
