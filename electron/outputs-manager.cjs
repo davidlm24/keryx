@@ -6,7 +6,6 @@
 // KERYX starts). Either way it is tracked (track) and moved when monitors
 // change or the operator reassigns it.
 
-const { BrowserWindow, powerSaveBlocker } = require("electron");
 const {
     OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, autoScreens, resolvePlacement, windowedBounds, normalizeAssignment, canRemove, identifyHtml,
 } = require("./outputs.cjs");
@@ -29,11 +28,12 @@ function createReloadLimiter({ max = 3, windowMs = 60000, now = Date.now } = {})
     };
 }
 
-// BrowserWindow and powerSaveBlocker are injectable for tests (in plain
-// Node, require("electron") is a path, and both are undefined).
+// BrowserWindow and powerSaveBlocker are injectable for tests. Electron is
+// loaded only when one is not given: in plain Node, with the binary skipped
+// (CI), require("electron") tries to download it and fails when GitHub does.
 function createOutputManager({
     screen, settings, getOrigin, openWindow = null, operatorWindow = () => null, log = console.warn,
-    BrowserWindow: Win = BrowserWindow, powerSaveBlocker: blocker = powerSaveBlocker,
+    BrowserWindow: Win = require("electron").BrowserWindow, powerSaveBlocker: blocker = require("electron").powerSaveBlocker,
 }) {
     const windows = new Map(); // output key -> BrowserWindow
     // What present (or track) last made of each window: "fullscreen",
