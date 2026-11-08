@@ -120,7 +120,7 @@ test("parear por QR: a ticket only for an open door; info() lists the phones, ne
     // A phone paired (as lan.cjs would, through the same store).
     n.saved.network = { ...n.saved.network, devices: [
         { id: "a".repeat(16), role: "control", name: "Celular do Davi", hash: "1".repeat(64), createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(), agent: "" },
-        { id: "b".repeat(16), role: "team", name: "Tablet do louvor", hash: "2".repeat(64), createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(), agent: "" },
+        { id: "b".repeat(16), role: "team", name: "Tablet do louvor", hash: "2".repeat(64), createdAt: new Date(Date.now() - 60000).toISOString(), lastSeen: new Date(Date.now() - 60000).toISOString(), agent: "" },
     ] };
     const listed = n.info().devices;
     assert.deepEqual(listed.map((d) => [d.name, d.role, d.online]), [["Celular do Davi", "control", false], ["Tablet do louvor", "team", false]]);
