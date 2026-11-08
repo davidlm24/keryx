@@ -27,6 +27,13 @@
 //   - both are doors of "KERYX no celular" (owner 2026-10-27): one main
 //     switch over the two; the phone picks Controle or Equipe and its code
 //     is checked against that side only (doorOn, codePage)
+//   - a phone can also be paired by QR (owner 2026-11-08, marks M1–M5 = A):
+//     the console asks for a ticket (phoneDevices.cjs), the QR opens
+//     /lan/pair?t=… — which only shows the page, so WhatsApp's preview never
+//     spends it — and its Conectar button gives the phone a key of its own
+//     (cookie keryx_dev), listed on the console and disconnected alone. A
+//     code cookie still wins over it (Entrar como Equipe… keeps the pairing
+//     underneath), and a paired phone is the same role with the same limits
 //   - every event stream gets a heartbeat ("hb", every 10 s) and is dropped
 //     when it stops reading (MAX_BACKLOG)
 //
@@ -38,6 +45,7 @@ const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const { MEDIA_PREFIX, BUNDLED_PREFIX, within, sendFile } = require("./server.cjs");
+const { deviceName, NAME_MAX } = require("./phoneDevices.cjs");
 
 // Pages that work from the live state and the database alone (no
 // window.opener to talk to), under the outputs' factory names
@@ -82,6 +90,11 @@ const teamToken = ({ code, secret }) => crypto.createHmac("sha256", secret).upda
 // The side a phone entered by last (Controle or Equipe): it only picks where
 // the sign-in page starts, never what the phone may do.
 const SIDE_COOKIE = "keryx_side";
+// A phone paired by QR: "<id>.<key>" (phoneDevices.cjs). 400 days, the most
+// Chrome keeps a cookie.
+const DEVICE_COOKIE = "keryx_dev";
+const DEVICE_MAX_AGE = 400 * 24 * 60 * 60;
+const PAIR_PATH = "/lan/pair";
 // A door ("remote" = the Controle, "team" = the Equipe) is open with its own
 // switch, a code and a key, under the main switch of "KERYX no celular"
 // (network.phones, owner 2026-10-27; never set = on, as before it existed).
@@ -346,6 +359,24 @@ ${doors.map((d) => `<p class="what w-${d.role}">${d.what}</p>`).join("")}
 <input id="code" name="code" inputmode="numeric" autocomplete="off"${start ? " autofocus" : ""}><button type="submit">Entrar</button></div></form>${error ? `<p class="err">${error}</p>` : ""}`, doorCss(doors));
 };
 
+// The QR's page (board 3a): the phone's name, then Conectar. No script; the
+// ticket rides in a hidden field.
+const esc = (v) => String(v ?? "").replace(/[&"'<>]/g, (ch) => ({ "&": "&amp;", '"': "&quot;", "'": "&#39;", "<": "&lt;", ">": "&gt;" })[ch]);
+const pairCss = `main{text-align:left}h1{line-height:1.25}.chip{display:inline-block;padding:4px 10px;border-radius:999px;background:#2a2925;color:#bbb6ac;font-size:13px;margin:0 0 18px}
+label{display:block;font-size:14px;color:#bbb6ac;margin:0 0 6px}.nm{font-size:17px;letter-spacing:0;text-align:left;padding:13px 14px}
+.hint{font-size:13px;color:#9b958a;margin:8px 0 0}.after{font-size:13px;margin:18px 0 0}.after+.after{margin-top:8px}
+a.btn{display:block;margin-top:12px;padding:14px;border-radius:8px;box-shadow:inset 0 0 0 1px #4a4840;color:#f4f1ea;text-decoration:none;text-align:center;font-weight:600}`;
+const pairPage = ({ ticket, role, name }) => page("KERYX", `<h1>Conectar este aparelho ao KERYX</h1><span class="chip">${role === "team" ? "Equipe" : "Controle"}</span>
+<form method="post" action="${PAIR_PATH}"><input type="hidden" name="t" value="${esc(ticket)}">
+<label for="nm">Nome deste aparelho</label><input class="nm" id="nm" name="name" value="${esc(name)}" maxlength="${NAME_MAX}" autocomplete="off">
+<p class="hint">Troque pelo nome de quem usa (Celular do João): assim ele aparece no computador.</p>
+<button type="submit">Conectar</button></form>
+<p class="after">Este aparelho fica conectado: da próxima vez abre direto, sem código. No computador ele aparece em Aparelhos e pode ser desconectado a qualquer hora.</p>
+<p class="after">Dica: adicione à tela de início para abrir como um app.</p>`, pairCss);
+// Board 3c: the QR spent, expired, or its door closed.
+const pairGonePage = (error = "") => page("KERYX", `<h1>Este QR já foi usado ou venceu</h1><p>Cada QR conecta um aparelho só, por 5 minutos. Peça um novo no computador: Configurações › Telas na rede › Conectar um aparelho…</p>
+${error ? `<p class="err">${error}</p>` : ""}<a class="btn" href="/lan/remote-code">Entrar com o código</a>`, pairCss);
+
 const notFoundPage = page("KERYX", `<h1>Página não disponível</h1><p>Esta tela só mostra as saídas do KERYX. Os painéis de controle ficam no computador do operador.</p><button onclick="location.href='/'">Voltar ao início</button>`);
 
 function readBody(req, limit = MAX_BODY) {
@@ -364,7 +395,8 @@ function readBody(req, limit = MAX_BODY) {
     });
 }
 
-function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, onRemote = null, log = () => {}, heartbeatMs = HEARTBEAT_MS }) {
+// devices: the phones paired by QR (phoneDevices.cjs createDevices), or null.
+function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, devices = null, onRemote = null, log = () => {}, heartbeatMs = HEARTBEAT_MS }) {
     // NETWORK_SCREENS with the operator's names on them (NetworkHome, Rede).
     const screensOf = () => { const names = screenLabels(store); return NETWORK_SCREENS.map((sc) => ({ ...sc, label: names[sc.path] || sc.label })); };
     const dist = path.resolve(distDir);
@@ -402,9 +434,18 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     const teamOn = () => doorOn(getConfig(), "team");
     const isTeam = (req) => teamOn() && safeEqual(parseCookies(req.headers.cookie)[TEAM_COOKIE] || "", teamToken(getConfig().team));
     const phonesOn = () => remoteOn() || teamOn();
+    const roleOn = (role) => (role === "team" ? teamOn() : remoteOn());
     // The phone's role: the Controle's code wins (signing in with one code
-    // clears the other's cookie), else the Equipe's, else none.
-    const roleOf = (req) => (isRemote(req) ? "control" : isTeam(req) ? "team" : null);
+    // clears the other's cookie), else the Equipe's, else the phone paired
+    // by QR (its door open), else none. device: the paired phone, if that.
+    const whoOf = (req) => {
+        if (isRemote(req)) return { role: "control", device: null };
+        if (isTeam(req)) return { role: "team", device: null };
+        const value = devices ? parseCookies(req.headers.cookie)[DEVICE_COOKIE] : "";
+        const device = value ? devices.check(value) : null;
+        return device && roleOn(device.role) ? { role: device.role, device } : { role: null, device: null };
+    };
+    const roleOf = (req) => whoOf(req).role;
     // Signed in only as a phone (no PIN cookie while the screens have a
     // PIN): it reads only what its page uses — the live state, the media,
     // the church's profile (User), and its own event stream.
@@ -452,13 +493,44 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         return html(res, 401, codePage({ on, role: chosen, error: "Código incorreto." }));
     }
 
+    // The QR's link (board 3): GET shows the page and never spends the
+    // ticket; Conectar (POST) spends it and gives the phone its key.
+    async function handlePair(req, res, url) {
+        if (!devices || !phonesOn()) return html(res, 404, notFoundPage);
+        if (req.method === "GET") {
+            const ticket = url.searchParams.get("t") || "";
+            const open = devices.peek(ticket);
+            if (!open || !roleOn(open.role)) return html(res, 410, pairGonePage());
+            return html(res, 200, pairPage({ ticket, role: open.role, name: deviceName(req.headers["user-agent"]) }));
+        }
+        if (req.method !== "POST") return res.writeHead(405).end();
+        const key = `pair:${req.socket.remoteAddress}`;
+        if (tooMany(key)) return html(res, 429, pairGonePage("Muitas tentativas. Aguarde um minuto."));
+        const form = new URLSearchParams(await readBody(req, 2048));
+        const ticket = form.get("t") || "";
+        const open = devices.peek(ticket);
+        const made = open && roleOn(open.role) ? devices.redeem(ticket, { name: form.get("name") || "", agent: String(req.headers["user-agent"] || "") }) : null;
+        if (!made) { missed(key); return html(res, 410, pairGonePage()); }
+        attempts.delete(key);
+        const role = made.device.role;
+        const base = "Path=/; HttpOnly; SameSite=Lax";
+        log(`[keryx-lan] aparelho conectado por QR: ${made.device.name} (${role === "team" ? "Equipe" : "Controle"})`);
+        return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": [
+            `${DEVICE_COOKIE}=${made.cookie}; Max-Age=${DEVICE_MAX_AGE}; ${base}`,
+            `${REMOTE_COOKIE}=; Max-Age=0; ${base}`,
+            `${TEAM_COOKIE}=; Max-Age=0; ${base}`,
+            `${SIDE_COOKIE}=${role}; Max-Age=31536000; ${base}`,
+        ] }).end();
+    }
+
     // A command from the phone: the custom header and the same origin (no
     // other site can post it with the cookie), a checked command, and the
     // console's answer — or "não respondeu" after a few seconds.
     async function handleRemote(req, res) {
         if (!phonesOn()) return json(res, 404, { error: { message: "Controle remoto desligado.", status: 404 } });
         if (req.method !== "POST") return res.writeHead(405).end();
-        const role = roleOf(req);
+        const who = whoOf(req);
+        const { role } = who;
         if (!role) return json(res, 401, { error: { message: "Código do controle remoto necessário.", status: 401 } });
         const origin = req.headers.origin;
         if (req.headers["x-keryx"] !== "1" || (origin && origin !== `http://${req.headers.host}`)) return json(res, 403, { error: { message: "Pedido não autorizado.", status: 403 } });
@@ -489,6 +561,8 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
             ]).catch((err) => ({ ok: false, message: err?.message || "O console não conseguiu.", status: 500 }));
             clearTimeout(timer);
             const { status, body } = remoteReply(answer);
+            // Este aparelho (M5 = A): a phone paired by QR learns its own name.
+            if (command.action === "state" && who.device && body.data?.result && typeof body.data.result === "object") body.data.result.device = { name: who.device.name };
             return json(res, status, body);
         } finally {
             turn.done();
@@ -527,9 +601,11 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
         res.write("retry: 3000\n\n");
         const asked = url ? String(url.searchParams.get("screen") || "").replace(/\/+$/, "") : "";
-        const role = roleOf(req);
+        const who = whoOf(req);
+        const { role } = who;
         const screen = SCREEN_PATHS.has(asked) || (asked === REMOTE_PATH && role) ? asked : "";
-        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen, role: screen === REMOTE_PATH ? role : null, remoteOnly: remoteOnly(req) };
+        const phone = screen === REMOTE_PATH;
+        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen, role: phone ? role : null, deviceId: phone ? who.device?.id || null : null, remoteOnly: remoteOnly(req) };
         clients.add(client);
         req.on("close", () => clients.delete(client));
     }
@@ -593,6 +669,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
 
         if (pathname === "/lan/pin") return handlePin(req, res, url);
         if (pathname === "/lan/remote-code") return handleRemoteCode(req, res);
+        if (pathname === PAIR_PATH) return handlePair(req, res, url);
         if (pathname === "/api/remote") return handleRemote(req, res);
         // The remote's page: only while it is on, only with its code.
         const routeNow = pathname.replace(/\/+$/, "");
@@ -699,10 +776,12 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         },
         running: () => Boolean(server && server.listening),
         port: () => (server && server.listening ? server.address().port : null),
-        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen, role }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
+        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen, role, deviceId }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), ...(deviceId ? { deviceId } : {}), label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
         // Desconectar todos: the phones' event streams close now (their
         // cookie stops working with the new key the caller saves). role:
         // only the Controle's ("control") or only the Equipe's ("team").
+        // One phone paired by QR, disconnected alone (its key is gone too).
+        dropDevice(id) { for (const client of [...clients]) if (client.deviceId && client.deviceId === id) { client.res.end(); clients.delete(client); } },
         dropRemotes(role = "control") { for (const client of [...clients]) if (client.screen === REMOTE_PATH && (client.role || "control") === role) { client.res.end(); clients.delete(client); } },
     };
 }
