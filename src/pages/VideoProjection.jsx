@@ -20,7 +20,8 @@ import "@/components/network/net.css";
 // or reloads joins the video where it is. Waiting, it shows the live idle
 // look like every other screen (never a page of its own). Set to show other
 // content (Ajustes › O que esta tela recebe), it draws that instead. The Aviso
-// rápido goes over the clip in this screen's look (Rodada E3). A clip that a
+// rápido goes over the clip in this screen's look (Rodada E3). Silent: the
+// sound engine plays the clip's sound (SoundEngine.jsx, owner 2026-11-08). A clip that a
 // new sound stopped, or that Esc took off, fades out (Transições, exitFade.js).
 export default function VideoProjection() {
     const live = useLiveState();
@@ -45,7 +46,7 @@ export default function VideoProjection() {
     const fading = leaving && (
         <div key={ghost.key} className="ks-fade-out ks-stage" style={{ ...box, animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
             {leaving.title && <div className="net-vtitle">{leaving.title}</div>}
-            <LiveVideo item={leaving} fadeOut={{ at: ghost.at, until: ghost.until }} className={tall} />
+            <LiveVideo item={leaving} muted fadeOut={{ at: ghost.at, until: ghost.until }} className={tall} />
         </div>
     );
 
@@ -55,7 +56,7 @@ export default function VideoProjection() {
         <>
             <div className="ks-stage" style={box}>
                 {video.title && <div className="net-vtitle">{video.title}</div>}
-                <LiveVideo item={video} meter="video" className={tall} onEnded={() => { if (keryx.isDesktop) projection.clearVideo({ ended: true }).catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
+                <LiveVideo item={video} muted meter="video" className={tall} onEnded={() => { if (keryx.isDesktop) projection.clearVideo({ ended: true }).catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
                 <AlertLayer alert={alertOf(live, prefs.pref, "/VideoProjection")} />
             </div>
             {fading}

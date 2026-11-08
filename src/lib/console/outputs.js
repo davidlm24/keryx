@@ -154,7 +154,11 @@ export function rowStatus(row, { locked = false } = {}) {
 // (outputsLeavingAir in outputPrefs.js: [{ page, name, kind, receives }]): a
 // screen of theirs is connected but does not show the item, so the Programa
 // says "em 1 de 2 telas" (owner 2026-10-27, P2 = A).
-export function outputHealth({ outputs = [], seen = {}, locked = false, air = "", tries = 1, leaving = [] }) {
+// displays: the main process's monitors, primary first then left to right
+// (outputs-manager.cjs), so "Tela 2" is the number Identificar telas shows,
+// never Electron's id for the monitor.
+export function outputHealth({ outputs = [], displays = [], seen = {}, locked = false, air = "", tries = 1, leaving = [] }) {
+    const screenNo = (id) => { const i = displays.findIndex((d) => d.id === id); return i >= 0 ? i + 1 : 0; };
     const rows = [];
     for (const o of outputs) {
         if (o.removed) continue;
@@ -171,7 +175,7 @@ export function outputHealth({ outputs = [], seen = {}, locked = false, air = ""
             droppedAt: mem?.droppedAt || null,
             shows: state === "connected" || state === "reconnecting" ? showsOn(o.key, air) : null,
             meta: state === "reconnecting" ? "A tela está desligada · a saída volta quando ela ligar"
-                : o.placement?.mode === "fullscreen" ? `Tela ${o.placement.displayId ?? ""}`.trim() : "Janela",
+                : o.placement?.mode === "fullscreen" ? (screenNo(o.placement.displayId) ? `Tela ${screenNo(o.placement.displayId)}` : "Tela cheia") : "Janela",
         });
     }
     for (const v of Object.values(seen)) {

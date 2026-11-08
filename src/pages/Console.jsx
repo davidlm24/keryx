@@ -527,6 +527,10 @@ export default function Console() {
     const { displays: monitors, outputs, network, seen, forgetOutput, refresh: refreshOutputs } = useOutputs();
     // Outputs: the projector window missing its display, or closed, is the warning.
     const projector = outputs.find((o) => o.key === "/Projection");
+    // Where the sound comes out: the sound engine on the desktop, always
+    // (electron/soundEngine.cjs); the browser preview has none, and its
+    // Projeção tab plays the sound as the projector did before.
+    const soundOut = keryx.isPreview ? Boolean(projector?.open) : true;
 
     // The live state says where the service is; the Prévia says what is next in hand.
     // The session's item, and whether the screens still show it (after Esc it
@@ -639,7 +643,7 @@ export default function Console() {
     // Setlist automática (Rodada N2, useSetlistAutoplay.js): with the culto's
     // switch on, the item on air that ends sends the next one (after the
     // pause, its countdown on the next row). Only this console runs it.
-    const autoplay = useSetlistAutoplay({ c, service, items, songs: data.songs, prefs, projectorOpen: projector ? projector.open !== false : true, buildStage, sendStage });
+    const autoplay = useSetlistAutoplay({ c, service, items, songs: data.songs, prefs, projectorOpen: soundOut, buildStage, sendStage });
     const endsAlone = useCallback((it) => endsByItself(it, String(it.type || "").toUpperCase() === "SONG" ? data.songs.find((x) => x.id === it.contentId) : null), [data.songs]);
 
     // The list in hand: the active culto, else the shared Setlist, made the
@@ -781,7 +785,7 @@ export default function Console() {
     // out what is on air now: the Programa says "em 1 de 2 telas" (P2 = A).
     const outputRules = useOutputRules(c);
     const leaving = useMemo(() => outputsLeavingAir(c.cur, outputRules.rows), [c.cur, outputRules.rows]);
-    const health = useMemo(() => outputHealth({ outputs, seen, locked: c.locked, air: airWords, tries, leaving }), [outputs, seen, c.locked, airWords, tries, leaving]);
+    const health = useMemo(() => outputHealth({ outputs, displays: monitors, seen, locked: c.locked, air: airWords, tries, leaving }), [outputs, monitors, seen, c.locked, airWords, tries, leaving]);
     // Under the button that asked (a keyboard press has no pointer).
     const ruleMenu = (e, page, name) => {
         const r = e.currentTarget.getBoundingClientRect();
@@ -1440,8 +1444,7 @@ export default function Console() {
 
     // The player (always visible): under the Programa until the dock places it.
     const playerSlot = (
-        <PlayerSlot c={c} picked={playerPick} setPicked={setPlayerPick} projectorOpen={Boolean(projector?.open)}
-            videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
+        <PlayerSlot c={c} picked={playerPick} setPicked={setPlayerPick} projectorOpen={soundOut} />
     );
     // The Programa's menu: its right click and the pill's "…" (which holds
     // what a folded pill leaves out, Camadas included while in the tray).

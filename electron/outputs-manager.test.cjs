@@ -426,3 +426,45 @@ test("a monitor change elsewhere leaves a full-screen output alone; its own moni
     assert.ok(win.calls.some((c) => c[0] === "setFullScreen" && c[1] === true));
     assert.deepEqual(win.bounds, smaller.bounds);
 });
+
+// Owner 2026-11-08: a third monitor stayed dark with Letras on Automático.
+test("auto: a third monitor takes the next public output; nothing already on a monitor moves", () => {
+    const console1 = display(1, 0, true);
+    const tela2 = display(2, 1920, false);
+    const tela3 = display(3, 3840, false);
+    const { outputs, opened, screen } = manager({ monitors: [console1, tela2] });
+    outputs.open("/LyricProjection");
+    outputs.open("/Projection");
+    const lyrics = opened[0].win;
+    const proj = opened[1].win;
+    // Letras opened first and took Tela 2; no monitor left for the Projeção.
+    assert.equal(lyrics.fullScreen, true);
+    assert.deepEqual(lyrics.bounds, tela2.bounds);
+    assert.equal(proj.fullScreen, false);
+    assert.equal(row(outputs, "/Projection").placement.mode, "window");
+
+    screen.monitors = [console1, tela2, tela3];
+    screen.emit("display-added");
+    assert.deepEqual(lyrics.bounds, tela2.bounds, "Letras stays where the church sees it");
+    assert.equal(proj.fullScreen, true);
+    assert.deepEqual(proj.bounds, tela3.bounds);
+    assert.equal(row(outputs, "/Projection").placement.displayId, 3);
+    // A closed output says where it would go: nowhere free now.
+    assert.equal(row(outputs, "/VideoProjection").placement.mode, "window");
+});
+
+test("auto: naming a monitor for one output moves an auto output off it", () => {
+    const console1 = display(1, 0, true);
+    const tela2 = display(2, 1920, false);
+    const tela3 = display(3, 3840, false);
+    const { outputs, opened } = manager({ monitors: [console1, tela2, tela3] });
+    outputs.open("/Projection");
+    outputs.open("/LyricProjection");
+    const proj = opened[0].win;
+    const lyrics = opened[1].win;
+    assert.deepEqual(proj.bounds, tela2.bounds);
+    assert.deepEqual(lyrics.bounds, tela3.bounds);
+    outputs.setAssignment("/LyricProjection", { target: ref(tela2) });
+    assert.deepEqual(lyrics.bounds, tela2.bounds);
+    assert.deepEqual(proj.bounds, tela3.bounds);
+});

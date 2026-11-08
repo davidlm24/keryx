@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, findDisplay, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
+    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, findDisplay, autoScreens, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
 } = require("./outputs.cjs");
 
 const display = (id, x, { primary = false, label = `Monitor ${id}`, width = 1920, height = 1080 } = {}) => ({
@@ -32,9 +32,46 @@ test("every output has a unique key and window name", () => {
     assert.equal(new Set(OUTPUTS.map((o) => o.windowName)).size, OUTPUTS.length);
 });
 
-test("auto: only the main projection goes to the first external display", () => {
+test("auto: alone, a public output goes to the first monitor that is not the console's; Palco and Pastor are windows", () => {
     assert.deepEqual(resolvePlacement(main, [laptop, tv, projector], undefined), { mode: "fullscreen", display: projector });
+    assert.deepEqual(resolvePlacement(outputForKey("/LyricProjection"), [laptop, projector], undefined), { mode: "fullscreen", display: projector });
     assert.deepEqual(resolvePlacement(stage, [laptop, projector], undefined), { mode: "window" });
+    assert.deepEqual(resolvePlacement(outputForKey("/PastorView"), [laptop, projector], undefined), { mode: "window" });
+});
+
+// Owner 2026-11-08: with a third monitor, the outputs left on Automático
+// sent nothing to it (only the Projeção went to a monitor).
+const auto = (key, held = null) => ({ key, assignment: { target: "auto" }, held });
+test("auto spreads the public outputs over the free monitors, in the list's order", () => {
+    const m = autoScreens([auto("/LyricProjection"), auto("/Projection")], [laptop, projector, tv], laptop.id);
+    assert.equal(m.get("/Projection"), projector);
+    assert.equal(m.get("/LyricProjection"), tv);
+    // No monitor left: null (the manager opens a window, or waits).
+    const two = autoScreens([auto("/Projection"), auto("/LyricProjection"), auto("/VideoProjection")], [laptop, projector, tv], laptop.id);
+    assert.equal(two.get("/VideoProjection"), null);
+    assert.deepEqual(resolvePlacement(outputForKey("/VideoProjection"), [laptop, projector, tv], { target: "auto" }, { auto: null }), { mode: "window" });
+    // Palco and Pastor never take a monitor by themselves.
+    assert.equal(autoScreens([auto("/StageView")], [laptop, projector], laptop.id).has("/StageView"), false);
+});
+
+test("auto skips the console's monitor and the ones an open output names", () => {
+    // The console on the right-hand monitor: the primary is free.
+    assert.equal(autoScreens([auto("/Projection")], [laptop, projector], projector.id).get("/Projection"), laptop);
+    const named = { key: "/LyricProjection", assignment: { target: displayRef(projector) }, held: projector.id };
+    assert.equal(autoScreens([named, auto("/Projection")], [laptop, projector, tv], laptop.id).get("/Projection"), tv);
+    // Named but not found (unplugged): reserves nothing.
+    const gone = { key: "/LyricProjection", assignment: { target: { id: 99, label: "x", width: 1, height: 1 } }, held: null };
+    assert.equal(autoScreens([gone, auto("/Projection")], [laptop, projector], laptop.id).get("/Projection"), projector);
+});
+
+test("an output already full screen on a free monitor keeps it when another opens", () => {
+    // Letras opened first and took the projector; Projeção opening now gets the TV.
+    const m = autoScreens([auto("/LyricProjection", projector.id), auto("/Projection")], [laptop, projector, tv], laptop.id);
+    assert.equal(m.get("/LyricProjection"), projector);
+    assert.equal(m.get("/Projection"), tv);
+    // Its monitor taken by an output named there: it moves to the next free one.
+    const named = { key: "/VideoProjection", assignment: { target: displayRef(projector) }, held: null };
+    assert.equal(autoScreens([auto("/LyricProjection", projector.id), named], [laptop, projector, tv], laptop.id).get("/LyricProjection"), tv);
 });
 
 test("auto with one display opens a window the operator can see", () => {

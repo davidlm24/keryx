@@ -12,8 +12,9 @@ import "@/components/screen/screen.css";
  * projector pages: the live state's video channel, full screen while there
  * is one; nothing otherwise, so the lyrics show normally. A clip that a new
  * sound stopped, or that Esc took off, fades out (Transições, exitFade.js).
+ * `muted` where the sound engine plays it (SoundEngine.jsx).
  */
-export default function TabletVideoReceiver() {
+export default function TabletVideoReceiver({ muted = false }) {
     const live = useLiveState();
     const video = live?.video || null;
     const ghost = useExitGhost(live, live?.rev, videoExitMs);
@@ -25,13 +26,13 @@ export default function TabletVideoReceiver() {
             {video && (
                 <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center ks-stage">
                     <ClipTitle title={video.title} />
-                    <LiveVideo item={video} meter="video" className="w-full h-full" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
+                    <LiveVideo item={video} muted={muted} meter="video" className="w-full h-full" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
                 </div>
             )}
             {leaving && (
                 <div key={ghost.key} className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center ks-fade-out ks-stage" style={{ animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
                     <ClipTitle title={leaving.title} />
-                    <LiveVideo item={leaving} fadeOut={{ at: ghost.at, until: ghost.until }} className="w-full h-full" />
+                    <LiveVideo item={leaving} muted={muted} fadeOut={{ at: ghost.at, until: ghost.until }} className="w-full h-full" />
                 </div>
             )}
         </>

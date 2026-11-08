@@ -2,18 +2,19 @@
 // where each one goes. Pure logic with no Electron import, so it is unit
 // tested; outputs-manager.cjs applies it to real windows.
 
-// key is the page path. windowName is what the pages pass to window.open;
-// autoExternal outputs go to the first external display when the operator has
-// not chosen one. The label is the output's one factory name, the same the
-// renderer shows (shared/outputNames.json).
+// key is the page path. windowName is what the pages pass to window.open.
+// autoScreen outputs (the church's public screens) left on "Automático" take
+// the free monitors, one each (autoScreens, below); the others (Palco,
+// Pastor) open as a window. The label is the output's one factory name, the
+// same the renderer shows (shared/outputNames.json).
 const NAMES = require("../shared/outputNames.json");
 const OUTPUTS = [
-    { key: "/Projection", label: NAMES["/Projection"], windowName: "keryx_projection", autoExternal: true },
-    { key: "/LyricProjection", label: NAMES["/LyricProjection"], windowName: "lyricProjection" },
-    { key: "/VideoProjection", label: NAMES["/VideoProjection"], windowName: "videoProjection" },
+    { key: "/Projection", label: NAMES["/Projection"], windowName: "keryx_projection", autoScreen: true },
+    { key: "/LyricProjection", label: NAMES["/LyricProjection"], windowName: "lyricProjection", autoScreen: true },
+    { key: "/VideoProjection", label: NAMES["/VideoProjection"], windowName: "videoProjection", autoScreen: true },
     { key: "/StageView", label: NAMES["/StageView"], windowName: "stageView" },
     { key: "/PastorView", label: NAMES["/PastorView"], windowName: "pastorView" },
-    { key: "/CommunicationProjection", label: NAMES["/CommunicationProjection"], windowName: "communicationProjection" },
+    { key: "/CommunicationProjection", label: NAMES["/CommunicationProjection"], windowName: "communicationProjection", autoScreen: true },
 ];
 
 const WINDOWED = { width: 1280, height: 720 };
@@ -50,10 +51,46 @@ function findDisplay(displays, ref) {
     return similar.length === 1 ? similar[0] : null;
 }
 
-function externalDisplays(displays) {
-    return displays
-        .filter((d) => !d.primary)
-        .sort((a, b) => a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y);
+const byPosition = (a, b) => a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y;
+
+// Where each public output left on "Automático" goes (owner 2026-11-08,
+// after a third monitor stayed dark on 07/11: before, only the Projeção
+// went to a monitor and every other auto output opened as a window behind
+// the console). The free monitors are every one but the console's
+// (operatorId; the primary when it is not known) and those an open output
+// names in its Destino; left to right. The outputs on auto take them in the
+// list's order (Projeção, Letras, Vídeo, Avisos), and one already full
+// screen on a free monitor keeps it, so opening or closing another never
+// moves what the church is looking at.
+// open: [{ key, assignment, held }] — the outputs open now and the one being
+// opened; held = the id of the monitor its window is full screen on.
+// -> Map key -> display | null (null: no monitor left for it)
+function autoScreens(open, displays, operatorId = null) {
+    const operator = operatorId ?? (displays.find((d) => d.primary) || {}).id;
+    const named = new Set();
+    for (const o of open) {
+        const t = o.assignment && o.assignment.target;
+        const d = t && typeof t === "object" ? findDisplay(displays, t) : null;
+        if (d) named.add(d.id);
+    }
+    const free = displays.filter((d) => d.id !== operator && !named.has(d.id)).sort(byPosition);
+    const order = OUTPUTS.map((o) => o.key);
+    const auto = open
+        .filter((o) => outputForKey(o.key) && outputForKey(o.key).autoScreen && (!o.assignment || o.assignment.target === undefined || o.assignment.target === "auto"))
+        .sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+    const result = new Map();
+    const used = new Set();
+    for (const o of auto) {
+        const d = free.find((x) => x.id === o.held);
+        if (d && !used.has(d.id)) { result.set(o.key, d); used.add(d.id); }
+    }
+    for (const o of auto) {
+        if (result.has(o.key)) continue;
+        const d = free.find((x) => !used.has(x.id)) || null;
+        if (d) used.add(d.id);
+        result.set(o.key, d);
+    }
+    return result;
 }
 
 // An output whose monitor is gone (a cable bumped, the projector off, Win+P ›
@@ -67,13 +104,15 @@ const WAITING = Object.freeze({ mode: "hidden", missing: true });
 // assignment: undefined | { target: "auto" | "window" | <display ref> }
 // waiting: this output's window was full screen on a monitor (or is hidden
 // waiting for one): the manager knows, from what it did to the window.
+// auto: the monitor autoScreens gave it among the outputs open (null: none
+// left); not given, it is worked out for this output alone.
 // -> { mode: "fullscreen", display } | { mode: "window" } | { mode: "hidden", missing: true }
-function resolvePlacement(output, displays, assignment, { waiting = false } = {}) {
+function resolvePlacement(output, displays, assignment, { waiting = false, auto } = {}) {
     const target = assignment && assignment.target !== undefined ? assignment.target : "auto";
     if (target === "window") return { mode: "window" };
     if (target === "auto") {
-        if (!output.autoExternal) return { mode: "window" };
-        const external = externalDisplays(displays)[0];
+        if (!output.autoScreen) return { mode: "window" };
+        const external = auto !== undefined ? auto : autoScreens([{ key: output.key, assignment, held: null }], displays).get(output.key);
         if (external) return { mode: "fullscreen", display: external };
         // Only the console's monitor: opened so (a notebook alone), a window
         // the operator can see; the projector it was on left, it waits.
@@ -153,6 +192,7 @@ module.exports = {
     outputKeyForUrl,
     displayRef,
     findDisplay,
+    autoScreens,
     resolvePlacement,
     windowedBounds,
     normalizeAssignment,

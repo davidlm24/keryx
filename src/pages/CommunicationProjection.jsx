@@ -1,5 +1,4 @@
 import React from "react";
-import { keryx } from "@/api/keryxClient";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useScreenKeys } from "@/hooks/useScreenKeys";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
@@ -10,7 +9,8 @@ import OutputScreen from "@/components/screen/OutputScreen";
 // live state's communication layer, whatever the main projector shows,
 // drawn by the same ScreenRenderer as every other output, with this output's
 // settings (OutputScreen) — the Aviso rápido too, in this screen's look
-// (Rodada E3). On the network too.
+// (Rodada E3). On the network too. Silent: the sound engine plays an
+// aviso's background audio and chime (SoundEngine.jsx, owner 2026-11-08).
 export default function CommunicationProjection() {
     const live = useLiveState();
     const communication = live?.communication;
@@ -18,5 +18,5 @@ export default function CommunicationProjection() {
     const logo = useChurchLogo();
     useScreenKeys(live);
     useNoticeAdvance(communication);
-    return <OutputScreen page="/CommunicationProjection" live={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />;
+    return <OutputScreen page="/CommunicationProjection" live={live} now={now} logoUrl={logo} audio={false} />;
 }

@@ -38,8 +38,13 @@ const UPDATE_EVERY_MS = 7 * 24 * 60 * 60 * 1000;
 const UPDATE_TIMEOUT_MS = 90 * 1000;
 const STDERR_KEEP = 4000;
 
-// H.264 + AAC up to 1080p, else whatever is there up to 1080p; merged to mp4.
-const FORMAT = "bv*[height<=1080][vcodec^=avc1]+ba[acodec^=mp4a]/b[height<=1080][vcodec^=avc1]/bv*[height<=1080]+ba/b[height<=1080]/b";
+// H.264 + AAC up to 1080p, else H.264 with the best audio, else whatever is
+// there up to 1080p; merged to mp4 by copying the streams (never encoded
+// again: the sound is YouTube's own, its AAC ~128 kbps or Opus). Separate
+// streams always come before a single-file format (owner 2026-11-08): the
+// old second choice, b[vcodec^=avc1], is YouTube's 360p file with ~96 kbps
+// sound, taken whenever the first one failed.
+const FORMAT = "bv*[height<=1080][vcodec^=avc1]+ba[acodec^=mp4a]/bv*[height<=1080][vcodec^=avc1]+ba/bv*[height<=1080]+ba/b[height<=1080]/b";
 
 class YouTubeError extends Error {
     constructor(message, status = 500) {
@@ -76,6 +81,8 @@ function downloadArgs({ url, outDir, ffmpegDir, node }) {
         "--merge-output-format", "mp4",
         "--progress-template", "download:KX %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s",
         "--print", "before_dl:INFO %(filesize,filesize_approx)s|%(duration)s|%(title)s",
+        // Which streams it took, for the log (a sound that seems poor).
+        "--print", "before_dl:FMT %(format_id)s %(height)s %(acodec)s %(abr)s",
         "--print", "after_move:FILE %(filepath)s",
         "-o", path.join(outDir, "%(id)s.%(ext)s"),
         "--", url,
@@ -96,6 +103,8 @@ function parseLine(line) {
     if (m) return { kind: "info", total: num(m[1]), duration: num(m[2]), title: m[3] === "NA" ? "" : m[3] };
     m = s.match(/^FILE (.+)$/);
     if (m) return { kind: "file", path: m[1] };
+    m = s.match(/^FMT (\S+) (\S+) (\S+) (\S+)$/);
+    if (m) return { kind: "format", id: m[1], height: num(m[2]), acodec: m[3], abr: num(m[4]) };
     return null;
 }
 
@@ -392,6 +401,7 @@ function createYouTube({
             const onLine = (line) => {
                 const p = parseLine(line);
                 if (!p) return;
+                if (p.kind === "format") { log(`[keryx-youtube] ${job.url}: formato ${p.id} · ${p.height ?? "?"}p · som ${p.acodec} ${p.abr ? Math.round(p.abr) + " kbps" : ""}`.trim()); return; }
                 if (p.kind === "file") file = p.path;
                 if (p.kind === "info") meta = p;
                 t = track(t, p);

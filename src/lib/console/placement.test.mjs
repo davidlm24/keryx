@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { placementValue, placementTarget, placementOptions, placementWord } from "./placement.js";
+import { placementValue, placementTarget, placementOptions, placementWord, pixelSize } from "./placement.js";
 
 const D1 = { id: 11, label: "Dell", width: 2560, height: 1440 };
 const D2 = { id: 22, label: "Projetor", width: 1920, height: 1080, bounds: { width: 1280, height: 720 } };
@@ -44,4 +44,16 @@ test("the popover's word: the mode, the monitor's number, or the off size in amb
     assert.deepEqual(placementWord({ target: "window" }, displays), { text: "Janela", off: false });
     assert.deepEqual(placementWord({ target: D2 }, displays), { text: "Tela 2", off: false });
     assert.deepEqual(placementWord({ target: gone }, displays), { text: "1280×720 (desligada)", off: true });
+});
+
+test("a monitor's size in pixels, with the Windows scale beside it when not 100 % (2026-11-08)", () => {
+    // The owner's Tela 2: 2880×1620 at 200 %, which Electron gives as 1440×810.
+    assert.equal(pixelSize({ bounds: { width: 1440, height: 810 }, scaleFactor: 2 }), "2880×1620 · 200 %");
+    assert.equal(pixelSize({ bounds: { width: 1536, height: 864 }, scaleFactor: 1.25 }), "1920×1080 · 125 %");
+    assert.equal(pixelSize({ bounds: { width: 1920, height: 1080 }, scaleFactor: 1 }), "1920×1080");
+    assert.equal(pixelSize({ width: 1280, height: 720 }), "1280×720");
+    // The options say pixels; what is stored stays in Electron's units.
+    const hi = { id: 44, label: "4K", bounds: { width: 1440, height: 810 }, scaleFactor: 2 };
+    assert.equal(placementOptions([hi]).at(-1).label, "Tela 1 · 2880×1620 · 200 %");
+    assert.deepEqual(placementTarget("d:44", [hi]), { id: 44, label: "4K", width: 1440, height: 810 });
 });

@@ -6,6 +6,18 @@
 
 const sizeOf = (d) => ({ width: d.bounds?.width || d.width, height: d.bounds?.height || d.height });
 
+// A monitor's size as the church knows it (owner 2026-11-08: a 2880×1620
+// monitor at 200 % read 1440×810): Electron gives sizes in DIPs, the pixels
+// are those times the Windows scale, which goes beside them when it is not
+// 100 %. Only for showing: placement keeps DIPs (placementTarget, the main
+// process's findDisplay and the settings file).
+export function pixelSize(d) {
+    const { width, height } = sizeOf(d || {});
+    const scale = Number(d?.scaleFactor) > 0 ? Number(d.scaleFactor) : 1;
+    const size = `${Math.round(width * scale)}×${Math.round(height * scale)}`;
+    return scale === 1 ? size : `${size} · ${Math.round(scale * 100)} %`;
+}
+
 // The select's value for an assignment: "auto", "window", "d:<id>" (a monitor
 // that is on) or "gone:<id>" (the one chosen is off now).
 export function placementValue(assignment, displays = []) {
@@ -24,16 +36,13 @@ export function placementTarget(value, displays = []) {
 }
 
 // The options, in the Editor's order: the two modes, every monitor that is on
-// ("Tela N · L×A", N as the list counts them) and, last and disabled, the one
+// ("Tela N · L×A", N as the list counts them, the size in pixels: pixelSize) and, last and disabled, the one
 // the output was chosen for when it is off now.
 export function placementOptions(displays = [], assignment = null) {
     const options = [
         { value: "auto", label: "Automático" },
         { value: "window", label: "Sempre numa janela" },
-        ...displays.map((d, i) => {
-            const { width, height } = sizeOf(d);
-            return { value: `d:${d.id}`, label: `Tela ${i + 1} · ${width}×${height}` };
-        }),
+        ...displays.map((d, i) => ({ value: `d:${d.id}`, label: `Tela ${i + 1} · ${pixelSize(d)}` })),
     ];
     const t = assignment?.target;
     if (t && typeof t === "object" && !displays.some((d) => d.id === t.id)) {

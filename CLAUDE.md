@@ -1587,7 +1587,33 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the projector window closed and something to hear it stops (amber).
   Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
-  taps — the level meters read the system loopback in the console.
+  taps — the level meters read the system loopback in the console, and
+  **they never stay off** (owner 2026-11-08, `src/lib/console/meterRetry.js`,
+  tested): a capture that fails, never answers (10 s) or ends tries again on
+  a backoff (2 s … 60 s), and `devicechange` or the PC waking starts it
+  over at once (Windows' default output moving left it live but silent); a
+  suspended AudioContext is resumed.
+  **Every sound plays in the sound engine** (owner 2026-11-08, "Separate
+  sound engine", as ProPresenter; on 07/11 a video sounded once per open
+  output): a hidden window on `/Som` (`electron/soundEngine.cjs`, tested:
+  never shown, never focusable, no taskbar button, never an output nor a
+  network screen; made again if its page dies, 5 times a minute at most;
+  stopped on will-quit and kept out of the close guard's windows) runs
+  `src/pages/SoundEngine.jsx`, which plays what `soundPlan`
+  (`src/lib/soundPlan.js`, tested) lists from the RAW live state, never an
+  output's rule: the media layer's video/YouTube while it is the main layer,
+  the video channel and the audio channel always (and `leaving`), a song's
+  `content.audio`, an aviso's background audio and chime, an activity's
+  bell; what leaves fades as the screens draw it (`useExitGhost`), the
+  audio player mounted before the media so the eye hands the element over
+  (mediaPool). It reports ends as the outputs do. **Every output window is
+  muted** (`setAudioMuted(true)` in outputs-manager's `track`, Projeção
+  included) and asks for no sound (`muted` on LiveMediaView,
+  TabletVideoReceiver and the Vídeo page; `audio={false}` on Avisos). The
+  browser preview has no engine: its Projeção tab plays as before
+  (`keryx.isPreview`), and only there can "Projetor fechado" happen
+  (`soundOut` in Console.jsx). The device choice (Saída de som) waits for
+  the owner's marks on the mockup.
 - **The opening window** (owner 2026-10-29, mockup "Tela de abertura do
   KERYX", A1-A · A2-A · A3-C): `electron/splash.cjs` + `splash.html`
   (tested), a 520 × 320 frameless window centred where the console will
@@ -2311,7 +2337,7 @@ Smoke runs use a free port and a temp data folder, so they never collide with a 
 
 The smoke's audio-meter check (`metersFollowVolume`) hears every sound of the computer, and the focus checks (`focusKept`, `autoFocusKept`, `outputKeys.focus`, and `splitterKeys` when its arrow never arrived) need KERYX to be the program in front. When someone uses the PC during a run they do not fail: another program in front (no KERYX window focused) or another program playing (meters up, no KERYX window audible) marks them inconclusive, listed in `console.inconclusive`, and the run can still pass. An output holding the focus, or a KERYX window still audible after the mute, fails. The console page itself is told it has focus (CDP focus emulation), so fields that save on blur work regardless.
 
-Outputs (projector, stage, ...) render the live state, so either the console (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them. **An output full screen on a monitor other than the console's stays
+Outputs (projector, stage, ...) render the live state, so either the console (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them. **Automático spreads the public outputs** (owner 2026-11-08, after a third monitor stayed dark; `autoScreens` in outputs.cjs, tested): Projeção, Letras, Vídeo and Avisos (`autoScreen` in `OUTPUTS`) left on Automático take the free monitors — every one but the console's (`operatorDisplayId`) and those an open output names — left to right in the list's order; an output already full screen on a free monitor keeps it (the manager's `heldOn`), so opening or closing another never moves what the church sees, and a monitor named for one output sends an auto output there to the next free one (setAssignment re-places every open output). No monitor left = a window (or waiting, WIN-02); Palco and Pastor on Automático are windows. A monitor's size is shown in pixels with the Windows scale beside it (`pixelSize` in placement.js: "2880×1620 · 200 %"); everything stored stays in Electron's DIPs. **An output full screen on a monitor other than the console's stays
 always on top** (0.2.19, as Holyrics; `staysOnTop` in `electron/outputs.cjs`,
 tested): nothing can cover the projector; never as a window or on the
 console's own monitor. **An output whose monitor leaves waits hidden**

@@ -417,10 +417,10 @@ async function checkVideo(webContents, { live }) {
     // The eye (Rodada G4): the same clip on the projector, then the player's
     // "Tirar o vídeo" clicked in the console. The picture fades out ("Ao
     // tirar do ar", 0,3 s by default) while the sound goes on in the
-    // projector's hidden audio player — in the SAME <video> (mediaPool): the
+    // sound engine's audio player — in the SAME <video> (mediaPool): the
     // fading picture is a still (the ghost never claims a second element,
     // which would load the file again and echo). Right after the click the
-    // projector has one video element, still advancing, at full volume.
+    // sound engine has one video element, still advancing, at full volume.
     // Whether the still looks right needs a real window (PR G4).
     {
         live.call("media.show", { kind: "video", url: `keryx-media://${fileName}`, title: "Vídeo do olho" });
@@ -430,7 +430,10 @@ async function checkVideo(webContents, { live }) {
         const eye = "(() => { const b = document.querySelector('.player .pl-eye'); if (!b || b.disabled) return false; b.click(); return true; })()";
         let clicked = false;
         for (let i = 0; i < 24 && !clicked; i++) { clicked = await webContents.executeJavaScript(eye).catch(() => false); if (!clicked) await sleep(250); }
-        const videosIn = () => (proj ? proj.webContents.executeJavaScript(`(() => { const v = [...document.querySelectorAll("video")].filter((x) => x.src.includes(${JSON.stringify(fileName)})); return { n: v.length, time: v[0] ? v[0].currentTime : null, volume: v[0] ? v[0].volume : null, paused: v[0] ? v[0].paused : null, still: Boolean(document.querySelector(".ks-ghost canvas, .ks-ghost img")) }; })()`).catch(() => null) : null);
+        // The sound engine plays it (soundEngine.cjs, 2026-11-08): the same
+        // element moves from its media layer to its audio player there.
+        const snd = windowFor("/Som");
+        const videosIn = () => (snd ? snd.webContents.executeJavaScript(`(() => { const v = [...document.querySelectorAll("video")].filter((x) => x.src.includes(${JSON.stringify(fileName)})); return { n: v.length, time: v[0] ? v[0].currentTime : null, volume: v[0] ? v[0].volume : null, paused: v[0] ? v[0].paused : null, still: Boolean(document.querySelector(".ks-ghost canvas, .ks-ghost img")) }; })()`).catch(() => null) : null);
         const end = Date.now() + 3000;
         while (clicked && Date.now() < end && !(live.get().audio && !live.get().media)) await sleep(20);
         const first = await videosIn();
@@ -1606,6 +1609,11 @@ async function checkConsole(webContents, { live, outputs }) {
         result.audioPrepared = await waitCap(PREV, "Tom de teste");
         await press("Enter");
         result.audioOn = await waitFor(() => live.get().audio && live.get().audio.title === "Tom de teste");
+        // Every sound plays in the sound engine (soundEngine.cjs, owner
+        // 2026-11-08); the projector, like every output, is muted.
+        const engine = await waitWindow("/Som", 8000);
+        result.soundEngine = Boolean(engine);
+        result.outputsSilent = Boolean(main) && main.webContents.isAudioMuted();
         result.audioUnderSong = Boolean(live.get().content) && live.get().content.title === "Canto do console";
         // Its title, no kind word (Rodada F1: the icon says it); the pill keeps
         // the song's title, which the player does not name.
@@ -1626,9 +1634,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".player button", "Pausar");
         result.audioPaused = await waitFor(() => live.get().audio?.playback?.paused === true);
         // Ao pausar o som (Rodada G3, 0,2 s by default): the volume comes
-        // down first, then the projector's element pauses.
+        // down first, then the sound engine's element pauses.
         result.pauseFades = live.get().audio?.playback?.ramp?.ms === 200 ? true : live.get().audio?.playback?.ramp || "sem rampa";
-        result.projectorPausedAfterFade = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.paused : null; })()").catch(() => null), 600);
+        result.projectorPausedAfterFade = await waitFor(() => engine && engine.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.paused : null; })()").catch(() => null), 600);
         await click(".player button", "Tocar");
         await click(".player .pl-vol button", "");
         result.audioMuted = await waitFor(() => live.get().audio?.playback?.volume === 0);
@@ -1647,8 +1655,8 @@ async function checkConsole(webContents, { live, outputs }) {
             result.audibleWindows = audible();
             result.metersFollowVolume = verdict("metersFollowVolume", meterVerdict(false, result.audibleWindows));
         }
-        // The mute reached the element that actually plays, on the projector.
-        result.projectorMuted = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.volume === 0 : null; })()").catch(() => null));
+        // The mute reached the element that actually plays, in the sound engine.
+        result.projectorMuted = await waitFor(() => engine && engine.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.volume === 0 : null; })()").catch(() => null));
 
         // The progress bar drags (Rodada F1): while the hand holds it only the
         // console moves (the elapsed time and a tip over the thumb follow it),
@@ -3041,7 +3049,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto \d|^Sem culto|^Sem horário|^\d\d:\d\d · |^\d\d\/\d\d · \d\d:\d\d$/.test(result.serviceClock) && result.quickOpened && result.selectLeavesJump && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
-        && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
+        && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.soundEngine && result.outputsSilent && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.seekDragFollows && result.seekDragOnce === true && result.pauseFades === true && result.projectorPausedAfterFade && result.audioTakenByEnd === true && result.pillTitleInPlayer && result.audioStopped && result.pillNada && result.playerAlwaysThere && result.playerIdleQuiet
         && result.tlGone && result.forecastOff && result.forecastOn
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded && result.setlistRight === true && result.notesPanel && result.tabsMenu && result.quickTools && result.quickAlertOnce

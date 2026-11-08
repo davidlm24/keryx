@@ -44,6 +44,7 @@ const VideoProjection = lazy(() => import('./pages/VideoProjection'));
 const CommunicationProjection = lazy(() => import('./pages/CommunicationProjection'));
 const PastorView = lazy(() => import('./pages/PastorView'));
 const StreamView = lazy(() => import('./pages/StreamView'));
+const SoundEngine = lazy(() => import('./pages/SoundEngine'));
 const RemoteView = lazy(() => import('./pages/RemoteView'));
 const NetworkHome = lazy(() => import('@/components/network/NetworkHome'));
 // Only an output on a tablet or a TV loads it (NetworkStatus).
@@ -164,6 +165,10 @@ function App() {
                   stays off the network). */}
               <Route path="/Janela" element={page(Janela, GROUND)} />
               <Route path="/Editor" element={page(Janela, GROUND)} />
+              {/* The sound engine: the hidden window that plays every sound
+                  of this computer (electron/soundEngine.cjs). Desktop only,
+                  never a network screen, never an output. */}
+              <Route path="/Som" element={page(SoundEngine, BLACK)} />
               {screens}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Rede" element={page(NetworkHome, GROUND, { screens: PREVIEW_SCREENS })} />}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Remote" element={page(RemoteView, GROUND)} />}

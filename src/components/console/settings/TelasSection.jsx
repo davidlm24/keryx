@@ -14,6 +14,7 @@ import { buildOutputsFile, readOutputsFile, prefWrites, fileName } from "@/lib/o
 import { useLayoutRows } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
 import { outputsSummary } from "@/lib/console/outputs";
+import { pixelSize } from "@/lib/console/placement";
 import { CHIME_VOLUMES, somSummary, ARQUIVO_SUMMARY } from "@/lib/console/cfgSummaries";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm } from "../ConfirmDialog";
@@ -183,7 +184,7 @@ export default function TelasSection({ c, onOpenScreen }) {
                                     <span>Tela {i + 1}{d.primary ? " · Operador" : ""}</span>
                                     {shows.length > 0 && <span className="kx-meta">{shows.join(", ")}</span>}
                                 </div>
-                                <span className="kx-meta">{d.bounds?.width || d.width}×{d.bounds?.height || d.height}</span>
+                                <span className="kx-meta">{pixelSize(d)}</span>
                             </div>
                         );
                     })}
