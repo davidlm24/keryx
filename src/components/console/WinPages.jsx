@@ -35,7 +35,7 @@ export function winPage(entry, { active, escRef, onClose }, h) {
     const p = entry.props || {};
     switch (entry.page) {
         case "config":
-            return <SettingsView c={c} section={h.cfg || "igreja"} setSection={h.setCfg} onClose={onClose} escRef={escRef} active={active} layout={h.uiLayout} setLayout={h.setUiLayout} restoreLayout={h.restoreLayout} onOpenScreen={h.openScreen} onWhatsNew={h.openWhatsNew} />;
+            return <SettingsView c={c} section={h.cfg || "igreja"} setSection={h.setCfg} onClose={onClose} escRef={escRef} active={active} layout={h.uiLayout} setLayout={h.setUiLayout} restoreLayout={h.restoreLayout} onOpenScreen={h.openScreen} onWhatsNew={h.openWhatsNew} askText={h.askText} />;
         case "planner":
             // The tab in front rides in the entry's props (keep: no remount),
             // so Destacar opens the detached window on it (nav.js detachSpec).

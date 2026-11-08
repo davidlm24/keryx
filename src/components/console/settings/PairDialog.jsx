@@ -22,16 +22,23 @@ export default function PairDialog({ role, url, network, onClose, onPaired, say 
     const boxRef = useRef(null);
     useDialogFocus(boxRef, true);
 
+    // The parent redraws every few seconds (the section polls info()): its
+    // callbacks ride in a ref, so a redraw never makes a new QR.
+    const cb = useRef({ onClose, onPaired, say });
+    cb.current = { onClose, onPaired, say };
     const start = useCallback(async () => {
         setStatus({ state: "starting" });
         try {
             const res = await network.call("pairStart", { role });
-            if (res?.error) { say?.(res.error.message); onClose(); return; }
+            if (res?.error) { cb.current.say?.(res.error.message); cb.current.onClose(); return; }
             setTicket(res.data);
+            setNow(Date.now());
             setStatus({ state: "waiting" });
-        } catch (err) { say?.(err?.message || "Não foi possível gerar o QR."); onClose(); }
-    }, [network, role, onClose, say]);
-    useEffect(() => { start(); }, [start]);
+        } catch (err) { cb.current.say?.(err?.message || "Não foi possível gerar o QR."); cb.current.onClose(); }
+    }, [network, role]);
+    // Once, when the dialog opens (Gerar outro / Conectar outro call start again).
+    const started = useRef(false);
+    useEffect(() => { if (started.current) return; started.current = true; start(); }, [start]);
 
     // What became of the QR, every second, while it waits.
     const waiting = status.state === "waiting" && ticket;
@@ -45,17 +52,17 @@ export default function PairDialog({ role, url, network, onClose, onPaired, say 
                 const s = res?.data;
                 if (!alive || !s || s.state === "waiting") return;
                 setStatus(s);
-                if (s.state === "done") onPaired?.(s.device);
+                if (s.state === "done") cb.current.onPaired?.(s.device);
             } catch { /* the next tick asks again */ }
         };
         const t = setInterval(tick, 1000);
         return () => { alive = false; clearInterval(t); };
-    }, [waiting, ticket, network, onPaired]);
+    }, [waiting, ticket, network]);
 
     const close = useCallback(() => {
         if (status.state === "waiting" && ticket) network.call("pairCancel", { ticket: ticket.ticket }).catch(() => {});
-        onClose();
-    }, [status.state, ticket, network, onClose]);
+        cb.current.onClose();
+    }, [status.state, ticket, network]);
     useEffect(() => {
         const onKey = (e) => {
             if (e.key !== "Escape") return;

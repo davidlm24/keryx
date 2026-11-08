@@ -2195,6 +2195,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **A message reaches the phone at once** (owner 2026-10-30): the Equipe's
   page reads Pedidos and Chat again when the event stream brings a
   ServiceMessage change (`useRequests`); the 5/15 s poll is the fallback.
+  **A phone can be paired by QR** (owner 2026-11-08, mockup "KERYX no
+  celular · parear por QR", M1–M5 = A; as in Holyrics, no PWA and no APK —
+  a real PWA needs HTTPS on the LAN): each door card lists its **Aparelhos**
+  (green dot while connected now, "visto há 2 dias", ⋯ / right click
+  Renomear and Desconectar… via useConfirm), "Pelo código · n" for the phones
+  that typed it, and **Conectar um aparelho…** (`PairDialog.jsx`: a QR of
+  `<address>/lan/pair?t=<ticket>`, one phone, 5 minutes, waiting / conectado
+  / expirou). The rules are `electron/phoneDevices.cjs` (tested): tickets in
+  memory only; a device `{ id, role, name, hash, createdAt, lastSeen, agent }`
+  in settings.json `network.devices` (this computer's, never synced), only the
+  sha256 of its key kept, the key in the cookie `keryx_dev=<id>.<key>`
+  (400 days, HttpOnly, Lax); lastSeen saved at most every 10 min; 180 days
+  unseen leaves by itself (M2), 30 at most. **GET /lan/pair never spends the
+  ticket** (WhatsApp and the camera open links by themselves): only the page's
+  Conectar (POST, the phone's name, M4) does. `whoOf` in lan.cjs: a code
+  cookie first (Entrar como Equipe… keeps the pairing underneath), then the
+  paired phone, only while its door is open — the same role, the same limits.
+  **Trocar o código keeps the paired phones** (M1; only who typed it leaves);
+  Desconectar todos removes them too; the main switch or a door off keeps
+  them. Network ops `pairStart`/`pairStatus`/`pairCancel`/`renameDevice`/
+  `removeDevice`; `info().devices` (never a hash). A paired phone's `state`
+  carries `device: { name }` (M5), shown in Mais. Typing the code stays (M3).
+  The browser preview fakes it with localStorage `keryx.preview.phones` = "1"
+  (`src/api/backends/previewPhones.js`). An address that changes (another IP)
+  means scanning again: the card says to reserve the PC's IP in the router.
   **Each side has a way to the other** (C = A, `SWAP_TO` in remoteView.js):
   Controle › Mais "Entrar como Equipe…", the Equipe's strip "Controle…",
   both the sign-in page on that side, which asks for that side's code.

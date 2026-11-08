@@ -52,6 +52,7 @@ export const SETTINGS_INDEX = [
     e("rede", "Transmissão", "a legenda da transmissão ao vivo (OBS): cor, tamanho e posição da faixa", ["obs", "live", "legenda", "faixa", "transmissão", "youtube"], { target: "Ligar telas na rede" }),
     e("rede", "KERYX no celular", "um endereço para os celulares: o Controle e a Equipe, cada um com o seu código", ["celular", "celulares", "Celulares", "telefone", "QR", "Código", "Conectados", "desconectar", "Trocar o código"]),
     e("rede", "Controle", "o controle remoto: um celular conduz o culto (slides, Tela preta, setlist, Bíblia)", ["controle remoto", "remoto", "celular", "telefone", "palco", "pregador", "Código", "Conectados", "desconectar", "Trocar o código"]),
+    e("rede", "Conectar um aparelho", "parear um celular por QR: ele fica conectado, sem digitar o código, e sai sozinho pelo Desconectar", ["QR", "parear", "pareamento", "aparelho", "aparelhos", "celular", "salvar o celular", "Desconectar", "Renomear"]),
     e("rede", "Equipe", "a equipe de louvor no celular: pedidos, chat, letras, Bíblia e setlist; nunca mexe no ar", ["equipe", "louvor", "músicos", "banda", "pedido", "pedidos", "chat", "mensagem", "mensagens", "letra", "celular", "Código", "Trocar o código", "Conectados", "desconectar"]),
     e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),

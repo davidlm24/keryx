@@ -135,7 +135,8 @@ function createDevices({ load, save, now = () => Date.now() } = {}) {
             return { ...d, lastSeen: at };
         },
         // For the console: never the hash.
-        list() { return read().map(({ hash: _hash, ...d }) => d); },
+        // eslint-disable-next-line no-unused-vars
+        list() { return read().map(({ hash, ...d }) => d); },
         rename(id, name) {
             const clean = cleanName(name);
             if (!clean) throw Object.assign(new Error("Dê um nome ao aparelho."), { status: 400 });

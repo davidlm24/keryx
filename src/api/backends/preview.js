@@ -14,6 +14,7 @@ import { reportCode, reportMail } from "@shared/support.mjs";
 import { emptySetup, chooseSetup, dismissSetup, pendingSetup, afterInstall, setupStatus } from "@shared/bibleSetup.mjs";
 import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
 import { previewSyncCall } from "./previewSync";
+import { previewPhonesCall } from "./previewPhones";
 
 const API = "/__keryx/";
 const ONLY_DESKTOP = "Disponível no aplicativo do computador.";
@@ -251,7 +252,10 @@ export function createPreviewBridge() {
             ...bibleSetup,
         },
         network: {
-            async call(op) {
+            async call(op, args) {
+                // KERYX no celular with a made-up church (previewPhones.js, keryx.preview.phones = "1").
+                const faked = previewPhonesCall(op, args);
+                if (faked) return faked;
                 if (op === "info") return { data: { enabled: false, running: false, port: null, hasPin: false, error: ONLY_DESKTOP, urls: [], clients: [], screens: [] } };
                 return unavailable();
             },

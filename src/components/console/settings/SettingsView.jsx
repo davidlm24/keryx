@@ -51,7 +51,7 @@ const FLASH_MS = 1600;
 // without accents (src/lib/console/settingsSearch.js): the results replace
 // the section, the left column counts them, and Enter or a click opens the
 // section and lights the row up.
-export default function SettingsView({ c, section, setSection, onClose, escRef, active = true, layout, setLayout, restoreLayout, onOpenScreen, onWhatsNew }) {
+export default function SettingsView({ c, section, setSection, onClose, escRef, active = true, layout, setLayout, restoreLayout, onOpenScreen, onWhatsNew, askText = null }) {
     const current = sectionOf(section);
     const [q, setQ] = useState("");
     const [activeHit, setActiveHit] = useState(0);
@@ -166,7 +166,7 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
         ) : <Empty icon="search" title={`Nada encontrado para “${q.trim()}”`}>Tente outra palavra: PIN, fundo, backup, transição, logo…</Empty>;
     } else if (current.id === "telas") body = <TelasSection c={c} onOpenScreen={onOpenScreen} />;
     else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
-    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} onWhatsNew={onWhatsNew} onSection={(id) => setSection(id)} escRef={sectionEsc} />; }
+    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} onWhatsNew={onWhatsNew} onSection={(id) => setSection(id)} escRef={sectionEsc} askText={askText} />; }
 
     // Esc, the scrim and the (x) ask here; nothing to guard — everything
     // in Configurações saves as changed. A section with something marked
