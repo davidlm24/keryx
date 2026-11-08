@@ -1418,7 +1418,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
    connected now, a ring when not. */
 .console .cfg .cfg-devs { display: flex; flex-direction: column; gap: 2px; }
 .console .cfg .cfg-devs-h { padding: 0 var(--space-1) var(--space-1); }
-.console .cfg .cfg-dev { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); }
+.console .cfg .cfg-dev { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-radius: var(--radius-control); background: var(--bg-2); }
 .console .cfg .cfg-dev-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--fg-3); }
 .console .cfg .cfg-dev-dot.is-on { background: var(--ok-fg); box-shadow: none; }
 .console .cfg .cfg-dev-t { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
@@ -2582,4 +2582,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
   .dock-drop-label { background: Highlight; color: HighlightText; }
   .dock-ghost { outline: 1px solid CanvasText; }
   .console .dock-tray.is-drop { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* KERYX no celular · Aparelhos: the dot is a background (on) or a ring (off). */
+  .console .cfg .cfg-dev-dot { border: 1px solid CanvasText; box-shadow: none; }
+  .console .cfg .cfg-dev-dot.is-on { background: Highlight; border-color: Highlight; forced-color-adjust: none; }
 }
