@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSetlistWrites } from "@/components/console/useSetlistWrites";
 import { useBuildStage } from "@/components/console/useBuildStage";
 import { setlistHeadItems, setlistAddItems, setlistCountOf, SetlistTitle } from "@/components/console/setlistMenus";
+import { camadasAddItems } from "@/components/console/camadasMenu";
 import { canDetach, isDetached, detachedList, detachModule, attachModule, panelQuery, panelWindowName, PANEL_WINDOW_FEATURES } from "@/lib/console/detach";
 import "@ds/tokens.css";
 import "@ds/components/bundle.css";
@@ -103,7 +104,6 @@ import { selections } from "@/lib/console/selectionStore";
 import { wheelZoomStep } from "@/lib/wheelZoom";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
-import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromMedia, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
 import { plan, playableItems, neighbours, itemOnAir } from "@/lib/console/setlist";
@@ -1214,7 +1214,7 @@ export default function Console() {
     // slots (Measure → locked.temas), like Camadas.
     const temasBtns = <><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
     // The theme in use is the marked slot (and the header's tooltip), not a subtitle (H1 = A).
-    const temasPanel = <Panel title="Temas" tip={themeInUseName ? `Em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
+    const temasPanel = <Panel title="Temas" tip={themeInUseName ? `Em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns} detach={detachPanel("temas")}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");
     const layers = (
         <>
@@ -1226,16 +1226,9 @@ export default function Console() {
     // projection and is in no theme, the text overlay and the logo. Clock,
     // stopwatch, timer, free text and Aviso rápido live in the tabs panel
     // (Ferramentas, Timers, Aviso rápido) and the Setlist's +.
-    const camadasMenu = (e) => {
-        const logoOn = Boolean(c.cur?.logo?.visible);
-        const ovFull = (c.cur?.overlays?.length || 0) >= OVERLAY_LIMIT;
-        openMenu(e, { title: "Adicionar camada", items: [
-            { label: ovFull ? `Sobreposição de texto · máx. ${OVERLAY_LIMIT}` : "Sobreposição de texto", icon: "text", disabled: ovFull, onSelect: () => addOverlayRef.current?.() },
-            { label: logoOn ? "Logo no canto · no ar" : "Logo no canto", icon: "logo", disabled: logoOn, onSelect: () => c.callOp("logo.set", { visible: true }).catch((err) => c.say(err?.message || "Não foi possível mostrar o logo.")) },
-        ] });
-    };
+    const camadasMenu = (e) => openMenu(e, { title: "Adicionar camada", items: camadasAddItems(c, () => addOverlayRef.current?.()) });
     const camadasPanel = (
-        <Panel title="Camadas" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={camadasMenu} />}>
+        <Panel title="Camadas" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={camadasMenu} />} detach={detachPanel("camadas")}>
             <Measure onHeight={setCamadasFitH}>{layers}</Measure>
         </Panel>
     );
@@ -1271,7 +1264,7 @@ export default function Console() {
         </Panel>
     );
     const slidesPanel = (
-        <Panel title="Slides" className={coverCls} count={handTitle(c) || ""} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Slides" className={coverCls} count={handTitle(c) || ""} actions={coverTag} detach={detachPanel("slides")} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} />
         </Panel>
     );
@@ -1514,11 +1507,17 @@ export default function Console() {
             case "song.saved": songSaved(m.song); break;
             case "setlist.material": addMaterial(m.material); break;
             case "console.open": if (m.what === "novidades") openWhatsNew(); else openSettings(m.section || "console"); break;
-            case "console.hello": tellPrev(c.prev); tellPages(); relaySend("console", "console.autoplay", { pending: autoplay.pending || null }); break;
+            case "console.hello": tellPrev(c.prev); tellPages(); relaySend("console", "console.autoplay", { pending: autoplay.pending || null }); relaySend("console", "console.last", { last: c.last || null }); relaySend("console", "console.panels", { placed: placedPanels }); break;
             // A dock panel in a window of its own (Painéis em janela).
             case "layout.patch": setLayout(layoutPatched(layout, m.patch)); break;
             case "panel.closed": openedPanels.current.delete(m.module); if (isDetached(layout, m.module)) setLayout(attachModule(layout, m.module)); break;
             case "autoplay.cancel": autoplay.cancel(); break;
+            // Esc in a panel's window with nothing open there (D4 = A): this
+            // console ends the air, as its own Esc does; its Desfazer, or the
+            // window's (air.undo), puts it back.
+            case "air.end": Promise.resolve(c.end()).then((undo) => relaySend("console", "console.ended", { undo: Boolean(undo) })); break;
+            case "air.undo": if (c.toastAction?.undo) c.toastAction.run(); else c.say("Nada para desfazer."); break;
+            case "last.move": c.moveLast(m.d); break;
             case "pages.retry": retryPages(m.id); break;
             default: break;
         }
@@ -1529,8 +1528,14 @@ export default function Console() {
     // A Prévia the list cannot carry (a theme's example) reads as empty there.
     const tellPrev = (stage) => { if (!relaySend("console", "console.prev", { stage: stage || null })) relaySend("console", "console.prev", { stage: null }); };
     useEffect(() => { tellPrev(c.prev); }, [c.prev]);
-    // The Autoplay's countdown, to a Setlist in a window of its own.
+    // The Autoplay's countdown, to a Setlist in a window of its own; the item
+    // Esc took off, to a Slides there; the modules placed, to Camadas and
+    // the Slides there (the themes, the No ar · Prévia tabs).
     useEffect(() => { relaySend("console", "console.autoplay", { pending: autoplay.pending || null }); }, [autoplay.pending]);
+    useEffect(() => { relaySend("console", "console.last", { last: c.last || null }); }, [c.last]);
+    const placedPanels = leaves(dock.tree);
+    const placedKey = placedPanels.join();
+    useEffect(() => { relaySend("console", "console.panels", { placed: placedKey ? placedKey.split(",") : [] }); }, [placedKey]);
 
     // The panels in a window of their own (Painéis em janela, detach.js):
     // the console opens a window for each — when one is detached and when

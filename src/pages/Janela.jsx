@@ -63,6 +63,8 @@ const KEEPS_FOCUS = ".dialog, .palette, .lyr, .addmenu";
 
 // The theme in use, as the console keeps it on this computer (localStorage):
 // what a song or a material in this window is dressed with in its previews.
+// Temas or Camadas in a window of their own change it (setThemeId): the
+// same key, which the console follows through `storage` (useConsole).
 function useThemeInUse() {
     const read = () => { try { return localStorage.getItem(THEME_IN_USE_KEY) || null; } catch { return null; } };
     const [id, setId] = useState(read);
@@ -71,7 +73,11 @@ function useThemeInUse() {
         window.addEventListener("storage", on);
         return () => window.removeEventListener("storage", on);
     }, []);
-    return id;
+    const set = useCallback((next) => {
+        setId(next || null);
+        try { if (next) localStorage.setItem(THEME_IN_USE_KEY, next); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
+    }, []);
+    return [id, set];
 }
 
 // What the pages need of a console, without the console: the live state,
@@ -81,14 +87,19 @@ function useThemeInUse() {
 // the console says it holds (console.prev).
 function useJanelaConsole() {
     const live = useLiveState();
-    const themeId = useThemeInUse();
+    const [themeId, setThemeId] = useThemeInUse();
     const { stamp, bgPrefs, fitFor } = useStamp(themeId);
     const { toast, toastAction, say, holdToast } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
+    // The item Esc took off, as the console keeps it (a detached Slides
+    // shows it, "parou aqui"); its arrows move it there (last.move).
+    const [last, setLast] = useState(null);
+    const moveLast = useCallback((d) => { relaySend("janela", "last.move", { d }); }, []);
     useEffect(() => {
         const off = relayListen("janela", (m) => {
             if (m.type === "console.prev") setPrevMirror(m.stage);
+            else if (m.type === "console.last") setLast(m.last);
             // The PDFs' pages are the console's work: their progress comes from
             // it, and Tentar de novo goes back to it (Rodada H, HB).
             else if (m.type === "pages.progress") setRelayedProgress(m.pages);
@@ -104,7 +115,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, cur: live, bgPrefs, fitFor, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
+    return { live, cur: live, bgPrefs, fitFor, themeId, setThemeId, prev, setPrev, last, moveLast, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,
@@ -258,6 +269,7 @@ export default function Janela() {
         else if (action === "next" || action === "prev") { e.preventDefault(); c.moveSlide(action === "next" ? 1 : -1); }
         else if (action === "selUp" || action === "selDown") { e.preventDefault(); toConsole("prev.step", { d: action === "selDown" ? 1 : -1 }); }
         else if (action === "clear") { e.preventDefault(); c.clearText(); }
+        else if (action === "undo" && c.toastAction?.undo) { e.preventDefault(); c.toastAction.run(); }
     };
     useEffect(() => {
         const onKey = (e) => keysRef.current(e);

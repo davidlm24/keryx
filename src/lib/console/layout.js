@@ -240,6 +240,7 @@ export function layoutPatched(layout, patch = {}) {
     if (has("tabs")) out.tabs = normalizeTabs(patch.tabs);
     if (has("libGroup")) out.libGroup = normalizeLibGroup(patch.libGroup);
     if (has("libFoldersOpen")) out.libFoldersOpen = normalizeFoldersOpen(patch.libFoldersOpen);
-    for (const k of ["libShowArtist", "libShowKey", "libShowLength"]) if (has(k)) out[k] = patch[k] === true;
+    for (const k of ["libShowArtist", "libShowKey", "libShowLength", "temasNames"]) if (has(k)) out[k] = patch[k] === true;
+    if (has("temasThumb")) out.temasThumb = patch.temasThumb === "large" ? "large" : "small";
     return out;
 }
