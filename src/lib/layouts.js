@@ -224,6 +224,13 @@ export const seedLayoutId = (path) => SEEDS[path] || "factory:tela";
 // A layout with a timer element shows the tool (clock, timer, texto livre)
 // there, so its Projeção element leaves the full-screen tool layer out.
 export const layoutHasTimer = (layout) => (layout?.elements || []).some((e) => e.type === "timer");
+
+// The elements that count time (a clock, the date, a timer, the service's
+// or the song's time, how long the item is on air): a still preview of a
+// design ticks only when it has one (owner 2026-11-09: only the Programa
+// moves; the rest of the console's previews are still frames).
+export const TIME_TYPES = new Set(["clock", "date", "timer", "service_time", "air_for", "song_time"]);
+export const layoutCountsTime = (layout) => (layout?.elements || []).some((e) => TIME_TYPES.has(e.type));
 export const isFactoryId = (id) => typeof id === "string" && id.startsWith("factory:");
 
 // The layout an id names: a factory one, or a row (normalized); null when

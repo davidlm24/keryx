@@ -188,3 +188,24 @@ test("Identificar saídas: the screen and the name, escaped, nothing else (2026-
     assert.ok(!html.includes("<script"));
     assert.ok(!/som sai/i.test(html));
 });
+
+test("Identificar telas: every monitor its number and what is on it; windows apart (2026-11-09)", () => {
+    const { identifyPlan, identifyHtml } = require("./outputs.cjs");
+    const b = (x) => ({ x, y: 0, width: 1920, height: 1080 });
+    const plan = identifyPlan({
+        consoleId: 1,
+        displays: [{ id: 1, bounds: b(0) }, { id: 2, bounds: b(1920) }, { id: 3, bounds: b(3840) }],
+        outputs: [
+            { key: "/Projection", name: "Projeção", full: true, displayId: 2, bounds: b(1920) },
+            { key: "/LyricProjection", name: "Letras", full: true, displayId: 2, bounds: b(1920) },
+            { key: "/StageView", name: "Palco", full: false, displayId: null, bounds: { x: 100, y: 100, width: 800, height: 450 } },
+        ],
+    });
+    assert.deepEqual(plan.screens.map((s) => [s.where, s.name, s.muted]), [["Tela 1", "Console", false], ["Tela 2", "Projeção · Letras", false], ["Tela 3", "livre", true]]);
+    assert.deepEqual(plan.windows.map((w) => [w.where, w.name, w.bounds.width]), [["Janela", "Palco", 800]]);
+    // A monitor with nothing is grey; the console's and the outputs' gold.
+    assert.ok(identifyHtml(plan.screens[2]).includes("#bbb6ac"));
+    assert.ok(identifyHtml(plan.screens[1]).includes("#e2c08a"));
+    // Nothing open: every monitor still shows its number.
+    assert.deepEqual(identifyPlan({ displays: [{ id: 5, bounds: b(0) }] }).screens.map((s) => [s.where, s.name]), [["Tela 1", "livre"]]);
+});

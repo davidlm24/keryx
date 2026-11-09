@@ -31,7 +31,10 @@ const FONT = { ...FONT_MAP, mono: 'ui-monospace, "Cascadia Mono", Consolas, mono
 // undefined (the Pastor), the element draws what its state has, as before.
 // Without `nowMs` (the console's previews and the editor's canvas) it keeps
 // its own ticking clock, so its clocks and timers count by themselves.
-export default function LayoutRenderer({ layout, live, screenState, alert, nowMs: givenNow, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, ghost = false, audio = false, children }) {
+// `motion`: an embedded drawing plays its Projeção element (a video Fundo, a
+// moving generator, the transitions) only when asked — the Multiview's
+// moving tile; every other preview is a still frame (owner 2026-11-09).
+export default function LayoutRenderer({ layout, live, screenState, alert, nowMs: givenNow, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, motion = false, ghost = false, audio = false, children }) {
     const ownNow = useLiveNow(1000, givenNow === undefined);
     const nowMs = givenNow ?? ownNow;
     const ctx = useMemo(() => layoutContext({ live, now: nowMs, upcoming, hasService, church }), [live, nowMs, upcoming, hasService, church]);
@@ -59,7 +62,7 @@ export default function LayoutRenderer({ layout, live, screenState, alert, nowMs
                 // mode keeps it faint, pickable.
                 const state = elementState(el, ctx, { logoUrl });
                 if (state !== "shown" && !ghost) return null;
-                return <Element key={el.id} el={el} ctx={ctx} state={state} ghost={ghost} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
+                return <Element key={el.id} el={el} ctx={ctx} state={state} ghost={ghost} logoUrl={logoUrl} embed={embed} motion={motion} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
             })}
             {alert && <AlertBar alert={alert} />}
             {children}
@@ -67,13 +70,13 @@ export default function LayoutRenderer({ layout, live, screenState, alert, nowMs
     );
 }
 
-function Element({ el, ctx, state, ghost, logoUrl, embed, transpose, setTranspose, screen, audio }) {
+function Element({ el, ctx, state, ghost, logoUrl, embed, motion, transpose, setTranspose, screen, audio }) {
     const shown = state !== "off" && state !== "rule";
     // A ghost by its eye or its rule still draws what it would say, faint.
     const has = state === "shown" || (state !== "empty" && elementHasContent(el, ctx, { logoUrl }));
     // A presentation's page in "Letra atual" / "Próximo slide" (Rodada F3): its picture.
     const page = el.type === "current" ? slidePage(ctx.current) : el.type === "next" ? slidePage(ctx.next) : "";
-    const body = !has ? null : page ? <img className="kl-page" src={page} alt="" /> : TEXT_TYPES.has(el.type) ? <div className="kl-v">{elementText(el, ctx)}</div> : <Body el={el} ctx={ctx} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
+    const body = !has ? null : page ? <img className="kl-page" src={page} alt="" /> : TEXT_TYPES.has(el.type) ? <div className="kl-v">{elementText(el, ctx)}</div> : <Body el={el} ctx={ctx} logoUrl={logoUrl} embed={embed} motion={motion} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
     // The text bar's look (Rodada P, P8-3): italic, capitals, justify,
     // spacing and outline on the element; the underline on its body only
     // (is-u), since a decoration cannot be taken off the label under it.
@@ -95,11 +98,11 @@ function Element({ el, ctx, state, ghost, logoUrl, embed, transpose, setTranspos
     );
 }
 
-function Body({ el, ctx, logoUrl, embed, transpose, setTranspose, screen, audio }) {
+function Body({ el, ctx, logoUrl, embed, motion, transpose, setTranspose, screen, audio }) {
     const song = ctx.song || {};
     switch (el.type) {
         case "screen":
-            return <ScreenRenderer fill state={screen} now={ctx.now} logoUrl={logoUrl} preview={embed} motion={embed} audio={audio && !embed} />;
+            return <ScreenRenderer fill state={screen} now={ctx.now} logoUrl={logoUrl} preview={embed} motion={embed && motion} audio={audio && !embed} />;
         case "current": {
             const chorded = el.props.chords ? chordedOf(song, ctx.index, ctx.current.text) : null;
             return (

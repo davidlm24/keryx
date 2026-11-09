@@ -159,8 +159,13 @@ export default function TelasSection({ c, onOpenScreen }) {
     if (!displays) return <Empty icon="monitor" title="Telas e saídas">{desktopOnly}</Empty>;
     if (!state) return <Reading what="as telas" error={readError} />;
 
-    const identify = () => Promise.resolve(displays.identify()).then((res) => { if (res?.error) c.say(res.error.message); })
-        .catch(() => c.say("Não foi possível mostrar os números nas telas."));
+    // Identificar telas: the same as the Saídas popover's (owner 2026-11-09).
+    const identify = () => {
+        if (keryx.isPreview) { c.say("Na prévia as telas não se identificam: só no aplicativo."); return; }
+        Promise.resolve(displays.identify(Object.fromEntries(outputs.map((o) => [o.key, o.label]))))
+            .then((res) => { if (res?.error) c.say(res.error.message); })
+            .catch(() => c.say("Não foi possível mostrar os números nas telas."));
+    };
     const widest = Math.max(1, ...list.map((d) => d.bounds?.width || d.width || 1));
     const onDisplay = (d) => outputs.filter((o) => o.open && o.placement?.mode === "fullscreen" && o.placement.displayId === d.id).map((o) => o.label);
     // Exportar / Importar ajustes das saídas (src/lib/outputsFile.js): every
@@ -237,7 +242,7 @@ export default function TelasSection({ c, onOpenScreen }) {
                         );
                     })}
                     <span style={{ flex: 1 }} />
-                    <Btn onClick={identify} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
+                    <Btn onClick={identify} title="Mostra em cada tela ligada o seu número e as saídas que estão nela">Identificar telas</Btn>
                 </CfgKey>
             </CfgGroup>
             <CfgGroup id="telas.saidas" k="Saídas" summary={outputsSummary(outs)}>

@@ -1238,7 +1238,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.verifyClosed = await waitFor(() => js("!document.querySelector('.verif-overlay')")) && Boolean(live.get().content);
 
         // The Saídas popover (owner 2026-11-08, mockup P1 = A, I1 = A): no
-        // Tela ociosa (Temas e fundos has it), Identificar saídas in the
+        // Tela ociosa (Temas e fundos has it), Identificar telas in the
         // footer, and Recebe and Destino on one line with no words.
         for (let i = 0; i < 3 && !(await js("Boolean(document.querySelector('.pop-outs'))")); i += 1) { await click(".kx-status", ""); await sleep(400); }
         result.outsLean = await js(`(() => {
@@ -1247,8 +1247,8 @@ async function checkConsole(webContents, { live, outputs }) {
             const text = p.textContent;
             const ctl = [...p.querySelectorAll(".kx-out-ctl")];
             const oneLine = ctl.every((c) => { const k = [...c.children]; return k.length < 2 || k.every((x) => Math.abs(x.getBoundingClientRect().top - k[0].getBoundingClientRect().top) < 2); });
-            const ok = !text.includes("Tela ociosa") && text.includes("Identificar saídas") && !/Recebe:|Destino:/.test(text) && ctl.length > 0 && oneLine;
-            return ok || { tela: text.includes("Tela ociosa"), identify: text.includes("Identificar saídas"), words: /Recebe:|Destino:/.test(text), rows: ctl.length, oneLine };
+            const ok = !text.includes("Tela ociosa") && text.includes("Identificar telas") && !/Recebe:|Destino:/.test(text) && ctl.length > 0 && oneLine;
+            return ok || { tela: text.includes("Tela ociosa"), identify: text.includes("Identificar telas"), words: /Recebe:|Destino:/.test(text), rows: ctl.length, oneLine };
         })()`);
         await press("Escape"); // closes the popover
 

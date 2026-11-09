@@ -33,7 +33,7 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
     const left = rule ? leftOutNow(page, rule, live) : null;
     const upcoming = useMemo(() => (layout ? nextItems(items, live?.session || null, 10) : []), [layout, items, live?.session]);
     let body;
-    if (layout && (own || doc)) body = <LayoutRenderer layout={layout} live={live} screenState={own ? undefined : doc} nowMs={now} logoUrl={logoUrl} upcoming={upcoming} hasService={items.length > 0} church={church} scale={own ? pref.scale : 1} embed />;
+    if (layout && (own || doc)) body = <LayoutRenderer layout={layout} live={live} screenState={own ? undefined : doc} nowMs={now} logoUrl={logoUrl} upcoming={upcoming} hasService={items.length > 0} church={church} scale={own ? pref.scale : 1} embed motion={motion} />;
     else if (own === "/StageView") body = <StageScreen content={live?.content || null} nowMs={now} embed opts={pref.options} scale={pref.scale} />;
     else if (own === "/PastorView") {
         const upcoming = nextItems(items, live?.session || null, pastorOptions(pref).next_count || 1);
