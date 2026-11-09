@@ -260,7 +260,7 @@ export const REMOTE_HANDLERS = {
     alertClear: {
         quiet: true,
         run: async ({ d, live, action }) => {
-            if (!live?.alert) return fail("nothing", "Nenhum aviso no ar.");
+            if (!live?.alert) return fail("nothing", "Nenhum aviso rápido no ar.");
             await d.callOp("alert.clear", {});
             return ok(remoteSay(action));
         },

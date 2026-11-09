@@ -24,7 +24,7 @@ test("nothing on air, black, logo and locked say so", () => {
 test("what the console says, and a passage to check before sending", () => {
     assert.equal(remoteSay("next"), "Celular: próximo slide.");
     assert.equal(remoteSay("black", "Tela preta"), "Celular: Tela preta.");
-    assert.equal(remoteSay("alertClear"), "Celular: tirou o aviso.", "the contract's label for the new actions");
+    assert.equal(remoteSay("alertClear"), "Celular: tirou o aviso rápido.", "the contract's label for the new actions");
     const verses = [{ number: 16, text: "Porque Deus amou" }, { number: 17, text: "para que" }, { number: 18, text: "x" }];
     assert.deepEqual(passagePreview("João 3:16-17 · NVI", verses, [16, 17]), { reference: "João 3:16-17 · NVI", text: "16 Porque Deus amou 17 para que", version: "" });
     assert.equal(passagePreview("João 3", verses, [], "NVI").text, "16 Porque Deus amou 17 para que 18 x", "a whole chapter: from its first verse");

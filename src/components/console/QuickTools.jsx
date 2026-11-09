@@ -26,8 +26,11 @@ function AlertSince({ since }) {
 // Aviso rápido: the field, Mostrar and the mensagens prontas (AlertPreset,
 // src/lib/console/alertPresets.js): a click puts one in the field to
 // complete it, a double click shows it at once; the star keeps what is in
-// the field. The one control that bypasses the Prévia.
-export function QuickAlert({ c, data }) {
+// the field. The one control that bypasses the Prévia. The ONE box of the
+// Aviso rápido in the console (2026-11-09, A3 = A): Painel › Avisos and the
+// menu's popover (Ferramentas › Aviso rápido…). 200 characters, as the phone
+// and the mensagens prontas.
+export function QuickAlert({ c, data, autoFocus = false }) {
     const [alertText, setAlertText] = useState("");
     const showAlert = () => {
         const text = alertText.trim();
@@ -47,7 +50,7 @@ export function QuickAlert({ c, data }) {
     return (
         <>
             <div className="qt-row">
-                <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Aviso para as telas" style={{ flex: 1 }} inputProps={{ spellCheck: true }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
+                <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Aviso para as telas" style={{ flex: 1 }} inputProps={{ spellCheck: true, maxLength: 200, autoFocus, "aria-label": "Aviso rápido" }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
                 <Btn onClick={showAlert} title="Mostrar nas telas agora · Enter">Mostrar</Btn>
                 <IconBtn name="star" on={Boolean(kept)} disabled={!kept && !alertText.trim()} title={kept ? "Esta mensagem já está salva" : "Salvar esta mensagem como pronta"} aria-label="Mensagem pronta" onClick={keepAlert} />
             </div>

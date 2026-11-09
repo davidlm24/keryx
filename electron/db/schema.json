@@ -2074,6 +2074,9 @@
         "idle_look": {
           "type": "json"
         },
+        "alert_look": {
+          "type": "json"
+        },
         "chime_on": {
           "type": "boolean"
         },

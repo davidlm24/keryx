@@ -53,7 +53,7 @@ export function SendLaunchers({ live, state, caps, c, slides = true, top = false
             <h2 className={`rm-sec ${top ? "is-top" : ""}`}>Enviar</h2>
             <div className={withSlides ? "rm-trio" : "rm-pair"}>
                 {withSlides && <button type="button" className="rm-b" disabled={!s.has || s.count < 2 || !allowed("goto", {}, c.flags)} onClick={() => setSheet("slides")}><Icon name="list" size={22} />Slides</button>}
-                {can("alert") && <button type="button" className="rm-b" disabled={!allowed("alert", {}, c.flags) && !live?.alert} onClick={() => setSheet("alert")}><Icon name="bell" size={22} />Aviso</button>}
+                {can("alert") && <button type="button" className="rm-b" disabled={!allowed("alert", {}, c.flags) && !live?.alert} onClick={() => setSheet("alert")}><Icon name="bell" size={22} />Aviso rápido</button>}
                 {can("tool") && <button type="button" className="rm-b" disabled={!allowed("tool", {}, c.flags)} onClick={() => setSheet("timer")}><Icon name="clock" size={22} />Timer</button>}
             </div>
             {sheet === "slides" && <SlidesSheet content={content} c={c} onClose={() => setSheet(null)} />}
@@ -110,7 +110,7 @@ export function SlidesSheet({ content, c, onClose }) {
 }
 
 // Aviso rápido: the text (or one of the avisos prontos), as it will look,
-// then Mostrar na tela; Tirar o aviso while one is on.
+// then Mostrar na tela; Tirar o aviso rápido while one is on.
 export function AlertSheet({ live, state, c, onClose }) {
     const presets = state?.alerts || [];
     const [text, setText] = useState(live?.alert?.message || "");
@@ -130,7 +130,7 @@ export function AlertSheet({ live, state, c, onClose }) {
             <div className="rm-pair">
                 <Cmd c={c} action="alert" args={args} className="is-go" disabled={!text.trim()} then={onClose}>Mostrar na tela</Cmd>
                 {live?.alert
-                    ? <Cmd c={c} action="alertClear" then={onClose}>Tirar o aviso</Cmd>
+                    ? <Cmd c={c} action="alertClear" then={onClose}>Tirar o aviso rápido</Cmd>
                     : <button type="button" className="rm-b" onClick={onClose}>Cancelar</button>}
             </div>
         </Sheet>

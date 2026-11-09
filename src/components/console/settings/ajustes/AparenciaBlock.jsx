@@ -2,37 +2,32 @@ import React from "react";
 import Icon from "../../Icon";
 import { Btn, Seg } from "../../kx";
 import { CfgDisc, CfgGroup, FormRow, Switch } from "../parts";
-import { ownsTheme, streamOptions, alertOptions, showsAlert, ALERT_DEFAULTS } from "@/lib/outputPrefs";
+import { ownsTheme, streamOptions, alertOptions, showsAlert, churchAlertLook, ALERT_DEFAULTS } from "@/lib/outputPrefs";
+import { usePrefs } from "@/hooks/useUser";
+import { useOutputPref } from "@/hooks/useOutputPref";
 import { aparenciaSummary, alertSummary } from "@/lib/console/ajustesSummaries";
 import { openEditor } from "@/lib/editorWindow";
 import { themeName } from "@/lib/console/themes";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
-// Aviso rápido (alertOptions): the choices, in the bar's own words.
+// Aviso rápido (alertOptions): each screen keeps only its position; the
+// look is the church's (Configurações › Telas e saídas › Avisos, 2026-11-09).
 const ALERT_POSITIONS = [["top", "Alto"], ["bottom", "Baixo"]];
-const ALERT_STYLES = [["band", "Faixa"], ["pill", "Pílula"]];
-const ALERT_SIZES = [["s", "P"], ["m", "M"], ["l", "G"]];
-const ALERT_ENTRANCES = [["slide", "Deslizar"], ["fade", "Aparecer"], ["none", "Nenhuma"]];
 
 // Aparência (Editor da tela › Ajustes, Rodada H2): how the screen looks — the
 // text scale and margins, the theme, the Aviso rápido bar in this screen's
 // look and, for the Transmissão, the band of the lower third.
 export default function AparenciaBlock({ ctx }) {
-    const { path, label, pref, rule, themes, themeGone, save, saveOpt, saveOptions, options, renderer, isStream, alertSample, onAlertSample, c } = ctx;
+    const { path, label, pref, rule, themes, themeGone, save, saveOpt, renderer, isStream, alertSample, onAlertSample, c } = ctx;
     const stream = streamOptions(pref);
     const alertShown = !isStream && showsAlert(path, pref);
     const alertHidden = !rule.top.alert;
-    const alertLook = alertOptions(pref, path);
+    const prefs = usePrefs();
+    const { pref: projPref } = useOutputPref("/Projection");
+    const alertLook = alertOptions(pref, path, churchAlertLook(prefs.alert_look, projPref?.options));
     const saveAlert = (k, v) => { saveOpt(`alert_${k}`, v); onAlertSample?.(true); };
     const alertColoursDefault = alertLook.bg === ALERT_DEFAULTS.bg && alertLook.fg === ALERT_DEFAULTS.fg;
-    const resetAlertColours = () => {
-        const next = { ...options() };
-        delete next.alert_bg;
-        delete next.alert_fg;
-        saveOptions(next);
-        onAlertSample?.(true);
-    };
     const theme = themes.find((t) => t.id === pref.themeId);
     return (
         <CfgGroup id="editor.aparencia" k="Aparência" summary={aparenciaSummary({ page: path, pref, themeName: theme && !themeGone ? themeName(theme) : "" })}>
@@ -73,8 +68,8 @@ export default function AparenciaBlock({ ctx }) {
                     </FormRow>
                 </>}
                 {/* The Aviso rápido bar on this screen (alertOptions; Rodada E3):
-                    no choice is the amber band across the top, as always.
-                    Set once, so folded under its summary (T3 = A). */}
+                    only its position here; the look is the church's, one for
+                    every screen (2026-11-09, A4 = A). Folded (T3 = A). */}
                 {alertShown && <CfgDisc k="Aviso rápido" bodyClass="frm" summary={alertSummary(alertLook, { amber: alertColoursDefault, hidden: alertHidden })}>
                     <div className="cfg-frm-head">
                         {alertHidden && <span className="kx-meta">esta saída não mostra o Aviso rápido (Conteúdo › Escolher por tipo › Por cima de tudo)</span>}
@@ -85,22 +80,7 @@ export default function AparenciaBlock({ ctx }) {
                         <FormRow k="Posição">
                             <Seg small label={`Posição do Aviso rápido em ${label}`} value={alertLook.position} options={ALERT_POSITIONS} onChange={(v) => saveAlert("position", v)} />
                         </FormRow>
-                        <FormRow k="Estilo">
-                            <Seg small label={`Estilo do Aviso rápido em ${label}`} value={alertLook.style} options={ALERT_STYLES} onChange={(v) => saveAlert("style", v)} />
-                        </FormRow>
-                        <FormRow k="Cores">
-                            <input type="color" className="ed-color" value={alertLook.bg} onChange={(e) => saveAlert("bg", e.target.value)} aria-label="Cor do fundo do Aviso rápido" title="Fundo" />
-                            <input type="color" className="ed-color" value={alertLook.fg} onChange={(e) => saveAlert("fg", e.target.value)} aria-label="Cor do texto do Aviso rápido" title="Texto" />
-                            <span className="kx-meta">fundo e texto</span>
-                            {!alertColoursDefault && <Btn small onClick={resetAlertColours} title="Volta ao âmbar de sempre">Cores padrão</Btn>}
-                        </FormRow>
-                        <FormRow k="Tamanho">
-                            <Seg small label={`Tamanho do Aviso rápido em ${label}`} value={alertLook.size} options={ALERT_SIZES} onChange={(v) => saveAlert("size", v)} />
-                        </FormRow>
-                        <FormRow k="Entrada">
-                            <Seg small label={`Entrada do Aviso rápido em ${label}`} value={alertLook.entrance} options={ALERT_ENTRANCES} onChange={(v) => saveAlert("entrance", v)} />
-                            <span className="kx-meta">sem movimento quando o Windows pede menos animação</span>
-                        </FormRow>
+                        <span className="kx-meta">O estilo, as cores, o tamanho e a entrada são um só para todas as telas: Configurações › Telas e saídas › Avisos.</span>
                     </>}
                 </CfgDisc>}
             </div>

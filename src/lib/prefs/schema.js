@@ -11,6 +11,7 @@ import { normalizeCategories } from "../console/categoryNames.js";
 import { renamedVersion } from "../bibleRenames.js";
 import { idleLookOf, isDefaultIdleLook } from "../../../shared/idleLook.mjs";
 import { TRANSITION_TYPE_IDS } from "../contentKinds.js";
+import { alertLookOf } from "../../../shared/live-state.mjs";
 
 const oneOf = (list, fallback) => (v) => (list.includes(v) ? v : fallback);
 // { [kind]: "cut" | "fade" } for the kinds of TRANSITION_TYPE_IDS; anything else dropped.
@@ -56,6 +57,8 @@ export const PREF_FIELDS = {
     idle_mode: { default: "logo", normalize: oneOf(["logo", "black", "background"], "logo") },
     // The Tela ociosa's look (shared/idleLook.mjs); null = as it always was.
     idle_look: { default: null, normalize: (v) => { const l = idleLookOf(v); return l && !isDefaultIdleLook(l) ? l : null; } },
+    // The Aviso rápido's look, the church's (outputPrefs.js churchAlertLook); null = not set.
+    alert_look: { default: null, normalize: (v) => alertLookOf(v) },
     chime_on: { default: true, normalize: (v) => v !== false },
     chime_volume: { default: 35, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) ? Math.min(100, Math.max(5, Math.round(n))) : 35; } },
     show_item_title: { default: true, normalize: (v) => v !== false },

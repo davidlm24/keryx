@@ -220,6 +220,9 @@
 .console .kx-panel-h .kx-panel-cap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-2); }
 .console .prog .kx-mon-screen { container-name: prog-screen; }
 .console .prog-pill .prog-where { flex: none; }
+/* The Aviso rápido on air, in the pill (2026-11-09, A5 = A): an amber ring, a click takes it off. */
+.console .prog-pill .pp-alert { flex: none; display: inline-flex; align-items: center; gap: 2px; height: 20px; padding: 0 var(--space-1) 0 var(--space-2); border-radius: 999px; border: 1px solid var(--warn); color: var(--warn-fg); background: transparent; font-size: var(--fs-meta); white-space: nowrap; cursor: pointer; }
+.console .prog-pill .pp-alert:hover { background: color-mix(in srgb, var(--warn) 18%, transparent); }
 .console .prog-pill .prog-where.kx-warn { color: var(--warn-fg); }
 .console .prog-pill .prog-locked { height: 18px; padding: 0 6px; font-size: var(--fs-ui); }
 .console .prog-pill .pp-more { display: none; }
@@ -331,6 +334,11 @@
 /* Painel › Avisos (AvisosTab.jsx): the Aviso rápido stays, the avisos scroll under it. */
 .console .avisos-tab { display: flex; flex-direction: column; min-height: 0; height: 100%; }
 .console .avisos-list { flex: 1; min-height: 0; overflow: auto; }
+/* Ferramentas › Aviso rápido… (2026-11-09, A3 = A): the Painel's box, floating under the top bar. */
+.console .qa-pop { position: absolute; z-index: var(--z-dialog); left: 50%; transform: translateX(-50%); top: var(--pop-top); width: 480px; max-width: calc(100vw - 2 * var(--gutter)); border-radius: var(--radius-panel); padding: var(--space-1) 0 var(--space-2); }
+/* Configurações › Telas e saídas › Avisos: the sample bar over a still screen. */
+.cfg .cfg-avisos > .cfg-avisos-sample, .cfg .cfg-avisos > .cfg-avisos-note { grid-column: 1 / -1; }
+.cfg .cfg-avisos-sample { width: 320px; max-width: 100%; }
 .console .tabs-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); min-height: 100%; box-sizing: border-box; }
 .console .tabs-notes .tnotes { max-height: none; }
 /* Notas do operador (the Notas tab's free field, Service.operator_notes). */

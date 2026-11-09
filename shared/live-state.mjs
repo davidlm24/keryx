@@ -264,6 +264,20 @@ function ranged(value, [min, max], label) {
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
+// The Aviso rápido's look, the church's one (User.alert_look; owner
+// 2026-11-09, mockup "Avisos · um lugar só", A4 = A): Estilo, the colours,
+// Tamanho and Entrada — never the position, which is each screen's
+// (outputPrefs.js alertOptions). Only valid keys; none = null. The console
+// stamps it on alert.show, so every screen and network page draws it.
+export const ALERT_LOOK = { style: ["band", "pill"], size: ["s", "m", "l"], entrance: ["slide", "fade", "none"] };
+export function alertLookOf(v) {
+    if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+    const out = {};
+    for (const [k, list] of Object.entries(ALERT_LOOK)) if (list.includes(v[k])) out[k] = v[k];
+    for (const k of ["bg", "fg"]) if (typeof v[k] === "string" && HEX.test(v[k])) out[k] = v[k].toLowerCase();
+    return Object.keys(out).length ? out : null;
+}
+
 // Free-form JSON (chords, quiz questions, a communication item): kept as is,
 // but it must be plain data and not huge.
 function loose(value, label) {
@@ -1057,13 +1071,17 @@ const OPS = {
         return s.idle === m && same && (s.idleDim ?? null) === d && (s.idleBlur ?? null) === b ? null : { idle: m, idleUrl: u, idleDim: d, idleBlur: b };
     },
 
-    "alert.show": (_s, a, now) => ({
-        alert: {
-            message: text(a.message, "Mensagem", { max: 2000, required: true }),
-            type: oneOf(a.type ?? "alert", ALERT_TYPES, "Tipo de aviso"),
-            since: now,
-        },
-    }),
+    "alert.show": (_s, a, now) => {
+        const look = alertLookOf(a.look);
+        return {
+            alert: {
+                message: text(a.message, "Mensagem", { max: 2000, required: true }),
+                type: oneOf(a.type ?? "alert", ALERT_TYPES, "Tipo de aviso"),
+                since: now,
+                ...(look ? { look } : {}),
+            },
+        };
+    },
     "alert.clear": (s) => (s.alert ? { alert: null } : null),
 
     // Stop: what Esc / "Encerrar" means. Logo, Escola bíblica, overlays and

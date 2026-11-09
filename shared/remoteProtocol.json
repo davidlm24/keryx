@@ -241,7 +241,7 @@
       },
       "oneOf": [["message"], ["presetId"]]
     },
-    "alertClear": { "kind": "T", "cap": "alert", "label": "tirou o aviso", "ops": ["alert.clear"], "args": {} },
+    "alertClear": { "kind": "T", "cap": "alert", "label": "tirou o aviso rápido", "ops": ["alert.clear"], "args": {} },
     "tool": {
       "kind": "S",
       "cap": "timer",

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
     applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, playbackGain, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, FOLLOW_SOURCES,
-    activitySteps, revealStep, revealOf, LAYER_ORDER, layerHidden,
+    activitySteps, revealStep, revealOf, LAYER_ORDER, layerHidden, alertLookOf,
 } from "./live-state.mjs";
 
 const T0 = 1_000_000;
@@ -1300,4 +1300,14 @@ test("refused: a YouTube link the player refused leaves and is marked, only that
     assert.deepEqual([next.media.id, next.refused.id, next.refused.code], ["b", "y1", 150]);
     // It works locked: it only takes something off.
     assert.equal(applyOp(applyOp(media, "screens.lock", { locked: true }, T0), "media.clear", { refused: 150, url: yt.url }, T0 + 5).refused.id, "y1");
+});
+
+test("the Aviso rápido carries the church's look (2026-11-09): valid keys only, never the position", () => {
+    const T = 1000;
+    let s = applyOp(emptyState(T), "alert.show", { message: "Carro", type: "message", look: { style: "pill", bg: "#1E40AF", fg: "nope", size: "l", entrance: "zoom", position: "bottom" } }, T);
+    assert.deepEqual(s.alert, { message: "Carro", type: "message", since: T, look: { style: "pill", size: "l", bg: "#1e40af" } });
+    s = applyOp(s, "alert.show", { message: "Oi", type: "message", look: { position: "top" } }, T);
+    assert.equal(s.alert.look, undefined, "nothing valid: no look, the bar as always");
+    assert.equal(alertLookOf(null), null);
+    assert.equal(alertLookOf([1]), null);
 });

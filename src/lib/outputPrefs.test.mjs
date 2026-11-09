@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeRule, ruleOf, defaultRule, applyRule, ruleShortcut, ruleLabel, ruleSummary, outputsNotShowing, RULE_SHORTCUTS, normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults } from "./outputPrefs.js";
+import { normalizeRule, ruleOf, defaultRule, applyRule, ruleShortcut, ruleLabel, ruleSummary, outputsNotShowing, RULE_SHORTCUTS, normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults, churchAlertLook, sentAlertLook } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -335,13 +335,26 @@ test("Aviso rápido: no choice is the bar as the Projeção always drew it (Roda
         assert.deepEqual(alertOptions(pref), ALERT_DEFAULTS, "the Transmissão's own keys never leak into the bar");
         assert.ok(isDefaultAlert(alertOptions(pref)));
     }
-    // Every choice, colours in lower case.
+    // The screen keeps only its position (2026-11-09): the rest is the
+    // church's look, which the alert brings.
     const all = { alert_position: "bottom", alert_style: "pill", alert_bg: "#1E40AF", alert_fg: "#FFFFFF", alert_size: "l", alert_entrance: "fade" };
-    assert.deepEqual(alertOptions({ options: all }), { position: "bottom", style: "pill", bg: "#1e40af", fg: "#ffffff", size: "l", entrance: "fade" });
-    assert.ok(!isDefaultAlert(alertOptions({ options: all })));
-    // Anything unknown falls back key by key.
-    assert.deepEqual(alertOptions({ options: { alert_position: "left", alert_style: "box", alert_bg: "amber", alert_fg: "#fff", alert_size: "xl", alert_entrance: "zoom" } }), ALERT_DEFAULTS);
-    assert.deepEqual(alertOptions({ options: { alert_size: "s", alert_entrance: "none" } }), { ...ALERT_DEFAULTS, size: "s", entrance: "none" });
+    assert.deepEqual(alertOptions({ options: all }), { ...ALERT_DEFAULTS, position: "bottom" }, "an old per-screen look is not read here");
+    const church = { style: "pill", bg: "#1E40AF", fg: "#FFFFFF", size: "l", entrance: "fade" };
+    assert.deepEqual(alertOptions({ options: all }, "/Projection", church), { position: "bottom", style: "pill", bg: "#1e40af", fg: "#ffffff", size: "l", entrance: "fade" });
+    assert.ok(!isDefaultAlert(alertOptions({ options: {} }, "/Projection", church)));
+    assert.deepEqual(alertOptions({ options: { alert_position: "left" } }, "/Projection", { style: "box", size: "xl" }), ALERT_DEFAULTS, "unknown values fall back");
+    assert.equal(alertOptions({ options: {} }, "/StageView", church).position, "bottom", "the Palco still starts at the bottom");
+});
+
+test("Aviso rápido: the church's look, and the Projeção's old one until it is set", () => {
+    const base = { style: "band", bg: "#f5a524", fg: "#1a1300", size: "m", entrance: "slide" };
+    assert.deepEqual(churchAlertLook(null), base);
+    assert.equal(sentAlertLook(churchAlertLook(null)), null, "the amber band goes with no look");
+    // Before User.alert_look: the Projeção's own keys, the position left out.
+    assert.deepEqual(churchAlertLook(null, { alert_style: "pill", alert_bg: "#123456", alert_position: "bottom", chords: true }), { ...base, style: "pill", bg: "#123456" });
+    // Set: it wins, the Projeção's old keys no longer count.
+    assert.deepEqual(churchAlertLook({ size: "l" }, { alert_style: "pill" }), { ...base, size: "l" });
+    assert.deepEqual(sentAlertLook({ ...base, size: "l" }), { ...base, size: "l" });
 });
 
 test("Aviso rápido: prefState carries this output's look with the alert; none set, the same state", () => {
@@ -350,13 +363,13 @@ test("Aviso rápido: prefState carries this output's look with the alert; none s
     // No row: the very same object (the renderer draws the bar as always).
     assert.equal(prefState("/Projection", withAlert, normalizePref({})), withAlert);
     assert.equal(prefState("/Projection", withAlert, normalizePref({})).alert.look, undefined);
-    const look = prefState("/Projection", withAlert, normalizePref({ options: { alert_position: "bottom", alert_style: "pill" } })).alert;
+    const pillAlert = { ...withAlert, alert: { ...alert, look: { style: "pill" } } };
+    const look = prefState("/Projection", pillAlert, normalizePref({ options: { alert_position: "bottom" } })).alert;
     assert.deepEqual(look, { ...alert, look: { ...ALERT_DEFAULTS, position: "bottom", style: "pill" } });
-    // Every view shows it, in its own look; Mostrar still leaves it out.
-    const pill = normalizePref({ options: { alert_style: "pill" } });
+    // Every view shows it in the church's look; Mostrar still leaves it out.
     for (const page of ["/LyricProjection", "/VideoProjection", "/CommunicationProjection"]) {
-        assert.equal(prefState(page, withAlert, pill).alert.look.style, "pill", page);
-        assert.equal(prefState(page, withAlert, normalizePref({ hidden_kinds: ["alert"], options: { alert_style: "pill" } }))?.alert ?? null, null, page);
+        assert.equal(prefState(page, pillAlert, normalizePref({})).alert.look.style, "pill", page);
+        assert.equal(prefState(page, pillAlert, normalizePref({ hidden_kinds: ["alert"] }))?.alert ?? null, null, page);
     }
     // Comunicação with no aviso on air: the bar alone, never the song.
     const onlyAlert = prefState("/CommunicationProjection", { screen: "show", content: live.content, alert }, normalizePref({}));
@@ -371,7 +384,8 @@ test("Aviso rápido: which screens draw it, and the bar for the pages that draw 
     assert.ok(showsAlert("/PastorView", normalizePref({ content: "all" })));
     const alert = { message: "Oi", type: "message", since: 1 };
     assert.equal(alertOf({ alert }, normalizePref({})), alert, "no look: the same alert");
-    assert.deepEqual(alertOf({ alert }, normalizePref({ options: { alert_size: "s" } })).look, { ...ALERT_DEFAULTS, size: "s" });
+    assert.deepEqual(alertOf({ alert: { ...alert, look: { size: "s" } } }, normalizePref({})).look, { ...ALERT_DEFAULTS, size: "s" });
+    assert.deepEqual(alertOf({ alert }, normalizePref({ options: { alert_position: "bottom" } })).look, { ...ALERT_DEFAULTS, position: "bottom" });
     assert.equal(alertOf({ alert }, normalizePref({ hidden_kinds: ["alert"] })), null);
     assert.equal(alertOf({ alert: null }, normalizePref({})), null);
     assert.equal(alertOf(null, null), null);

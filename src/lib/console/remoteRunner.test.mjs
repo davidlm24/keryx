@@ -334,7 +334,7 @@ test("alert: a message or a ready one; alertClear needs one on air and works loc
     const l = lock(fakeConsole());
     assert.equal((await run(l, "alertClear")).code, "nothing");
     l.cur = { ...l.cur, alert: { message: "x" } };
-    assert.equal((await run(l, "alertClear")).message, "Celular: tirou o aviso.");
+    assert.equal((await run(l, "alertClear")).message, "Celular: tirou o aviso rápido.");
 });
 
 test("tool and timerAdjust", async () => {
