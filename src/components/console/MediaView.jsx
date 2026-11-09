@@ -31,6 +31,7 @@ import FilterChips from "./library/FilterChips";
 import { MediaCategories } from "./library/FundoCategories";
 import { useYouTubeJobs, downloadToMedia, cancelDownload } from "@/hooks/useYouTubeJobs";
 import { isYouTubeRow, stateOfCheck, jobMeta, jobFraction, jobActive, linkNote } from "@/lib/youtubeLinks";
+import { cleanSourceUrl, mediaInfoPatch, DESCRIPTION_MAX, TITLE_MAX } from "@/lib/console/mediaInfo";
 import { getYouTubeId } from "@/utils/youtube";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
@@ -207,6 +208,18 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         setRenaming(null);
         const t = title.trim();
         if (t && t !== m.title) keryx.entities.Media.update(m.id, { title: t }).catch(fail);
+    };
+    // Informações (owner 2026-11-09, board 2): what changed is saved on blur;
+    // Desvincular do YouTube drops the link it came from, with Desfazer.
+    const saveInfo = (m, draft) => {
+        const patch = mediaInfoPatch(m, draft);
+        if (patch) keryx.entities.Media.update(m.id, patch).catch(fail);
+    };
+    const unlink = (m) => {
+        const was = m.source_url || "";
+        keryx.entities.Media.update(m.id, { source_url: "" })
+            .then(() => c.say("Desvinculado do YouTube.", { label: "Desfazer", run: () => keryx.entities.Media.update(m.id, { source_url: was }).catch(fail) }))
+            .catch(fail);
     };
     const recategorise = (value, rows = picked) => Promise.all(rows.map((m) => keryx.entities.Media.update(m.id, { category: value }))).then(() => c.say(`Categoria: ${value}.`)).catch(fail);
     // Excluir asks first (useConfirm, as every Excluir does); the files stay
@@ -413,8 +426,8 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                 </>}
             </div>
             <MediaDetail picked={picked} categories={allCats} kind={(m) => (isYouTube(m) ? "YouTube" : KIND[m.type] || m.type)} length={mmss} size={bytes}
-                onPrev={(m) => c.setPrev(stageFromMedia(m))} onSend={send} onRename={(m) => { ms.set([m.id]); setRenaming(m.id); }} onLocate={locate}
-                onCategory={recategorise} onExport={exportRows} onRemove={remove} onPlay={sequence} onClear={ms.clear} onAll={ms.all} total={shown.length}
+                onPrev={(m) => c.setPrev(stageFromMedia(m))} onSend={send} onLocate={locate}
+                onCategory={recategorise} onInfo={saveInfo} onUnlink={unlink} onExport={exportRows} onRemove={remove} onPlay={sequence} onClear={ms.clear} onAll={ms.all} total={shown.length}
                 job={picked.length === 1 ? jobs.get(picked[0].id) : null} onDownload={download} onCancelDownload={cancelDownload} onOpenYouTube={openYouTube} />
         </div>
         </>
@@ -425,7 +438,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
 // B3-2 = C): the file chosen — its picture, what it is, its length and size,
 // its category, and what can be done with it —; with several marked, how
 // many and what can be done with them all; with none, where to start.
-function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onRename, onLocate, onCategory, onExport, onRemove, onPlay, onClear, onAll, total, job, onDownload, onCancelDownload, onOpenYouTube }) {
+function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onLocate, onCategory, onInfo, onUnlink, onExport, onRemove, onPlay, onClear, onAll, total, job, onDownload, onCancelDownload, onOpenYouTube }) {
     const catSelect = (value, rows) => (
         <select className="pl-pick" value={value} onChange={(e) => e.target.value && onCategory(e.target.value, rows)} aria-label="Categoria">
             {!value && <option value="">Mudar para…</option>}
@@ -463,26 +476,67 @@ function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, o
                     : m.type === "video" && !yt && !m.missing ? <video src={`${m.file_url}#t=1`} preload="metadata" muted />
                     : <span className="mv-th-t"><Icon name={m.syncing ? "download" : mediaIcon(m)} size={28} />{m.syncing ? "Baixando…" : m.missing ? "Arquivo não encontrado" : kind(m)}</span>}
             </div>
-            <div className="mv-side-t" title={m.title}>{m.title}</div>
             <div className="mv-meta">
-                <span className="k">Tipo</span><span>{kind(m)}{m.type === "video" && <> <CodecMark row={m} /></>}</span>
-                {m.duration > 0 && <><span className="k">Duração</span><span>{length(m.duration)}</span></>}
-                {size(m.size) && <><span className="k">Tamanho</span><span>{size(m.size)}</span></>}
+                <span className="k">Tipo</span><span>{[kind(m), m.duration > 0 && length(m.duration), size(m.size)].filter(Boolean).join(" · ")}{m.type === "video" && <> <CodecMark row={m} /></>}</span>
                 {(m.type === "pdf" || m.type === "powerpoint") && !m.missing && <><span className="k">Páginas</span><span><PagesMeta row={m} /></span></>}
                 {yt && <><span className="k">Link</span><span className={(linkNote(m) && !job) || job?.phase === "failed" ? "kx-warn" : ""}>{jobMeta(job) || linkNote(m) || "toca pela internet"}</span></>}
-                {m.source_url && !yt && <><span className="k">Origem</span><span>baixado do YouTube</span></>}
-                <span className="k">Categoria</span>{catSelect(mediaCategoryOf(m), [m])}
             </div>
             <div className="mv-side-acts">
                 {yt && !busy && <Btn small kind="brand" onClick={() => onDownload(m)} title="Vira um vídeo do computador: toca sem internet">Baixar para a Mídia</Btn>}
                 {yt && busy && <Btn small onClick={() => onCancelDownload(m)}><Icon name="x" />Cancelar o download</Btn>}
-                {(yt || m.source_url) && <Btn small onClick={() => onOpenYouTube(m)}><Icon name="youtube" />Abrir no YouTube</Btn>}
+                {yt && <Btn small onClick={() => onOpenYouTube(m)}><Icon name="youtube" />Abrir no YouTube</Btn>}
                 {ok && <Btn small onClick={() => onPrev(m)} title="Pôr na Prévia do console">Pôr na prévia</Btn>}
                 {ok && <Btn small onClick={() => onSend(m)} title={sendTip(false)}>{SEND_LABEL}</Btn>}
                 {m.missing && !m.syncing && <Btn small kind="outline" onClick={() => onLocate(m)}><Icon name="folder" />Localizar…</Btn>}
-                <Btn small onClick={() => onRename(m)} title="F2"><Icon name="edit" />Renomear</Btn>
                 <Btn small onClick={() => onRemove([m])} title="Excluir da Mídia · Delete"><Icon name="trash" />Excluir…</Btn>
             </div>
+            <MediaInfo key={m.id} m={m} downloaded={Boolean(m.source_url) && !yt} category={catSelect(mediaCategoryOf(m), [m])} onInfo={onInfo} onUnlink={onUnlink} onOpenYouTube={onOpenYouTube} />
         </aside>
+    );
+}
+
+// Informações (owner 2026-11-09, mockup "Identificar, Mídia e tema da
+// música", board 2): the file's name, its category, a description the
+// Mídia's search reads, and — for a file downloaded from YouTube — the
+// link it came from (edited, or dropped by Desvincular do YouTube: the file
+// stays, the YouTube marks go; the toast has Desfazer). Each field saves
+// when it is left or with Enter (mediaInfo.js mediaInfoPatch: only what
+// changed, never an empty name or a link that is not one). F2 and a double
+// click still rename in the list.
+function MediaInfo({ m, downloaded, category, onInfo, onUnlink, onOpenYouTube }) {
+    const [title, setTitle] = useState(m.title || "");
+    const [description, setDescription] = useState(m.description || "");
+    const [source, setSource] = useState(m.source_url || "");
+    // A change from elsewhere (F2 in the list, another computer) shows here.
+    useEffect(() => { setTitle(m.title || ""); }, [m.title]);
+    useEffect(() => { setDescription(m.description || ""); }, [m.description]);
+    useEffect(() => { setSource(m.source_url || ""); }, [m.source_url]);
+    const bad = source.trim() && cleanSourceUrl(source) === null;
+    const enter = (e) => { if (e.key === "Enter") e.currentTarget.blur(); };
+    return (
+        <section className="mv-info" aria-label="Informações">
+            <div className="mv-info-t">Informações</div>
+            <label className="k" htmlFor={`mi-t-${m.id}`}>Nome</label>
+            <input id={`mi-t-${m.id}`} className="kx-input" value={title} maxLength={TITLE_MAX} onChange={(e) => setTitle(e.target.value)}
+                onBlur={() => { if (!title.trim()) setTitle(m.title || ""); onInfo(m, { title }); }} onKeyDown={enter} />
+            <span className="k">Categoria</span>
+            {category}
+            <label className="k" htmlFor={`mi-d-${m.id}`}>Descrição</label>
+            <textarea id={`mi-d-${m.id}`} className="kx-input" rows={3} value={description} maxLength={DESCRIPTION_MAX} placeholder="Uma observação: quem, quando, para quê. A busca da Mídia acha por estas palavras."
+                onChange={(e) => setDescription(e.target.value)} onBlur={() => onInfo(m, { description })} />
+            {downloaded && (
+                <>
+                    <label className="k" htmlFor={`mi-s-${m.id}`}>Link de origem</label>
+                    <input id={`mi-s-${m.id}`} className={`kx-input ${bad ? "is-bad" : ""}`} value={source} placeholder="https://youtu.be/…" spellCheck={false}
+                        onChange={(e) => setSource(e.target.value)} onBlur={() => onInfo(m, { source_url: source })} onKeyDown={enter} aria-invalid={bad || undefined} />
+                    {bad && <span className="kx-meta kx-warn">Não é um link (comece com https://). Nada foi salvo.</span>}
+                    <div className="mv-side-acts">
+                        <Btn small onClick={() => onOpenYouTube(m)}><Icon name="youtube" />Abrir no YouTube</Btn>
+                        <Btn small onClick={() => onUnlink(m)} title="O arquivo fica; saem o link e as marcas do YouTube">Desvincular do YouTube</Btn>
+                    </div>
+                </>
+            )}
+            <span className="kx-meta mv-info-hint">Salva ao sair do campo ou com Enter.</span>
+        </section>
     );
 }

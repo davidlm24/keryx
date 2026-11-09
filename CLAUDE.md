@@ -444,13 +444,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`slidesFromEdit`), never by position. What a song or
   passage puts on screen is `src/lib/console/content.js`; the default theme
   dresses one with no look of its own when it is sent (`stamp` in
-  useConsole.js, `withThemeDefaults` in themes.js), never what is on air. A song can
-  also follow one theme of its own (`Song.theme_id`: the whole look, no
-  default theme) and each labelled part of its lyrics another
-  (`Song.part_themes`, keyed by the part's name in lower case): resolved when
-  the stage is built (`songTheme.js`, so `stageFromSong`/`songContent` take
-  the themes); the part's look rides in `slide.style`, which the renderer
-  lays over the content's, and an output with its own theme drops it.
+  useConsole.js, `withThemeDefaults` in themes.js), never what is on air.
+  **A song has no theme of its own** (owner 2026-11-09, mockup
+  "Identificar, Mídia e tema da música", board 3 — reverses the per-song
+  and per-part themes of 2026-10-12 and S1/S2 of 2026-10-30): `songContent`
+  reads none of `Song.theme_id`, `part_themes`, `style_mode`, its font,
+  colours or background, and always `inherit`s the theme in use (else the
+  standard one) whole, moved only by the song's size step (songSize.js).
+  Those fields stay stored (user data, synced, carried by the .keryx
+  package), unread; `songTheme.js` only names the parts now. The song
+  editor's group is "Tamanho na tela" alone; Temas has no "Salvar/Tirar
+  tema para a música"; a theme's Excluir… counts no songs. Don't bring a
+  song theme back. A slide may still carry `slide.style` in the live
+  state (the renderer lays it over the content's), it just never comes
+  from a song.
   **The main Projeção has no theme of its own** (owner 2026-10-14, "Frente
   5 = A"): it always follows the console, so Telas e saídas has no Tema
   row for it and `normalizePref`/`prefState` never read `theme_id` of
@@ -563,8 +570,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   an empty slot is a dashed + that makes a new theme; the panel is as tall
   as its slots (`Measure` → `locked.temas`), like Camadas. Its header has
   the library (`palette` icon, as Temas everywhere; the library's right click pins a theme here)
-  and the **+ menu** (`menuRef`): Novo tema, Configurações › Temas…, Salvar/Tirar tema para a
-  música, Usar neste culto, Seguir o culto, Tornar padrão, Visualização.
+  and the **+ menu** (`menuRef`): Novo tema, Configurações › Temas…, Usar neste culto, Seguir o culto, Tornar padrão, Visualização.
   Nothing else in the body: no "tema do culto" line, no buttons.
   **Camadas edits no look**: the layers come first, each with a pencil on
   hover; **the settings under the list stay folded until a pencil opens
@@ -727,8 +733,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   de temas e telas (a page of THE window, `openEditor({ theme })`;
   the one-off ThemeStudio overlay from 2026-10-13 was folded into it —
   don't bring a second theme editor back),
-  and "Salvar tema para a música" writes `Song.theme_id` for the song on air
-  or in the Prévia. A Bible passage takes **the Bíblia's own theme**
+  (a song has no theme of its own since 2026-11-09). A Bible passage takes **the Bíblia's own theme**
   (`User.bible_theme_id`: "" = whatever the songs get now — the theme in
   use, else the default; the same for Texto and Timer — "none" = factory;
   `themeForKind` in themes.js, used by `stamp`), chosen in the Bíblia's Tema
@@ -817,7 +822,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   rules and the CSS are `shared/idleLook.mjs` (tested); `Idle` in
   ScreenRenderer draws it. In the library, Gerados shows the
   background big. A right click on a Temas card offers Aplicar, Editar,
-  Salvar para a música, Tornar padrão, Usar na Bíblia, Usar neste culto.
+  Tornar padrão, Usar na Bíblia, Usar neste culto.
 
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built
@@ -1016,7 +1021,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   edited in "Categorias…" (`CategoriesEditor` in library/FundoCategories.jsx,
   one editor for both libraries); a rename moves the files, a delete sends
   them to "Outros", never renamed or deleted; files sent with a chip on land
-  in it. **A window's side menu is
+  in it. **The Mídia's side panel has Informações** (owner 2026-11-09, board 2):
+  Nome, Categoria, Descrição (`Media.description`, which the Mídia's search
+  reads) and, for a file downloaded from YouTube, the Link de origem
+  (`source_url`) with Abrir no YouTube and **Desvincular do YouTube** (the
+  file stays, the link and the YouTube marks go; the toast has Desfazer);
+  each field saves on blur or Enter, only what changed (`mediaInfoPatch`,
+  `cleanSourceUrl` in src/lib/console/mediaInfo.js, tested: never an empty
+  name or a link that is not http(s)). F2 and a double click still rename
+  in the list. **A window's side menu is
   always `WinNav`** (kx.jsx; owner 2026-10-22, "Bibliotecas" B2 = A,
   "standard for all windows"): docked on the window's surface, never a
   card or a Panel, a `line-soft` rule on its right, 240 px down to 180 as
@@ -2663,14 +2676,11 @@ and below, "" = 8; an EXTRA_KEY and a `STYLE_RANGES` key, drawn as
 Editor de temas' Posição has Sem/P/M/G and the dashed area's four corners
 drag it; the output's Margens still add on top). **Choosing a transition
 plays it** on the Editor de temas' canvas (the next slide comes in with
-`motion` on for a moment; "Ver de novo"). **A song has a theme, never
-loose fonts and colours** (S1): the song editor's group is Tema (ThemeChip,
-the library) and Tamanho; a song saved with a look of its own keeps it and
-offers "Transformar em tema" / "Usar o das músicas". **The theme lives only in the song**
-(owner 2026-10-30, the same day S2 shipped): a song with a theme goes out
-with it, one with none with the theme in use; there is no console switch
-for it (the "Das músicas" switch and its menu item are gone;
-`User.song_themes` stays stored, unread). Don't bring a switch back. **Banners have a border, not a top rule** (owner
+`motion` on for a moment; "Ver de novo"). **A song wears the theme in use**
+(S1/S2 of 2026-10-30 gave it a theme of its own; the owner removed it on
+2026-11-09: see "A song has no theme of its own" above); there is no
+console switch for it either (`User.song_themes` stays stored, unread).
+Don't bring a switch or a song theme back. **Banners have a border, not a top rule** (owner
 2026-10-30, mockup "Barras de alerta e de edição", B1 = B, B2 = A, B3 = A;
 the Banner of docs/design-system.md): the edit, alert and Travadas banners
 and the Aviso rápido on air wear a 1 px border all round in their state's

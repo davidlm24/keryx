@@ -47,9 +47,10 @@ test("themes: the default and everything that names them", () => {
         outputPrefs: [{ theme_id: "t1" }],
         user: { bible_theme_id: "t1", text_theme_id: "" },
     });
-    assert.deepEqual(lines, ["Azul noturno é o tema padrão.", "2 músicas, 1 culto, 1 saída e 1 tema padrão de um tipo usam algum deles: voltam ao padrão."]);
-    assert.deepEqual(themeLines(["t2"], { themes, songs: [{ theme_id: "t2" }] }), ["1 música usa este tema: volta ao padrão."]);
-    assert.deepEqual(themeLines(["t2"], { themes, songs: [{ theme_id: "t2" }, { theme_id: "t2" }] }), ["2 músicas usam este tema: voltam ao padrão."]);
+    // A song's theme_id/part_themes are not read since 2026-11-09: no song counts.
+    assert.deepEqual(lines, ["Azul noturno é o tema padrão.", "1 culto, 1 saída e 1 tema padrão de um tipo usam algum deles: voltam ao padrão."]);
+    assert.deepEqual(themeLines(["t2"], { themes, songs: [{ theme_id: "t2" }] }), []);
+    assert.deepEqual(themeLines(["t2"], { themes, services: [{ theme_id: "t2" }, { theme_id: "t2" }] }), ["2 cultos usam este tema: voltam ao padrão."]);
     assert.deepEqual(themeLines(["zz"], { themes }), []);
 });
 

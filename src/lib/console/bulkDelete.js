@@ -76,9 +76,7 @@ export function themeLines(ids, { songs = [], services = [], templates = [], out
     const lines = [];
     const defaults = themes.filter((t) => set.has(t.id) && t.is_default);
     if (defaults.length) lines.push(`${defaults.map((t) => t.name || "Tema sem nome").join(", ")} é o tema padrão.`);
-    const usesTheme = (s) => set.has(s.theme_id) || Object.values(s.part_themes || {}).some((v) => set.has(v));
     const counts = [
-        [songs.filter(usesTheme).length, ["música", "músicas"]],
         [services.filter((s) => set.has(s.theme_id)).length, ["culto", "cultos"]],
         [templates.filter((t) => set.has(t.theme_id)).length, ["modelo de culto", "modelos de culto"]],
         [outputPrefs.filter((p) => set.has(p.theme_id)).length, ["saída", "saídas"]],

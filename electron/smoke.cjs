@@ -2431,8 +2431,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => Boolean(live.get().content));
         const styleBefore = JSON.stringify(live.get().content.style || {});
         // Camadas › Temas (presets, ThemeStrip): a pinned theme shows as a
-        // tile; a click dresses what is on air; "Salvar tema para a música"
-        // ties the song on air to it and "Tirar tema da música" lets it go.
+        // tile; a click dresses what is on air.
         await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "update", [r.id, { pinned: true }]); return rows.length; })()');
         await waitFor(() => js("Boolean(document.querySelector('.tm-tile[aria-label=\"Tema Smoke\"]'))"), 5000);
         // The theme has a background now (the rule above): applying it puts
@@ -2447,24 +2446,13 @@ async function checkConsole(webContents, { live, outputs }) {
         await dblclick(".kx-row", "Canto do console");
         result.themeSticky = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000)
             && !((await js(`window.keryxDesktop.db.call("Service", "get", [${JSON.stringify(svc.id)}])`)).data || {}).theme_id;
-        const songThemeId = async () => ((await js(`window.keryxDesktop.db.call("Song", "get", [${JSON.stringify(song.id)}])`)).data || {}).theme_id || "";
-        // Temas' header + (owner 2026-10-14): the song's theme is saved and
-        // cleared from its menu; the panel's body is only the 9 slots.
-        // The menu's items are built when it opens, from the song as the
-        // console last drew it: right after a save the Song row may not have
-        // reached the console yet, and the menu still offers the old item. So
-        // open it until the item asked for is there (Esc closes a menu that
-        // lacks it; never with no menu open, where Esc ends the projection).
-        const temasMenu = async (label) => waitFor(async () => {
-            if (await js("Boolean(document.querySelector('.ctx-menu[role=menu]'))")) { await press("Escape"); await sleep(150); }
-            await js("(() => { const b = document.querySelector('[data-dock-mods~=\"temas\"] .kx-panel-h button[title^=\"Temas:\"], .layer-temas .listhead button[title^=\"Temas:\"]'); if (b) b.click(); return Boolean(b); })()");
-            await waitFor(() => js("Boolean(document.querySelector('.ctx-menu[role=menu] .kx-menu-item'))"), 1000);
-            return js(`(() => { const b = [...document.querySelectorAll(".kx-menu-item")].find((x) => x.textContent.startsWith(${JSON.stringify(label)})); if (b) b.click(); return Boolean(b); })()`);
-        }, 6000);
-        await temasMenu("Salvar tema para a música");
-        result.songThemeSaved = await waitFor(async () => Boolean(await songThemeId()), 4000);
-        await temasMenu("Tirar tema da música");
-        result.songThemeCleared = await waitFor(async () => !(await songThemeId()), 4000);
+        // A song has no theme of its own since 2026-11-09 (owner): Temas'
+        // header + offers neither "Salvar tema para a música" nor "Tirar
+        // tema da música" (Esc closes the menu, never with no menu open).
+        await js("(() => { const b = document.querySelector('[data-dock-mods~=\"temas\"] .kx-panel-h button[title^=\"Temas:\"], .layer-temas .listhead button[title^=\"Temas:\"]'); if (b) b.click(); return Boolean(b); })()");
+        const temasOpen = await waitFor(() => js("Boolean(document.querySelector('.ctx-menu[role=menu] .kx-menu-item'))"), 2000);
+        result.songThemeGone = temasOpen && await js("![...document.querySelectorAll('.ctx-menu .kx-menu-item')].some((x) => /para a música|tema da música/.test(x.textContent))");
+        if (await js("Boolean(document.querySelector('.ctx-menu[role=menu]'))")) { await press("Escape"); await sleep(150); }
         result.temasSlots = await js("(() => { const g = document.querySelector('.tm-grid'); return Boolean(g) && g.children.length === 9 && !document.querySelector('.tm-song, .tm-acts'); })()").catch(() => false);
         // From here on Tema Smoke (still the theme in use) dresses the text
         // only, as before the rule, so the checks below see the Fundo they
@@ -3042,7 +3030,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.outsLean === true && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
-        && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
+        && result.bibleThemeSent && result.songThemeGone && result.itemTitleHidden
         && result.deleteAsks && result.deleteSafeFocus && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows
         && result.libBig && result.libEscClosed && result.padraoKept && result.padraoAfterEsc && result.padraoService && result.serviceFundoButton
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks

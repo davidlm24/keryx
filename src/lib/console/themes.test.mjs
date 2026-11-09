@@ -251,10 +251,10 @@ test("the theme in use puts its background on the Fundo with the content; Esc gi
         assert.equal(applyOp(on, "clear", {}, 2).background.value, "#224466", `${what}: Esc, the Fundo do culto`);
     }
 
-    // A song with a background of its own keeps it (owner 2026-10-14).
+    // A song's own background is not read any more (owner 2026-11-09): the theme's goes.
     const pic = { ...song, background: { kind: "image", value: "keryx-media://mar.webp" } };
     const ops = fundoOps("content.show", stamp("content.show", { ...songContent(pic, {}, themes), kind: "lyrics" }), live);
-    assert.equal(ops[0][1].value, "keryx-media://mar.webp");
+    assert.equal(ops[0][1].value, "#aa2222");
 
     // The Fundo's padlock holds it.
     live = applyOp(live, "layers.lock", { layer: "background", locked: true }, 3);
