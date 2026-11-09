@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSetlistWrites } from "@/components/console/useSetlistWrites";
 import { useBuildStage } from "@/components/console/useBuildStage";
 import { setlistHeadItems, setlistAddItems, setlistCountOf, SetlistTitle } from "@/components/console/setlistMenus";
+import { QuickAlert } from "@/components/console/QuickTools";
 import { camadasAddItems } from "@/components/console/camadasMenu";
 import { canDetach, isDetached, detachedList, detachModule, attachModule, panelQuery, panelWindowName, PANEL_WINDOW_FEATURES } from "@/lib/console/detach";
 import "@ds/tokens.css";
@@ -1414,10 +1415,9 @@ export default function Console() {
             playerToggle: () => { const op = playerOp(c.cur, barLayer, "toggle"); if (op) c.callOp(op[0], op[1]).catch(() => {}); },
             notices: () => openNotices(),
             newNotice: () => openNotice("new"),
-            quickAlert: async () => {
-                const t = await askText({ title: "Aviso rápido", placeholder: "Carro placa ABC-1234, procure a recepção", ok: "Enviar às telas", hint: "Vai direto às telas" });
-                if (t) c.callOp("alert.show", { message: t, type: "message" }).catch(() => {});
-            },
+            // The same Aviso rápido box as Painel › Avisos (2026-11-09, A3 = A):
+            // the field, the mensagens prontas and Tirar while one is on air.
+            quickAlert: () => setOpen("quickalert"),
             timer: (minutes) => { c.setPrev(stageFromTool("timer", { minutes })); c.say(`Timer de ${minutesLabel(minutes)} na Prévia · Enter envia.`); },
             school: () => openSchool(),
             reports: () => openReports(),
@@ -1659,6 +1659,12 @@ export default function Console() {
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             {open && <div className={`scrim ${winOpen ? "over-win" : ""} ${open === "palette" || open === "atalhos" || open === "passos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} initial={lyricsQ} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
+            {open === "quickalert" && (
+                <div className="kx-pop qa-pop" role="dialog" aria-label="Aviso rápido">
+                    <div className="listhead"><span className="kx-section">Aviso rápido <span className="kx-count">· vai direto às telas</span></span></div>
+                    <QuickAlert c={c} data={data} autoFocus />
+                </div>
+            )}
             {open === "verificar" && (
                 <div className="verif-overlay">
                     <VerifyView c={c} items={playable} data={data} outputs={outputs.filter((o) => !o.removed)} network={network}

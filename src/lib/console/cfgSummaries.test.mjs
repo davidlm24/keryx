@@ -1,16 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    somSummary, enderecosSummary, phonesSummary, connectedSummary, themesSummary, fundosSummary, idleSummary, fontsSummary,
+    somSummary, avisosSummary, enderecosSummary, phonesSummary, connectedSummary, themesSummary, fundosSummary, idleSummary, fontsSummary,
     importSummary, biblesSummary, wallpaperSummary, templatesSummary, teamSummary, shortcutsSummary, machineSummary, dataSummary, updatesSummary,
 } from "./cfgSummaries.js";
 
-test("Som e YouTube: the chime's volume and the YouTube bar", () => {
-    assert.equal(somSummary({ chime_on: true, chime_volume: 35, youtube_hide_title: true }), "Sino Médio · YouTube sem título");
-    assert.equal(somSummary({ chime_on: true, chime_volume: 100, youtube_hide_title: false }), "Sino Máximo · YouTube com título");
-    assert.equal(somSummary({ chime_on: false, chime_volume: 60, youtube_hide_title: true }), "Sino desligado · YouTube sem título");
-    assert.equal(somSummary({ chime_on: true, chime_volume: 47, youtube_hide_title: true }), "Sino Médio · YouTube sem título", "a volume off the list reads as the middle one");
+test("Som e YouTube: the YouTube bar (the chime is in Avisos)", () => {
+    assert.equal(somSummary({ chime_on: true, chime_volume: 35, youtube_hide_title: true }), "YouTube sem título");
+    assert.equal(somSummary({ youtube_hide_title: false }), "YouTube com título");
     assert.equal(somSummary(null), "");
+});
+
+test("Avisos: the Aviso rápido's look and the chime", () => {
+    const amber = { style: "band", bg: "#f5a524", fg: "#1a1300", size: "m", entrance: "slide" };
+    assert.equal(avisosSummary(amber, { chime_on: true, chime_volume: 35 }), "Faixa âmbar · desliza · sino médio");
+    assert.equal(avisosSummary({ ...amber, style: "pill", bg: "#123456", size: "l", entrance: "fade" }, { chime_on: false }), "Pílula · aparece · G · sem sino");
+    assert.equal(avisosSummary(amber, { chime_on: true, chime_volume: 47 }), "Faixa âmbar · desliza · sino médio", "a volume off the list reads as the middle one");
+    assert.equal(avisosSummary(null, {}), "");
 });
 
 test("Telas na rede: addresses, the controle remoto, who is connected", () => {

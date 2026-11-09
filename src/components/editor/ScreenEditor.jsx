@@ -21,7 +21,8 @@ import {
 } from "@/lib/layoutEditor";
 import { clickSelection, EMPTY_SELECTION } from "@/lib/console/multiSelect";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
-import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars, ruleOf, noticeOnly, alertOf } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars, ruleOf, noticeOnly, alertOf, churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
+import { usePrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, sampleNotice, sampleAlert, sampleTimer, SAMPLE_ITEMS } from "../console/settings/sample";
 import { ConfirmContext, deleteQuestion } from "../console/ConfirmDialog";
@@ -355,7 +356,11 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const [alertSample, setAlertSample] = useState(null);
     const live = alertSample && tab === "ajustes" && !avisos.alert ? { ...avisos, alert: alertSample } : avisos;
     // On: the example shows (a fresh one when asked, so its entrance plays).
-    const showAlertSample = (on, fresh = false) => setAlertSample((cur) => (on ? (cur && !fresh ? cur : sampleAlert(Date.now())) : null));
+    // The sample wears the church's look (Configurações › Telas e saídas › Avisos), as alert.show does.
+    const churchPrefs = usePrefs();
+    const projRow = prefRows.find((r) => r.screen_path === "/Projection");
+    const sampleLook = sentAlertLook(churchAlertLook(churchPrefs.alert_look, projRow?.options));
+    const showAlertSample = (on, fresh = false) => setAlertSample((cur) => (on ? (cur && !fresh ? cur : { ...sampleAlert(Date.now()), ...(sampleLook ? { look: sampleLook } : {}) }) : null));
     // The preview is always THIS screen, with its real settings: prefState +
     // the kp-out vars (renderer pages), the Escala alone (Palco e Pastor).
     const ctxTheme = renderer && pref.themeId ? themes.find((t) => t.id === pref.themeId) || null : null;

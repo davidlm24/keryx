@@ -15,6 +15,8 @@ import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { soundStays, undoSoundStays } from "@/lib/console/videoSound";
 import { withTransitions } from "@/lib/console/transitions";
+import { churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
+import { useOutputPref } from "@/hooks/useOutputPref";
 import { pagesProgressOf } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs } from "@/hooks/useUser";
 import { liveIdleLook } from "@shared/idleLook.mjs";
@@ -159,6 +161,11 @@ export function useLiveOps(live, say, bgPrefs) {
     const locked = Boolean(live?.locked);
     // The church's Transições (Rodada F2), for every window that sends.
     const prefs = usePrefs();
+    // The Aviso rápido's look, the church's (owner 2026-11-09, A4 = A):
+    // stamped on every alert.show sent here (the Painel, the menu, the
+    // controle remoto); before it was set, the Projeção's own (churchAlertLook).
+    const { pref: projPref } = useOutputPref("/Projection");
+    const alertLook = useMemo(() => sentAlertLook(churchAlertLook(prefs.alert_look, projPref?.options)), [prefs.alert_look, projPref]);
 
     // One operation on the live state. Resolves with the new document; errors
     // (a refused op while locked, a bad argument) become a toast.
@@ -169,12 +176,13 @@ export function useLiveOps(live, say, bgPrefs) {
             // A sound that starts, Esc, Limpar, Tela preta and Logo bring the
             // church's Transições (transitions.js): every sender through here
             // (keys, the controle remoto, Tocar todos, a song's playback).
-            return await keryx.live.call(op, withTransitions(op, withBackgroundDefaults(op, args, bgPrefs), prefs));
+            const sent = op === "alert.show" && args.look === undefined && alertLook ? { ...args, look: alertLook } : args;
+            return await keryx.live.call(op, withTransitions(op, withBackgroundDefaults(op, sent, bgPrefs), prefs));
         } catch (err) {
             say(err?.message || "Não foi possível projetar.");
             throw err;
         }
-    }, [say, bgPrefs, prefs]);
+    }, [say, bgPrefs, prefs, alertLook]);
     const callOp = liveOp;
 
     const moveSlide = useCallback((d) => {

@@ -7,7 +7,7 @@ import { RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
 import { themeBackgroundArgs } from "./console/themeCore.js";
 import { normalizeLayout, findLayout } from "./layouts.js";
 import { RULE_KIND_IDS, TEXT_KINDS, ruleKind, ruleKindOf, stageRuleKind } from "./contentKinds.js";
-import { mainLayer } from "../../shared/live-state.mjs";
+import { mainLayer, alertLookOf } from "../../shared/live-state.mjs";
 
 // Conteúdo: which view of the live state the output draws (views.js).
 export const PREF_CONTENTS = [
@@ -349,11 +349,15 @@ export function bandBackground(opts) {
     return `rgba(${r}, ${g}, ${b}, ${opts.band_opacity})`;
 }
 
-// Aviso rápido (alert.show; Rodada E3, owner 2026-10-16): how each screen
-// draws the bar — Posição (Alto | Baixo), Estilo (Faixa: the full width |
-// Pílula: centred), the colours, Tamanho (P/M/G) and Entrada (Deslizar |
-// Aparecer | Nenhuma). Flat `alert_*` keys of OutputPref.options; a missing
-// or unknown key is the bar as the Projeção always drew it — AlertBar draws
+// Aviso rápido (alert.show; Rodada E3, owner 2026-10-16; one look for the
+// church since 2026-11-09, mockup "Avisos · um lugar só", A4 = A): Estilo
+// (Faixa: the full width | Pílula: centred), the colours, Tamanho (P/M/G)
+// and Entrada (Deslizar | Aparecer | Nenhuma) are the church's
+// (User.alert_look, stamped by the console on alert.show as alert.look);
+// each screen keeps only its Posição (Alto | Baixo), the flat
+// `alert_position` of OutputPref.options. The other `alert_*` keys an
+// output kept before are read once, from the Projeção, as the church's look
+// until it is set (churchAlertLook); nothing else reads them. AlertBar draws
 // ALERT_DEFAULTS when the alert brings no look.
 export const ALERT_DEFAULTS = { position: "top", style: "band", bg: "#f5a524", fg: "#1a1300", size: "m", entrance: "slide" };
 // A screen whose bar starts elsewhere (owner 2026-10-16): the Palco puts it
@@ -366,12 +370,26 @@ const alertValue = (k, v) => {
     if (k === "bg" || k === "fg") return typeof v === "string" && HEX6.test(v) ? v.toLowerCase() : undefined;
     return ALERT_CHOICES[k]?.includes(v) ? v : undefined;
 };
-// One screen's bar: its own choices over its page's defaults.
-export function alertOptions(pref, page) {
+// One screen's bar: the church's look (`church`, the alert's own look) at
+// this screen's position, over its page's defaults.
+export function alertOptions(pref, page, church = null) {
     const o = pref?.options || {};
     const d = alertDefaults(page);
-    return Object.fromEntries(Object.keys(d).map((k) => [k, alertValue(k, o[`alert_${k}`]) ?? d[k]]));
+    return { ...d, ...(alertLookOf(church) || {}), position: alertValue("position", o.alert_position) ?? d.position };
 }
+// The church's look as Configurações shows it and the console sends it:
+// User.alert_look, else (an older KERYX kept it per screen) the Projeção's
+// own alert_* keys, else the amber band. Never the position.
+const LOOK_DEFAULTS = Object.fromEntries(Object.entries(ALERT_DEFAULTS).filter(([k]) => k !== "position"));
+export function churchAlertLook(userLook, projectionOptions = null) {
+    const own = alertLookOf(userLook);
+    if (own) return { ...LOOK_DEFAULTS, ...own };
+    const old = Object.fromEntries(Object.entries(projectionOptions || {}).filter(([k]) => k.startsWith("alert_")).map(([k, v]) => [k.slice(6), v]));
+    return { ...LOOK_DEFAULTS, ...(alertLookOf(old) || {}) };
+}
+// What alert.show carries: the look, or null when it is the amber band.
+export const sentAlertLook = (look) => (Object.keys(LOOK_DEFAULTS).every((k) => look?.[k] === LOOK_DEFAULTS[k]) ? null : alertLookOf(look));
+export const isDefaultLook = (look) => sentAlertLook(look) === null;
 // Whether a look is what AlertBar draws with none (ALERT_DEFAULTS), so the
 // alert can go without one.
 export const isDefaultAlert = (opts) => Object.keys(ALERT_DEFAULTS).every((k) => opts?.[k] === ALERT_DEFAULTS[k]);
@@ -398,7 +416,7 @@ export function showsAlert(page, pref) {
 // Vídeo's clip). Renderer views get it from prefState.
 export function alertOf(live, pref, page) {
     if (!live?.alert || !ruleOf(pref, page).top.alert) return null;
-    const look = alertOptions(pref, page);
+    const look = alertOptions(pref, page, live.alert.look);
     return isDefaultAlert(look) ? live.alert : { ...live.alert, look };
 }
 
@@ -424,7 +442,7 @@ export function prefState(page, live, pref, theme = null) {
     if (!state) return state;
     // The Aviso rápido in this output's look (none set: the bar as always).
     if (state.alert) {
-        const look = alertOptions(pref, page);
+        const look = alertOptions(pref, page, state.alert.look);
         if (!isDefaultAlert(look)) state = { ...state, alert: { ...state.alert, look } };
     }
     // The renderer draws chords and part names only where this output asks.

@@ -112,6 +112,10 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
                 {locked && <span className="prog-locked">Travado</span>}
                 {pos && <span className="kx-meta pp-pos">{pos}</span>}
             </span>
+            {/* An Aviso rápido on air (owner 2026-11-09, A5 = A): Esc and Limpar
+                leave it, so it stays in sight here, and a click takes it off
+                (it works locked). Never folded into the "…". */}
+            {cur?.alert && <button type="button" className="kx-t pp-alert" title={`Aviso rápido no ar: “${cur.alert.message}” · clique para tirar`} aria-label="Tirar o Aviso rápido" onClick={() => c.callOp("alert.clear").catch(() => {})}>Aviso rápido<Icon name="x" size={12} /></button>}
             {where && <span className={`kx-meta prog-where ${where.warn ? "kx-warn" : ""}`} title={where.why?.length ? [`O Programa está ${where.text} agora`, ...where.why, "Mude em Saídas › Recebe"].join("\n") : `O Programa está ${where.text} agora · detalhes em Saídas`}>{where.short}</span>}
             <span className="pp-sep kx-pill-sep pp-full" aria-hidden="true" />
             <span className="pp-btns kx-pill-btns pp-full">

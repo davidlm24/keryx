@@ -168,6 +168,10 @@
       "type": "object",
       "description": "Visual da tela ociosa (Editor de telas › Tela ociosa): { bg (gradient, color ou media = Da biblioteca), c1, c2, dir, color, logo, phrase, text, media { kind image|video, value, name }, dim 0-0.7 }, shared/idleLook.mjs. Nulo = o degrade do KERYX e o logo M, como sempre"
     },
+    "alert_look": {
+      "type": "object",
+      "description": "O visual do Aviso rapido, um so da igreja (Configuracoes › Telas e saidas › Avisos; 2026-11-09): { style band|pill, bg, fg (#rrggbb), size s|m|l, entrance slide|fade|none }. A posicao e de cada tela. Nulo = o da Projecao de antes, senao a faixa ambar"
+    },
     "chime_on": {
       "type": "boolean",
       "description": "Som do aviso: tocar o sino dos avisos com Som de alerta (Configuracoes › Telas e saidas). Nulo = sim"

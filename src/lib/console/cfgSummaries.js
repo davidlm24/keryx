@@ -10,11 +10,24 @@ const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 // The aviso chime's volumes, [value, label] as Seg takes them.
 export const CHIME_VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
-// Telas e saídas › Som e YouTube: "Sino Médio · YouTube sem título".
+// Telas e saídas › Som e YouTube: "YouTube sem título" (the chime moved to
+// Avisos, 2026-11-09).
 export function somSummary(prefs) {
     if (!prefs) return "";
-    const label = (CHIME_VOLUMES.find(([v]) => v === String(prefs.chime_volume)) || CHIME_VOLUMES[1])[1];
-    return `${prefs.chime_on ? `Sino ${label}` : "Sino desligado"} · ${prefs.youtube_hide_title ? "YouTube sem título" : "YouTube com título"}`;
+    return prefs.youtube_hide_title ? "YouTube sem título" : "YouTube com título";
+}
+const chimeWord = (prefs) => (prefs.chime_on ? `sino ${(CHIME_VOLUMES.find(([v]) => v === String(prefs.chime_volume)) || CHIME_VOLUMES[1])[1].toLowerCase()}` : "sem sino");
+
+// Telas e saídas › Avisos (owner 2026-11-09, A4 = A): the Aviso rápido's
+// look, the church's, and the chime: "Faixa âmbar · desliza · sino médio".
+// `look` is churchAlertLook(); the position is each screen's, never here.
+const LOOK_STYLE = { band: "Faixa", pill: "Pílula" };
+const LOOK_IN = { slide: "desliza", fade: "aparece", none: "sem entrada" };
+export function avisosSummary(look, prefs) {
+    if (!look || !prefs) return "";
+    const amber = look.bg === "#f5a524" && look.fg === "#1a1300";
+    const size = { s: " · P", l: " · G" }[look.size] || "";
+    return `${LOOK_STYLE[look.style] || "Faixa"}${amber ? " âmbar" : ""} · ${LOOK_IN[look.entrance] || "desliza"}${size} · ${chimeWord(prefs)}`;
 }
 
 // Telas e saídas › Arquivo de ajustes: nothing to state, only what it does.

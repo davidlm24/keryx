@@ -16,29 +16,89 @@ import { useChurch } from "@/hooks/useChurch";
 import { outputsSummary } from "@/lib/console/outputs";
 import { pixelSize } from "@/lib/console/placement";
 import { soundDevices, soundOutOptions } from "@/lib/console/soundOut";
-import { CHIME_VOLUMES, somSummary, ARQUIVO_SUMMARY } from "@/lib/console/cfgSummaries";
+import { CHIME_VOLUMES, somSummary, avisosSummary, ARQUIVO_SUMMARY } from "@/lib/console/cfgSummaries";
+import { churchAlertLook, sentAlertLook, ALERT_DEFAULTS } from "@/lib/outputPrefs";
+import { useOutputPref } from "@/hooks/useOutputPref";
+import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import { emptyState } from "@shared/live-state.mjs";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm } from "../ConfirmDialog";
 import TransicoesBlock from "./TransicoesBlock";
 
-// Som do aviso: the chime of avisos with "Som de alerta", on or off and its
-// volume, for every output and network screen (on the profile). The YouTube
-// title bar rides here too (from the dissolved Aparência, Rodada B
-// 2026-10-14): what the screens draw over a YouTube video is theirs.
-function SomBlock({ c }) {
+// Aviso rápido (alertOptions): the choices, in the bar's own words.
+const ALERT_STYLES = [["band", "Faixa"], ["pill", "Pílula"]];
+const ALERT_SIZES = [["s", "P"], ["m", "M"], ["l", "G"]];
+const ALERT_ENTRANCES = [["slide", "Deslizar"], ["fade", "Aparecer"], ["none", "Nenhuma"]];
+const SAMPLE_TEXT = "Carro placa ABC-1234, procure a recepção";
+
+// Avisos (owner 2026-11-09, mockup "Avisos · um lugar só", A4 = A): the
+// Aviso rápido's look, ONE for every screen (User.alert_look; the console
+// stamps it on alert.show) — each screen keeps only Alto | Baixo, in its
+// Editor — and the chime of avisos with "Som de alerta" (on the profile,
+// for every output and network screen). A change reaches an Aviso rápido on
+// air at once. Before it is set, the Projeção's own look (churchAlertLook).
+function AvisosBlock({ c }) {
     const prefs = usePrefs();
+    const { pref: projPref } = useOutputPref("/Projection");
+    const look = churchAlertLook(prefs.alert_look, projPref?.options);
     const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
+    const [tick, setTick] = useState(1);
+    const saveLook = (patch) => {
+        const next = { ...look, ...patch };
+        setTick((t) => t + 1);
+        save({ alert_look: next }).then(() => {
+            // The aviso on air takes it now (the same text, again).
+            const on = c.cur?.alert;
+            if (on) c.callOp("alert.show", { message: on.message, type: on.type, look: sentAlertLook(next) }).catch(() => {});
+        });
+    };
+    const amber = look.bg === ALERT_DEFAULTS.bg && look.fg === ALERT_DEFAULTS.fg;
+    const sample = { ...emptyState(0), alert: { message: SAMPLE_TEXT, type: "message", since: tick, ...(sentAlertLook(look) ? { look: sentAlertLook(look) } : {}) } };
     const vol = String(prefs.chime_volume);
     return (
-        <CfgGroup id="telas.som" k="Som e YouTube" defaultOpen={false} summary={somSummary(prefs)}>
-            <div className="frm">
-                <SoundOutRow c={c} />
+        <CfgGroup id="telas.avisos" k="Avisos" defaultOpen={false} summary={avisosSummary(look, prefs)}>
+            <div className="frm cfg-avisos">
+                <div className="cfg-avisos-sample" title="Um Aviso rápido de exemplo, com estes ajustes">
+                    <div className="cfg-prev"><div className="kp-out cfg-prev-fill"><ScreenRenderer fill state={sample} preview audio={false} /></div></div>
+                </div>
+                <span className="kx-meta cfg-avisos-note">O Aviso rápido, um visual para todas as telas; no alto ou embaixo fica no Editor de cada tela (o Palco começa embaixo).</span>
+                <FormRow k="Estilo">
+                    <Seg small label="Estilo do Aviso rápido" value={look.style} options={ALERT_STYLES} onChange={(v) => saveLook({ style: v })} />
+                </FormRow>
+                <FormRow k="Cores">
+                    <input type="color" className="ed-color" value={look.bg} onChange={(e) => saveLook({ bg: e.target.value })} aria-label="Cor do fundo do Aviso rápido" title="Fundo" />
+                    <input type="color" className="ed-color" value={look.fg} onChange={(e) => saveLook({ fg: e.target.value })} aria-label="Cor do texto do Aviso rápido" title="Texto" />
+                    <span className="kx-meta">fundo e texto</span>
+                    {!amber && <Btn small onClick={() => saveLook({ bg: ALERT_DEFAULTS.bg, fg: ALERT_DEFAULTS.fg })} title="Volta ao âmbar de sempre">Cores padrão</Btn>}
+                </FormRow>
+                <FormRow k="Tamanho">
+                    <Seg small label="Tamanho do Aviso rápido" value={look.size} options={ALERT_SIZES} onChange={(v) => saveLook({ size: v })} />
+                </FormRow>
+                <FormRow k="Entrada">
+                    <Seg small label="Entrada do Aviso rápido" value={look.entrance} options={ALERT_ENTRANCES} onChange={(v) => saveLook({ entrance: v })} />
+                    <span className="kx-meta">sem movimento quando o Windows pede menos animação</span>
+                </FormRow>
                 <FormRow k="Som do aviso">
                     <Switch on={prefs.chime_on} onChange={(on) => save({ chime_on: on }, on ? "O sino dos avisos toca." : "Sino dos avisos desligado em todas as telas.")} label="Tocar o sino dos avisos" />
                     <Seg small label="Volume do sino" value={CHIME_VOLUMES.some(([v]) => v === vol) ? vol : "35"} options={CHIME_VOLUMES} onChange={(v) => save({ chime_volume: Number(v) })} />
                     <Btn small disabled={!prefs.chime_on} onClick={() => ringBell({ on: true, volume: prefs.chime_volume })} title="Toca o sino aqui, neste computador">Testar som</Btn>
                     <span className="kx-meta">o sino curto dos avisos com Som de alerta, nas saídas e nas telas na rede</span>
                 </FormRow>
+            </div>
+        </CfgGroup>
+    );
+}
+
+// The sound KERYX plays on (Saída de som) and the YouTube title bar (from
+// the dissolved Aparência, Rodada B 2026-10-14): what the screens draw over
+// a YouTube video is theirs. The chime of avisos is in Avisos (2026-11-09).
+function SomBlock({ c }) {
+    const prefs = usePrefs();
+    const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
+    return (
+        <CfgGroup id="telas.som" k="Som e YouTube" defaultOpen={false} summary={somSummary(prefs)}>
+            <div className="frm">
+                <SoundOutRow c={c} />
                 <FormRow k="Título do YouTube">
                     <Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título que o YouTube põe sobre o vídeo" />
                     <span className="kx-meta">a faixa que o YouTube põe sobre o vídeo, em todas as telas</span>
@@ -287,6 +347,7 @@ export default function TelasSection({ c, onOpenScreen }) {
             </div>
             <div className="listhead"><span className="kx-meta">Clique numa tela para editá-la no Editor: lá ficam a tela em que ela abre, Abrir ao iniciar, o que ela recebe e o resto dos ajustes. As saídas não aparecem na barra de tarefas; fechar o KERYX fecha todas.</span></div>
             </CfgGroup>
+            <AvisosBlock c={c} />
             <TransicoesBlock c={c} />
             <SomBlock c={c} />
             <CfgGroup id="telas.arquivo" k="Arquivo de ajustes" defaultOpen={false} summary={ARQUIVO_SUMMARY}>
