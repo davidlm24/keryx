@@ -24,6 +24,12 @@ const OVERRIDES = {
     "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-1": "THE window's panels one grey step up (Rodada O, O7)",
     "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-2": "THE window's panels one grey step up (Rodada O, O7)",
     "src/components/console/console.css › .console .win-body .kx-panel:not(.kx-panel-bare) › --bg-3": "THE window's panels one grey step up (Rodada O, O7)",
+    "docs/design-system/components/bundle.css › .kx :is(.kx-pop, .kx-toast) › --bg-2": "inside glass the greys are light tints over the dark glass (owner 2026-11-09, glass round 2)",
+    "src/components/console/console.css › .console .palette › --bg-2": "inside glass the greys are light tints over the dark glass (owner 2026-11-09, glass round 2)",
+    "docs/design-system/components/bundle.css › .kx :is(.kx-pop, .kx-toast) › --bg-3": "inside glass the greys are light tints over the dark glass (owner 2026-11-09, glass round 2)",
+    "src/components/console/console.css › .console .palette › --bg-3": "inside glass the greys are light tints over the dark glass (owner 2026-11-09, glass round 2)",
+    "docs/design-system/components/bundle.css › .kx :is(.kx-pop, .kx-toast) › --bg-4": "inside glass the greys are light tints over the dark glass (owner 2026-11-09, glass round 2)",
+    "src/components/console/console.css › .console .palette › --bg-4": "inside glass the greys are light tints over the dark glass (owner 2026-11-09, glass round 2)",
 };
 
 // Every custom property a stylesheet declares, with the rule it sits in.

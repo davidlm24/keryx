@@ -617,6 +617,13 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 @media (forced-colors: none) and (prefers-reduced-transparency: no-preference) {
   @supports (backdrop-filter: blur(1px)) {
     .kx :is(.kx-pop, .kx-pill, .kx-mon-badge, .kx-toast) { background: var(--glass-bg); backdrop-filter: var(--glass-blur); box-shadow: var(--shadow-glass); }
+    /* Inside glass the greys are light tints: every hover, selected row, open item, segment, chip and field there
+       reads over the dark glass without a rule of its own. */
+    .kx :is(.kx-pop, .kx-toast) { --bg-2: var(--glass-hover); --bg-3: var(--glass-selected); --bg-4: var(--glass-pressed); }
+    /* A menu that opens a submenu keeps its glass on a layer behind its items: with backdrop-filter on the menu
+       itself it would be the submenu's backdrop root, and the submenu (inside it) would blur only the menu. */
+    .kx .kx-pop:has(.mb-row) { background: none; backdrop-filter: none; isolation: isolate; }
+    .kx .kx-pop:has(.mb-row)::before { content: ""; position: absolute; inset: 0; z-index: var(--z-behind); border-radius: inherit; background: var(--glass-bg); backdrop-filter: var(--glass-blur); pointer-events: none; }
   }
 }
 
