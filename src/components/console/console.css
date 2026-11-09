@@ -2467,6 +2467,20 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
   .console .is-covered .kx-row.is-air { background: var(--bg-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--air) 35%, transparent); }
 }
 
+/* Glass (owner 2026-11-09, G1 = A, G2 = A): the console's side of
+   bundle.css's Glass block, at the console's specificity — the search
+   (the palette) and its field, the menus' deeper edge, and THE window's
+   backdrop, dimmed as before and now blurred a little (blur-backdrop).
+   Same conditions: a browser that blurs, transparency effects on, no
+   contrast theme; otherwise everything stays solid as before. */
+@media (forced-colors: none) and (prefers-reduced-transparency: no-preference) {
+  @supports (backdrop-filter: blur(1px)) {
+    .console :is(.kx-pop, .palette) { background: var(--glass-bg); backdrop-filter: var(--glass-blur); box-shadow: var(--shadow-glass); }
+    .console .palette .kx-field { background: var(--glass-field); }
+    .console .win-scrim { backdrop-filter: var(--blur-backdrop); }
+  }
+}
+
 /* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
    the console's side of the cues in bundle.css, at the console's
    specificity. Nothing above changes: this block only applies under a

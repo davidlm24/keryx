@@ -62,6 +62,8 @@
   --chrome-label: #0d0d0ccc;
   --chrome-mark: #000000b3;
   --scrim-dim: #0d0d0c99;
+  --glass-bg: color-mix(in srgb, var(--bg-2) 72%, transparent);
+  --glass-field: color-mix(in srgb, var(--bg-3) 70%, transparent);
   --swatch-ring: #ffffff2e;
   --swatch-edge: rgba(255, 255, 255, .18);
   --qr-ground: #fff;
@@ -80,6 +82,7 @@
   --rh-ring: inset 0 0 0 1px color-mix(in srgb, var(--rh) 55%, transparent);
   --next-ring: inset 0 0 0 1px var(--line-strong);
   --shadow-menu: 0 0 0 1px var(--line-overlay), 0 12px 32px #000000a6;
+  --shadow-glass: inset 0 1px 0 color-mix(in srgb, var(--fg-1) 9%, transparent), 0 0 0 1px color-mix(in srgb, var(--fg-1) 8%, transparent), 0 12px 32px #00000099;
   --shadow-drag: 0 0 0 1px var(--line-overlay), 0 14px 30px #000000a0;
   --shadow-drag-land: 0 0 0 1px var(--line-overlay), 0 2px 6px #00000059;
   --shadow-knob: 0 1px 4px #0009;
@@ -111,6 +114,8 @@
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --dim: 0.55;
   --hatch: 0.85;
+  --glass-blur: blur(16px) saturate(160%);
+  --blur-backdrop: blur(4px);
   --z-screen: 1;
   --z-mark: 2;
   --z-handle: 3;

@@ -814,7 +814,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   components as they ship, `console.css` only the console's layout and its
   app-specific compositions, and no stylesheet types a colour, a px font
   size or a z-index by hand — `src/lib/tokens.test.mjs`; the three kinds of
-  surface are `docs/design-system/surfaces.md`). One screen, always live (no steps; Verificar is an overlay from the
+  surface are `docs/design-system/surfaces.md`). **Glass on what floats**
+  (owner 2026-11-09, G1 = A, G2 = A): the pills and the Prévia's badge,
+  every `kx-pop`, the palette and the toast are `glass-bg` (bg-2 at 72 %)
+  over `glass-blur`, and THE window's scrim blurs `blur-backdrop` (4 px)
+  under its dim — one guarded block in bundle.css and one in console.css
+  (`forced-colors: none` and `prefers-reduced-transparency:
+  no-preference`, inside `@supports (backdrop-filter)`), solid otherwise;
+  never a panel, a list, the window's body or an output
+  (`src/lib/glass.test.mjs`); a new floater joins the block. One screen, always live (no steps; Verificar is an overlay from the
   Saídas popover; Configurações, `settings/SettingsView`, is a window over
   whatever is on screen, its own `cfg` state, `?config=`; its sections are
   `src/lib/console/settings.js`, old ids resolve through `resolveSection`;

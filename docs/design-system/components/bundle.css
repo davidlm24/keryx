@@ -608,6 +608,18 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-out .kx-route { margin-top: 2px; }
 .kx-out.is-tall { min-height: 56px; align-items: start; padding-top: 6px; }
 
+/* ---- Glass (owner 2026-11-09, G1 = A Suave) ----
+   What floats over the console lets it show through, blurred: the pills and the badge over a monitor, every menu
+   and popover, the toast. glass-bg (bg-2 at 72 %) with glass-blur behind it and shadow-glass for its edge. Only
+   where the browser blurs, Windows' transparency effects are on and no contrast theme is: otherwise the solid
+   look above stays as it was. Never on a panel, a list, the Bíblia's text, THE window's body or an output
+   (src/lib/glass.test.mjs). console.css adds the palette and THE window's backdrop. */
+@media (forced-colors: none) and (prefers-reduced-transparency: no-preference) {
+  @supports (backdrop-filter: blur(1px)) {
+    .kx :is(.kx-pop, .kx-pill, .kx-mon-badge, .kx-toast) { background: var(--glass-bg); backdrop-filter: var(--glass-blur); box-shadow: var(--shadow-glass); }
+  }
+}
+
 /* ---- Windows contrast themes (forced colours) ----
    Under a contrast theme Chromium repaints every background and border in the system's colours and drops every
    shadow, so the states that are a background (on air, Prévia, next, chosen) and the controls drawn with fills or

@@ -15,7 +15,7 @@ const CSS_FILE = path.join(root, "docs", "design-system", "tokens.css");
 function compileTokens(json) {
     const line = (t) => `  --${t.name}: ${t.value};`;
     const themed = [json.color, json.shadow].flatMap((g) => g.tokens.map(line));
-    const plain = [json.spacing, json.radius, json.timing, json.opacity, json.layer, json.type.scale].flatMap((g) => g.tokens.map(line));
+    const plain = [json.spacing, json.radius, json.timing, json.opacity, json.effect, json.layer, json.type.scale].flatMap((g) => g.tokens.map(line));
     for (const [family, value] of Object.entries(json.type.families)) plain.push(`  --font-${family}: ${value};`);
     return [
         "/* KERYX — generated from tokens.json by scripts/ds-tokens.cjs (npm run ds:tokens). Never edit by hand. */",
