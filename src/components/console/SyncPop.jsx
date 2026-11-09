@@ -3,7 +3,7 @@ import { Btn } from "./kx";
 import { useFocusFirst } from "./Menu";
 import { useAnchor } from "./Popovers";
 import { useBridge } from "./settings/parts";
-import { useSyncStatus, setSyncStatus } from "@/hooks/useSyncStatus";
+import { useSyncStatus, syncNow } from "@/hooks/useSyncStatus";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { signInWithGoogle } from "@/hooks/useGoogleSync";
 import { cloudView, arrivingPct } from "@/lib/console/syncView";
@@ -32,9 +32,7 @@ export default function SyncPop({ open, setOpen, onSettings, say, songsHere = 0 
         if (!sync) return;
         setBusy(true);
         try {
-            const res = await sync.call("now");
-            if (res?.error) say(`Sincronizar agora: ${res.error.message}`);
-            else if (res?.data) setSyncStatus(res.data);
+            await syncNow(say);
         } finally {
             setBusy(false);
         }

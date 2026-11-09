@@ -69,6 +69,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   "Encerrar…" shows Esc (which ends at once, the menu item asks first).
   "Planejar o culto" lives in the bar's Culto, the Setlist's button and the
   service clock — not in the Setlist's (+); "Atalhos" only in Ajuda (not Ver).
+  **Every new feature reviews the menu bar** (owner 2026-11-09, "conexões do
+  app mobile por exemplo"): a feature with a command the operator may look
+  for (open, connect, import, choose) gets its item in `buildMenus`
+  (menuBar.js), in the menu its meaning belongs to — Culto (the culto and
+  its team: Pedidos da equipe, Chat da equipe), Música (songs, Importar
+  músicas…, Importar uma pasta…, Abrir pacote do KERYX…, and the group
+  **Bíblia**: Tema da Bíblia…, Escolher as Bíblias…, Bíblias instaladas),
+  Mídia, Ferramentas (avisos, timers, Escola, Relatórios, and the group
+  **Conexões**: KERYX no celular, Sincronizar agora / Entrar com Google,
+  Sincronização), Ajuda (learning, checking, support, updates — never a
+  connection or a setting) —, through `menuItem` when the action is in 2+
+  menus; a group inside a menu is a `head` (a minor head in the Menu
+  button's popover). The PR says which menu got the feature, or why none.
 - **`src/components/ui/` is generated shadcn/ui.** It is excluded from lint and
   from editor type checking. Don't hand-edit it; add components with the
   shadcn CLI (`components.json` is configured) or wrap them instead.
@@ -845,7 +858,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   already does (Música › Sincronizar a música… opens the song in the Prévia
   or on air with Sincronizar on top; Letra automática › Iniciar/Pausar/
   Retomar; Mídia › Do computador… / Link do YouTube… open the Mídia on
-  that step; Mídia › Fundos opens the backgrounds library at once). **Ver stays beside the bell, with the panels glyph**
+  that step; Mídia › Fundos opens the backgrounds library at once; Culto ›
+  Pedidos/Chat da equipe focus that tab of the Painel, a gold `dot` while
+  something new waits, and with the Painel in the tray say "veja em Ver ›
+  Painel"; Ferramentas › Conexões' sync item follows `cloudView`'s `act`;
+  Música › Bíblia › Tema da Bíblia… is `chooseBibleTheme` in
+  themeActions.js, the same as the Bíblia's line). **Ver stays beside the bell, with the panels glyph**
   (`panels`, Lucide layout-panel-left; the eye is only for showing or
   hiding: the choosers of what to show, a layer, the player's video). **Ajuda is the bar's last menu** (owner 2026-10-20,
   Rodada M0; Alt+A): Primeiros passos (a dialog, `firstSteps.js`, tested:
