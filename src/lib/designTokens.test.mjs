@@ -84,7 +84,7 @@ test("tokens.css is what npm run ds:tokens writes from tokens.json", () => {
     const json = JSON.parse(read("docs/design-system/tokens.json"));
     assert.equal(read(TOKENS), compileTokens(json), "tokens.css is stale: run npm run ds:tokens");
     assert.equal(read("docs/design-system/tokens.json"), formatJson(json), "tokens.json left its layout: run npm run ds:tokens -- --format");
-    const groups = [json.color, json.spacing, json.radius, json.shadow, json.timing, json.opacity, json.type.scale, json.layer];
+    const groups = [json.color, json.spacing, json.radius, json.shadow, json.timing, json.opacity, json.effect, json.type.scale, json.layer];
     const expected = groups.flatMap((g) => g.tokens.map((t) => [`--${t.name}`, t.value]));
     for (const [family, value] of Object.entries(json.type.families)) expected.push([`--font-${family}`, value]);
     for (const [name, value] of expected) assert.equal(tokens.get(name), value, `${name} in tokens.css`);

@@ -54,6 +54,7 @@ network pages keep their own, pinned value by value, with the reason).
 | Layers, the console | `--z-scrim` 27 · `--z-menubar` 28 · `--z-window-scrim` 29 · `--z-pop` 30 · `--z-window` 40 · `--z-window-over` 41 · `--z-drawer` 42 · `--z-verify` 43 · `--z-library-scrim` 44 · `--z-library` 45 · `--z-dialog` 50 · `--z-confirm-scrim` 51 · `--z-confirm` 52 · `--z-menu` 53 · `--z-menu-top` 54 · `--z-toast` 60 · `--z-drag` 70. A new layer is a name by its role, never a number. |
 | Motion | `--duration-fast` 120 ms + `--ease-out` (hover, state) · `--dur-fold` 180 ms + `--ease-fold` (a fold, No ar, a group, a chevron; Dock.jsx reads them). |
 | Opacity | `--dim` 0.55 (done, hidden, disabled) · `--hatch` 0.85. |
+| Glass | `--glass-bg` (bg-2 at 72 %) · `--glass-field` (bg-3 at 70 %) · `--shadow-glass` (a light rim and ring, a deep shadow) · `--glass-blur` (blur 16 px, saturate 160 %) · `--blur-backdrop` (4 px, THE window's backdrop). Only on what floats: see Glass. |
 | Fonts | `--font-sans` / `--font-display`: Geist, then the system font. |
 
 A new token is a line in `tokens.json` with its usage (what it is for, never
@@ -271,7 +272,7 @@ compositions), it is given.
 ### Popover, menu, tooltip
 
 - `kx-pop` (bg-2, `radius-panel`, `shadow-popover`: the `line-overlay` ring;
-  menus a deeper shadow) › `kx-menu-item` (28 px; its glyph `fg-2`, the
+  menus a deeper shadow; glass where it blurs, see Glass) › `kx-menu-item` (28 px; its glyph `fg-2`, the
   shortcut `kx-kbd` from `keyHint`, never typed), `kx-menu-sep`
   (`line-soft`), `kx-menu-h` (a 24 px heading). `kx-tip` is a tooltip.
 - **Do** build every menu with `MenuList` (Menu.jsx) and the shared actions
@@ -282,7 +283,8 @@ compositions), it is given.
 
 - **Class.** `kx-toast` (old name `.toast`; `Toast.jsx`): one 28 px line just
   below the top bar (at `--pop-top`; at its own top in a detached page),
-  centred over the panels, `bg-3`, `shadow-popover`; it drops in and leaves
+  centred over the panels, `bg-3`, `shadow-popover` (glass where it blurs:
+  see Glass); it drops in and leaves
   fading (reduced motion: fade only).
 - **Anatomy.** `kx-toast-t` (the text, ending in "…") · `kx-toast-act` (an
   action, a 24 px target: *Desfazer* after Esc, its key in the tooltip).
@@ -394,6 +396,29 @@ compositions), it is given.
 - `kx-tools` / `kx-tool`: ghost buttons in a 2 × 2 grid (Relógio,
   Cronômetro, Timer, Texto livre); `kx-screen-tool` the figure on a screen.
 - `kx-route`: a ghost button showing a value that opens a small menu.
+
+### Glass
+
+What floats over the console lets it show through, blurred: the Programa's
+and the Prévia's pills and the Prévia's badge (`kx-pill`, `kx-mon-badge`),
+every menu and popover (`kx-pop`: Ver, Saídas, the bell, the cloud, the menu
+bar and ☰ Menu, the (+) and right-click menus), the search (the palette) and
+the toast — `glass-bg` with `glass-blur` behind it and `shadow-glass` for
+its edge. Behind THE window the console is dimmed as before and blurred
+`blur-backdrop` (the Programa draws a still frame meanwhile).
+
+- **Where.** One guarded block in `bundle.css` (the components) and one in
+  `console.css` (the palette, the menus' edge, the window's backdrop):
+  `@media (forced-colors: none) and (prefers-reduced-transparency:
+  no-preference)` around `@supports (backdrop-filter: blur(1px))`.
+  Outside it (a browser that does not blur, Windows › Cores › Efeitos de
+  transparência off, a contrast theme) everything stays solid, as it was.
+- **Do** keep text on glass at the same tokens as on bg-2; 72 % keeps it AA
+  over a bright slide.
+- **Don't** put glass on a panel, a list, the Bíblia's text, THE window's body
+  or anything an output draws: the audience never sees it
+  (`src/lib/glass.test.mjs` holds the block, its tokens and the renderer's
+  stylesheets). A new floater joins the block's selector.
 
 ### Contrast themes
 
@@ -726,3 +751,8 @@ Kept so old commits and the canvas make sense; none of this is a rule.
   pages, its side menus stopped resizing and took Voltar at their top; group
   titles went from 11 px grey caps to 13 px `fg-1`, and the first static
   group under a panel's title stopped repeating it.
+- **2026-11-09 — Glass** (the owner's marks G1 = A Suave, G2 = A): what floats
+  (pills, badge, menus and popovers, the palette, the toast) became glass,
+  bg-2 at 72 % over a 16 px blur, and THE window's backdrop blurs 4 px under
+  its dim; solid without backdrop-filter, with Windows' transparency effects
+  off and under a contrast theme.
