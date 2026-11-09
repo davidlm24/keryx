@@ -829,8 +829,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   size or a z-index by hand — `src/lib/tokens.test.mjs`; the three kinds of
   surface are `docs/design-system/surfaces.md`). **Glass on what floats**
   (owner 2026-11-09, G1 = A, G2 = A): the pills and the Prévia's badge,
-  every `kx-pop`, the palette and the toast are `glass-bg` (bg-2 at 72 %)
-  over `glass-blur`, and THE window's scrim blurs `blur-backdrop` (4 px)
+  every `kx-pop`, the palette and the toast are `glass-bg` (bg-0 at 66 %;
+  round 2 the same day) over `glass-blur` (24 px, saturate, the backdrop
+  darkened to 65 %), the greys inside them light tints (`--bg-2/3/4`
+  redefined there: `glass-hover`/`-selected`/`-pressed`), a menu with a
+  submenu keeps its glass on `::before` (else the submenu cannot blur), and THE window's scrim blurs `blur-backdrop` (4 px)
   under its dim — one guarded block in bundle.css and one in console.css
   (`forced-colors: none` and `prefers-reduced-transparency:
   no-preference`, inside `@supports (backdrop-filter)`), solid otherwise;

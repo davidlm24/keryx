@@ -181,11 +181,11 @@
    Setlist as glyphs), "Ver mais", and the keys' legend at the foot. Glass
    where it blurs (the Glass block at the end). */
 .console .palette { position: absolute; z-index: var(--z-dialog); left: 50%; transform: translateX(-50%); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 720px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); display: flex; flex-direction: column; max-height: min(680px, calc(100% - var(--topbar) - 64px)); overflow: hidden; }
-.console .palette .pal-field { flex: none; height: 44px; margin: var(--space-1) var(--space-1) var(--space-2); padding: 0 var(--space-3); gap: var(--space-2); background: var(--bg-3); }
+.console .palette .pal-field { flex: none; height: 44px; margin: var(--space-1); padding: 0 var(--space-3); gap: var(--space-2); border-radius: calc(var(--radius-panel) - var(--space-1)); background: var(--bg-3); }
 .console .palette .pal-field input { flex: 1; min-width: 0; font-size: var(--fs-content-lg); }
 .console .palette .pal-scope { flex: none; height: 22px; display: inline-flex; align-items: center; padding: 0 var(--space-2); border-radius: 6px; background: var(--fg-1); color: var(--bg-0); font-size: var(--fs-ui); font-weight: 600; }
 .console .palette .pal-as { flex: none; color: var(--fg-2); font-size: var(--fs-ui); white-space: nowrap; }
-.console .palette .pal-chips { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); }
+.console .palette .pal-chips { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); }
 .console .palette .pal-chip { height: var(--control-sm); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: var(--radius-round); background: transparent; color: var(--fg-2); font: 500 var(--fs-ui)/1 var(--font-sans); cursor: pointer; }
 .console .palette .pal-chip:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .palette .pal-chip.is-on { background: var(--fg-1); color: var(--bg-0); font-weight: 600; }
@@ -2502,7 +2502,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 @media (forced-colors: none) and (prefers-reduced-transparency: no-preference) {
   @supports (backdrop-filter: blur(1px)) {
     .console :is(.kx-pop, .palette) { background: var(--glass-bg); backdrop-filter: var(--glass-blur); box-shadow: var(--shadow-glass); }
-    .console .palette .kx-field { background: var(--glass-field); }
+    .console .palette { --bg-2: var(--glass-hover); --bg-3: var(--glass-selected); --bg-4: var(--glass-pressed); }
+    .console .palette .kx-field { background: var(--glass-field); box-shadow: var(--shadow-glass-field); }
     .console .win-scrim { backdrop-filter: var(--blur-backdrop); }
   }
 }

@@ -40,7 +40,7 @@ for (const file of ["docs/design-system/components/bundle.css", "src/components/
         assert.ok(uses.length > 0);
         for (const m of uses) {
             assert.ok(m.index > start && m.index < end, `${file}: backdrop-filter outside the guarded block`);
-            assert.match(m[1].trim(), /^var\(--(glass-blur|blur-backdrop)\)$/, `${file}: a blur is a token (${m[1].trim()})`);
+            assert.match(m[1].trim(), /^(var\(--(glass-blur|blur-backdrop)\)|none)$/, `${file}: a blur is a token (${m[1].trim()})`);
         }
     });
 }
@@ -58,6 +58,10 @@ test("the glass is only on what floats: never a panel, a list, a monitor's scree
     for (const floats of ["kx-pop", "kx-pill", "kx-mon-badge", "kx-toast", "palette", "win-scrim"]) {
         assert.ok(all.includes(floats), `${floats} is glass`);
     }
+    // A menu with a submenu blurs from a layer behind its items: on the menu
+    // itself the backdrop-filter would make it the submenu's backdrop root.
+    assert.ok(sel.includes(".kx .kx-pop:has(.mb-row)::before"), "a menu that opens a submenu keeps its glass on ::before");
+    assert.ok(sel.includes(".kx .kx-pop:has(.mb-row)"), "and has none of its own");
 });
 
 test("the outputs never blur: the renderer's stylesheets have no backdrop-filter", () => {

@@ -54,7 +54,7 @@ network pages keep their own, pinned value by value, with the reason).
 | Layers, the console | `--z-scrim` 27 · `--z-menubar` 28 · `--z-window-scrim` 29 · `--z-pop` 30 · `--z-window` 40 · `--z-window-over` 41 · `--z-drawer` 42 · `--z-verify` 43 · `--z-library-scrim` 44 · `--z-library` 45 · `--z-dialog` 50 · `--z-confirm-scrim` 51 · `--z-confirm` 52 · `--z-menu` 53 · `--z-menu-top` 54 · `--z-toast` 60 · `--z-drag` 70. A new layer is a name by its role, never a number. |
 | Motion | `--duration-fast` 120 ms + `--ease-out` (hover, state) · `--dur-fold` 180 ms + `--ease-fold` (a fold, No ar, a group, a chevron; Dock.jsx reads them). |
 | Opacity | `--dim` 0.55 (done, hidden, disabled) · `--hatch` 0.85. |
-| Glass | `--glass-bg` (bg-2 at 72 %) · `--glass-field` (bg-3 at 70 %) · `--shadow-glass` (a light rim and ring, a deep shadow) · `--glass-blur` (blur 16 px, saturate 160 %) · `--blur-backdrop` (4 px, THE window's backdrop). Only on what floats: see Glass. |
+| Glass | `--glass-bg` (bg-0 at 66 %) · `--glass-blur` (blur 24 px, saturate 180 %, the backdrop darkened to 65 %) · `--shadow-glass` (a light rim and ring, a deep shadow) · inside it `--glass-hover` / `--glass-selected` / `--glass-pressed` (fg-1 at 7 / 12 / 16 %, in bg-2/3/4's place) · `--glass-field` + `--shadow-glass-field` (the palette's field) · `--blur-backdrop` (4 px, THE window's backdrop) · `--z-behind`. Only on what floats: see Glass. |
 | Fonts | `--font-sans` / `--font-display`: Geist, then the system font. |
 
 A new token is a line in `tokens.json` with its usage (what it is for, never
@@ -413,8 +413,18 @@ its edge. Behind THE window the console is dimmed as before and blurred
   no-preference)` around `@supports (backdrop-filter: blur(1px))`.
   Outside it (a browser that does not blur, Windows › Cores › Efeitos de
   transparência off, a contrast theme) everything stays solid, as it was.
-- **Do** keep text on glass at the same tokens as on bg-2; 72 % keeps it AA
-  over a bright slide.
+- **Inside glass the greys are tints.** The block redefines `--bg-2`, `--bg-3`
+  and `--bg-4` inside `kx-pop`, `kx-toast` and the palette as light tints
+  (`glass-hover`, `glass-selected`, `glass-pressed`), so a hover, the
+  selected row, an open item, a segment or a chip reads over the dark glass
+  with no rule of its own. A field there is `glass-field` with its ring, and
+  its radius is the panel's minus its inset (concentric).
+- **Submenus.** A menu that opens a submenu (`.kx-pop:has(.mb-row)`) keeps
+  its glass on a `::before` layer (`z-behind`): with backdrop-filter on the
+  menu itself it would be the submenu's backdrop root, and the submenu would
+  blur only the menu.
+- **Do** keep text on glass at the same tokens as on bg-2: the dark glass over
+  a darkened backdrop keeps it AA over a bright slide.
 - **Don't** put glass on a panel, a list, the Bíblia's text, THE window's body
   or anything an output draws: the audience never sees it
   (`src/lib/glass.test.mjs` holds the block, its tokens and the renderer's
@@ -756,3 +766,9 @@ Kept so old commits and the canvas make sense; none of this is a rule.
   bg-2 at 72 % over a 16 px blur, and THE window's backdrop blurs 4 px under
   its dim; solid without backdrop-filter, with Windows' transparency effects
   off and under a contrast theme.
+- **2026-11-09 — Glass, round 2** (the owner's review in desktop:dev): the
+  glass went darker (bg-0 at 66 % over a backdrop blurred 24 px and darkened to
+  65 %; at bg-2 72 % it read as a flat grey), the greys inside it became light
+  tints (the field, the selected row and Saídas' chips had no contrast), the
+  palette's field became concentric, and submenus blur (a menu with one keeps
+  its glass on ::before).
