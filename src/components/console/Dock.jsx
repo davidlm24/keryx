@@ -28,7 +28,8 @@ const key = (path) => JSON.stringify(path);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const nameOf = (id) => MODULES[id]?.name || id;
 // The first module in a frame: a stable React key for its cell.
-const firstOf = (f) => (f.kind === "group" ? f.tabs[0] : firstOf(f.children[0].frame));
+// An empty place (every tab in a window of its own: fitDock's `away`) keys by its modules too.
+const firstOf = (f) => (f.kind === "group" ? f.tabs[0] ?? f.away?.[0] : firstOf(f.children[0].frame));
 // Every module under a frame, by name: what a splitter resizes (C-62).
 const allNames = (f) => (f.kind === "group" ? f.tabs.map(nameOf) : f.children.flatMap((ch) => allNames(ch.frame)));
 const reduced = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
@@ -337,7 +338,7 @@ export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, pr
 // while editing); `onPickSplit(path)`: a splitter touched while editing
 // (the split the banner's 50 · 50, 33 · 33 · 34, 25 · 50 · 25 act on,
 // Rodada P4-2).
-export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked, onFold, onPickSplit }) {
+export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked, onFold, onPickSplit, away = [] }) {
     // The tab in front of a group made of a split that does not fit (it is
     // not in the dock: a bigger screen splits it again).
     const [shown, setShown] = useState({});
@@ -368,6 +369,8 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         const out = inTabs ? null : outOf(id);
         return {
             name: nameOf(id), grip: drag(id), onMenu: menu(id),
+            // In a window of its own (Painéis em janela): shown in its place to be arranged.
+            note: away.includes(id) ? "em janela" : null,
             onX: out?.run || null, xTitle: out?.title,
             extra: id === "programa" && playerDocked ? playerChip : null,
         };

@@ -10,6 +10,7 @@ import { normalizeDock, onairSpanOf, canFoldModule, envModules, dockLocked, setD
 import { normalizePresets } from "./dockPresets.js";
 import { readStep } from "./bibleRead.js";
 import { normalizeLibGroup, normalizeFoldersOpen } from "./libraryFolders.js";
+import { normalizeDetached } from "./detach.js";
 // Ver's module switches and the densities (layoutChoices.js: plain data the
 // church's preferences read without loading the dock).
 import { MODULES, DENSITIES } from "./layoutChoices.js";
@@ -74,6 +75,10 @@ export const DEFAULT_LAYOUT = {
     // (dock.js fitDock's `folded`). The No ar strip's old `onairMin` is its
     // entry here.
     folded: {},
+    // The panels in a window of their own (detach.js; owner 2026-11-09,
+    // "Painéis em janela"): { [moduleId]: true }, every width tier. They keep
+    // their place in the dock (fitDock's `away`).
+    detached: {},
     // Its band (dock.js ONAIR_SPANS; Editar disposição › No ar): under the
     // columns beside the Setlist's, or the whole window.
     onairSpan: "columns",
@@ -143,6 +148,7 @@ export function restoreEnv(layout, env) {
         ...layout,
         ...Object.fromEntries(k.keys.map((key) => [key, DEFAULT_LAYOUT[key]])),
         folded: Object.fromEntries(Object.entries(layout.folded || {}).filter(([id]) => !mine.includes(id))),
+        detached: Object.fromEntries(Object.entries(layout.detached || {}).filter(([id]) => !mine.includes(id))),
         order: { ...layout.order, [k.order]: DEFAULT_LAYOUT.order[k.order] },
         stacks: { ...layout.stacks, ...Object.fromEntries(k.stacks.map((s) => [s, DEFAULT_LAYOUT.stacks[s]])) },
         ...(k.also || {}),
@@ -192,7 +198,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const { onairMin, ...saved } = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), folded: normalizeFolded(saved.folded, onairMin), onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", bibleRead: readStep(saved.bibleRead), temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, libShowArtist: saved.libShowArtist === true, libShowKey: saved.libShowKey !== false, libShowLength: saved.libShowLength !== false, libGroup: normalizeLibGroup(saved.libGroup), libFoldersOpen: normalizeFoldersOpen(saved.libFoldersOpen), dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), folded: normalizeFolded(saved.folded, onairMin), detached: normalizeDetached(saved.detached), onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", bibleRead: readStep(saved.bibleRead), temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, libShowArtist: saved.libShowArtist === true, libShowKey: saved.libShowKey !== false, libShowLength: saved.libShowLength !== false, libGroup: normalizeLibGroup(saved.libGroup), libFoldersOpen: normalizeFoldersOpen(saved.libFoldersOpen), dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }
@@ -224,3 +230,16 @@ export function saveLayout(profile, layout) {
     pendingSave.set(profile, { layout, timer });
 }
 if (typeof window !== "undefined") window.addEventListener("pagehide", flushLayout);
+
+// What a dock panel in a window of its own changed of the layout
+// (layout.patch, janelaRelay.js: only these keys), made safe as loadLayout
+// makes a save.
+export function layoutPatched(layout, patch = {}) {
+    const out = { ...layout };
+    const has = (k) => Object.prototype.hasOwnProperty.call(patch, k);
+    if (has("tabs")) out.tabs = normalizeTabs(patch.tabs);
+    if (has("libGroup")) out.libGroup = normalizeLibGroup(patch.libGroup);
+    if (has("libFoldersOpen")) out.libFoldersOpen = normalizeFoldersOpen(patch.libFoldersOpen);
+    for (const k of ["libShowArtist", "libShowKey", "libShowLength"]) if (has(k)) out[k] = patch[k] === true;
+    return out;
+}

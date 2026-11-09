@@ -46,7 +46,7 @@ export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets 
             { head: "Ver" },
             // `newIn`: the module with something new in it (the Painel's
             // pedidos, Rodada Q S9 = B) wears the gold dot.
-            ...MODULES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: !layout.hidden[key], kbd: newIn === key ? <><i className="ver-new-dot" aria-hidden="true" /><span className="kx-sr">pedidos novos</span></> : undefined, onSelect: () => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } }) })),
+            ...MODULES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: !layout.hidden[key], kbd: newIn === key ? <><i className="ver-new-dot" aria-hidden="true" /><span className="kx-sr">pedidos novos</span></> : layout.detached?.[key] ? <><Icon name="external" /><span className="kx-sr">em janela</span></> : undefined, title: layout.detached?.[key] ? "Numa janela própria · desmarque para tirar para a bandeja" : undefined, onSelect: () => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } }) })),
             "sep",
             { head: "Densidade" },
             ...DENSITIES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: densityOf(layout) === key, onSelect: () => setLayout({ ...layout, density: key }), title: key === "auto" ? "Compacta numa tela baixa (notebook), Confortável nas outras" : key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item" })),

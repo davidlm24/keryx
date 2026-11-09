@@ -10,6 +10,7 @@ import ReportsView from "./ReportsView";
 import SettingsView from "./settings/SettingsView";
 import ThemeEditor from "@/components/editor/ThemeEditor";
 import ScreenEditor from "@/components/editor/ScreenEditor";
+import PanelPage from "./PanelPage";
 
 // The pages of THE window (Rodada C, src/lib/console/nav.js), one switch for
 // both of its hosts: the console's floating window (Console.jsx) and a
@@ -28,6 +29,8 @@ import ScreenEditor from "@/components/editor/ScreenEditor";
 //   openWhatsNew         — Configurações
 //   plannerFocus         — Planejar o culto: the item to open; the active
 //                          culto is the church's (useActiveService)
+//   openSettings(id)     — a dock panel in a window of its own (/Janela only):
+//                          Configurações opens in the console
 // The console runs those through its own Prévia, sendStage and log; a
 // detached window sends them to the console (src/lib/janelaRelay.js).
 export function winPage(entry, { active, escRef, onClose }, h) {
@@ -63,6 +66,9 @@ export function winPage(entry, { active, escRef, onClose }, h) {
             return <ThemeEditor hosted themeId={p.id} say={c.say} onClose={onClose} onSaved={(row) => { if (row?.id && p.id !== row.id) h.replaceTop({ id: row.id }, { keep: true }); }} onSwitch={(id) => h.replaceTop({ id: id || "new" })} escRef={escRef} active={active} />;
         case "screen":
             return <ScreenEditor hosted screenPath={p.path} media={data.media} themes={data.themes} say={c.say} live={c.cur} onClose={onClose} onSwitch={(path) => h.replaceTop({ path: path || "/Projection" })} escRef={escRef} active={active} askText={h.askText} />;
+        // A dock panel in a window of its own (Painéis em janela): /Janela only.
+        case "panel":
+            return <PanelPage module={p.module} h={h} escRef={escRef} active={active} onClose={onClose} />;
         default:
             return null;
     }

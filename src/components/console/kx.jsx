@@ -20,8 +20,11 @@ export { tabStop } from "@/lib/console/tablist";
 // own header is the handle (DockEditHead), and a panel with none (`bare`
 // or `noHead`: the Programa, the Prévia, the Bíblia's No ar) gets a 28 px
 // one for the edit only (R5a = B).
-export function Panel({ title, count, tip, lead, caption, actions, fold, bare = false, noHead = false, className = "", style, children, bodyStyle }) {
+export function Panel({ title, count, tip, lead, caption, actions, fold, detach = null, bare = false, noHead = false, className = "", style, children, bodyStyle }) {
     // `tip`: the header's tooltip (the Setlist's culto name, Rodada O3).
+    // `detach`: "Destacar em janela" (owner 2026-11-09, Painéis em janela,
+    // D1 = A): the ⧉ right before the fold chevron, as the WinBar has it
+    // right before its ×.
     // `noHead`: the card without its header line — a window page whose
     // title and tools ride the win-bar (Rodada C).
     const edit = useContext(DockEditCtx);
@@ -43,6 +46,7 @@ export function Panel({ title, count, tip, lead, caption, actions, fold, bare = 
                 {lead}
                 {caption ? <span className="kx-panel-cap" id={headId} role="heading" aria-level={2}>{caption}</span> : <span className="kx-section" id={title ? headId : undefined} role={title ? "heading" : undefined} aria-level={title ? 2 : undefined}>{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
                 {actions}
+                <DetachBtn onDetach={detach} />
                 <FoldBtn fold={fold} />
             </div>}
             {/* Only the module's outermost panel takes the edit header. */}
@@ -69,7 +73,7 @@ export function DockEditHead({ edit, id, count, actions }) {
             {edit.grip && <span className="dock-grip" title={`Arraste ${edit.name} para outro lugar`} onPointerDown={edit.grip} aria-hidden="true"><Icon name="grip" /></span>}
             <button type="button" id={id} className="dock-edit-name kx-section" onPointerDown={edit.grip || undefined} onClick={edit.onMenu}
                 title={edit.grip ? `Arraste ${edit.name} para outro lugar · clique para Mover para…` : `${edit.name} fica sempre embaixo · clique para tirar ou voltar`}>
-                {edit.name}{typeof count === "string" && count ? <span className="kx-count"> · {count}</span> : null}
+                {edit.name}{edit.note ? <span className="kx-meta"> · {edit.note}</span> : null}{typeof count === "string" && count ? <span className="kx-count"> · {count}</span> : null}
             </button>
             {actions && <span className="dock-edit-acts" inert="">{actions}</span>}
             {edit.extra}
@@ -85,6 +89,13 @@ const FOLDED_BODY = { display: "none" };
 
 // Folded across a row: the panel is a strip (Panel, TabsPanel).
 export const foldStrip = (fold) => Boolean(fold?.on && fold.dir === "row");
+
+// "Destacar em janela" on a dock panel (Painéis em janela, detach.js): the
+// panel moves to a window of its own; closing that window brings it back.
+export function DetachBtn({ onDetach }) {
+    if (!onDetach) return null;
+    return <IconBtn name="external" small className="kx-detach" title="Destacar em janela: este painel numa janela própria, para usar vendo outra tela" aria-label="Destacar em janela" onClick={onDetach} />;
+}
 
 // A panel's fold chevron (Rodada F4): up while open, turned while folded.
 // The last open panel of a split keeps it, inert, with the reason (a

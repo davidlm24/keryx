@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { freshMessages, messageSay, hasUnread, newestAt, pedidosOf, chatOf, tabOf, pedidoNote } from "@/lib/console/pedidos";
 
 // What the console says when the Equipe writes (Rodada Q, PR2), mounted once
-// in Console.jsx (never in /Janela). The runner's chat.send / request.send
+// in Console.jsx (never in /Janela; a Painel in a window of its own uses
+// only its dots, useSeenTabs below). The runner's chat.send / request.send
 // are quiet: the toast comes from here, from the culto's ServiceMessage rows,
 // so a pedido synced from another computer is said too, and never twice —
 // the ids said live in this window's sessionStorage, so a reload does not
@@ -55,7 +56,20 @@ export function usePedidos({ c, messages, open = {}, reachable = true, show, foc
         else con.say(`${words} · veja em Ver › Painel`, null, { important: true });
     }, [messages]);
 
+    return { unread: useSeenTabs({ messages, open }) };
+}
+
+// Each tab's dot: a row newer than the last one seen with that tab open
+// (localStorage, this computer). The console's Painel and one in a window of
+// its own (PanelPage.jsx, "Painéis em janela") both mark and read them, so a
+// row read in either clears the dot in both (the `storage` event).
+export function useSeenTabs({ messages, open = {} }) {
     const [seen, setSeen] = useState(readSeen);
+    useEffect(() => {
+        const on = (e) => { if (e.key === null || Object.values(SEEN_KEY).includes(e.key)) setSeen(readSeen()); };
+        window.addEventListener("storage", on);
+        return () => window.removeEventListener("storage", on);
+    }, []);
     useEffect(() => {
         for (const id of Object.keys(TABS)) {
             if (!open[id]) continue;
@@ -66,9 +80,7 @@ export function usePedidos({ c, messages, open = {}, reachable = true, show, foc
         }
     }, [open.pedidos, open.chat, messages, seen]); // eslint-disable-line react-hooks/exhaustive-deps
     return {
-        unread: {
-            pedidos: !open.pedidos && hasUnread(pedidosOf(messages), seen.pedidos),
-            chat: !open.chat && hasUnread(chatOf(messages), seen.chat),
-        },
+        pedidos: !open.pedidos && hasUnread(pedidosOf(messages), seen.pedidos),
+        chat: !open.chat && hasUnread(chatOf(messages), seen.chat),
     };
 }

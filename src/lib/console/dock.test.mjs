@@ -810,3 +810,33 @@ test("bibleVersionsHome: the version band on Livros, else above the No ar screen
     assert.equal(bibleVersionsHome(hideModule(d, "books")), "air", "Livros in the tray");
     assert.equal(bibleVersionsHome(null), "air");
 });
+
+test("a panel in a window of its own (fitDock's away): no room, its place kept, nothing else moves", () => {
+    const d = defaultDock();
+    const plain = fitDock(d, 1908, 1000, { gone: ["onair"] });
+    assert.deepEqual(fitDock(d, 1908, 1000, { gone: ["onair"], away: [] }), plain, "nothing away: the same frame");
+    const f = fitDock(d, 1908, 1000, { gone: ["onair"], away: ["lib"] });
+    const cols = f.children[0].frame.children[0].frame;
+    // The Biblioteca's column: size 0, gone, its path kept (the dock is untouched).
+    assert.deepEqual([cols.children[0].size, cols.children[0].gone, cols.children[0].fixed], [0, true, true]);
+    assert.deepEqual(cols.children[0].frame.path, [0, 0, 0]);
+    assert.deepEqual(cols.children[0].frame.tabs, [], "nothing of it is drawn in the console");
+    assert.deepEqual(cols.children[0].frame.away, ["lib"]);
+    // The Slides keep their width; the centre takes the Biblioteca's room.
+    assert.equal(cols.children[1].size, 300);
+    assert.equal(cols.children[2].size, 1582 - 300 - GUTTER);
+    // The Setlist (required: never the tray) leaves the same way.
+    const side = fitDock(d, 1908, 1000, { gone: ["onair"], away: ["setlist"] }).children[1].frame;
+    assert.deepEqual(side.children.map((c) => Boolean(c.gone)), [false, false, true]);
+    assert.equal(nodeAt(d.tree, pathOf(d.tree, "setlist")).tabs[0], "setlist", "still in the tree");
+    // A group of tabs leaves its away tab out and keeps the rest.
+    const tabbed = normalizeDock({ tree: split("row", [g("programa"), split("col", [g("camadas", "temas"), g("setlist"), g("previa")], [200, null, 200])], [null, 320]), hidden: [] });
+    const grp = fitDock(tabbed, 1600, 900, { away: ["temas"] }).children[1].frame.children[0].frame;
+    assert.deepEqual([grp.tabs, grp.active, grp.away], [["camadas"], "camadas", ["temas"]]);
+    // Only the culto's modules: a Bíblia id changes nothing.
+    assert.deepEqual(fitDock(d, 1908, 1000, { gone: ["onair"], away: ["books"] }), plain);
+    // Coming back eases (same shape, another motion), as the No ar strip does.
+    assert.equal(easesBetween(dockMotion(plain), dockMotion(f)), true);
+    // Its minimum no longer counts where it was.
+    assert.equal(minSize(nodeAt(d.tree, [0, 0]), true, { playerDocked: true, away: new Set(["lib", "slides"]) }, false), MODULES.previa.minW + MODULES.abas.minW + GUTTER, "the centre alone: the Prévia beside the Painel");
+});

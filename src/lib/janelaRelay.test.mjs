@@ -77,3 +77,24 @@ test("the console tells detached pages how far each PDF's pages are; a page asks
     assert.equal(checkMessage({ type: "pages.retry", id: "m3" }, "console"), null);
     assert.equal(checkMessage({ type: "pages.retry" }, "janela"), null);
 });
+
+test("a dock panel in a window of its own (Painéis em janela): its messages, each from its side", () => {
+    assert.ok(checkMessage({ type: "stage.send", stage, keepPrev: true }, "janela"), "on air without touching the Prévia");
+    assert.equal(checkMessage({ type: "stage.send", stage, keepPrev: "yes" }, "janela"), null);
+    assert.ok(checkMessage({ type: "layout.patch", patch: { libShowKey: false, tabs: { lib: ["letras"] } } }, "janela"));
+    assert.equal(checkMessage({ type: "layout.patch", patch: { dock: null } }, "janela"), null, "never the arrangement itself");
+    assert.equal(checkMessage({ type: "layout.patch", patch: {} }, "janela"), null);
+    assert.equal(checkMessage({ type: "layout.patch", patch: JSON.parse('{"__proto__":{"x":1}}') }, "janela"), null);
+    assert.ok(checkMessage({ type: "panel.closed", module: "setlist" }, "janela"));
+    assert.equal(checkMessage({ type: "panel.closed", module: "onair" }, "janela"), null, "the No ar strip never leaves");
+    assert.equal(checkMessage({ type: "panel.closed", module: "programa" }, "janela"), null);
+    assert.ok(checkMessage({ type: "autoplay.cancel" }, "janela"));
+    assert.ok(checkMessage({ type: "console.autoplay", pending: null }, "console"));
+    assert.ok(checkMessage({ type: "console.autoplay", pending: { kind: "count", nextId: "i2", fromId: "i1", until: 5, since: 1 } }, "console"));
+    assert.ok(checkMessage({ type: "console.autoplay", pending: { kind: "paused", nextId: "i2", why: "projector" } }, "console"));
+    assert.equal(checkMessage({ type: "console.autoplay", pending: { kind: "go" } }, "console"), null);
+    assert.equal(checkMessage({ type: "console.autoplay", pending: null }, "janela"), null, "only the console counts down");
+    assert.ok(checkMessage({ type: "panel.focus", module: "abas", tab: "pedidos" }, "console"));
+    assert.ok(checkMessage({ type: "panel.close", module: "lib" }, "console"));
+    assert.equal(checkMessage({ type: "panel.close", module: "lib" }, "janela"), null);
+});

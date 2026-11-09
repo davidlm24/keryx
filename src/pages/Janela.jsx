@@ -17,6 +17,11 @@
 // letra automática ticker and the Fundo's follow-ups run once, there): the
 // page gets a light `c` (useJanelaConsole).
 //
+// A dock PANEL of the console comes here too (owner 2026-11-09, "Painéis em
+// janela": the Biblioteca, the Setlist or the Painel, ?page=panel&module=<id>,
+// PanelPage.jsx), its own window per panel (keryx-janela-panel-<id>); the
+// console reopens it when it opens and takes the panel back when it closes.
+//
 // Desktop only: never in NETWORK_SCREENS (electron/lan.cjs). One window per
 // kind of page (keryx-janela-<page>): detaching it again navigates that one,
 // and a page with unsaved changes asks before its window goes
@@ -43,7 +48,7 @@ import { useWinPageFocus } from "@/components/console/useDialogFocus";
 import { setEditorHost } from "@/lib/editorWindow";
 import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { setRelayedProgress, relayPagesRetry } from "@/hooks/usePagesBackfill";
-import { PAGE_TITLES, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
+import { PAGE_TITLES, pageTitle, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
 import { resolveSection } from "@/lib/console/settings";
 import { liveAction, escapeTarget } from "@/lib/console/keys";
 import { usePackageHost } from "@/components/console/PackageDialogs";
@@ -124,7 +129,7 @@ export default function Janela() {
     // The focus moves into the page shown when it changes (C-12), as in the console.
     const boxRef = useRef(null);
     useWinPageFocus(boxRef, stack);
-    useWindowTitle(winTop ? PAGE_TITLES[winTop.page] : "");
+    useWindowTitle(winTop ? pageTitle(winTop) : "");
 
     // Configurações' section, and the console's culto (Planejar o culto's
     // green dot: the console says it; its tabs are the planner's own, O9).
@@ -219,6 +224,7 @@ export default function Janela() {
         cfg, setCfg, uiLayout: null, setUiLayout: () => {}, restoreLayout: () => {},
         openScreen: (path) => setStack((s) => winPush(s, { page: "screen", props: { path: path || "/Projection" } }, "Telas e saídas")),
         openWhatsNew: () => toConsole("console.open", { what: "novidades" }, "As novidades abriram no console."),
+        openSettings: (section) => toConsole("console.open", { what: "settings", ...(section ? { section } : {}) }, "Configurações abriu no console."),
         plannerFocus: null,
     };
 
@@ -226,7 +232,8 @@ export default function Janela() {
     // one level of the stack — the first closes the window). Tela preta and
     // Logo work on every page, as behind the console's window; the Escola
     // bíblica is the projecting page, so there every live key works — Enter
-    // sends the console's Prévia, ↑/↓ walk it, ←/→ move what is on air, C clears.
+    // sends the console's Prévia, ↑/↓ walk it, ←/→ move what is on air, C clears
+    // — and so is a dock panel in a window of its own (Painéis em janela).
     const letters = usePrefs().letter_keys;
     const keysRef = useRef(null);
     keysRef.current = (e) => {
@@ -246,7 +253,7 @@ export default function Janela() {
         // Prevented: a select focused with Tab would also jump to its option.
         if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
         else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
-        else if (winTop?.page !== "school") return;
+        else if (winTop?.page !== "school" && winTop?.page !== "panel") return;
         else if (action === "send") { e.preventDefault(); toConsole("prev.send", {}); }
         else if (action === "next" || action === "prev") { e.preventDefault(); c.moveSlide(action === "next" ? 1 : -1); }
         else if (action === "selUp" || action === "selDown") { e.preventDefault(); toConsole("prev.step", { d: action === "selDown" ? 1 : -1 }); }
@@ -281,7 +288,7 @@ export default function Janela() {
         <PackageContext.Provider value={pkg.value}>
         <div className="kx console janela" onClick={onMouseClick}>
             {stack.length > 0 && (
-                <div ref={boxRef} className="win-dialog kx-win is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
+                <div ref={boxRef} className="win-dialog kx-win is-detached" role="main" aria-label={pageTitle(winTop)}>
                     {stack.map((entry, i) => {
                         const active = i === stack.length - 1;
                         const page = winPage(entry, { active, escRef: winRef(entry.key), onClose: (all = false) => leaveTop(Boolean(all)) }, host);

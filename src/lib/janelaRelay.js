@@ -13,6 +13,11 @@
 // (no Electron) a BroadcastChannel stands in. Either way the list of
 // messages is closed and every one is checked where it arrives
 // (checkMessage): anything else is dropped.
+//
+// A dock PANEL in a window of its own (owner 2026-11-09, "Painéis em
+// janela": detach.js, PanelPage.jsx) talks over the same relay: the console
+// stays the one that sends, logs and counts the Autoplay down.
+import { canDetach } from "./console/detach.js";
 
 // type -> who sends it ("janela": a detached page; "console") and what it
 // carries (checked by `ok`).
@@ -20,7 +25,9 @@ export const JANELA_MESSAGES = {
     // Pôr na prévia: the console's Prévia takes the stage (null empties it).
     "prev.set": { from: "janela", ok: (m) => m.stage === null || isStage(m.stage) },
     // Enviar ao ar: the stage goes to the Prévia and on air (sendStage).
-    "stage.send": { from: "janela", ok: (m) => isStage(m.stage) },
+    // keepPrev: on air WITHOUT touching the console's Prévia (a detached
+    // Setlist's Item anterior / Próximo item, as the console's footer).
+    "stage.send": { from: "janela", ok: (m) => isStage(m.stage) && (m.keepPrev === undefined || typeof m.keepPrev === "boolean") },
     // Enter in a detached Escola bíblica: what the console's Prévia holds goes on air.
     "prev.send": { from: "janela", ok: () => true },
     // ↑ / ↓ there: the Prévia's selection walks the slides (as the console's keys).
@@ -46,7 +53,29 @@ export const JANELA_MESSAGES = {
     "pages.progress": { from: "console", ok: (m) => isPagesMap(m.pages) },
     // Tentar de novo on a detached page: the console tries that PDF again.
     "pages.retry": { from: "janela", ok: (m) => isId(m.id) },
+    // -- A dock panel in a window of its own (Painéis em janela) --
+    // What the panel changes of the console's layout (its tabs, the
+    // Biblioteca's folders and second line): only these keys, the console
+    // normalizes their values and saves.
+    "layout.patch": { from: "janela", ok: (m) => isObj(m.patch) && Object.keys(m.patch).length > 0 && Object.keys(m.patch).every((k) => LAYOUT_PATCH_KEYS.includes(k)) },
+    // The panel's window closed (main sends it on the window's close; the
+    // page itself only in the browser preview): the module comes back.
+    "panel.closed": { from: "janela", ok: (m) => isModule(m.module) },
+    // Cancelar on a detached Setlist's Autoplay countdown.
+    "autoplay.cancel": { from: "janela", ok: () => true },
+    // The Autoplay's countdown (useSetlistAutoplay's pending), to every
+    // detached Setlist; null when none.
+    "console.autoplay": { from: "console", ok: (m) => m.pending === null || (isObj(m.pending) && (m.pending.kind === "count" || m.pending.kind === "paused") && isId(m.pending.nextId)) },
+    // Ver › Painel from a pedido's toast while the Painel is in a window:
+    // that window comes forward on the tab.
+    "panel.focus": { from: "console", ok: (m) => isModule(m.module) && (m.tab === undefined || isId(m.tab)) },
+    // The module went back to the console (Ver, Restaurar, Voltar ao
+    // console): its window closes.
+    "panel.close": { from: "console", ok: (m) => isModule(m.module) },
 };
+
+// The layout keys a detached panel may change (layout.patch).
+export const LAYOUT_PATCH_KEYS = ["tabs", "libGroup", "libFoldersOpen", "libShowArtist", "libShowKey", "libShowLength"];
 
 // The most a message may weigh (a song's slides ride in a stage); main
 // relays nothing bigger either.
@@ -54,6 +83,7 @@ export const MAX_BYTES = 1024 * 1024;
 
 const isObj = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
 const isId = (v) => typeof v === "string" && v.length > 0 && v.length <= 200;
+const isModule = (v) => typeof v === "string" && canDetach(v);
 const isRow = (v) => isObj(v) && isId(v.id);
 const isCount = (v) => Number.isInteger(v) && v >= 0 && v <= 100000;
 const isFailure = (v) => isObj(v) && typeof v.cause === "string" && typeof v.retryable === "boolean" && (v.terminal === undefined || typeof v.terminal === "string");

@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizeWindowState, restoreWindow, windowStateToSave, janelaKind, JANELA } = require("./windowState.cjs");
+const { normalizeWindowState, restoreWindow, windowStateToSave, janelaKind, janelaSpec, panelOfKind, JANELA, PANEL_JANELA } = require("./windowState.cjs");
 
 // A 1366 × 768 notebook (taskbar 48 px) and a 1920 × 1080 monitor to its right.
 const notebook = { primary: true, bounds: { x: 0, y: 0, width: 1366, height: 768 }, workArea: { x: 0, y: 0, width: 1366, height: 720 } };
@@ -86,4 +86,19 @@ test("which page a window is: /Janela?page=…, the old /Editor too", () => {
     assert.equal(janelaKind(`${o}/Projection`, o), "", "an output");
     assert.equal(janelaKind("https://example.com/Janela?page=song", o), "", "another origin");
     assert.equal(janelaKind("not a url", o), "");
+});
+
+test("a dock panel's window (Painéis em janela): one kind per panel, narrow and tall", () => {
+    const o = "http://127.0.0.1:7700";
+    assert.equal(janelaKind(`${o}/Janela?page=panel&module=setlist`, o), "panel-setlist");
+    assert.equal(janelaKind(`${o}/Janela?page=panel&module=../lib`, o), "panel-lib", "only a plain name");
+    assert.equal(janelaKind(`${o}/Janela?page=panel`, o), "panel");
+    assert.equal(panelOfKind("panel-abas"), "abas");
+    assert.equal(panelOfKind("song"), "");
+    assert.deepEqual(janelaSpec("song"), JANELA);
+    assert.deepEqual(janelaSpec("panel-lib"), PANEL_JANELA);
+    assert.equal(janelaSpec("panel-camadas").size.width, 360);
+    // Its own minimum: a 420 px window kept, where a page's would be refused.
+    assert.equal(restoreWindow({ x: 100, y: 50, width: 420, height: 700 }, [notebook], janelaSpec("panel-lib")).bounds.width, 420);
+    assert.deepEqual(restoreWindow(null, [notebook], PANEL_JANELA).bounds, { x: 473, y: 0, width: 420, height: 720 });
 });
