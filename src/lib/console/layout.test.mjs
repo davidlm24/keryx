@@ -238,4 +238,6 @@ test("what a detached panel changes of the layout (layout.patch) is made safe he
     assert.deepEqual(out.tabs.panel, DEFAULT_TABS.panel, "a row it did not send gets the default");
     assert.equal(out.dock, base.dock, "nothing else moves");
     assert.deepEqual(layoutPatched(base, {}), base);
+    assert.equal(layoutPatched(base, { temasThumb: "huge" }).temasThumb, "small");
+    assert.equal(layoutPatched(base, { temasThumb: "large", temasNames: false }).temasNames, false);
 });

@@ -18,6 +18,7 @@
 // janela": detach.js, PanelPage.jsx) talks over the same relay: the console
 // stays the one that sends, logs and counts the Autoplay down.
 import { canDetach } from "./console/detach.js";
+import { MODULES } from "./console/dock.js";
 
 // type -> who sends it ("janela": a detached page; "console") and what it
 // carries (checked by `ok`).
@@ -72,10 +73,25 @@ export const JANELA_MESSAGES = {
     // The module went back to the console (Ver, Restaurar, Voltar ao
     // console): its window closes.
     "panel.close": { from: "console", ok: (m) => isModule(m.module) },
+    // The modules the console has placed (its dock, a window of their own
+    // included): a detached Camadas shows the themes when Temas is in the
+    // tray, a detached Slides its No ar · Prévia tabs when No ar is.
+    "console.panels": { from: "console", ok: (m) => Array.isArray(m.placed) && m.placed.length <= 30 && m.placed.every((id) => typeof id === "string" && Object.prototype.hasOwnProperty.call(MODULES, id)) },
+    // Esc in a panel's window with nothing open there (D4 = A): the console
+    // ends what is on air, as its own Esc does, and says whether Desfazer
+    // can put it back; Desfazer (the window's toast, Ctrl+Z) goes back.
+    "air.end": { from: "janela", ok: () => true },
+    "console.ended": { from: "console", ok: (m) => typeof m.undo === "boolean" },
+    "air.undo": { from: "janela", ok: () => true },
+    // The item Esc took off, kept in the Slides column (c.last, "parou
+    // aqui"): the console's, to a detached Slides; its Anterior / Próximo
+    // move it there.
+    "console.last": { from: "console", ok: (m) => m.last === null || (isObj(m.last) && Array.isArray(m.last.slides)) },
+    "last.move": { from: "janela", ok: (m) => m.d === 1 || m.d === -1 },
 };
 
 // The layout keys a detached panel may change (layout.patch).
-export const LAYOUT_PATCH_KEYS = ["tabs", "libGroup", "libFoldersOpen", "libShowArtist", "libShowKey", "libShowLength"];
+export const LAYOUT_PATCH_KEYS = ["tabs", "libGroup", "libFoldersOpen", "libShowArtist", "libShowKey", "libShowLength", "temasThumb", "temasNames"];
 
 // The most a message may weigh (a song's slides ride in a stage); main
 // relays nothing bigger either.

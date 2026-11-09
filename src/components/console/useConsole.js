@@ -225,6 +225,13 @@ export function useConsole() {
         setThemeIdState(id || null);
         try { if (id) localStorage.setItem(THEME_IN_USE_KEY, id); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
     }, []);
+    // Temas or Camadas in a window of their own (Painéis em janela) write it
+    // there: this console follows.
+    useEffect(() => {
+        const on = (e) => { if (e.key === null || e.key === THEME_IN_USE_KEY) { try { setThemeIdState(localStorage.getItem(THEME_IN_USE_KEY) || null); } catch { /* keeps its own */ } } };
+        window.addEventListener("storage", on);
+        return () => window.removeEventListener("storage", on);
+    }, []);
     const { stamp, bgPrefs, fitFor } = useStamp(themeId);
     const { toast, toastId, toastImportant, toastWave, toastAction, say, unsay, holdToast } = useToast();
     const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen } = useLiveOps(live, say, bgPrefs);

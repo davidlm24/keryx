@@ -1,6 +1,6 @@
 // A dock panel in a window of its own (owner 2026-11-09, mockup "Painéis em
-// janela", D1–D5 = A): the Biblioteca, the Setlist or the Painel as the
-// console draws it, under the window's bar (D3 = A: the WinBar with the
+// janela", D1–D5 = A): the Biblioteca, the Setlist, the Painel, Camadas,
+// Temas or the Slides as the console draws it, under the window's bar (D3 = A: the WinBar with the
 // module's name and ×, then the panel's own header with its +, eye and
 // Selecionar vários). /Janela?page=panel&module=<id> (nav.js, detach.js).
 //
@@ -11,10 +11,12 @@
 // Autoplay's countdown comes back as console.autoplay. Its tabs and the
 // Biblioteca's view are the console's layout (useSharedLayout). A page it
 // opens (Editar música, the Mídia, Editar aviso, Planejar o culto) is a
-// level of this window, "← Biblioteca". Esc clears a menu or a selection;
-// it never closes the window (the × does, and the panel goes back to the
-// console, where it was: D5 = A).
-import React, { useCallback, useEffect, useState } from "react";
+// level of this window, "← Biblioteca". Esc clears a menu or a selection,
+// and with nothing to clear it ends what is on air through the console, as
+// the console's own Esc does, Desfazer in this window too (D4 = A); it never
+// closes the window (the × does, and the panel goes back to the console,
+// where it was: D5 = A).
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Panel, IconBtn, SelectManyBtn, WinBar } from "./kx";
 import Library from "./Library";
 import Rundown, { SetlistFooter } from "./Rundown";
@@ -44,6 +46,11 @@ import { plan, neighbours, itemOnAir } from "@/lib/console/setlist";
 import { endsByItself } from "@/lib/console/autoplay";
 import { stageFromSong, stageFromMedia } from "@/lib/console/stage";
 import { PACKAGE_FILE } from "@/lib/keryxPackage";
+import Layers from "./Layers";
+import ThemeStrip from "./ThemeStrip";
+import SlidesPanel, { handTitle } from "./SlidesPanel";
+import { camadasAddItems } from "./camadasMenu";
+import { defaultTheme, themeName } from "@/lib/console/themes";
 
 const SONG_LINE_KEYS = { artist: "libShowArtist", key: "libShowKey", length: "libShowLength" };
 
@@ -82,11 +89,18 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
     // pedido's toast, and the panel going back to the console (its window closes).
     const [pending, setPending] = useState(null);
     const [panelTab, setPanelTab] = useState("notas");
+    // The modules the console has placed (null until it says): Camadas shows
+    // the themes when Temas is in the tray, the Slides their No ar · Prévia
+    // tabs when No ar is.
+    const [placed, setPlaced] = useState(null);
     useEffect(() => relayListen("janela", (m) => {
         if (m.type === "console.autoplay") setPending(m.pending);
+        else if (m.type === "console.panels") setPlaced(m.placed);
+        // Esc from here ended the air (air.end): Desfazer here too.
+        else if (m.type === "console.ended") say("Projeção encerrada.", m.undo ? { label: "Desfazer", undo: true, run: () => relaySend("janela", "air.undo") } : null);
         else if (m.type === "panel.focus" && m.module === module) { if (m.tab) setPanelTab(m.tab); try { window.focus(); } catch { /* the system decides */ } }
         else if (m.type === "panel.close" && m.module === module) onClose(true);
-    }), [module, onClose]);
+    }), [module, onClose, say]);
     // In the browser preview there is no main process to say the window
     // closed: the page says it as it goes (the desktop's main says it itself).
     useEffect(() => {
@@ -120,10 +134,11 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
             if (mode === "all" || mode === "back") { leave(); return; }
             if (lyrics) { setLyrics(null); return; }
             if (menu) { setMenu(null); return; }
-            selections.clearTop();
+            if (selections.clearTop()) return;
+            toConsole("air.end");
         };
         return () => { escRef.current = null; };
-    }, [escRef, leave, lyrics, menu]);
+    }, [escRef, leave, lyrics, menu, toConsole]);
 
     const tabLists = layout.tabs || DEFAULT_TABS;
     const setTabList = (row, list) => patch({ tabs: { ...tabLists, [row]: list } });
@@ -151,8 +166,33 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
     // The Painel's dots: a row read here clears it in the console too (useSeenTabs).
     const unread = useSeenTabs({ messages, open: module === "abas" ? { pedidos: active && panelTabNow === "pedidos", chat: active && panelTabNow === "chat" } : {} });
 
+    // Temas (in its own panel, or riding at the end of Camadas while its
+    // module is in the tray, as in the console).
+    const themeMenuRef = useRef(null);
+    const addOverlayRef = useRef(null);
+    const inUse = data.themes.find((t) => t.id === c.themeId) || defaultTheme(data.themes);
+    const inUseName = inUse ? themeName(inUse, "") : "";
+    const temasBtns = <><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
+    const themeStrip = (module === "temas" || module === "camadas") && <ThemeStrip c={c} themes={data.themes} songs={data.songs} service={service} ensureService={writes.ensureService} menuRef={themeMenuRef} view={{ thumb: layout.temasThumb, names: layout.temasNames }} setView={(v) => patch(v)} onSettings={h.openSettings} />;
+
     let body = null;
-    if (module === "setlist") {
+    if (module === "camadas") {
+        const temasPlaced = !placed || placed.includes("temas");
+        body = (
+            <Panel title="Camadas" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={(e) => openMenu(e, { title: "Adicionar camada", items: camadasAddItems(c, () => addOverlayRef.current?.()) })} />}>
+                <Layers c={c} themes={data.themes} onSettings={h.openSettings} onFundo={writes.pickServiceFundo} addRef={addOverlayRef} />
+                {!temasPlaced && <div className="layer-temas"><div className="listhead"><span className="kx-section" title={inUseName ? `Em uso: ${inUseName}` : undefined}>Temas</span>{temasBtns}</div>{themeStrip}</div>}
+            </Panel>
+        );
+    } else if (module === "temas") {
+        body = <Panel title="Temas" tip={inUseName ? `Em uso: ${inUseName}` : ""} className="temas-panel" actions={temasBtns}>{themeStrip}</Panel>;
+    } else if (module === "slides") {
+        body = (
+            <Panel title="Slides" noHead={!coverTag} className={coveredBy ? "is-covered" : ""} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <SlidesPanel c={c} onGo={(st) => h.sendNow(st)} airTabs={Boolean(placed) && !placed.includes("onair")} />
+            </Panel>
+        );
+    } else if (module === "setlist") {
         const prepareItem = async (item, index) => { try { c.setPrev(await buildStage(item, index)); } catch (err) { say(err?.message || "Não foi possível abrir o item."); } };
         const goItem = async (item, index) => { try { h.sendNow(await buildStage(item, index)); } catch (err) { say(err?.message || "Não foi possível abrir o item."); } };
         // Item anterior / Próximo item: on air as the console's footer does, its Prévia untouched.
@@ -203,7 +243,7 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
 
     return (
         <>
-            <WinBar title={title} />
+            <WinBar title={title} sub={module === "slides" ? handTitle(c) || undefined : undefined} />
             <div className="win-body panel-page" data-panel-page={module}>{body}</div>
             {menu && <div className="scrim" onClick={() => setMenu(null)} />}
             <TabsMenu open={menu} list={tabLists[menu?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setMenu(null)}

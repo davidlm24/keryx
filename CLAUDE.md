@@ -1106,10 +1106,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the history and the log stay its own. Tela preta and Logo work in every
   detached page; in the Escola every live key does.
   **"Destacar em janela" on the dock's panels** (owner 2026-11-09, mockup
-  "Painéis em janela", D1–D5 = A): the Biblioteca, the Setlist and the
-  Painel (`HOSTED` in `src/lib/console/detach.js`, tested; Camadas, Temas
-  and Slides are `DETACHABLE` and come next — never the Programa, the
-  Prévia, No ar, the Player or the Bíblia's) can each live in a window of
+  "Painéis em janela", D1–D5 = A): the Biblioteca, the Setlist, the
+  Painel, Camadas, Temas and the Slides (`DETACHABLE` in
+  `src/lib/console/detach.js`, tested — never the Programa, the Prévia, No
+  ar, the Player or the Bíblia's) can each live in a window of
   their own, `/Janela?page=panel&module=<id>` (window
   `keryx-janela-panel-<id>`; `janelaKind` → `panel-<id>` and `janelaSpec`
   in windowState.cjs: bounds and a 300 px minimum per panel; main brings an
@@ -1140,8 +1140,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   with `keepPrev` for the Setlist's footer), the Autoplay's countdown comes
   back as `console.autoplay` (`autoplay.cancel`), the Painel's dots are
   `useSeenTabs` (the toasts stay `usePedidos`'s, whose Ver brings the
-  window forward with `panel.focus`). Its live keys work as the Escola's;
-  Esc clears a menu or a selection, never the window. The Bíblia is the
+  window forward with `panel.focus`). The theme in use clicked in a
+  detached Temas or Camadas is `keryx.themeInUse`, which the console follows
+  (`storage`, useConsole); `console.panels` tells a detached Camadas whether
+  to show the themes (Temas in the tray) and a detached Slides its No ar ·
+  Prévia tabs; `console.last` / `last.move` carry the Slides' "parou aqui".
+  Its live keys work as the Escola's; Esc clears a menu or a selection and,
+  with nothing to clear, ends the air through the console (`air.end`, D4 =
+  A: `console.ended` gives that window its own Desfazer, Ctrl+Z there →
+  `air.undo`); it never closes the window. The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Comparar, the Buscar field,
   notes). Where the modules go is the operator's: **each environment is a
   dock** (owner 2026-10-13, the "Disposição do console" prototype, model
@@ -1297,7 +1304,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   would otherwise move each time the No ar strip comes and goes.
   A new module is an entry in
   dock.js `MODULES` and in `modulePanels` (and, if it may leave for a
-  window of its own, in detach.js `HOSTED` and `PanelPage.jsx`). **Disposições com nome**
+  window of its own, in detach.js `DETACHABLE` and `PanelPage.jsx`). **Disposições com nome**
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
   as it is ("Salvar como…", "Salvar" over the one in use, "Excluir…" via
   useConfirm), Ver › Disposição switches (Padrão = the console's own, never

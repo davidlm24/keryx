@@ -17,9 +17,9 @@ import { MODULES } from "./dock.js";
 // or the Player (they are the console itself), nor the Bíblia's (they share
 // BibleEnv's state).
 export const DETACHABLE = ["lib", "slides", "abas", "setlist", "camadas", "temas"];
-// The ones PanelPage hosts so far (Rodada 1: Biblioteca, Setlist, Painel;
-// Camadas, Temas and Slides come next).
-export const HOSTED = ["lib", "setlist", "abas"];
+// The ones PanelPage hosts: every one of them (the Biblioteca, the Setlist
+// and the Painel first; Camadas, Temas and the Slides since the second PR).
+export const HOSTED = DETACHABLE;
 export const canDetach = (id) => HOSTED.includes(id);
 
 // layout.detached made safe: only hosted panels, only `true`.

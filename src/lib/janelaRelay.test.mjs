@@ -98,3 +98,21 @@ test("a dock panel in a window of its own (Painéis em janela): its messages, ea
     assert.ok(checkMessage({ type: "panel.close", module: "lib" }, "console"));
     assert.equal(checkMessage({ type: "panel.close", module: "lib" }, "janela"), null);
 });
+
+test("Camadas, Temas and the Slides in a window, and Esc there (Painéis em janela, PR 2)", () => {
+    assert.ok(checkMessage({ type: "panel.closed", module: "camadas" }, "janela"));
+    assert.ok(checkMessage({ type: "layout.patch", patch: { temasThumb: "large", temasNames: false } }, "janela"));
+    assert.ok(checkMessage({ type: "console.panels", placed: ["programa", "previa", "onair", "temas"] }, "console"));
+    assert.equal(checkMessage({ type: "console.panels", placed: ["zz"] }, "console"), null);
+    assert.equal(checkMessage({ type: "console.panels", placed: ["toString"] }, "console"), null);
+    assert.ok(checkMessage({ type: "air.end" }, "janela"));
+    assert.ok(checkMessage({ type: "air.undo" }, "janela"));
+    assert.equal(checkMessage({ type: "air.end" }, "console"), null, "only a panel's window asks");
+    assert.ok(checkMessage({ type: "console.ended", undo: true }, "console"));
+    assert.equal(checkMessage({ type: "console.ended", undo: "yes" }, "console"), null);
+    assert.ok(checkMessage({ type: "console.last", last: null }, "console"));
+    assert.ok(checkMessage({ type: "console.last", last: { key: "k", slides: [{ text: "a" }], stopped: 0, index: 0 } }, "console"));
+    assert.equal(checkMessage({ type: "console.last", last: { slides: "x" } }, "console"), null);
+    assert.ok(checkMessage({ type: "last.move", d: -1 }, "janela"));
+    assert.equal(checkMessage({ type: "last.move", d: 2 }, "janela"), null);
+});
