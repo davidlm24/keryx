@@ -12,7 +12,7 @@ import { placeBox } from "@/lib/console/contextMenu";
 // → opens a submenu and ← leaves it, Enter / Space choose, Esc and Tab close.
 // One frame (.kx-pop, console.css) and the design system's gold focus ring.
 //
-// items: { label, icon?, kbd?, checked?, disabled?, title?, meta?, air?,
+// items: { label, icon?, kbd?, dot?, checked?, disabled?, title?, meta?, air?,
 //          role? ("menuitemcheckbox"), keep? (stays open when chosen),
 //          onSelect?, sub?: [items] }
 //        | "sep" | { sep: true } | { head, meta? } | { node } (a row of its own:
@@ -188,7 +188,8 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
                 if (it.node) return <React.Fragment key={`n${i}`}>{it.node}</React.Fragment>;
                 if (it.head != null) return <div key={`h${i}`} className={`kx-menu-h ${it.minor ? "is-minor" : ""}`} role="presentation"><span className="kx-section">{it.head}</span>{it.meta != null && <><span style={{ flex: 1 }} /><span className="kx-meta">{it.meta}</span></>}</div>;
                 const open = sub?.i === i;
-                const tail = it.sub ? <Icon name="chevron-right" /> : it.kbd;
+                // `dot`: the gold dot of something new there (its words for screen readers).
+                const tail = it.sub ? <Icon name="chevron-right" /> : it.dot ? <><i className="ver-new-dot" aria-hidden="true" /><span className="kx-sr">{it.dot}</span></> : it.kbd;
                 // An item with a state (checked true or false) is a checkbox
                 // item and says it (C-26): the culto of the day, Ver's modules.
                 const role = it.role || (typeof it.checked === "boolean" ? "menuitemcheckbox" : "menuitem");

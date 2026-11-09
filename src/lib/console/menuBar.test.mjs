@@ -11,10 +11,11 @@ test("the bar: the menus of the owner's picks, in order (Rodada D4, A; E0; M0)",
     assert.deepEqual(menus.map((m) => m.id), MENU_IDS);
     // Where each thing lives (the artifact's table).
     for (const [id, labels] of Object.entries({
-        culto: ["Planejar o culto", "Novo culto", "Modelos de culto", "Exportar a setlist em PDF"],
-        musica: ["Nova música", "Buscar letras na internet…", "Importar uma pasta…", "Sincronizar a música…", "Letra automática", "Temas e fundos"],
+        culto: ["Planejar o culto", "Novo culto", "Modelos de culto", "Exportar a setlist em PDF", "Pedidos da equipe", "Chat da equipe"],
+        musica: ["Nova música", "Buscar letras na internet…", "Importar músicas…", "Importar uma pasta…", "Abrir pacote do KERYX…", "Sincronizar a música…", "Letra automática", "Temas e fundos",
+            "Tema da Bíblia…", "Escolher as Bíblias…", "Bíblias instaladas"],
         midia: ["Mídia", "Do computador…", "Link do YouTube…", "Fundos"],
-        ferramentas: ["Avisos", "Novo aviso", "Aviso rápido…", "Timers", "Escola bíblica", "Relatórios"],
+        ferramentas: ["Avisos", "Novo aviso", "Aviso rápido…", "Timers", "Escola bíblica", "Relatórios", "KERYX no celular", "Sincronizar agora", "Sincronização"],
         ajuda: ["Primeiros passos", "Atalhos", "Novidades", "Verificar tudo", "Salvar diagnóstico…", "Abrir a pasta de dados", "Verificar atualização", "Sobre o KERYX"],
     })) for (const l of labels) assert.ok(find(menus, id, l), `${id} › ${l}`);
     // No Telas menu (owner 2026-10-16): the screens' actions are the
@@ -62,6 +63,55 @@ test("Culto: the shared Setlist or the church's active culto, on every computer"
     find(on, "culto", "Encerrar o culto…").onSelect();
     find(on, "culto", "Planejar o culto").onSelect();
     assert.deepEqual(calls, [["planner", null], ["activate", null], ["endService"], ["planner", "s1"]]);
+});
+
+test("the menu review of 2026-11-09: the team, the imports, the Bíblia and Conexões", () => {
+    const calls = [];
+    const act = new Proxy({}, { get: (_t, name) => (...args) => calls.push([name, ...args]) });
+    const heads = (menus, id) => menus.find((m) => m.id === id).items.filter((it) => it.head != null).map((it) => it.head);
+    const menus = buildMenus({ act, sync: { act: "now" } });
+    // Each group under its own heading, in the menu its meaning belongs to.
+    assert.deepEqual(heads(menus, "musica"), ["Bíblia"]);
+    assert.deepEqual(heads(menus, "ferramentas"), ["Conexões"]);
+    // Ajuda never holds a connection or a setting.
+    const ajuda = menus.find((m) => m.id === "ajuda").items.map((it) => it.label);
+    for (const l of ["KERYX no celular", "Sincronização", "Sincronizar agora", "Entrar com Google", "Bíblias instaladas"]) assert.ok(!ajuda.includes(l), l);
+    for (const [id, l] of [["culto", "Pedidos da equipe"], ["culto", "Chat da equipe"], ["musica", "Importar músicas…"], ["musica", "Abrir pacote do KERYX…"],
+        ["musica", "Tema da Bíblia…"], ["musica", "Escolher as Bíblias…"], ["musica", "Bíblias instaladas"],
+        ["ferramentas", "KERYX no celular"], ["ferramentas", "Sincronizar agora"], ["ferramentas", "Sincronização"]]) find(menus, id, l).onSelect();
+    assert.deepEqual(calls, [["teamTab", "pedidos"], ["teamTab", "chat"], ["importFiles"], ["openPackage"],
+        ["bibleTheme"], ["bibleSetup"], ["settings", "biblia"], ["settings", "rede"], ["syncNow"], ["settings", "sincronizacao"]]);
+    // The pacote's name, icon and "…" are the shared table's (menuLabels.js).
+    assert.equal(find(menus, "musica", "Abrir pacote do KERYX…").icon, "download");
+});
+
+test("Conexões: the sync item follows the cloud", () => {
+    const calls = [];
+    const act = new Proxy({}, { get: (_t, name) => (...args) => calls.push([name, ...args]) });
+    const sync = (s) => buildMenus({ act, sync: s }).find((m) => m.id === "ferramentas").items.filter((it) => it.onSelect).at(-2);
+    assert.equal(sync({ act: "now" }).label, "Sincronizar agora");
+    assert.equal(sync({ act: "now" }).disabled, false);
+    assert.equal(sync({ act: "retry" }).label, "Tentar agora");
+    const signin = sync({ act: "signin" });
+    assert.equal(signin.label, "Entrar com Google");
+    signin.onSelect();
+    assert.deepEqual(calls, [["syncSignIn"]]);
+    // A pass the bar started: off until its answer.
+    assert.deepEqual([sync({ act: "now", running: true }).label, sync({ act: "now", running: true }).disabled], ["Sincronizando…", true]);
+    // Nothing it can do: off, saying why.
+    assert.equal(sync({ act: null, signing: true }).disabled, true);
+    assert.equal(sync({ act: null, signing: true }).title, "Termine a entrada no navegador");
+    assert.equal(sync(null).disabled, true);
+    assert.match(sync(null).title, /não sincroniza/);
+});
+
+test("Pedidos and Chat wear the gold dot while something new waits", () => {
+    const culto = (u) => buildMenus({ teamUnread: u }).find((m) => m.id === "culto").items;
+    const at = (items, l) => items.find((it) => it.label === l);
+    assert.equal(at(culto({}), "Pedidos da equipe").dot, undefined);
+    assert.equal(at(culto({ pedidos: 2 }), "Pedidos da equipe").dot, "pedidos novos");
+    assert.equal(at(culto({ pedidos: 2 }), "Chat da equipe").dot, undefined);
+    assert.equal(at(culto({ chat: 1 }), "Chat da equipe").dot, "mensagens novas");
 });
 
 test("what is off when there is nothing to act on", () => {
@@ -136,6 +186,8 @@ test("flattenMenus: no item of the bar is lost (the logo's menu once lost 14 of 
     // Menus are stacked: head first, a separator between menus.
     assert.deepEqual(flat.filter((it) => it.head != null && !it.minor).map((it) => it.head), ["Culto", "Música", "Mídia", "Ferramentas", "Ajuda"]);
     assert.equal(flat.filter((it) => it.sep).length >= 4, true);
+    // A group inside a menu (Bíblia, Conexões) is a minor head under it.
+    for (const h of ["Bíblia", "Conexões"]) assert.equal(flat.find((it) => it.head === h)?.minor, true, h);
 });
 
 test("flattenMenus: submenus inline, state carried over, same handlers", () => {

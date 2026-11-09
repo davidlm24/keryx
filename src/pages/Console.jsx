@@ -48,6 +48,7 @@ import Layers from "@/components/console/Layers";
 import PromptDialog from "@/components/console/PromptDialog";
 import ReportDialog, { ReportContext, DIAGNOSTIC_SAVED } from "@/components/console/ReportDialog";
 import BibleSetupDialog from "@/components/console/BibleSetupDialog";
+import { chooseBibleTheme } from "@/components/console/themeActions";
 import { useBibleSetup } from "@/components/console/useBibleSetup";
 import { setupAsks } from "@/lib/console/bibleSetup";
 import { timerChoices, minutesLabel } from "@/lib/console/timerPresets";
@@ -64,9 +65,9 @@ import { withSize } from "@/lib/console/winLayout";
 import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec, janelaName } from "@/lib/console/nav";
 import { resolveSection, SECTIONS } from "@/lib/console/settings";
 import { commandRows } from "@/lib/console/paletteSearch";
-import { useSyncStatusSelect } from "@/hooks/useSyncStatus";
-import { useSyncJoinNote } from "@/hooks/useGoogleSync";
-import { syncsHere } from "@/lib/console/syncView";
+import { useSyncStatusSelect, syncNow, currentSyncStatus } from "@/hooks/useSyncStatus";
+import { useSyncJoinNote, signInWithGoogle } from "@/hooks/useGoogleSync";
+import { syncsHere, cloudView, googlePage } from "@/lib/console/syncView";
 import SyncPop from "@/components/console/SyncPop";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
@@ -290,7 +291,7 @@ export default function Console() {
     useEffect(() => {
         if (bibleAsked.current || !setupAsks(bibleSetup.state)) return;
         bibleAsked.current = true;
-        setBibleAsk(true);
+        setBibleAsk("first");
     }, [bibleSetup.state]);
     // Importar músicas (ImportSongsDialog): { files, busy } while it is open.
     const [importReq, setImportReq] = useState(null);
@@ -1531,9 +1532,19 @@ export default function Console() {
     // src/lib/console/menuBar.js): Culto, Música, Mídia, Ferramentas after
     // KERYX | Bíblia (Ver is the eye, Ajuda the logo's menu: O topo; no Telas
     // menu, Rodada E0); every item is something the console already does.
-    // Música › Importar uma pasta… uses this hidden picker.
+    // Música › Importar músicas… and Importar uma pasta… use these hidden pickers.
     const church = useChurch();
     const folderRef = useRef(null);
+    const filesRef = useRef(null);
+    // Ferramentas › Conexões' sync item (menuBar.js syncItem): only what the
+    // cloud offers now (cloudView's act), so the poll wakes the console only
+    // when that changes.
+    const syncAct = useSyncStatusSelect((st) => cloudView(st).act);
+    const syncSigning = useSyncStatusSelect((st) => googlePage(st) === "signing");
+    const [syncRunning, setSyncRunning] = useState(false);
+    // Música › Bíblia › Tema da Bíblia…: the console as it is once the library closes.
+    const cNow = useRef(c);
+    cNow.current = c;
     const barLayer = playerLayer(c.cur);
     // Ajuda's support items need the desktop app (the browser preview has no data folder or updater).
     const desktopApp = useRef(!keryx.isPreview && Boolean(window.keryxDesktop?.system)).current;
@@ -1544,6 +1555,7 @@ export default function Console() {
         songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null,
         playerOn: Boolean(barLayer), playing: Boolean(barLayer && !c.cur[barLayer]?.playback?.paused),
         timers: timerChoices(data.timerPresets).map((t) => ({ minutes: t.minutes, label: minutesLabel(t.minutes) })),
+        teamUnread, sync: { act: syncAct, running: syncRunning, signing: syncSigning },
         act: {
             activate: (id) => active.activate(id ? services.find((s) => s.id === id) || null : null),
             endService: () => active.endService(view.active ? service : null),
@@ -1552,7 +1564,17 @@ export default function Console() {
             exportPdf: () => { if (service) exportServiceToPdf(view.active ? service : { ...service, date: consoleSetlistRow().date }, items, church).then(() => c.say("PDF gerado.")).catch((err) => c.say(err?.message || "Não foi possível gerar o PDF.")); },
             newSong: () => openSong("new"),
             lyricsSearch: () => setOpen("lyrics"),
+            importFiles: () => filesRef.current?.click(),
             importFolder: () => folderRef.current?.click(),
+            openPackage: () => openPackage(),
+            bibleTheme: () => chooseBibleTheme({ getC: () => cNow.current, pick: pickFromLibrary, themes: data.themes }),
+            bibleSetup: () => setBibleAsk("menu"),
+            // With the Painel in the tray the tab is chosen for when it comes
+            // back, and the toast says where (Rodada Q S9 = B: the dock never moves by itself).
+            teamTab: (id) => { focusTeamTab(id); if (!pedidosReachable) c.say(`${id === "chat" ? "Chat" : "Pedidos"}: veja em Ver › Painel.`); },
+            syncNow: () => { setSyncRunning(true); syncNow(c.say).catch(() => c.say("Não foi possível sincronizar agora.")).finally(() => setSyncRunning(false)); },
+            // As the cloud's popover: Sincronização shows "Termine a entrada no navegador".
+            syncSignIn: () => { openSettings("sincronizacao"); signInWithGoogle({ say: c.say, songsHere: data.songs.length, status: currentSyncStatus() }); },
             syncSong: (id) => openSong(id, { sync: true }),
             follow: (action) => c.callOp("content.follow", { action }).catch(() => {}),
             media: (intent) => openMedia(intent),
@@ -1770,6 +1792,8 @@ export default function Console() {
             )}
             <MenuBarPop menus={menus} open={open} setOpen={setOpen} />
             <MenusPop menus={menus} open={open} setOpen={setOpen} onAllServices={() => openPlanner(serviceId)} />
+            <input ref={filesRef} type="file" multiple hidden accept={SONG_ACCEPT}
+                onChange={(e) => { const files = [...(e.target.files || [])]; e.target.value = ""; if (files.length) openImport(files); }} />
             <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept={SONG_ACCEPT}
                 onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) openImport(files); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
             <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} dockLocked={envLocked} onDockLock={setEnvLock} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} newIn={pedidosUnread && !pedidosReachable ? "abas" : null} />
@@ -1789,7 +1813,7 @@ export default function Console() {
             <ImportSongsDialog request={importReq} onClose={closeImport} onBusy={(busy) => setImportReq((r) => (r ? { ...r, busy } : r))} say={c.say} />
             {pkg.element}
             <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />
-            <BibleSetupDialog open={bibleAsk} first setup={bibleSetup} say={c.say} onClose={() => setBibleAsk(false)} />
+            <BibleSetupDialog open={Boolean(bibleAsk)} first={bibleAsk === "first"} setup={bibleSetup} say={c.say} onClose={() => setBibleAsk(false)} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} history={c.live?.history || []} airItemId={airItemId} bibleVersion={open === "palette" ? bibleVersionWanted() : ""} commands={paletteCommands}
                 onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onSend={(s, i) => (s?.op ? sendStage(s) : buildStage(s, i).then((st) => sendStage(st)).catch((err) => c.say(err?.message || "Não foi possível abrir o item.")))}
                 onAddSong={addSong} onAddStage={(st) => addStageToSetlist(st)} openReference={openReference} onPrepareReference={prepareReference} onSendReference={sendReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
