@@ -3,8 +3,7 @@
 // `inherit` says what the default theme may fill in when it is sent
 // (withThemeDefaults, themes.js); it never reaches the live state.
 import { songSlidesFor } from "../songImport.js";
-import { followsTheme, isFactoryLook } from "./themes.js";
-import { withSongThemes, songTheme } from "./songTheme.js";
+import { isFactoryLook } from "./themes.js";
 import { bgSpec, bgArgs } from "./backgroundSpec.js";
 import { songStep, steppedSize } from "./songSize.js";
 import { followModeOf, slideSeconds, timedLength, withFollowStarts } from "./lyricSync.js";
@@ -34,18 +33,17 @@ export function songFollow(song, slides) {
 // What a Song row puts on screen (projection.showLyrics arguments). The
 // slides are stripped of inline chords (songSlidesFor); when the lyrics
 // carry them, their chorded twins ride in stage.chordedSlides for the Palco.
-// `themes` (ProjectionTheme rows): the song's theme and its parts' themes
-// apply (songTheme.js); without them the song shows its own look.
-// A song with a theme of its own goes out with it; with none, with the
-// theme in use (owner 2026-10-30: the theme lives only in the song, there
-// is no switch for it in the console).
-export function songContent(song, ref = {}, themes = []) {
+// A song has no theme or look of its own any more (owner 2026-11-09,
+// mockup "Identificar, Mídia e tema da música", board 3): it always goes
+// out with the theme in use, else the standard one (stamp, themeForKind),
+// moved only by its size step (songSize.js). Song.theme_id, part_themes,
+// style_mode, its font, colours and background stay stored (user data,
+// synced, carried by the .keryx package) and are not read here. `themes`
+// is kept in the signature for the callers.
+export function songContent(song, ref = {}, _themes = []) {
     const built = songSlidesFor(song);
-    // The song's own background (any kind) goes to the Fundo layer when it
-    // is sent (args.fundo; backgroundSpec.js fundoOps).
-    const fundo = bgArgs(bgSpec(song), song.title || "");
     const follow = songFollow(song, built.slides);
-    return withSongThemes({
+    return {
         title: song.title || "",
         artist: song.artist || "",
         // Every slide with the start the follow goes by (lyricSync.js).
@@ -55,16 +53,14 @@ export function songContent(song, ref = {}, themes = []) {
         audio: null,
         ...(follow ? { follow } : {}),
         // The size is a step from the theme's (songSize.js, Rodada P): over
-        // the factory look here; withThemeDefaults moves the theme's, and
-        // withSongThemes the song's own theme's.
+        // the factory look here; withThemeDefaults moves the theme's.
         style: {
             font_size: steppedSize("large", songStep(song)),
-            font_family: song.font_family || "sans",
-            text_effect: song.text_effect || "shadow",
-            text_color: song.text_color || "#ffffff",
-            text_color_2: song.text_color_2 || "",
+            font_family: "sans",
+            text_effect: "shadow",
+            text_color: "#ffffff",
+            text_color_2: "",
         },
-        ...(fundo ? { fundo } : {}),
         stage: {
             song_key: song.song_key || "",
             bpm: song.bpm || null,
@@ -73,12 +69,10 @@ export function songContent(song, ref = {}, themes = []) {
             ...(built.chordedSlides ? { chordedSlides: built.chordedSlides } : {}),
         },
         ref: { songId: song.id || null, ...ref },
-        // A song following a theme of its own takes that theme whole: the
-        // default theme dresses nothing (the church's transition still fills).
-        // Otherwise the theme fills what the song leaves empty, its own look
-        // or not, and its size moves by the song's step.
-        inherit: songTheme(song, themes).theme ? { look: false, background: false, extras: false } : { look: followsTheme(song), background: !fundo, step: songStep(song) },
-    }, song, themes);
+        // The theme in use dresses it whole (look, extras, background) and
+        // its size moves by the song's step.
+        inherit: { look: true, background: true, step: songStep(song) },
+    };
 }
 
 // What a Bible passage (a BiblePassage row or verses picked in the Bíblia)

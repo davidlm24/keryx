@@ -63,30 +63,20 @@ test("songContent + the theme: the whole theme, its size moved by the song's ste
     assert.equal(songContent({ ...song, font_size: "" }, {}, []).style.font_size, "large");
 });
 
-test("a song with a look of its own still takes the theme's box, position and spacing (the gap of P8-2)", () => {
-    const theme = { id: "t", font_family: "serif", font_size: "6", text_box: "block", text_align: "left", letter_spacing: 0.05 };
-    const song = { id: "s", title: "X", lyrics: "X", style_mode: "own", font_family: "mono", text_color: "#ffcc00", font_size: "small" };
-    const args = songContent(song, {}, [theme]);
-    assert.equal(args.inherit.look, false);
-    const out = withThemeDefaults("content.show", args, theme);
-    assert.equal(out.style.font_family, "mono", "its own font stays");
-    assert.equal(out.style.text_color, "#ffcc00");
-    assert.equal(out.style.text_box, "block");
-    assert.equal(out.style.text_align, "left");
-    assert.equal(out.style.letter_spacing, 0.05);
-    assert.equal(out.style.font_size, steppedSize("6", -2), "the size is a step from the theme's, own look or not");
-});
-
-test("a song following a theme of its own: that theme whole, sized by the step; the default theme adds nothing", () => {
+test("a song's own theme, part themes and look are not read: the theme in use dresses it, sized by its step (2026-11-09)", () => {
     const own = { id: "o", font_family: "georgia", font_size: "5", text_box: "band" };
-    const def = { id: "d", is_default: true, font_family: "serif", text_position: "top", line_height: 1.8, transition: "slide" };
-    const song = { id: "s", title: "X", slides: [{ text: "Y", label: "Refrão" }], theme_id: "o", part_themes: { "refrão": "o" }, font_size: "medium" };
+    const def = { id: "d", is_default: true, font_family: "serif", font_size: "6", text_position: "top", line_height: 1.8, transition: "slide" };
+    const song = { id: "s", title: "X", slides: [{ text: "Y", label: "Refrão" }], theme_id: "o", part_themes: { "refrão": "o" }, style_mode: "own", font_family: "mono", text_color: "#ffcc00", background: { kind: "color", value: "#123456" }, font_size: "medium" };
     const args = songContent(song, {}, [own, def]);
-    assert.deepEqual(args.inherit, { look: false, background: false, extras: false });
-    assert.equal(args.style.font_size, steppedSize("5", -1));
-    assert.equal(args.slides[0].style.font_size, steppedSize("5", -1), "a part's theme moves by the step too");
+    assert.deepEqual(args.inherit, { look: true, background: true, step: -1 });
+    assert.equal(args.fundo, undefined, "its own background is not read");
+    assert.equal(args.slides[0].style, undefined, "nor a part's theme");
     const out = withThemeDefaults("content.show", args, def);
-    assert.equal(out.style.text_position, undefined, "the default theme's extras stay out of a complete look");
-    assert.equal(out.style.line_height, undefined);
-    assert.equal(out.style.transition, "slide", "the church's transition still fills");
+    assert.equal(out.style.font_family, "serif", "the theme in use's font, not the song's");
+    assert.equal(out.style.text_color, def.text_color ?? out.style.text_color);
+    assert.notEqual(out.style.text_color, "#ffcc00");
+    assert.equal(out.style.text_position, "top");
+    assert.equal(out.style.line_height, 1.8);
+    assert.equal(out.style.transition, "slide");
+    assert.equal(out.style.font_size, steppedSize("6", -1), "the step still moves the theme's size");
 });

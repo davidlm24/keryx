@@ -49,7 +49,6 @@ export function winPage(entry, { active, escRef, onClose }, h) {
             return <NoticeEditor c={c} noticeId={p.id} logoUrl={h.logoUrl} media={data.media} onClose={onClose} onSaved={(row) => { if (p.id === "new" && row?.id) h.replaceTop({ id: row.id }); }} escRef={escRef} active={active} />;
         case "song":
             return <SongEditor c={c} songId={p.id} autoSync={Boolean(p.sync)} themes={data.themes} onClose={onClose} onSaved={(row) => { h.songSaved(row); if (p.id === "new" && row?.id) h.replaceTop({ id: row.id }); }} escRef={escRef} active={active}
-                onEditTheme={(id) => h.push({ page: "theme", props: { id } }, "Editor de música")}
                 onSync={(props) => h.push({ page: "sync", props }, "Editor de música")} />;
         case "sync":
             return <SyncView {...p} onClose={onClose} escRef={escRef} active={active} />;

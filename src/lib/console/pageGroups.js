@@ -3,22 +3,6 @@
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-// Song editor › Tema desta música: `look` is the editor's own reading
-// ({ theme, missing }), `following` true when the song follows the default.
-// `step`: the size relative to the theme (Rodada P, P8-2, songSize.js).
-export function songThemeSummary({ theme, themeName = "", missing = false, following = true, step = 0 } = {}) {
-    const what = theme ? themeName || "tema sem nome" : missing ? "tema excluído" : following ? "o das músicas" : "visual antigo";
-    return step ? `${what} · tamanho ${step > 0 ? "+" : "−"}${Math.abs(step)}` : what;
-}
-
-// Song editor › Tema por parte: how many parts carry a theme.
-export function partThemesSummary(partThemes, parts = []) {
-    const keys = new Set(parts.map((p) => p.key));
-    const n = Object.entries(partThemes || {}).filter(([k, v]) => v && keys.has(k)).length;
-    if (!parts.length) return "sem partes marcadas";
-    return n ? plural(n, "parte com tema", "partes com tema") : "nenhuma parte com tema";
-}
-
 // Song editor › Notas para os músicos.
 export function notesSummary(text) {
     const t = String(text || "").trim();

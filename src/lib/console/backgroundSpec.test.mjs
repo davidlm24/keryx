@@ -44,8 +44,8 @@ test("background.set arguments and labels", () => {
 });
 
 test("the rule of the Fundo: an item's background goes to the Fundo layer, so it stays after Esc", () => {
-    const song = { id: "s1", title: "Canto", lyrics: "um\n\ndois", background: { kind: "generator", value: "clouds" } };
-    const args = songContent(song);
+    // (A song has no background of its own since 2026-11-09: a passage's.)
+    const args = passageContent({ reference: "Canto", text: "um", background: { kind: "generator", value: "clouds" } });
     assert.equal(args.fundo.kind, "generator");
     const ops = fundoOps("content.show", args, emptyState(T));
     assert.deepEqual(ops.map(([op]) => op), ["background.set", "content.show"]);

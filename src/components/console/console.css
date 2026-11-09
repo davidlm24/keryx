@@ -1625,6 +1625,16 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .mv-meta .k { font-size: var(--fs-meta); color: var(--fg-3); }
 .console .mv-meta .pl-pick { width: 100%; }
 .console .mv-side-acts { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+/* Informações (owner 2026-11-09, board 2): the file's name, category, description and, downloaded from YouTube, its link; each saves on blur. */
+.console .mv-info { display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-2); border-top: 1px solid var(--line-soft); }
+.console .mv-info-t { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); margin-bottom: var(--space-1); }
+.console .mv-info .k { font-size: var(--fs-meta); color: var(--fg-3); margin-top: var(--space-1); }
+.console .mv-info .kx-input { width: 100%; }
+.console .mv-info textarea.kx-input { min-height: 56px; }
+.console .mv-info .kx-input.is-bad { box-shadow: var(--warn-ring); }
+.console .mv-info .pl-pick { width: 100%; }
+.console .mv-info .mv-side-acts { margin-top: var(--space-1); }
+.console .mv-info-hint { margin-top: var(--space-1); }
 @media (max-width: 900px) { .console .mv-side { flex-basis: 240px; } }
 .console .mv-up { flex: none; border-top: 1px solid var(--line); padding-bottom: var(--space-1); }
 .console .mv-up-row { display: flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); }
