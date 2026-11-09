@@ -905,7 +905,25 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   is its tooltip and `label`; a running service keeps "Culto 0:42:10"),
   the clock, the Saídas status "2 telas" (`outputHealth`'s
   `status.compact`, outputs.js, tested; the full label in its tooltip),
-  Ver and the bell; the search is at most 320 px. **The screen actions
+  Ver and the bell; the search is at most 320 px. **The search itself, the
+  palette (`/`)** (owner 2026-11-09, mockup "Console · busca (/)": P1 = B,
+  no preview pane; P2–P5 = A): matching and ranking are
+  `src/lib/console/paletteSearch.js` (tested; no case, no accents, a title
+  that starts with the words first), the kinds are chips with their counts
+  (Tudo · Músicas · Bíblia · Mídia · Avisos · Escola · Setlist · Comandos;
+  Tab / Shift+Tab walk them, Backspace on an empty field goes back to Tudo,
+  each group in Tudo cut with "Ver mais n", a kind up to 30); before typing,
+  Recentes (`live.history`) and Próximos na setlist; a word that is not a
+  reference shows its first 3 verses of the Bíblia inline ("Ver os N na
+  Bíblia" opens its Buscar; in the Bíblia "Buscar … na Bíblia" stays first —
+  the smoke presses Enter on it); **Comandos** are `commandRows`: the screen
+  actions, every runnable item of the menu bar's model and Configurações'
+  sections (a new menu item is found by construction). Enter puts the row in
+  the Prévia (the chosen row says what its Enter does), **Ctrl+Enter sends it
+  on air**, Shift+Enter adds it to the Setlist (songs, references, media,
+  Escola materials; never an aviso), a double click sends; a combobox over a
+  listbox (`aria-activedescendant`, `useDialogFocus`), every button inside
+  out of Tab. **The screen actions
   (Tela preta, Logo, Limpar, Encerrar) are not in the top bar any more**:
   they live in the Programa's pill (owner's pick B).
   Everything else

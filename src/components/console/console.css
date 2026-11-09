@@ -174,12 +174,38 @@
    — visible but quieter — with a lighter shadow (owner 2026-10-14). */
 .console .dialog { position: absolute; z-index: var(--z-dialog); left: 50%; top: 40%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); color: var(--fg-1); font-size: var(--fs-content); line-height: 18px; }
 .console .dialog .acts { display: flex; justify-content: flex-end; gap: var(--space-2); }
-/* The command palette: left-anchored over the source columns, never over the Programa (its width comes from Console). */
-.console .palette { position: absolute; z-index: var(--z-dialog); left: 50%; transform: translateX(-50%); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 620px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); display: flex; flex-direction: column; max-height: min(640px, calc(100% - var(--topbar) - 64px)); }
-.console .palette .kx-field { height: 40px; margin: var(--space-1); background: var(--bg-3); }
-.console .palette .kx-field input { font-size: var(--fs-content); }
-.console .palette .res { overflow: auto; padding: 0 var(--space-1) var(--space-1); }
-.console .palette .kx-row { border-radius: var(--radius-control); }
+/* The search, the palette (owner 2026-11-09, "Console · busca (/)", P1 = B):
+   centred under the top bar, 720 px, no preview pane. The field (a
+   combobox), the kinds as chips (counts while typing), the options in
+   groups (the chosen one says what its Enter does, with Enviar ao ar and
+   Setlist as glyphs), "Ver mais", and the keys' legend at the foot. Glass
+   where it blurs (the Glass block at the end). */
+.console .palette { position: absolute; z-index: var(--z-dialog); left: 50%; transform: translateX(-50%); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 720px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); display: flex; flex-direction: column; max-height: min(680px, calc(100% - var(--topbar) - 64px)); overflow: hidden; }
+.console .palette .pal-field { flex: none; height: 44px; margin: var(--space-1) var(--space-1) var(--space-2); padding: 0 var(--space-3); gap: var(--space-2); background: var(--bg-3); }
+.console .palette .pal-field input { flex: 1; min-width: 0; font-size: var(--fs-content-lg); }
+.console .palette .pal-scope { flex: none; height: 22px; display: inline-flex; align-items: center; padding: 0 var(--space-2); border-radius: 6px; background: var(--fg-1); color: var(--bg-0); font-size: var(--fs-ui); font-weight: 600; }
+.console .palette .pal-as { flex: none; color: var(--fg-2); font-size: var(--fs-ui); white-space: nowrap; }
+.console .palette .pal-chips { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); }
+.console .palette .pal-chip { height: var(--control-sm); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: var(--radius-round); background: transparent; color: var(--fg-2); font: 500 var(--fs-ui)/1 var(--font-sans); cursor: pointer; }
+.console .palette .pal-chip:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .palette .pal-chip.is-on { background: var(--fg-1); color: var(--bg-0); font-weight: 600; }
+.console .palette .pal-chip.is-none:not(.is-on) { color: var(--fg-3); }
+.console .palette .pal-n { color: var(--fg-3); font-size: var(--fs-meta); }
+.console .palette .pal-chip.is-on .pal-n { color: var(--bg-2); }
+.console .palette .pal-res { position: relative; flex: 1; min-height: 0; overflow: auto; padding: var(--space-1) var(--space-1) var(--space-2); border-top: 1px solid var(--line-soft); }
+.console .palette .pal-res .kx-menu-h { gap: var(--space-2); justify-content: space-between; }
+.console .palette .pal-opt { border-radius: var(--radius-control); cursor: pointer; }
+.console .palette .pal-opt .kx-row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .palette .pal-mark { font-weight: 700; color: var(--fg-1); text-decoration: underline; text-decoration-color: var(--fg-3); text-underline-offset: 2px; }
+.console .palette .pal-key, .console .palette .pal-hint kbd, .console .palette .pal-foot kbd { font: inherit; font-size: var(--fs-meta); line-height: 16px; padding: 0 5px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-2); white-space: nowrap; }
+.console .palette .pal-right { flex: none; font-size: var(--fs-meta); color: var(--fg-3); white-space: nowrap; }
+.console .palette .pal-hint { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-meta); color: var(--fg-2); white-space: nowrap; }
+.console .palette .pal-acts { flex: none; display: inline-flex; gap: var(--space-1); }
+.console .palette .pal-acts .kx-btn { height: var(--control-sm); width: var(--control-sm); padding: 0; justify-content: center; }
+.console .palette .pal-more { display: block; margin: 2px 0 var(--space-1) 34px; padding: 2px var(--space-1); border: 0; background: transparent; color: var(--fg-2); font: var(--fs-ui)/1.4 var(--font-sans); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; cursor: pointer; border-radius: 4px; }
+.console .palette .pal-more:hover { color: var(--fg-1); }
+.console .palette .pal-foot { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); min-height: 34px; padding: var(--space-1) var(--space-3); border-top: 1px solid var(--line-soft); font-size: var(--fs-meta); color: var(--fg-3); }
+.console .palette .pal-foot span { display: inline-flex; align-items: center; gap: 6px; }
 /* The live column: the Programa (no header since Rodada E1: its top lines
    up with the panels beside it) and the player slot under it, as wide as
    the cell allows and as tall as fits. Its width is min(cell, (height − K)
