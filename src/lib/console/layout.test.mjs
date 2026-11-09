@@ -80,9 +80,10 @@ test("the tab rows are part of the layout; an old or broken save gets the defaul
     assert.deepEqual(DEFAULT_LAYOUT.tabs, DEFAULT_TABS);
     const rows = ({ panel, lib }) => ({ panel, lib });
     assert.deepEqual(rows(withStore({ libW: 300 }, () => loadLayout("x")).tabs), DEFAULT_TABS);
-    // A list saved before Pedidos and Chat gets them once (normalizeTabs).
+    // A list saved before Pedidos and Chat gets them once (normalizeTabs),
+    // and Avisos, which took the hidden Aviso rápido tab's place (2026-11-09).
     const mine = withStore({ tabs: { panel: ["historico", "notas", "zz"], lib: [] } }, () => loadLayout("x"));
-    assert.deepEqual(rows(mine.tabs), { panel: ["notas", "pedidos", "chat", "historico"], lib: DEFAULT_TABS.lib });
+    assert.deepEqual(rows(mine.tabs), { panel: ["notas", "avisos", "pedidos", "chat", "historico"], lib: DEFAULT_TABS.lib });
 });
 
 test("the multiview is off by default; a saved one keeps its outputs, cleaned", () => {

@@ -25,32 +25,11 @@ import { importMediaFiles, importSummary, pickRepeats } from "@/lib/mediaImport"
 import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
 import { useCopyingFiles } from "@/hooks/useCopyingFiles";
-import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
-import { noticeLabel, noticeIcon } from "@/lib/console/notice";
-import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
-import { QuickAlert, ToolsPicker } from "./QuickTools";
+import { stageFromSong, stageFromMedia, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { TabRow } from "./TabsPanel";
 import { menuItem } from "@/lib/console/menuLabels";
-import { setDragGhost, stageGhost } from "./dragGhost";
+import { stageDragProps as dragProps } from "./dragGhost";
 import { canGroup, foldersOf, folderOpen, visibleRows, folderCount } from "@/lib/console/libraryFolders";
-
-// A library row can be dragged onto the Prévia (prepares), the Programa
-// (sends) or the Setlist (adds the item there).
-// The pointer carries a card of the row's size (dragGhost.js: its icon, name
-// and length), never a picture of the row with its buttons. `many()` (Rodada
-// O2): the stages of every marked row when this one is marked with others,
-// in the list's order — the card counts them and the Setlist takes them all.
-const dragProps = (stage, time = "", many = null) => ({
-    draggable: true,
-    onDragStart: (e) => {
-        const list = many?.() || null;
-        setDragStage(list || stage);
-        e.dataTransfer.setData(STAGE_MIME, stage.id || "1");
-        e.dataTransfer.effectAllowed = "copyMove";
-        setDragGhost(e, { ...stageGhost(stage), time, count: list ? list.length : 0 });
-    },
-    onDragEnd: () => clearDragStage(),
-});
 
 // The picture a media row shows on hover: an image itself, a video's still
 // (Media.thumbnail_url, src/lib/mediaPosterCapture.js) or a PDF's first page
@@ -159,7 +138,9 @@ function FolderHead({ folder, tab, open, onToggle }) {
 
 const NONE = [];
 const NO_OPEN = {};
-export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {}, picking, setPicking, askText = null, addSlot = null, folders: fold = null }) {
+// The Biblioteca is songs and media only (owner 2026-11-09): the avisos and
+// the Aviso rápido live in Painel › Avisos (AvisosTab.jsx).
+export default function Library({ c, data, tab, setTab, tabs, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, dupIds = null, onDuplicates, songLine = {}, picking, setPicking, askText = null, addSlot = null, folders: fold = null }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -204,9 +185,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const songsShown = useMemo(() => (tab === "letras" ? data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || ""))) : NONE), [tab, data.songs, favOnly, ql]);
     const mediaKindsKey = (mediaKinds || []).join();
     const mediaShown = useMemo(() => (mediaKinds ? data.media.filter((m) => mediaKinds.includes(m.type) && match(ql, m.title, m.description)) : NONE), [mediaKindsKey, data.media, ql]); // eslint-disable-line react-hooks/exhaustive-deps
-    const piecesShown = useMemo(() => (tab === "avisos" ? data.pieces.filter((p) => match(ql, p.title, p.text, p.subtext)) : NONE), [tab, data.pieces, ql]);
-    const listRows = tab === "letras" ? songsShown : mediaKinds ? mediaShown : tab === "avisos" ? piecesShown : NONE;
-    const allRows = tab === "letras" ? data.songs : mediaKinds ? data.media : tab === "avisos" ? data.pieces : NONE;
+    const listRows = tab === "letras" ? songsShown : mediaKinds ? mediaShown : NONE;
+    const allRows = tab === "letras" ? data.songs : mediaKinds ? data.media : NONE;
 
     // Folders: the tab's own mode, never while searching (no result hidden).
     const groupable = canGroup(tab) && Boolean(fold?.onGroup);
@@ -243,8 +223,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     // the setlists that use them warned and their items taken out).
     const removeRows = (rows) => {
         const spec = tab === "letras" ? { entity: "Song", kind: "song" }
-            : mediaKinds ? { entity: "Media", kind: "media", nameOf: (m) => m.title || "sem título", text: rows.length === 1 ? "O arquivo continua na pasta de mídia do computador." : "Os arquivos continuam na pasta de mídia do computador." }
-            : { entity: "CommunicationVideo", kind: "notice", nameOf: (p) => p.title || p.text || "sem título" };
+            : { entity: "Media", kind: "media", nameOf: (m) => m.title || "sem título", text: rows.length === 1 ? "O arquivo continua na pasta de mídia do computador." : "Os arquivos continuam na pasta de mídia do computador." };
         return deleteSeveral({ confirm, say: c.say, rows, ...spec }).catch((err) => c.say(err?.message || "Não foi possível excluir."));
     };
     // A row's click: a selection click marks (and prepares nothing); a
@@ -266,10 +245,10 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
         single(e);
     };
     const listKeys = (e) => ms.keyDown(e, { onDelete: () => removeRows(picked) });
-    const exportRows = (rows) => exportItems(tab === "letras" ? "songs" : mediaKinds ? "media" : "notices", rows);
+    const exportRows = (rows) => exportItems(tab === "letras" ? "songs" : "media", rows);
     const openItem = menuItem("abrirPacote", { onClick: () => openPackage() });
     // Dragging a marked row with others marked takes them all (Rodada O2).
-    const stageOfRow = tab === "letras" ? (s) => stageFromSong(s, {}, data.themes) : mediaKinds ? (m) => stageFromMedia(m) : (p) => stageFromPiece(p);
+    const stageOfRow = tab === "letras" ? (s) => stageFromSong(s, {}, data.themes) : (m) => stageFromMedia(m);
     const dragOf = (id, stage, time) => dragProps(stage, time, () => (picked.length > 1 && ms.has(id) ? picked.map(stageOfRow) : null));
     const addItems = tab === "letras"
         ? [
@@ -302,13 +281,13 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 menuItem("youtube", { onClick: () => document.querySelector(".console .yt-field input")?.focus() }),
                 openItem,
             ]
-            : [menuItem("novoAviso", { onClick: () => onEditNotice?.("new") }), openItem];
+            : [openItem];
 
     return (
         <>
             {/* The + lives in the panel's header, with every module's (owner
                 2026-10-28, I2 = A): the header's slot, a portal. */}
-            {addSlot && createPortal(<AddMenu small title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />, addSlot)}
+            {addSlot && createPortal(<AddMenu small title={tab === "letras" ? "Adicionar letra" : "Adicionar mídia"} items={addItems} />, addSlot)}
             <TabRow tabs={tabs} active={tab} onPick={setTab} />
 
             <div className="searchrow">
@@ -437,37 +416,6 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 );
             })()}
 
-            {tab === "avisos" && (() => {
-                const pieces = piecesShown;
-                return (
-                    <>
-                        {!elsewhere.aviso && <>
-                        <div className="listhead"><span className="kx-section">Aviso rápido <span className="kx-count">· vai direto às telas</span></span></div>
-                        <QuickAlert c={c} data={data} />
-                        </>}
-                        {!elsewhere.ferramentas && <>
-                        <div className="listhead"><span className="kx-section">Ferramentas</span></div>
-                        <ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} />
-                        </>}
-                        <div className="listhead"><span className="kx-section">Todos os avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
-                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }} onKeyDown={listKeys}>
-                            {!pieces.length && data.loaded?.pieces !== false && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
-                            {pieces.map((p) => (
-                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={`${state(`piece:${p.id}`)} ${marked(p.id)}`} lead={mark} onClick={rowClick(p.id, () => onPrepare(stageFromPiece(p)))} onDoubleClick={rowGo(() => onGo(stageFromPiece(p)))} dragProps={dragOf(p.id, stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
-                                    onContextMenu={rowMenu(p.id, (e) => menu(e, { title: p.title || p.text, items: [
-                                        menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromPiece(p)) }),
-                                        onEditNotice && menuItem("editar", { onSelect: () => onEditNotice(p.id) }),
-                                        menuItem("selecionarVarios", { onSelect: () => ms.pickFrom(p.id) }),
-                                        menuItem("exportar", { onSelect: () => exportRows([p]) }),
-                                        menuItem("excluir", { onSelect: () => removeRows([p]) }),
-                                        onGo && menuItem("enviarAoAr", { air: true, onSelect: () => onGo(stageFromPiece(p)) }),
-                                    ] }))}
-                                    actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label={`Editar ${p.title || p.text}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
-                            ))}
-                        </div>
-                    </>
-                );
-            })()}
             <SelBar count={picked.length} total={order.length} onAll={ms.all} feminine={tab === "letras"} onClear={ms.clear}>
                 <Btn small onClick={() => exportRows(picked)} title="Exportar num pacote do KERYX, com os arquivos que usam">Exportar…</Btn>
                 <Btn small onClick={() => removeRows(picked)} title={`Excluir · ${keyHint("delete")}`}>Excluir…</Btn>

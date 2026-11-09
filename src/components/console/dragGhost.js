@@ -1,4 +1,5 @@
 import { iconSvg } from "./Icon";
+import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 
 // A stage's glyph for its ghost (the Biblioteca and the Mídia drag stages).
 const STAGE_ICON = { lyrics: "music", bible: "book", text: "text", audio: "volume", video: "film", media: "image", presentation: "presentation", piece: "megaphone", tool: "clock" };
@@ -120,3 +121,22 @@ export function claimGhost() {
         remove() { finish(g, false); },
     };
 }
+
+// A row of the Biblioteca or of Painel › Avisos can be dragged onto the Prévia (prepares), the Programa
+// (sends) or the Setlist (adds the item there).
+// The pointer carries a card of the row's size (dragGhost.js: its icon, name
+// and length), never a picture of the row with its buttons. `many()` (Rodada
+// O2): the stages of every marked row when this one is marked with others,
+// in the list's order — the card counts them and the Setlist takes them all.
+export const stageDragProps = (stage, time = "", many = null) => ({
+    draggable: true,
+    onDragStart: (e) => {
+        const list = many?.() || null;
+        setDragStage(list || stage);
+        e.dataTransfer.setData(STAGE_MIME, stage.id || "1");
+        e.dataTransfer.effectAllowed = "copyMove";
+        setDragGhost(e, { ...stageGhost(stage), time, count: list ? list.length : 0 });
+    },
+    onDragEnd: () => clearDragStage(),
+});
+

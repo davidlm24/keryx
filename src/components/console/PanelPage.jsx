@@ -157,7 +157,7 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
     const from = title;
     const openSong = (id) => h.push({ page: "song", props: { id } }, from);
     const openMedia = (intent = null) => h.push({ page: "media", props: intent ? { intent } : {} }, from);
-    const openNotice = (id) => h.push({ page: "notice", props: { id: id || "new" } }, from);
+    const openNotice = (id, addTo = null) => h.push({ page: "notice", props: { id: id || "new", ...(addTo ? { addTo } : {}) } }, from);
     const openPlanner = (id) => h.push({ page: "planner", props: id ? { serviceId: id } : {} }, from);
 
     const coveredBy = c.cur?.screen === "black" ? "Tela preta" : c.cur?.screen === "logo" ? "Logo" : "";
@@ -200,7 +200,7 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
         const nb = neighbours(items, airItemId);
         const endsAlone = (it) => endsByItself(it, String(it.type || "").toUpperCase() === "SONG" ? data.songs.find((x) => x.id === it.contentId) : null);
         const headMenu = (e) => openMenu(e, { title: "Setlist", items: setlistHeadItems({ view, service, services, active: activeSvc, items, saveToCulto: writes.saveToCulto, onPlan: () => openPlanner(view.active ? serviceId : null) }) });
-        const addMenu = (e) => openMenu(e, { title: "Adicionar à setlist", items: setlistAddItems({ e, openMenu, askText, addRow: (row) => writes.addRowToSetlist(row, prevItemId), timerPresets: data.timerPresets }) });
+        const addMenu = (e) => openMenu(e, { title: "Adicionar à setlist", items: setlistAddItems({ e, openMenu, askText, addRow: (row) => writes.addRowToSetlist(row, prevItemId), timerPresets: data.timerPresets, pieces: data.pieces || [], onNewNotice: () => openNotice("new", "setlist") }) });
         const on = Boolean(service?.autoplay);
         body = (
             <Panel title="Setlist" caption={<SetlistTitle view={view} service={service} onClick={headMenu} />} className={`setlist-panel ${coveredBy ? "is-covered" : ""}`}
@@ -216,7 +216,6 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
             group: layout.libGroup, open: layout.libFoldersOpen, categories: prefs.media_categories, onGroup: setLibGroup,
             onOpen: (tab, key, isOpen) => patch({ libFoldersOpen: { ...layout.libFoldersOpen, [tab]: { ...layout.libFoldersOpen?.[tab], [key]: isOpen } } }),
         };
-        const elsewhere = Object.fromEntries((tabLists.panel || []).map((id) => [id, true]));
         body = (
             <ImportSongsContext.Provider value={openImport}>
                 <Panel title="Biblioteca" actions={<>
@@ -225,8 +224,8 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
                     <span className="lib-add-slot" ref={setAddSlot} />
                     <TabsPlus row="lib" onMenu={() => setMenu(menu === "tabs:lib" ? null : "tabs:lib")} menuOpen={menu === "tabs:lib"} />
                 </>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                    <Library c={c} data={data} askText={askText} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={elsewhere}
-                        onPrepare={(s) => c.setPrev(s)} onGo={(s) => h.sendNow(s)} onAddSong={writes.addSong} onLyricsWeb={() => setLyrics({ q: "" })} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
+                    <Library c={c} data={data} askText={askText} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)}
+                        onPrepare={(s) => c.setPrev(s)} onGo={(s) => h.sendNow(s)} onAddSong={writes.addSong} onLyricsWeb={() => setLyrics({ q: "" })} onEditSong={openSong} onOpenMedia={openMedia}
                         dupIds={null} onDuplicates={() => h.openSettings("sincronizacao")} songLine={songLine} picking={picking} setPicking={setPicking} addSlot={addSlot} folders={folders} />
                 </Panel>
             </ImportSongsContext.Provider>
@@ -237,7 +236,7 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
             <TabsPanel c={c} data={data} tabs={tabs} active={panelTabNow} setActive={setPanelTab} onMenu={() => setMenu(menu === "tabs:panel" ? null : "tabs:panel")} menuOpen={menu === "tabs:panel"}
                 items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={writes.saveOperatorNotes} onPrepare={(s) => c.setPrev(s)} onGo={(s) => h.sendNow(s)}
                 messages={messages} onAddSong={writes.addSong} onAddMedia={(m, extra) => writes.addStageToSetlist(stageFromMedia(m), undefined, { extra })} onAddStage={(s) => writes.addStageToSetlist(s)}
-                onLyricsSearch={(q) => setLyrics({ q })} onWriteMessage={writes.writeMessage} />
+                onLyricsSearch={(q) => setLyrics({ q })} onWriteMessage={writes.writeMessage} onEditNotice={openNotice} />
         );
     }
 

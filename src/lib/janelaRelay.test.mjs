@@ -12,6 +12,9 @@ test("a detached page sends what goes to the Prévia or on air; the console runs
     assert.ok(checkMessage({ type: "prev.step", d: -1 }, "janela"));
     assert.ok(checkMessage({ type: "song.saved", song: { id: "s1", title: "Hino", slides: [] } }, "janela"));
     assert.ok(checkMessage({ type: "setlist.material", material: { id: "m1", title: "Lição 1" } }, "janela"));
+    assert.ok(checkMessage({ type: "setlist.notice", notice: { id: "n1", title: "Retiro", duration: 20 } }, "janela"));
+    assert.equal(checkMessage({ type: "setlist.notice", notice: { id: "n1" } }, "janela"), null, "an aviso has its title");
+    assert.equal(checkMessage({ type: "setlist.notice", notice: { id: "n1", title: "x" } }, "console"), null, "only from a page");
     assert.ok(checkMessage({ type: "console.open", what: "novidades" }, "janela"));
     assert.ok(checkMessage({ type: "console.open", what: "settings", section: "console" }, "janela"));
     assert.ok(checkMessage({ type: "console.hello" }, "janela"));

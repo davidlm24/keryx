@@ -21,6 +21,9 @@ export const TYPE_INFO = {
 };
 export const typeLabel = (t) => TYPE_INFO[String(t || "").toUpperCase()]?.label || String(t || "Item");
 export const typeIcon = (t) => TYPE_INFO[String(t || "").toUpperCase()]?.icon || "list";
+// An aviso (CommunicationVideo row) as a Setlist item: the Setlist's + ›
+// Aviso, the planner, and Novo aviso… started from either (2026-11-09).
+export const noticeItem = (p) => ({ type: "ANNOUNCEMENT", title: p?.title || p?.text || "Aviso", contentId: p?.id, duration: Number(p?.duration) || 60 });
 export const isSection = (item) => String(item?.type || "").toUpperCase() === "SECTION";
 // What the console can put on air (sections and disabled items cannot).
 export const playableItems = (items) => (items || []).filter((i) => !isSection(i) && i.enabled !== false);
