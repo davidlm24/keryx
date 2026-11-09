@@ -8,11 +8,12 @@ import { mainLayer } from "@shared/live-state.mjs";
 import { PREF_OUTPUTS, prefState, prefVars, pastorOptions, streamOptions, ruleOf, noticeOnly } from "@/lib/outputPrefs";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useLiveNow } from "@/hooks/useLiveState";
+import { layoutCountsTime } from "@/lib/layouts";
 
 // What this screen shows right now (or a sample when nothing is on air),
 // exactly as the page draws it: its rule (O que esta tela recebe), theme,
 // design, scale and margins. A still — previews never play (ScreenRenderer
-// preview). Used by the Editor's Ajustes, Telas e saídas' thumbnails and the
+// preview; a design's Projeção element too: LayoutRenderer without motion). Used by the Editor's Ajustes, Telas e saídas' thumbnails and the
 // network screens' rows (owner 2026-10-13). Moved here from OutputPrefCard in
 // Rodada H2.
 export default function OutputPreview({ path, pref, design, themes = [], live, church }) {
@@ -24,7 +25,9 @@ export default function OutputPreview({ path, pref, design, themes = [], live, c
     // The Palco, the Pastor and a design count on this preview's own clock
     // (their clocks, the sample service's 42 min); a renderer view on the
     // renderer's, which ticks only while it shows a timer or an aviso.
-    const now = useLiveNow(1000, !isStream && (Boolean(design) || ((isStage || isPastor) && !pref.content)));
+    // A design ticks only when it shows time (layoutCountsTime): a still
+    // frame otherwise, as every preview but the Programa (owner 2026-11-09).
+    const now = useLiveNow(1000, !isStream && ((Boolean(design) && layoutCountsTime(design)) || ((isStage || isPastor) && !pref.content)));
     const madeAt = useRef(now);
     const sample = useMemo(() => sampleLive(madeAt.current), []);
     const notice = useMemo(() => sampleNotice(madeAt.current), []);
