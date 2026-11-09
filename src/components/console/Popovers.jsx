@@ -267,7 +267,7 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                 <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo</Btn>
                 {/* Owner 2026-11-08 (mockup I1 = A): each open output shows, for
                     3 s, its screen's number (or "Janela") and its name. */}
-                {onIdentify && <Btn kind="outline" onClick={onIdentify} title="Mostra em cada saída aberta o número da tela e o nome da saída">Identificar saídas</Btn>}
+                {onIdentify && <Btn kind="outline" onClick={onIdentify} title="Mostra em cada tela ligada o seu número e as saídas que estão nela">Identificar telas</Btn>}
                 <span style={{ flex: 1 }} />
                 <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas</Btn>
             </div>

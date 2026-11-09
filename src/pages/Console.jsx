@@ -532,14 +532,15 @@ export default function Console() {
     // (electron/soundEngine.cjs); the browser preview has none, and its
     // Projeção tab plays the sound as the projector did before.
     const soundOut = keryx.isPreview ? Boolean(projector?.open) : true;
-    // Identificar saídas (owner 2026-11-08, mockup I1 = A): each open output
-    // shows its screen's number and its name, as the console calls it.
-    const identifyOutputs = () => {
+    // Identificar telas (owner 2026-11-09, one for all: the Saídas popover,
+    // Verificar and Configurações): every monitor its number and the
+    // outputs on it, as the console calls them (identifyPlan, outputs.cjs).
+    const identifyScreens = () => {
+        if (keryx.isPreview) { c.say("Na prévia as telas não se identificam: só no aplicativo."); return; }
         const names = Object.fromEntries(outputs.map((o) => [o.key, o.label]));
-        Promise.resolve(window.keryxDesktop?.displays.identifyOutputs(names)).then((res) => {
+        Promise.resolve(window.keryxDesktop?.displays.identify(names)).then((res) => {
             if (res?.error) c.say(res.error.message);
-            else if (res && res.data === 0) c.say("Nenhuma saída aberta numa tela agora.");
-        }).catch(() => {});
+        }).catch(() => c.say("Não foi possível mostrar os números nas telas."));
     };
 
     // The live state says where the service is; the Prévia says what is next in hand.
@@ -1786,7 +1787,7 @@ export default function Console() {
             {open === "verificar" && (
                 <div className="verif-overlay">
                     <VerifyView c={c} items={playable} data={data} outputs={outputs.filter((o) => !o.removed)} network={network}
-                        onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
+                        onIdentify={identifyScreens}
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
             )}
@@ -1803,7 +1804,7 @@ export default function Console() {
             <SyncPop open={open} setOpen={setOpen} onSettings={openSettings} say={c.say} songsHere={data.songs.length} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} onIdentify={window.keryxDesktop ? identifyOutputs : null} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} displays={monitors} outputs={outputs} onPlace={window.keryxDesktop ? placeOutput : null} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} onIdentify={window.keryxDesktop ? identifyScreens : null} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} displays={monitors} outputs={outputs} onPlace={window.keryxDesktop ? placeOutput : null} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)}
                 songLine={songLine} onSongLine={(k, v) => setLayout({ ...layout, [SONG_LINE_KEYS[k]]: v })}
                 group={canGroup(libTabNow) ? layout.libGroup?.[libTabNow] === true : null} onGroup={(on) => setLibGroup(libTabNow, on)} />

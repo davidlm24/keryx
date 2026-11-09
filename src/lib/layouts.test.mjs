@@ -252,3 +252,10 @@ test("layoutHasTimer and the screen element", () => {
     assert.ok(!layoutHasTimer(findLayout("factory:pastor")));
     assert.ok(elementHasContent(normalizeElement({ type: "screen" }), layoutContext({ live: null, now: T0 })));
 });
+
+test("a design counts time only with a clock, the date, a timer or a span", async () => {
+    const { layoutCountsTime } = await import("./layouts.js");
+    assert.equal(layoutCountsTime({ elements: [{ type: "lyrics" }, { type: "title" }] }), false);
+    for (const type of ["clock", "date", "timer", "service_time", "air_for", "song_time"]) assert.equal(layoutCountsTime({ elements: [{ type: "lyrics" }, { type }] }), true, type);
+    assert.equal(layoutCountsTime(null), false);
+});

@@ -191,7 +191,7 @@ export function createPreviewBridge() {
             return win ? { data: true } : { error: { message: "O navegador bloqueou a nova aba: permita pop-ups para a prévia.", status: 400 } };
         },
         async close(key) { windows.get(key)?.close(); windows.delete(key); return { data: true }; },
-        identify: async () => ({ data: true }),
+        identify: async () => ({ data: 0 }),
         identifyOutputs: async () => ({ data: 0 }),
         // Exportar / Importar ajustes das saídas, the browser's way: a download
         // and a file picker (the app uses its own save and open dialogs).
