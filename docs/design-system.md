@@ -54,7 +54,7 @@ network pages keep their own, pinned value by value, with the reason).
 | Layers, the console | `--z-scrim` 27 · `--z-menubar` 28 · `--z-window-scrim` 29 · `--z-pop` 30 · `--z-window` 40 · `--z-window-over` 41 · `--z-drawer` 42 · `--z-verify` 43 · `--z-library-scrim` 44 · `--z-library` 45 · `--z-dialog` 50 · `--z-confirm-scrim` 51 · `--z-confirm` 52 · `--z-menu` 53 · `--z-menu-top` 54 · `--z-toast` 60 · `--z-drag` 70. A new layer is a name by its role, never a number. |
 | Motion | `--duration-fast` 120 ms + `--ease-out` (hover, state) · `--dur-fold` 180 ms + `--ease-fold` (a fold, No ar, a group, a chevron; Dock.jsx reads them). |
 | Opacity | `--dim` 0.55 (done, hidden, disabled) · `--hatch` 0.85. |
-| Glass | `--glass-bg` (bg-0 at 66 %) · `--glass-blur` (blur 24 px, saturate 180 %, the backdrop darkened to 65 %) · `--shadow-glass` (a light rim and ring, a deep shadow) · inside it `--glass-hover` / `--glass-selected` / `--glass-pressed` (fg-1 at 7 / 12 / 16 %, in bg-2/3/4's place) · `--glass-field` + `--shadow-glass-field` (the palette's field) · `--blur-backdrop` (4 px, THE window's backdrop) · `--z-behind`. Only on what floats: see Glass. |
+| Glass | `--glass-bg` (bg-0 at 76 %) · `--glass-blur` (blur 36 px, saturate 180 %, the backdrop darkened to 50 %) · `--shadow-glass` (a light rim and ring, a deep shadow) · inside it `--glass-hover` / `--glass-selected` / `--glass-pressed` (fg-1 at 7 / 12 / 16 %, in bg-2/3/4's place) · `--glass-field` + `--shadow-glass-field` (the palette's field) · `--blur-backdrop` (4 px, THE window's backdrop) · `--z-behind`. Only on what floats: see Glass. |
 | Fonts | `--font-sans` / `--font-display`: Geist, then the system font. |
 
 A new token is a line in `tokens.json` with its usage (what it is for, never
@@ -772,3 +772,6 @@ Kept so old commits and the canvas make sense; none of this is a rule.
   tints (the field, the selected row and Saídas' chips had no contrast), the
   palette's field became concentric, and submenus blur (a menu with one keeps
   its glass on ::before).
+- **2026-11-09 — Glass, round 3** (the owner, after desktop:dev: "stronger
+  blur and darker"): bg-0 at 76 % over a backdrop blurred 36 px and darkened
+  to 50 %.

@@ -62,7 +62,7 @@
   --chrome-label: #0d0d0ccc;
   --chrome-mark: #000000b3;
   --scrim-dim: #0d0d0c99;
-  --glass-bg: color-mix(in srgb, var(--bg-0) 66%, transparent);
+  --glass-bg: color-mix(in srgb, var(--bg-0) 76%, transparent);
   --glass-field: color-mix(in srgb, var(--fg-1) 8%, transparent);
   --glass-hover: color-mix(in srgb, var(--fg-1) 7%, transparent);
   --glass-selected: color-mix(in srgb, var(--fg-1) 12%, transparent);
@@ -118,7 +118,7 @@
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --dim: 0.55;
   --hatch: 0.85;
-  --glass-blur: blur(24px) saturate(180%) brightness(0.65);
+  --glass-blur: blur(36px) saturate(180%) brightness(0.5);
   --blur-backdrop: blur(4px);
   --z-behind: -1;
   --z-screen: 1;
