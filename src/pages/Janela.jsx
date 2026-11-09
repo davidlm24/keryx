@@ -17,6 +17,11 @@
 // letra automática ticker and the Fundo's follow-ups run once, there): the
 // page gets a light `c` (useJanelaConsole).
 //
+// A dock PANEL of the console comes here too (owner 2026-11-09, "Painéis em
+// janela": the Biblioteca, the Setlist or the Painel, ?page=panel&module=<id>,
+// PanelPage.jsx), its own window per panel (keryx-janela-panel-<id>); the
+// console reopens it when it opens and takes the panel back when it closes.
+//
 // Desktop only: never in NETWORK_SCREENS (electron/lan.cjs). One window per
 // kind of page (keryx-janela-<page>): detaching it again navigates that one,
 // and a page with unsaved changes asks before its window goes
@@ -43,7 +48,7 @@ import { useWinPageFocus } from "@/components/console/useDialogFocus";
 import { setEditorHost } from "@/lib/editorWindow";
 import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { setRelayedProgress, relayPagesRetry } from "@/hooks/usePagesBackfill";
-import { PAGE_TITLES, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
+import { PAGE_TITLES, pageTitle, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
 import { resolveSection } from "@/lib/console/settings";
 import { liveAction, escapeTarget } from "@/lib/console/keys";
 import { usePackageHost } from "@/components/console/PackageDialogs";
@@ -58,6 +63,8 @@ const KEEPS_FOCUS = ".dialog, .palette, .lyr, .addmenu";
 
 // The theme in use, as the console keeps it on this computer (localStorage):
 // what a song or a material in this window is dressed with in its previews.
+// Temas or Camadas in a window of their own change it (setThemeId): the
+// same key, which the console follows through `storage` (useConsole).
 function useThemeInUse() {
     const read = () => { try { return localStorage.getItem(THEME_IN_USE_KEY) || null; } catch { return null; } };
     const [id, setId] = useState(read);
@@ -66,7 +73,11 @@ function useThemeInUse() {
         window.addEventListener("storage", on);
         return () => window.removeEventListener("storage", on);
     }, []);
-    return id;
+    const set = useCallback((next) => {
+        setId(next || null);
+        try { if (next) localStorage.setItem(THEME_IN_USE_KEY, next); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
+    }, []);
+    return [id, set];
 }
 
 // What the pages need of a console, without the console: the live state,
@@ -76,14 +87,19 @@ function useThemeInUse() {
 // the console says it holds (console.prev).
 function useJanelaConsole() {
     const live = useLiveState();
-    const themeId = useThemeInUse();
+    const [themeId, setThemeId] = useThemeInUse();
     const { stamp, bgPrefs, fitFor } = useStamp(themeId);
     const { toast, toastAction, say, holdToast } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
+    // The item Esc took off, as the console keeps it (a detached Slides
+    // shows it, "parou aqui"); its arrows move it there (last.move).
+    const [last, setLast] = useState(null);
+    const moveLast = useCallback((d) => { relaySend("janela", "last.move", { d }); }, []);
     useEffect(() => {
         const off = relayListen("janela", (m) => {
             if (m.type === "console.prev") setPrevMirror(m.stage);
+            else if (m.type === "console.last") setLast(m.last);
             // The PDFs' pages are the console's work: their progress comes from
             // it, and Tentar de novo goes back to it (Rodada H, HB).
             else if (m.type === "pages.progress") setRelayedProgress(m.pages);
@@ -99,7 +115,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, cur: live, bgPrefs, fitFor, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
+    return { live, cur: live, bgPrefs, fitFor, themeId, setThemeId, prev, setPrev, last, moveLast, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,
@@ -124,7 +140,7 @@ export default function Janela() {
     // The focus moves into the page shown when it changes (C-12), as in the console.
     const boxRef = useRef(null);
     useWinPageFocus(boxRef, stack);
-    useWindowTitle(winTop ? PAGE_TITLES[winTop.page] : "");
+    useWindowTitle(winTop ? pageTitle(winTop) : "");
 
     // Configurações' section, and the console's culto (Planejar o culto's
     // green dot: the console says it; its tabs are the planner's own, O9).
@@ -219,6 +235,7 @@ export default function Janela() {
         cfg, setCfg, uiLayout: null, setUiLayout: () => {}, restoreLayout: () => {},
         openScreen: (path) => setStack((s) => winPush(s, { page: "screen", props: { path: path || "/Projection" } }, "Telas e saídas")),
         openWhatsNew: () => toConsole("console.open", { what: "novidades" }, "As novidades abriram no console."),
+        openSettings: (section) => toConsole("console.open", { what: "settings", ...(section ? { section } : {}) }, "Configurações abriu no console."),
         plannerFocus: null,
     };
 
@@ -226,7 +243,8 @@ export default function Janela() {
     // one level of the stack — the first closes the window). Tela preta and
     // Logo work on every page, as behind the console's window; the Escola
     // bíblica is the projecting page, so there every live key works — Enter
-    // sends the console's Prévia, ↑/↓ walk it, ←/→ move what is on air, C clears.
+    // sends the console's Prévia, ↑/↓ walk it, ←/→ move what is on air, C clears
+    // — and so is a dock panel in a window of its own (Painéis em janela).
     const letters = usePrefs().letter_keys;
     const keysRef = useRef(null);
     keysRef.current = (e) => {
@@ -246,11 +264,12 @@ export default function Janela() {
         // Prevented: a select focused with Tab would also jump to its option.
         if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
         else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
-        else if (winTop?.page !== "school") return;
+        else if (winTop?.page !== "school" && winTop?.page !== "panel") return;
         else if (action === "send") { e.preventDefault(); toConsole("prev.send", {}); }
         else if (action === "next" || action === "prev") { e.preventDefault(); c.moveSlide(action === "next" ? 1 : -1); }
         else if (action === "selUp" || action === "selDown") { e.preventDefault(); toConsole("prev.step", { d: action === "selDown" ? 1 : -1 }); }
         else if (action === "clear") { e.preventDefault(); c.clearText(); }
+        else if (action === "undo" && c.toastAction?.undo) { e.preventDefault(); c.toastAction.run(); }
     };
     useEffect(() => {
         const onKey = (e) => keysRef.current(e);
@@ -281,7 +300,7 @@ export default function Janela() {
         <PackageContext.Provider value={pkg.value}>
         <div className="kx console janela" onClick={onMouseClick}>
             {stack.length > 0 && (
-                <div ref={boxRef} className="win-dialog kx-win is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
+                <div ref={boxRef} className="win-dialog kx-win is-detached" role="main" aria-label={pageTitle(winTop)}>
                     {stack.map((entry, i) => {
                         const active = i === stack.length - 1;
                         const page = winPage(entry, { active, escRef: winRef(entry.key), onClose: (all = false) => leaveTop(Boolean(all)) }, host);

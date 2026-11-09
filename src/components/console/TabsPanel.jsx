@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Row, Empty, FoldBtn, FoldStrip, foldStrip, onTabsKey, tabStop, DockEditCtx, DockEditHead } from "./kx";
+import { Row, Empty, FoldBtn, DetachBtn, FoldStrip, foldStrip, onTabsKey, tabStop, DockEditCtx, DockEditHead } from "./kx";
 import { TeacherNotes } from "./CenterPanel";
 import { QuickAlert, ReadyTimers, OnAirTimer, ToolsPicker } from "./QuickTools";
 import { restoreArgs } from "@/lib/projection";
@@ -153,7 +153,7 @@ function AirHistory({ c, onPrepare, onGo }) {
 // audit): one tab at a time, the ones the operator checked in its chooser. Its
 // thin header (title "Painel", the chooser at its right) is Rodada E1's;
 // the fold chevron (`fold`, the dock's: Panel) right of it, Rodada F4.
-export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo, fold, messages, onAddSong, onAddMedia, onAddStage, onLyricsSearch, onWriteMessage }) {
+export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo, fold, detach = null, messages, onAddSong, onAddMedia, onAddStage, onLyricsSearch, onWriteMessage }) {
     const strip = foldStrip(fold);
     // Editar disposição: its header is the handle, as every panel's (kx.jsx Panel).
     const edit = useContext(DockEditCtx);
@@ -167,6 +167,7 @@ export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, me
                 <div className="kx-panel-h tabs-panel-h">
                     <span className="kx-section">Painel</span>
                     {onMenu && <TabsPlus row="panel" onMenu={onMenu} menuOpen={menuOpen} />}
+                    <DetachBtn onDetach={detach} />
                     <FoldBtn fold={fold} />
                 </div>
             )}

@@ -854,9 +854,16 @@ export function resizeChild(dock, path, index, px) {
 
 const contextOf = (tree) => ({ playerDocked: !leaves(tree).includes("player") });
 
+// A module in a window of its own (fitDock's `away`, detach.js) takes no
+// room in the dock: its minimum is not counted.
+const awayIn = (ctx, id) => Boolean(ctx?.away?.has(id));
+const allAway = (node, ctx) => Boolean(ctx?.away?.size) && leaves(node).length > 0 && leaves(node).every((id) => ctx.away.has(id));
+
 function groupMin(tabs, row, ctx) {
-    let m = Math.max(...tabs.map((id) => (row ? MODULES[id].minW : MODULES[id].minH)));
-    if (!row && ctx.playerDocked && tabs.includes("programa")) m += PLAYER_SLOT;
+    const shown = tabs.filter((id) => !awayIn(ctx, id));
+    if (!shown.length) return 0;
+    let m = Math.max(...shown.map((id) => (row ? MODULES[id].minW : MODULES[id].minH)));
+    if (!row && ctx.playerDocked && shown.includes("programa")) m += PLAYER_SLOT;
     return m;
 }
 
@@ -865,7 +872,9 @@ function groupMin(tabs, row, ctx) {
 export function minSize(node, row, ctx = contextOf(node), eff = true) {
     if (isGroup(node)) return groupMin(node.tabs, row, ctx);
     const along = (node.dir === "row") === row;
-    const ms = node.children.map((c) => minSize(c, row, ctx, eff));
+    const kids = node.children.filter((c) => !allAway(c, ctx));
+    if (!kids.length) return 0;
+    const ms = kids.map((c) => minSize(c, row, ctx, eff));
     const normal = along ? ms.reduce((a, b) => a + b, 0) + G * (ms.length - 1) : Math.max(...ms);
     return eff ? Math.min(normal, groupMin(leaves(node), row, ctx)) : normal;
 }
@@ -968,12 +977,18 @@ export function dockMotion(frame) {
 // Whether the change from one dockMotion to the next is eased (see above).
 export const easesBetween = (a, b) => Boolean(a && b) && a.w === b.w && a.h === b.h && a.shape === b.shape && a.motion !== b.motion;
 
-export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head = PANEL_HEAD } = {}) {
+// `away`: the modules in a window of their own (detach.js, layout.detached).
+// Each stays in its place in the tree — the window closing brings it back
+// there — and takes no room: a child made only of away modules is laid out
+// like a gone one (size 0, its path kept, easing out and in), and a group of
+// tabs simply leaves its away tabs out. The culto's modules only.
+export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head = PANEL_HEAD, away = [] } = {}) {
     if (!dock?.tree) return null;
     const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
     const shut = new Set(folded.filter(canFoldModule));
+    const off = new Set(away.filter((id) => MODULES[id] && !MODULES[id].env));
     const tree = treeFor(dock, w, h);
-    return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked, shut, head, exact: dock.mode === "exact" });
+    return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked, shut, head, away: off, exact: dock.mode === "exact" });
 }
 
 // The Bíblia's Livros, Capítulos and Versículos as tall as their cells
@@ -1077,16 +1092,23 @@ export function lyricsOnAir(live) {
 export const goneModules = (live) => (lyricsOnAir(live) ? [] : ["onair"]);
 
 // Several nodes shown as the tabs of one group (the first one's tab in front).
-function tabsFrame(nodes, path, w, h, target) {
-    const tabs = nodes.flatMap(leaves);
+function tabsFrame(nodes, path, w, h, target, ctx) {
+    const tabs = nodes.flatMap(leaves).filter((id) => !awayIn(ctx, id));
     const first = nodeAt(nodes[0], target.slice(path.length));
-    return { kind: "group", path, tabs, active: first?.active || tabs[0], w, h, collapsed: true, target };
+    return { kind: "group", path, tabs, active: tabs.includes(first?.active) ? first.active : tabs[0], w, h, collapsed: true, target };
 }
 
 function fitNode(node, path, w, h, ctx) {
-    if (isGroup(node)) return { kind: "group", path, tabs: node.tabs, active: node.active, w, h };
+    if (isGroup(node)) {
+        if (!ctx.away?.size) return { kind: "group", path, tabs: node.tabs, active: node.active, w, h };
+        // Its away tabs left out; all of them away, the group is an empty
+        // place that still names them (`away`: Dock.jsx keys its cell by it).
+        const tabs = node.tabs.filter((id) => !ctx.away.has(id));
+        const active = tabs.includes(node.active) ? node.active : tabs[0] || null;
+        return { kind: "group", path, tabs, active, w, h, ...(tabs.length < node.tabs.length ? { away: node.tabs.filter((id) => ctx.away.has(id)) } : {}) };
+    }
     const row = node.dir === "row";
-    const out = node.children.map((c, i) => (folds(c) && leaves(c).every((id) => ctx.folding?.has(id)) ? i : -1)).filter((i) => i >= 0);
+    const out = node.children.map((c, i) => ((folds(c) && leaves(c).every((id) => ctx.folding?.has(id))) || allAway(c, ctx) ? i : -1)).filter((i) => i >= 0);
     // The operator's folds (fitDock's `folded`): one open child stays.
     const shown = node.children.map((_, i) => i).filter((i) => !out.includes(i));
     let shut = shown.filter((i) => ctx.shut?.has(foldable(node.children[i])));
@@ -1137,7 +1159,7 @@ function fitNode(node, path, w, h, ctx) {
     }
     if (items.length === 1 && node.children.length - out.length > 1) {
         const target = firstGroupPath(node, path);
-        return tabsFrame([node], path, w, h, target);
+        return tabsFrame([node], path, w, h, target, ctx);
     }
     // Exato: the open children share what the locked and folded ones leave
     // by their weights (a group of tabs by the sum of its children's), each
@@ -1170,7 +1192,7 @@ function fitNode(node, path, w, h, ctx) {
         const fold = one ? foldOf(it.at[0]) : null;
         const sub = one
             ? fitNode(node.children[it.at[0]], first, cw, ch, ctx)
-            : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first));
+            : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first), ctx);
         const frame = fold ? { ...sub, fold } : sub;
         const fixed = exact ? k !== exact.flex : it.size !== null;
         const child = { index: it.at[0], at: it.at, size: dims[k], fixed, frame, ...(it.locked && one ? { locked: true } : {}), ...(it.folded && one ? { folded: true } : {}), ...(exact ? { min: it.min, weight: wOf(it) } : {}) };

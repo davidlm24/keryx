@@ -134,6 +134,16 @@ let bibleSetup = null;
 // "Fechar o KERYX"): the console's X no longer asks.
 let quitting = false;
 app.on("before-quit", () => { quitting = true; });
+// The console's X is closing every other window before the quit (closeGuard):
+// a dock panel's window closing then is not the operator taking it back.
+let consoleClosing = false;
+// The open dock panels' windows (Painéis em janela), by kind (panel-<id>):
+// one per panel, a second open only brings it forward.
+const panelWindows = new Map();
+// The panels whose windows closed while the console was closing; if the
+// operator keeps KERYX open after all, they come back to the console.
+const panelsClosedForQuit = new Set();
+const panelBack = (module) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("keryx:janela", { type: "panel.closed", module, from: "janela" }); };
 
 // Same database, same port: a second launch just focuses the first.
 const gotLock = app.requestSingleInstanceLock();
@@ -227,6 +237,13 @@ function guardWindow(win) {
             // popup opens where the page asked.
             const key = outputKeyForUrl(url, appOrigin);
             const kind = !key && windowState.janelaKind(url, appOrigin);
+            // A dock panel already in its window: that one, never a second.
+            const open = kind && windowState.panelOfKind(kind) ? panelWindows.get(kind) : null;
+            if (open && !open.isDestroyed()) {
+                if (open.isMinimized()) open.restore();
+                open.focus();
+                return { action: "deny" };
+            }
             return {
                 action: "allow",
                 overrideBrowserWindowOptions: {
@@ -265,6 +282,19 @@ function guardWindow(win) {
         if (kind) {
             if (janelaPlacement(kind).maximized) child.maximize();
             child.on("close", () => keepJanelaPlacement(child, kind));
+            // A dock panel's window (Painéis em janela): closing it brings the
+            // panel back to the console, where it was — unless the console
+            // itself is closing (it reopens the panel at the next launch).
+            const panelId = windowState.panelOfKind(kind);
+            if (panelId) {
+                panelWindows.set(kind, child);
+                child.on("close", () => {
+                    if (quitting) return;
+                    if (consoleClosing) { panelsClosedForQuit.add(panelId); return; }
+                    panelBack(panelId);
+                });
+                child.on("closed", () => { if (panelWindows.get(kind) === child) panelWindows.delete(kind); });
+            }
         }
     });
 
@@ -361,14 +391,14 @@ function janelaPlacement(kind) {
     } catch { /* the primary below */ }
     if (home === null) home = screen.getPrimaryDisplay().id;
     const displays = screen.getAllDisplays().map((d) => ({ primary: d.id === home, bounds: d.bounds, workArea: d.workArea }));
-    return windowState.restoreWindow(saved, displays, windowState.JANELA);
+    return windowState.restoreWindow(saved, displays, windowState.janelaSpec(kind));
 }
 
 function janelaWindowOptions(kind) {
     return {
         ...janelaPlacement(kind).bounds,
-        minWidth: windowState.JANELA.min.width,
-        minHeight: windowState.JANELA.min.height,
+        minWidth: windowState.janelaSpec(kind).min.width,
+        minHeight: windowState.janelaSpec(kind).min.height,
         backgroundColor: JANELA_BG,
         ...(process.platform === "win32"
             ? { titleBarStyle: "hidden", titleBarOverlay: { color: JANELA_BG, symbolColor: TITLEBAR_SYMBOLS, height: JANELA_BAR_HEIGHT } }
@@ -434,7 +464,15 @@ function createMainWindow(settings) {
         const onAir = Boolean(liveRules?.isOnAir && live && liveRules.isOnAir(live.get()));
         const asked = closeGuard.shouldConfirmClose({ enabled, quitting }) ? closeGuard.askClose(dialog, mainWindow, onAir) : Promise.resolve(true);
         const others = () => BrowserWindow.getAllWindows().filter((w) => w !== mainWindow && !w.isDestroyed() && !outputKeyForUrl(w.webContents.getURL(), appOrigin) && !(soundEngine && soundEngine.isEngine(w)));
-        asked.then((close) => (close ? closeGuard.closeAll(others()) : false)).then((closed) => { if (closed) app.quit(); }, () => {});
+        // While the other windows close for the quit, a dock panel's closing
+        // keeps it detached (consoleClosing); kept open, it counts again.
+        const keptOpen = () => {
+            consoleClosing = false;
+            for (const m of panelsClosedForQuit) panelBack(m);
+            panelsClosedForQuit.clear();
+        };
+        asked.then((close) => { consoleClosing = Boolean(close); return close ? closeGuard.closeAll(others()) : false; })
+            .then((closed) => { if (closed) app.quit(); else keptOpen(); }, keptOpen);
     });
     mainWindow.on("closed", () => { mainWindow = null; });
     // Windows is shutting down or logging off (it may not wait for will-quit):

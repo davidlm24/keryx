@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PAGE_TITLES, isEditorPage, winSize, openStack, push, pop, top, backLabel, replaceTop, stackFromParams, detachSpec, janelaName } from "./nav.js";
+import { PAGE_TITLES, pageTitle, isEditorPage, winSize, openStack, push, pop, top, backLabel, replaceTop, stackFromParams, detachSpec, janelaName } from "./nav.js";
 
 test("openStack: one level, no Voltar", () => {
     const s = openStack({ page: "media" });
@@ -143,4 +143,17 @@ test("detachSpec: a level pushed from another leaves alone; Sincronizar takes it
     assert.equal(detachSpec(push(openStack({ page: "song", props: { id: "new" } }), { page: "sync" })), null);
     assert.equal(detachSpec([]), null);
     assert.equal(janelaName("song"), "keryx-janela-song");
+});
+
+test("a dock panel's window (Painéis em janela): its params, its title, F5 keeps it", () => {
+    const s = stackFromParams(new URLSearchParams("page=panel&module=setlist"));
+    assert.deepEqual([top(s).page, top(s).props, top(s).back], ["panel", { module: "setlist" }, null]);
+    assert.equal(pageTitle(top(s)), "Setlist");
+    assert.equal(pageTitle({ page: "media" }), "Mídia");
+    assert.equal(stackFromParams(new URLSearchParams("page=panel&module=programa")), null, "the Programa never leaves");
+    // The window's URL follows its first level (Janela.jsx): the same params back.
+    const spec = detachSpec(s);
+    assert.deepEqual([spec.pop, spec.page], [1, "panel"]);
+    assert.deepEqual(top(stackFromParams(new URLSearchParams(spec.query))).props, { module: "setlist" });
+    assert.equal(isEditorPage("panel"), false);
 });

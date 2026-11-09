@@ -16,6 +16,10 @@ const MIN = { width: 960, height: 600 };
 const DEFAULT = { width: 1440, height: 900 };
 // A detached page: the console's floating window's minimum (winLayout.js).
 const JANELA = { min: { width: 760, height: 480 }, size: { width: 1280, height: 820 }, maximize: false };
+// A dock panel in a window of its own (Painéis em janela, src/lib/console/
+// detach.js): narrow and tall like the column it left; kept per panel.
+const PANEL_JANELA = { min: { width: 300, height: 360 }, size: { width: 420, height: 820 }, maximize: false };
+const PANEL_SMALL = { min: { width: 300, height: 300 }, size: { width: 360, height: 600 }, maximize: false };
 // How much of the window's top strip (where the console's bar is, the one the
 // operator drags it by) must lie on a monitor for the place to count: the
 // whole width given here, half the height.
@@ -98,11 +102,22 @@ function janelaKind(url, origin) {
     try {
         const u = new URL(url);
         if (u.origin !== origin || !/^\/(Janela|Editor)\/?$/i.test(u.pathname)) return "";
-        const page = (u.searchParams.get("page") || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
+        const clean = (v) => (v || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
+        const page = clean(u.searchParams.get("page"));
+        // A dock panel: one kind per panel (its own place and size).
+        if (page === "panel") { const m = clean(u.searchParams.get("module")); return m ? `panel-${m}` : "panel"; }
         return page || (u.searchParams.get("screen") ? "screen" : "theme");
     } catch {
         return "";
     }
 }
 
-module.exports = { SETTINGS_KEY, JANELA_KEY, MIN, DEFAULT, JANELA, normalizeWindowState, restoreWindow, windowStateToSave, janelaKind };
+// The minimum and default size of a kind of detached window (restoreWindow's opts).
+function janelaSpec(kind) {
+    if (typeof kind !== "string" || !kind.startsWith("panel")) return JANELA;
+    return kind === "panel-camadas" || kind === "panel-temas" ? PANEL_SMALL : PANEL_JANELA;
+}
+// The module a panel's window shows (its kind), or "".
+const panelOfKind = (kind) => (typeof kind === "string" && kind.startsWith("panel-") ? kind.slice(6) : "");
+
+module.exports = { SETTINGS_KEY, JANELA_KEY, MIN, DEFAULT, JANELA, PANEL_JANELA, normalizeWindowState, restoreWindow, windowStateToSave, janelaKind, janelaSpec, panelOfKind };

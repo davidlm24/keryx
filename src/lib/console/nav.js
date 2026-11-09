@@ -7,6 +7,7 @@
 // level closes), the (x) closes the whole stack, and every exit goes
 // through the top page's unsaved guard (Console.jsx routes it). Pure data,
 // no DOM, so node --test checks it (nav.test.mjs).
+import { panelTitle, panelFromParams } from "./detach.js";
 //
 // An entry: { page, props, back, key }.
 //   page  — one of PAGE_TITLES' keys.
@@ -30,7 +31,12 @@ export const PAGE_TITLES = {
     reports: "Relatórios",
     theme: "Editor de temas",
     screen: "Editor da tela",
+    // A dock panel in a window of its own (detach.js, PanelPage.jsx): the
+    // bar reads the module's name (pageTitle); never on the console's stack.
+    panel: "Painel",
 };
+// The title an entry's bar shows: a panel's is its module's name.
+export const pageTitle = (e) => (e?.page === "panel" ? panelTitle(e.props?.module) : PAGE_TITLES[e?.page] || "");
 
 // The pages that take the larger Editor window (CSS .win-dialog.is-editor);
 // navigating between sizes animates the frame (console.css).
@@ -77,6 +83,8 @@ export const replaceTop = (stack, props, { keep = false } = {}) => {
 const some = (v) => (v && v !== "1" ? v : null);
 export const stackFromParams = (params) => {
     const get = (k) => params.get(k);
+    // A dock panel's window (Painéis em janela): ?page=panel&module=<id>.
+    if (get("page") === "panel") { const m = panelFromParams(params); return m ? openStack({ page: "panel", props: { module: m } }) : null; }
     if (get("config")) return openStack({ page: "config", props: some(get("config")) ? { section: get("config") } : {} });
     // ?song=<id>&sync=1: the Editor de música, Sincronizar opening on top.
     if (get("song")) return openStack({ page: "song", props: { id: get("song"), ...(get("sync") ? { sync: true } : {}) } });
@@ -120,6 +128,8 @@ export const detachSpec = (stack, at = {}) => {
         case "reports": return one("reports", { reports: "1" });
         case "theme": return one("theme", { theme: p.id || "new" });
         case "screen": return one("screen", { screen: p.path || "/Projection" });
+        // Only ever a /Janela's own first level (its URL follows it on F5).
+        case "panel": return p.module ? one("panel", { module: p.module }) : null;
         case "sync": {
             const below = stack.length > 1 ? stack[stack.length - 2] : null;
             if (below?.page !== "song" || !below.props?.id || below.props.id === "new") return null;

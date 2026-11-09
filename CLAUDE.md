@@ -1104,7 +1104,51 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `console.prev` (its Prévia, which the detached Escola shows). The
   console runs them through its own `setPrev`/`sendStage`, so the Prévia,
   the history and the log stay its own. Tela preta and Logo work in every
-  detached page; in the Escola every live key does. The Bíblia is the
+  detached page; in the Escola every live key does.
+  **"Destacar em janela" on the dock's panels** (owner 2026-11-09, mockup
+  "Painéis em janela", D1–D5 = A): the Biblioteca, the Setlist, the
+  Painel, Camadas, Temas and the Slides (`DETACHABLE` in
+  `src/lib/console/detach.js`, tested — never the Programa, the Prévia, No
+  ar, the Player or the Bíblia's) can each live in a window of
+  their own, `/Janela?page=panel&module=<id>` (window
+  `keryx-janela-panel-<id>`; `janelaKind` → `panel-<id>` and `janelaSpec`
+  in windowState.cjs: bounds and a 300 px minimum per panel; main brings an
+  open one forward instead of a second), hosted by `PanelPage.jsx` (the
+  WinBar with the module's name, then the panel as in the console, its
+  title left to the bar). The door is the ⧉ `external` right before the
+  fold chevron (`Panel detach`, TabsPanel's too, `DetachBtn` in kx.jsx)
+  and Editar disposição › Mover para… › "Para uma janela própria" / "Voltar
+  ao console". It is `layout.detached` (per computer, every width tier;
+  `restoreEnv`/Restaurar drop it): **the module stays in its place in the
+  dock** and fitDock's `away` takes it out of the frame like the No ar
+  strip's `gone` (never the tray: the Setlist is `required`, and
+  `returnModule` brings a module back to its default place); editing shows
+  it there, "· em janela"; Ver keeps its row checked with the ⧉ (unchecking
+  sends it to the tray and closes the window). The console opens a window
+  for each detached panel when one is detached and when KERYX opens (the
+  desktop only — `keryxDesktop.janela`, which the preview bridge lacks: in
+  the preview they come back at launch) and `panel.close`s it when it comes
+  back; the window closing brings it back (`panel.closed`: main sends it on
+  the child's close — never while the console itself is closing, so they
+  reopen next time; the page's × and, in the preview, its `pagehide` too).
+  The window reads the store, the live state and the console's layout
+  (`useSharedLayout`, `storage`) and writes its few layout keys through
+  `layout.patch` (`LAYOUT_PATCH_KEYS`, `layoutPatched` in layout.js); the
+  list's writes are `useSetlistWrites`, Setlist items as stages
+  `useBuildStage`, the Setlist's title and (+) `setlistMenus.jsx` — one
+  copy for both hosts. What goes on air goes to the console (`stage.send`,
+  with `keepPrev` for the Setlist's footer), the Autoplay's countdown comes
+  back as `console.autoplay` (`autoplay.cancel`), the Painel's dots are
+  `useSeenTabs` (the toasts stay `usePedidos`'s, whose Ver brings the
+  window forward with `panel.focus`). The theme in use clicked in a
+  detached Temas or Camadas is `keryx.themeInUse`, which the console follows
+  (`storage`, useConsole); `console.panels` tells a detached Camadas whether
+  to show the themes (Temas in the tray) and a detached Slides its No ar ·
+  Prévia tabs; `console.last` / `last.move` carry the Slides' "parou aqui".
+  Its live keys work as the Escola's; Esc clears a menu or a selection and,
+  with nothing to clear, ends the air through the console (`air.end`, D4 =
+  A: `console.ended` gives that window its own Desfazer, Ctrl+Z there →
+  `air.undo`); it never closes the window. The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Comparar, the Buscar field,
   notes). Where the modules go is the operator's: **each environment is a
   dock** (owner 2026-10-13, the "Disposição do console" prototype, model
@@ -1259,7 +1303,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Setlist beside it gives the room); the wide tier keeps its columns, which
   would otherwise move each time the No ar strip comes and goes.
   A new module is an entry in
-  dock.js `MODULES` and in `modulePanels`. **Disposições com nome**
+  dock.js `MODULES` and in `modulePanels` (and, if it may leave for a
+  window of its own, in detach.js `DETACHABLE` and `PanelPage.jsx`). **Disposições com nome**
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
   as it is ("Salvar como…", "Salvar" over the one in use, "Excluir…" via
   useConfirm), Ver › Disposição switches (Padrão = the console's own, never

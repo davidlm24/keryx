@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, densityOf, shownDensity, panelHead, loadLayout, restoreEnv, switchTier, normalizeFolded, toggleFolded, foldedList } from "./layout.js";
+import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, densityOf, shownDensity, panelHead, loadLayout, restoreEnv, switchTier, normalizeFolded, toggleFolded, foldedList, layoutPatched } from "./layout.js";
 import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
 import { DEFAULT_TILES } from "./multiview.js";
 import { DEFAULT_TABS } from "./panelTabs.js";
@@ -218,4 +218,26 @@ test("Travar fora da edição is the culto's, across the tiers (Rodada P4-1)", (
     assert.equal(switchTier(unlocked, "medium").dock.lock, undefined);
     // Unlocked and never arranged: null, the console's own (it follows the width).
     assert.equal(switchTier({ ...DEFAULT_LAYOUT, dock: small, dockTier: "wide" }, "medium", () => made).dock, null);
+});
+
+test("panels in a window of their own (Painéis em janela): per computer, cleaned, dropped by Restaurar", () => {
+    assert.deepEqual(DEFAULT_LAYOUT.detached, {});
+    assert.deepEqual(withStore({ libW: 300 }, () => loadLayout("x")).detached, {}, "a save from before");
+    assert.deepEqual(withStore({ detached: { lib: true, programa: true, abas: "x" } }, () => loadLayout("x")).detached, { lib: true });
+    const both = { ...DEFAULT_LAYOUT, detached: { lib: true, setlist: true } };
+    assert.deepEqual(restoreEnv(both, "culto").detached, {}, "Padrão / Restaurar posições bring the culto's panels back");
+    assert.deepEqual(restoreEnv(both, "biblia").detached, { lib: true, setlist: true }, "the Bíblia's restore leaves them");
+});
+
+test("what a detached panel changes of the layout (layout.patch) is made safe here", () => {
+    const base = { ...DEFAULT_LAYOUT, dock: { tree: null }, libShowKey: true };
+    const out = layoutPatched(base, { libShowKey: false, libShowArtist: "yes", tabs: { lib: ["letras", "zz"] } });
+    assert.equal(out.libShowKey, false);
+    assert.equal(out.libShowArtist, false, "only true is true");
+    assert.deepEqual(out.tabs.lib, ["letras"]);
+    assert.deepEqual(out.tabs.panel, DEFAULT_TABS.panel, "a row it did not send gets the default");
+    assert.equal(out.dock, base.dock, "nothing else moves");
+    assert.deepEqual(layoutPatched(base, {}), base);
+    assert.equal(layoutPatched(base, { temasThumb: "huge" }).temasThumb, "small");
+    assert.equal(layoutPatched(base, { temasThumb: "large", temasNames: false }).temasNames, false);
 });

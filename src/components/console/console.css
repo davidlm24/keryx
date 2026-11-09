@@ -1259,6 +1259,14 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 /* Inside a column: 6 px between two things stacked, or the splitter itself. */
 .console .win-body .col { gap: 0; }
 .console .win-body .col > :not(.kx-split) + :not(.kx-split) { margin-top: var(--gutter); }
+/* A dock panel in a window of its own (Painéis em janela, PanelPage.jsx): the
+   panel fills the window's body, as it filled its place in the dock. */
+.console .win-body.panel-page > .kx-panel { flex: 1; min-width: 0; min-height: 0; }
+/* Its title is the window bar's: the panel header keeps only its tools (a
+   listhead never repeats the page title), the name still there for screen
+   readers. The Setlist's title is a control (the culto): it stays. */
+.console .win-body.panel-page > .kx-panel > .kx-panel-h { justify-content: flex-end; }
+.console .win-body.panel-page > .kx-panel > .kx-panel-h > span.kx-section { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* ---------- Configurações (canvas artboard 20) ---------- */
 /* The config page: the window's docked menu (WinNav, bundle.css) left,

@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { mediaFromYouTube } from "@/lib/mediaImport";
+import { useSetlistWrites } from "@/components/console/useSetlistWrites";
+import { useBuildStage } from "@/components/console/useBuildStage";
+import { setlistHeadItems, setlistAddItems, setlistCountOf, SetlistTitle } from "@/components/console/setlistMenus";
+import { camadasAddItems } from "@/components/console/camadasMenu";
+import { canDetach, isDetached, detachedList, detachModule, attachModule, panelQuery, panelWindowName, PANEL_WINDOW_FEATURES } from "@/lib/console/detach";
 import "@ds/tokens.css";
 import "@ds/components/bundle.css";
 import "@/components/console/console.css";
@@ -11,8 +15,8 @@ import { setVideoFiles } from "@/lib/videoFiles";
 import { usePagesBackfill, pagesProgressAll, subscribePagesProgress, retryPages } from "@/hooks/usePagesBackfill";
 import { canGroup } from "@/lib/console/libraryFolders";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
-import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
-import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
+import { defaultFundo, defaultFundoArgs, fundoGoesOnNow } from "@/lib/console/defaultFundo";
+import { serviceTheme } from "@/lib/console/serviceLook";
 import { themeInUseSeed, defaultTheme, themeName } from "@/lib/console/themes";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole } from "@/components/console/useConsole";
@@ -21,7 +25,7 @@ import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, useServiceMessages } from "@/components/console/useConsoleData";
 import { useActiveService, useActiveServiceNews } from "@/components/console/useActiveService";
-import { CONSOLE_KIND, consoleSetlistOf, consoleSetlistRow, mergePlan, mergedOrders, cultosOf, copyItems, setlistTitle } from "@/lib/console/consoleSetlist";
+import { consoleSetlistRow, mergePlan, mergedOrders, cultosOf } from "@/lib/console/consoleSetlist";
 import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion, SelectManyBtn } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
@@ -83,7 +87,7 @@ import { useYouTubeRefused } from "@/components/console/useYouTubeRefused";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList } from "@/lib/console/layout";
+import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList, layoutPatched } from "@/lib/console/layout";
 import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode, dockLocked, setDockLock, withLockOf, nodeAt, isSplit, setSplitWeights, presetsForSplit, weightsLabel, parseWeights, bibleLocks, bibleBooksRoom } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { outputsLeavingAir, ruleWithKind } from "@/lib/outputPrefs";
@@ -100,10 +104,9 @@ import { selections } from "@/lib/console/selectionStore";
 import { wheelZoomStep } from "@/lib/wheelZoom";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
-import { OVERLAY_LIMIT } from "@/lib/console/overlays";
-import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { stageFromVerses, stageFromSong, stageFromMedia, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, neighbours, total, itemOnAir, stageItem, addedSay, statusOf } from "@/lib/console/setlist";
+import { plan, playableItems, neighbours, itemOnAir } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { lookDefaults } from "@/lib/console/lookDefaults";
@@ -324,6 +327,14 @@ export default function Console() {
     }, [setCfg]);
     const openSong = useCallback((id, more = {}) => { setOpen(null); setWin(openStack({ page: "song", props: { id, ...more } })); }, []);
     const openMedia = useCallback((intent = null) => { setOpen(null); setWin(openStack({ page: "media", props: intent ? { intent } : {} })); }, []);
+    const openPanelWindow = useCallback((id) => {
+        const w = window.open(`${window.location.origin}/Janela?${panelQuery(id)}`, panelWindowName(id), PANEL_WINDOW_FEATURES);
+        if (w) { try { w.focus(); } catch { /* another window may refuse focus */ } return true; }
+        // The desktop (its main relays the windows: keryxDesktop.janela; the
+        // preview bridge has none) answers an open panel's window by bringing it forward.
+        if (!window.keryxDesktop?.janela) c.say("O navegador bloqueou a janela: permita pop-ups para destacar o painel.");
+        return Boolean(window.keryxDesktop?.janela);
+    }, [c]);
     const openNotice = useCallback((id) => { setOpen(null); setWin(openStack({ page: "notice", props: { id: id || "new" } })); }, []);
     // The Editor de temas e telas: every openEditor call lands in the
     // window — with `from` (the title of the page it came from) it pushes
@@ -374,6 +385,9 @@ export default function Console() {
     // density are the church's preferences, in the database (usePrefs), so
     // they ride backups and another computer.
     const [localLayout, setLayoutState] = useState(() => loadLayout(""));
+    // The operator's own layout has loaded (auth.me): the panels in a window
+    // of their own open only then (Painéis em janela).
+    const [layoutReady, setLayoutReady] = useState(false);
     const prefs = usePrefs();
     useMigratePrefs();
     // The sync (Configurações › Sincronização): the songs that look repeated,
@@ -401,7 +415,7 @@ export default function Console() {
     const tier = tierFor(mainSize.w);
 
     useEffect(() => {
-        keryx.auth.me().then((u) => { const p = u?.email || u?.full_name || ""; setProfile(p); setLayoutState(loadLayout(p)); }).catch(() => {});
+        keryx.auth.me().then((u) => { const p = u?.email || u?.full_name || ""; setProfile(p); setLayoutState(loadLayout(p)); }).catch(() => {}).finally(() => setLayoutReady(true));
     }, []);
     useEffect(() => {
         const el = mainRef.current;
@@ -557,20 +571,7 @@ export default function Console() {
     const setPlan = useMemo(() => plan(service, items), [service, items]);
 
     // A rundown item as a stage: the row it points at, with the item's id in ref.
-    const buildStage = useCallback(async (item, index) => {
-        const ref = { serviceItemId: item.id, serviceItemIndex: index, serviceId };
-        const type = String(item.type || "").toUpperCase();
-        if (type === "SECTION") throw new Error(`"${item.title}" é uma seção da setlist.`);
-        if (type === "MATERIAL") { const s = stageFromMaterial(await keryx.entities.BibleMaterial.get(item.contentId)); return { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...ref } } }; }
-        if (type === "ANNOUNCEMENT" && item.contentId) { const s = stageFromPiece(await keryx.entities.CommunicationVideo.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
-        if (type === "SONG") return stageFromSong(await keryx.entities.Song.get(item.contentId), ref, data.themes);
-        if (type === "BIBLE") return stageFromPassage(await keryx.entities.BiblePassage.get(item.contentId), ref);
-        // A PDF's presentation keeps its own ref (mediaId: the lists mark it on air).
-        if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...ref } } }; }
-        if (type === "TIMER") { const s = stageFromTool("timer", { minutes: Math.max(1, Math.round((item.duration || 300) / 60)) }); return { ...s, args: { ...s.args, ref } }; }
-        const s = stageFromText(item.title || "Texto", item.notes || item.title || "", c.fitFor("text"));
-        return { ...s, args: { ...s.args, ref } };
-    }, [serviceId, data.themes, c.fitFor]);
+    const buildStage = useBuildStage({ serviceId, themes: data.themes, fitFor: c.fitFor });
 
     // A song saved in the editor: the Prévia and the screens take its new
     // slides at once (the split chosen there, everywhere), each where it was.
@@ -657,61 +658,9 @@ export default function Console() {
     const autoplay = useSetlistAutoplay({ c, service, items, songs: data.songs, prefs, projectorOpen: soundOut, buildStage, sendStage });
     const endsAlone = useCallback((it) => endsByItself(it, String(it.type || "").toUpperCase() === "SONG" ? data.songs.find((x) => x.id === it.contentId) : null), [data.songs]);
 
-    // The list in hand: the active culto, else the shared Setlist, made the
-    // first time anything needs it (an item, the Autoplay, the notes, a
-    // pedido). The daily draft "Setlist de dd/mm" is gone (U5 = A). One
-    // making at a time: what asks meanwhile waits for the same row.
-    const making = useRef(null);
-    useEffect(() => { if (serviceId) making.current = null; }, [serviceId]);
-    const ensureService = useCallback(async () => {
-        if (serviceId) return serviceId;
-        making.current ||= (async () => {
-            const there = consoleSetlistOf(await keryx.entities.Service.filter({ service_type: CONSOLE_KIND }));
-            return there ? there.id : (await keryx.entities.Service.create(consoleSetlistRow())).id;
-        })().catch((err) => { making.current = null; throw err; });
-        return making.current;
-    }, [serviceId]);
-    // "Avançar sozinho" (the Setlist's header): the culto's switch; with no
-    // culto, today's draft starts.
-    const setAutoplay = useCallback(async (on) => {
-        try {
-            const sid = serviceId || await ensureService();
-            await keryx.entities.Service.update(sid, { autoplay: Boolean(on) });
-            c.say(on ? AUTOPLAY_SAY.on : AUTOPLAY_SAY.off);
-        } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
-    }, [serviceId, ensureService, c]);
-
-    // Today's papel de parede, the ONE live door (Rodada B 2026-10-14,
-    // "Papel de parede × Tema": the Programa's header button is gone):
-    // Camadas' Fundo pencil and Planejar o culto call this. The library
-    // picks it, saved as the service's background (with no service, today's
-    // draft starts). The papel de parede effect below then sends
-    // background.default — and background.set with nothing on air — so the
-    // screen follows at once; Esc keeps showing it after a song with a
-    // background of its own.
-    const pickServiceFundo = useCallback(async () => {
-        const before = serviceFundo(service);
-        const r = await pickFromLibrary({ accept: ["image", "video", "generator", "color"], title: service ? "Papel de parede do culto" : "Papel de parede de hoje", value: before || null, allowNone: Boolean(before), noneLabel: "Sem papel de parede próprio (o de qualquer outro culto)" });
-        if (!r || (!r.spec && !r.none)) return;
-        try {
-            const sid = serviceId || await ensureService();
-            const row = services.find((x) => x.id === sid) || {};
-            await keryx.entities.Service.update(sid, lookFields({ ...lookOf(row), background: r.none ? null : r.spec }));
-            c.say(r.none ? "O culto volta ao papel de parede da igreja." : "Papel de parede do culto salvo.");
-        } catch (err) { c.say(err?.message || "Não foi possível salvar o papel de parede."); }
-    }, [service, services, serviceId, ensureService, pickFromLibrary, c]);
-
-    // The Notas tab's free notes (Service.operator_notes). With no service the
-    // first save starts the day's draft, once: saves made while it is being
-    // created wait for it.
-    const notesDraft = useRef(null);
-    useEffect(() => { if (serviceId) notesDraft.current = null; }, [serviceId]);
-    const saveOperatorNotes = useCallback(async (text) => {
-        try {
-            const sid = serviceId || await (notesDraft.current ||= ensureService());
-            await keryx.entities.Service.update(sid, { operator_notes: text });
-        } catch (err) { c.say(err?.message || "Não foi possível salvar as notas."); throw err; }
-    }, [serviceId, ensureService, c]);
+    // What changes the list and its rows (useSetlistWrites.js, shared with a
+    // Setlist, Painel or Biblioteca in a window of its own).
+    const { ensureService, setAutoplay, pickServiceFundo, saveOperatorNotes, addStageToSetlist, addMaterial, addSong, writeMessage, addRowToSetlist: addRowAt, saveToCulto } = useSetlistWrites({ say: c.say, serviceId, service, services, items, pickFromLibrary });
 
     // A library row dropped on the Prévia prepares it, on the Programa sends
     // it. Several marked rows (Rodada O2, the mockup's words): only the first,
@@ -721,69 +670,6 @@ export default function Console() {
         if (n > 1) { c.say("Só o primeiro vai para a prévia."); return; }
         if (where === "air") sendStage(s);
     };
-    // Library items dropped on the Setlist: ServiceItems at that position, in
-    // the order they came (several marked rows dragged together, Rodada O2),
-    // the rows below renumbered once and one toast.
-    // -> { added: titles, left, error? } (the controle remoto's setlist.add
-    // reads it; silent: no toast, the runner says it). extra: fields every
-    // item made also gets (a pedido's who sings and note, Rodada Q S13/S15);
-    // a stage's own `extra` (a pedido dragged in, withPedido) goes on its item.
-    const addStageToSetlist = useCallback(async (given, index, { silent = false, extra = {} } = {}) => {
-        const say = silent ? () => {} : c.say;
-        const stages = (Array.isArray(given) ? given : [given]).filter(Boolean);
-        const rows = stages.map((stage) => ({ stage, item: stageItem(stage) })).filter((r) => r.item);
-        const left = stages.length - rows.length;
-        if (!rows.length) { say(addedSay([], left)); return { added: [], left }; }
-        const at = Math.max(0, Math.min(items.length, index ?? items.length));
-        const added = [];
-        try {
-            const sid = await ensureService();
-            // Renumber from the end first, so two rows never share an order.
-            for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + rows.length });
-            for (const { stage, item } of rows) {
-                let { type, contentId } = item;
-                if (type === "YT") {
-                    const row = await mediaFromYouTube(stage.args?.url || stage.id.slice(3), { title: stage.title });
-                    type = "VIDEO";
-                    contentId = row.id;
-                }
-                await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at + added.length, duration: stage.args?.duration || defaultDuration(type, getPrefs()), ...extra, ...(stage.extra || {}) });
-                added.push(stage.title);
-            }
-            say(addedSay(added, left));
-            return { added, left };
-        } catch (err) {
-            // Stopped part way (a YouTube link that would not save): the rows
-            // below close the gap the missing ones left, and the toast says
-            // how many went in.
-            const gap = rows.length - added.length;
-            if (added.length && gap) {
-                try { for (let i = at; i < items.length; i++) await keryx.entities.ServiceItem.update(items[i].id, { order: i + added.length }); } catch { /* the order keeps a gap; it still sorts */ }
-            }
-            const why = err?.message || "Não foi possível adicionar.";
-            say(added.length ? `${addedSay(added, left + gap)} ${why}` : why);
-            return { added, left: left + gap, error: why };
-        }
-    }, [c, items, ensureService]);
-
-    // Escola bíblica › Setlist: a material at the end of the setlist.
-    const addMaterial = async (m) => {
-        try {
-            const sid = await ensureService();
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "MATERIAL", title: m.title, contentId: m.id, order: items.length, duration: 300 });
-            c.say(`${m.title} adicionado ao fim da setlist.`);
-        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
-    };
-
-    // extra: a pedido's who sings and note (pedidoItem, Rodada Q S13).
-    const addSong = async (song, extra = {}) => {
-        try {
-            const sid = await ensureService();
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || defaultDuration("SONG", getPrefs()), ...extra });
-            c.say(`${song.title} adicionada ao fim da setlist.`);
-        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
-    };
-
     const projectorDown = Boolean(projector && projector.placement.missing);
     const [lastOkAt, setLastOkAt] = useState(null);
     useEffect(() => { if (projector && !projector.placement.missing) setLastOkAt(Date.now()); }, [projector]);
@@ -961,13 +847,6 @@ export default function Console() {
     // command as the console's own key or palette would; the Equipe's
     // messages are the culto's ServiceMessage rows (Rodada Q).
     const messages = useServiceMessages(serviceId);
-    // What the operator writes in the Chat or notes with Novo pedido (S12,
-    // S14): a row of the culto through the store, never a network action
-    // (no service: today's draft starts, as the notes do).
-    const writeMessage = async (fields) => {
-        const sid = await ensureService();
-        return keryx.entities.ServiceMessage.create({ serviceId: sid, ...fields });
-    };
     useRemote({ c, data, service, items, rows: setPlan.rows, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses, messages, ensureService, addPassage, addToSetlist: (stage) => addStageToSetlist(stage, undefined, { silent: true }) });
 
     // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
@@ -1124,11 +1003,18 @@ export default function Console() {
     // heights above). While editing the arrangement every panel is open.
     const folded = editing ? "" : foldedList(layout.folded).join();
     const onFold = (id) => setLayout({ ...layout, folded: toggleFolded(layout.folded, id) });
+    // The panels in a window of their own (Painéis em janela, detach.js):
+    // each keeps its place in the dock and takes no room (fitDock's away);
+    // while editing they show there, "· em janela", to be arranged.
+    const detachedNow = detachedList(layout).join();
+    const away = editing ? "" : detachedNow;
+    const detachPanel = (id) => (canDetach(id) ? () => setLayout(detachModule(layout, id)) : null);
     const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, {
         gone: gone ? gone.split(",") : [],
         locked: { onair: onAirH, ...(camadasFitH ? { camadas: PANEL_HEAD + camadasFitH } : {}), ...(temasFitH ? { temas: PANEL_HEAD + temasFitH } : {}) },
         folded: folded ? folded.split(",") : [], head: PANEL_HEAD,
-    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH, folded, PANEL_HEAD]);
+        away: away ? away.split(",") : [],
+    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH, folded, PANEL_HEAD, away]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
     // The Pedidos and Chat tabs (Rodada Q; S12 = B): the toast of each new
     // row, its tab put back in the panel's list when a message comes, each
@@ -1137,9 +1023,14 @@ export default function Console() {
         const next = ids.reduce((list, id) => showTab("panel", list, id), tabLists.panel);
         if (next.length !== tabLists.panel.length) setTabList("panel", next);
     };
-    const panelVisible = env === "culto" && onScreen("abas") && !layout.folded?.abas;
+    const panelVisible = env === "culto" && onScreen("abas") && !layout.folded?.abas && !isDetached(layout, "abas");
     const pedidosReachable = onScreen("abas");
-    const focusTeamTab = (id) => { setOpen(null); setEnvState("culto"); showPanelTabs([id]); setPanelTab(id); };
+    const focusTeamTab = (id) => {
+        setOpen(null); showPanelTabs([id]); setPanelTab(id);
+        // The Painel in a window of its own: that window, on the tab.
+        if (isDetached(layout, "abas")) { openPanelWindow("abas"); relaySend("console", "panel.focus", { module: "abas", tab: id }); return; }
+        setEnvState("culto");
+    };
     const { unread: teamUnread } = usePedidos({ c, messages, open: { pedidos: panelVisible && panelTabNow === "pedidos", chat: panelVisible && panelTabNow === "chat" },
         reachable: pedidosReachable, show: showPanelTabs, focus: focusTeamTab,
         bell: (note) => upd.call("notificationAdd", note).catch(() => {}) });
@@ -1152,7 +1043,8 @@ export default function Console() {
     // computer. They see the layout with the tray as `hidden`; a switch
     // moves the module out (to the tray) or back (to its default place).
     const uiLayout = { ...layout, hidden: trayFlags(dock, VER_MODULES) };
-    const setUiLayout = (next) => {
+    const setUiLayout = (given) => {
+        const next = detachedList(given).reduce((l, id) => (given.hidden?.[id] ? attachModule(l, id) : l), given);
         const d = applyTrayFlags(dock, next.hidden, VER_MODULES, dockOpts);
         setLayout({ ...next, hidden: layout.hidden, dock: d === dock ? next.dock : d });
     };
@@ -1269,6 +1161,9 @@ export default function Console() {
             ...others.map((other) => ({ label: DOCK_MODULES[other].name, onSelect: () => besideOf(other) })),
             ...(id === "player" && !playerDocked ? ["sep", { label: "Voltar para baixo do Programa", icon: "undo", onSelect: () => setEnvDock(moveModules(d, ["player"], { kind: "home" })) }] : []),
             ...(canTray(id) && pathOf(d.tree, id) ? ["sep", { label: "Tirar para a bandeja", icon: "x", onSelect: () => setEnvDock(hideModule(d, id)) }] : []),
+            ...(env === "culto" && canDetach(id) && pathOf(d.tree, id) ? [isDetached(layout, id)
+                ? { label: "Voltar ao console", icon: "undo", title: "Fecha a janela própria do painel; ele fica aqui", onSelect: () => setLayout(attachModule(layout, id)) }
+                : { label: "Para uma janela própria", icon: "external", title: "Destacar em janela: este painel numa janela própria, para usar vendo outra tela", onSelect: () => setLayout(detachModule(layout, id)) }] : []),
         ] });
     };
     // The Programa's box on screen: the Camadas drawer opens beside it,
@@ -1290,76 +1185,17 @@ export default function Console() {
     const coverTag = coveredBy ? <span className="kx-covered" title={`As telas mostram ${coveredBy === "Logo" ? "o logo" : "a tela preta"}: o que está no ar fica coberto`}>coberto · {coveredBy}</span> : null;
     // The Setlist: its header (title, count, Planejar, +) and the whole
     // rundown, scrolled to the item in hand (Rundown).
-    // A second menu where the first was (the timers): the first's place.
-    const menuAt = (e) => ({ clientX: e.clientX, clientY: e.clientY, preventDefault() {}, stopPropagation() {} });
-    const timersMenu = (at, title, onPick) => openMenu(at, { title, items: timerChoices(data.timerPresets).map((t) => ({ label: minutesLabel(t.minutes), icon: "clock", onSelect: () => onPick(t.minutes) })) });
-    // The Setlist's + (owner 2026-10-14, the "Menus (+)" proposal): the
-    // palette first, then what only Planejar made — a section, a text, a
-    // timer — right under the item in the Prévia (at the end with none).
-    const addRowToSetlist = async (row) => {
-        try {
-            const sid = await ensureService();
-            const sel = items.findIndex((x) => x.id === prevItemId);
-            const at = sel >= 0 ? sel + 1 : items.length;
-            for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
-            await keryx.entities.ServiceItem.create({ serviceId: sid, order: at, enabled: true, ...row });
-            c.say(`${row.title} na setlist.`);
-        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
-    };
-    const setlistMenu = (e) => {
-        const at = menuAt(e);
-        openMenu(e, { title: "Adicionar à setlist", items: [
-            { label: "Buscar música, versículo, mídia…", icon: "search", kbd: keyHint("search", letters), onSelect: () => setOpen("palette") },
-            "sep",
-            { label: "Seção…", icon: "list", onSelect: async () => { const t = await askText({ title: "Seção da setlist", placeholder: "Pré-culto, Louvor, Palavra…", ok: "Adicionar" }); if (t) addRowToSetlist({ type: "SECTION", title: t, duration: 0 }); } },
-            { label: "Texto…", icon: "text", onSelect: async () => { const t = await askText({ title: "Texto na setlist", placeholder: "O texto que vai às telas", ok: "Adicionar", multiline: true, hint: "Ctrl+Enter adiciona" }); if (t) addRowToSetlist({ type: "TEXT", title: t.split("\n")[0].slice(0, 60), notes: t, duration: 60 }); } },
-            { label: "Timer…", icon: "clock", onSelect: () => timersMenu(at, "Timer na setlist", (m) => addRowToSetlist({ type: "TIMER", title: `Timer ${m} min`, duration: m * 60 })) },
-        ] });
-    };
-    // The planned cultos the Setlist's title offers (U2 = A): not done, by
-    // date, the active one always among them.
-    const cultoChoices = cultosOf(services)
-        .filter((s) => s.id === active.activeId || statusOf(s.status) !== "COMPLETED")
-        .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")))
-        .slice(-8);
-    const dm = (d) => (d ? d.split("-").reverse().slice(0, 2).join("/") : "");
-    // "Guardar no culto…" (U3 = A): the shared Setlist's items copied into a
-    // culto (after its own); the Setlist stays as it is.
-    const saveToCulto = async (target) => {
-        try {
-            const culto = target || await keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto" });
-            const have = await keryx.entities.ServiceItem.filter({ serviceId: culto.id });
-            await keryx.entities.ServiceItem.bulkCreate(copyItems(items, culto.id, have.length));
-            c.say(`${items.length} ${items.length === 1 ? "item guardado" : "itens guardados"} em “${culto.title || "Culto sem nome"}”.`);
-        } catch (err) { c.say(err?.message || "Não foi possível guardar no culto."); }
-    };
-    const setlistHeadMenu = (e) => openMenu(e, { title: "Setlist", items: [
-        { head: "No console · todos os computadores" },
-        { label: "Setlist", icon: "list", checked: !view.active, title: "A setlist compartilhada, quando nenhum culto está ativo", onSelect: () => active.activate(null) },
-        ...cultoChoices.map((s) => ({ label: s.title || "Culto sem nome", kbd: dm(s.date), checked: s.id === active.activeId, title: "Ativar este culto em todos os computadores", onSelect: () => active.activate(s) })),
-        "sep",
-        view.active
-            ? { label: "Encerrar o culto…", icon: "check", title: "Marca o culto como feito e todos voltam à Setlist", onSelect: () => active.endService(service) }
-            : { label: "Guardar no culto…", icon: "copy", disabled: !items.length, title: items.length ? "Copia estes itens para um culto planejado" : "A setlist está vazia", sub: [
-                ...cultoChoices.map((s) => ({ label: s.title || "Culto sem nome", kbd: dm(s.date), onSelect: () => saveToCulto(s) })),
-                ...(cultoChoices.length ? ["sep"] : []),
-                menuItem("novoCulto", { onSelect: () => saveToCulto(null) }),
-            ] },
-        menuItem("planejar", { onSelect: () => openPlanner(view.active ? serviceId : null) }),
-    ] });
-    const setlistCount = setPlan.count ? `${setPlan.count} ${setPlan.count === 1 ? "item" : "itens"} · ${total(setPlan.seconds)}` : "";
-    const setlistHead = (
-        <button type="button" className="kx-section setlist-head" aria-haspopup="menu" onClick={setlistHeadMenu}
-            title={view.active ? `${service.title || "Culto sem nome"} · ativo em todos os computadores · clique para trocar` : "A setlist compartilhada por todos os computadores · clique para ativar um culto"}>
-            {view.active && <span className="setlist-head-dot" aria-label="ativo" />}
-            <span className="setlist-head-t">{setlistTitle(view)}</span>
-            <Icon name="chevron-down" />
-        </button>
-    );
+    // The Setlist's + (setlistMenus.jsx): the palette first, then a section,
+    // a text, a timer, right under the item in the Prévia (at the end with none).
+    const addRowToSetlist = (row) => addRowAt(row, prevItemId);
+    const setlistMenu = (e) => openMenu(e, { title: "Adicionar à setlist", items: setlistAddItems({ e, openMenu, askText, addRow: addRowToSetlist, timerPresets: data.timerPresets, palette: { kbd: keyHint("search", letters), onSelect: () => setOpen("palette") } }) });
+    const setlistHeadMenu = (e) => openMenu(e, { title: "Setlist", items: setlistHeadItems({ view, service, services, active, items, saveToCulto, onPlan: () => openPlanner(view.active ? serviceId : null) }) });
+    const setlistCount = setlistCountOf(setPlan);
+    const setlistHead = <SetlistTitle view={view} service={service} onClick={setlistHeadMenu} />;
     const setlistPanel = (
         // The title is what every console shows (U2 = A): "Setlist", or the
         // active culto's name; a click opens the menu that switches it.
-        <Panel title="Setlist" caption={setlistHead} className={`setlist-panel ${coverCls}`}
+        <Panel title="Setlist" caption={setlistHead} className={`setlist-panel ${coverCls}`} detach={detachPanel("setlist")}
             actions={<>{coverTag}{setlistPicking && <SelectManyBtn on onToggle={setSetlistPicking} />}<IconBtn name="planner" title="Planejar o culto" small onClick={() => openPlanner(view.active ? serviceId : null)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} media={data.media} askText={askText} onOpenMedia={openMedia} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={view.active ? (it) => openPlanner(serviceId, it?.id || null) : null} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
@@ -1378,7 +1214,7 @@ export default function Console() {
     // slots (Measure → locked.temas), like Camadas.
     const temasBtns = <><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
     // The theme in use is the marked slot (and the header's tooltip), not a subtitle (H1 = A).
-    const temasPanel = <Panel title="Temas" tip={themeInUseName ? `Em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
+    const temasPanel = <Panel title="Temas" tip={themeInUseName ? `Em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns} detach={detachPanel("temas")}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");
     const layers = (
         <>
@@ -1390,16 +1226,9 @@ export default function Console() {
     // projection and is in no theme, the text overlay and the logo. Clock,
     // stopwatch, timer, free text and Aviso rápido live in the tabs panel
     // (Ferramentas, Timers, Aviso rápido) and the Setlist's +.
-    const camadasMenu = (e) => {
-        const logoOn = Boolean(c.cur?.logo?.visible);
-        const ovFull = (c.cur?.overlays?.length || 0) >= OVERLAY_LIMIT;
-        openMenu(e, { title: "Adicionar camada", items: [
-            { label: ovFull ? `Sobreposição de texto · máx. ${OVERLAY_LIMIT}` : "Sobreposição de texto", icon: "text", disabled: ovFull, onSelect: () => addOverlayRef.current?.() },
-            { label: logoOn ? "Logo no canto · no ar" : "Logo no canto", icon: "logo", disabled: logoOn, onSelect: () => c.callOp("logo.set", { visible: true }).catch((err) => c.say(err?.message || "Não foi possível mostrar o logo.")) },
-        ] });
-    };
+    const camadasMenu = (e) => openMenu(e, { title: "Adicionar camada", items: camadasAddItems(c, () => addOverlayRef.current?.()) });
     const camadasPanel = (
-        <Panel title="Camadas" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={camadasMenu} />}>
+        <Panel title="Camadas" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={camadasMenu} />} detach={detachPanel("camadas")}>
             <Measure onHeight={setCamadasFitH}>{layers}</Measure>
         </Panel>
     );
@@ -1412,12 +1241,12 @@ export default function Console() {
     const prepare = (s) => c.setPrev(s);
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
     const tabsPanel = (
-        <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
+        <TabsPanel c={c} data={data} detach={detachPanel("abas")} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
             items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend}
             messages={messages} onAddSong={addSong} onAddMedia={(m, extra) => addStageToSetlist(stageFromMedia(m), undefined, { extra })} onAddStage={(s) => addStageToSetlist(s)} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} />
     );
     const libraryPanel = (
-        <Panel title="Biblioteca" actions={<>
+        <Panel title="Biblioteca" detach={detachPanel("lib")} actions={<>
             {/* The header holds the doors (owner's pick, Rodada H, H1): the
                 media library, a page of its own, one click away on every tab,
                 then the + (the Library's menu, through this slot) and the
@@ -1435,7 +1264,7 @@ export default function Console() {
         </Panel>
     );
     const slidesPanel = (
-        <Panel title="Slides" className={coverCls} count={handTitle(c) || ""} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Slides" className={coverCls} count={handTitle(c) || ""} actions={coverTag} detach={detachPanel("slides")} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} />
         </Panel>
     );
@@ -1671,13 +1500,24 @@ export default function Console() {
     const relayRun = (m) => {
         switch (m.type) {
             case "prev.set": c.setPrev(m.stage); break;
-            case "stage.send": c.setPrev(m.stage); sendStage(m.stage); break;
+            // keepPrev (a detached Setlist's Item anterior / Próximo item): the Prévia stays.
+            case "stage.send": if (!m.keepPrev) c.setPrev(m.stage); sendStage(m.stage, m.keepPrev ? { keepPrev: true } : undefined); break;
             case "prev.send": if (c.prev) sendStage(c.prev); else c.say("Nada na prévia."); break;
             case "prev.step": selectSlide(m.d); break;
             case "song.saved": songSaved(m.song); break;
             case "setlist.material": addMaterial(m.material); break;
             case "console.open": if (m.what === "novidades") openWhatsNew(); else openSettings(m.section || "console"); break;
-            case "console.hello": tellPrev(c.prev); tellPages(); break;
+            case "console.hello": tellPrev(c.prev); tellPages(); relaySend("console", "console.autoplay", { pending: autoplay.pending || null }); relaySend("console", "console.last", { last: c.last || null }); relaySend("console", "console.panels", { placed: placedPanels }); break;
+            // A dock panel in a window of its own (Painéis em janela).
+            case "layout.patch": setLayout(layoutPatched(layout, m.patch)); break;
+            case "panel.closed": openedPanels.current.delete(m.module); if (isDetached(layout, m.module)) setLayout(attachModule(layout, m.module)); break;
+            case "autoplay.cancel": autoplay.cancel(); break;
+            // Esc in a panel's window with nothing open there (D4 = A): this
+            // console ends the air, as its own Esc does; its Desfazer, or the
+            // window's (air.undo), puts it back.
+            case "air.end": Promise.resolve(c.end()).then((undo) => relaySend("console", "console.ended", { undo: Boolean(undo) })); break;
+            case "air.undo": if (c.toastAction?.undo) c.toastAction.run(); else c.say("Nada para desfazer."); break;
+            case "last.move": c.moveLast(m.d); break;
             case "pages.retry": retryPages(m.id); break;
             default: break;
         }
@@ -1688,6 +1528,37 @@ export default function Console() {
     // A Prévia the list cannot carry (a theme's example) reads as empty there.
     const tellPrev = (stage) => { if (!relaySend("console", "console.prev", { stage: stage || null })) relaySend("console", "console.prev", { stage: null }); };
     useEffect(() => { tellPrev(c.prev); }, [c.prev]);
+    // The Autoplay's countdown, to a Setlist in a window of its own; the item
+    // Esc took off, to a Slides there; the modules placed, to Camadas and
+    // the Slides there (the themes, the No ar · Prévia tabs).
+    useEffect(() => { relaySend("console", "console.autoplay", { pending: autoplay.pending || null }); }, [autoplay.pending]);
+    useEffect(() => { relaySend("console", "console.last", { last: c.last || null }); }, [c.last]);
+    const placedPanels = leaves(dock.tree);
+    const placedKey = placedPanels.join();
+    useEffect(() => { relaySend("console", "console.panels", { placed: placedKey ? placedKey.split(",") : [] }); }, [placedKey]);
+
+    // The panels in a window of their own (Painéis em janela, detach.js):
+    // the console opens a window for each — when one is detached and when
+    // KERYX opens with some (the desktop only: a browser blocks a window it
+    // did not open from a click, so there they come back to the console) —
+    // and closes it when the panel comes back (Ver, Restaurar, Voltar ao
+    // console). Its window closing brings it back: panel.closed above.
+    const openedPanels = useRef(new Set());
+    const panelsLaunched = useRef(false);
+    useEffect(() => {
+        if (!layoutReady) return;
+        const now = detachedNow ? detachedNow.split(",") : [];
+        if (!panelsLaunched.current) {
+            panelsLaunched.current = true;
+            if (now.length && !window.keryxDesktop?.janela) { setLayout(now.reduce((l, id) => attachModule(l, id), layout)); return; }
+        }
+        for (const id of now) if (!openedPanels.current.has(id)) { openedPanels.current.add(id); openPanelWindow(id); }
+        for (const id of [...openedPanels.current]) {
+            if (now.includes(id)) continue;
+            openedPanels.current.delete(id);
+            relaySend("console", "panel.close", { module: id });
+        }
+    }, [layoutReady, detachedNow]); // eslint-disable-line react-hooks/exhaustive-deps
     // How far each PDF's pages are: only this window makes them, so a
     // detached Mídia reads the progress from here (Rodada H, HB).
     const tellPages = () => relaySend("console", "pages.progress", { pages: pagesProgressAll() });
@@ -1756,7 +1627,7 @@ export default function Console() {
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH} onBooksH={setBooksFitH} onVersesH={setVersesFitH} booksRoom={booksRoom}
                     readSize={layout.bibleRead} setReadSize={(v) => setLayout({ ...layout, bibleRead: v })} onSettings={openSettings}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold, onPickSplit: pickSplit }} />}
-                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} onPickSplit={pickSplit} />}
+                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} onPickSplit={pickSplit} away={detachedNow ? detachedNow.split(",") : []} />}
             </main>
 
             {/* THE window (Rodada C): one dialog, its pages stacked by
