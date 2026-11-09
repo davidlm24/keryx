@@ -2,7 +2,13 @@
 // logo and KERYX | Bíblia, as in Holyrics and desktop programs — Culto,
 // Música, Mídia, Ferramentas and, last, Ajuda (owner 2026-10-20, Rodada M0:
 // where an operator looks for help; it had lived in the logo's menu since "O
-// topo"). Ver stays beside the bell. There is no Telas menu (owner
+// topo"). Ver stays beside the bell. **Every new feature reviews this bar**
+// (owner 2026-11-09, CLAUDE.md): a command the operator may look for gets its
+// item in the menu its meaning belongs to — Culto (the culto and its team:
+// Pedidos, Chat), Música (songs, their import, the .keryx package, and the
+// Bíblia's group), Mídia, Ferramentas (avisos, timers, Escola, Relatórios,
+// and Conexões: the phones and the sync), Ajuda (learning, checking,
+// support, updates; never a connection or a setting). There is no Telas menu (owner
 // 2026-10-16, Rodada E0): Tela preta, Logo and Limpar are the Programa's
 // pill, Saídas the logo's menu, Travar telas and Telas e saídas the Saídas
 // popover. On a narrow window the bar folds away and
@@ -36,6 +42,22 @@ const DESKTOP_ONLY = "Só no aplicativo do computador";
 // The source a song's automatic lyrics follow, in words.
 const FOLLOW_WORD = { video: "o vídeo", audio: "o playback", clock: "o relógio ao vivo", time: "o tempo de cada slide" };
 
+// Ferramentas › Conexões' sync item follows the cloud (cloudView's `act`):
+// Entrar com Google with no account (or one to enter again), Tentar agora
+// after a failure or offline, else Sincronizar agora; off while a pass the
+// bar started runs, or when there is nothing it can do (entering in the
+// browser, no sync on this computer).
+function syncItem(sync, call) {
+    const act = sync?.act || null;
+    if (act === "signin") return { label: "Entrar com Google", icon: "cloud", title: "A conta Google da igreja: os computadores ficam iguais", onSelect: call("syncSignIn") };
+    return {
+        label: sync?.running ? "Sincronizando…" : act === "retry" ? "Tentar agora" : "Sincronizar agora", icon: "refresh",
+        disabled: !act || Boolean(sync?.running),
+        title: act ? "Envia o que mudou aqui e traz o que mudou nos outros computadores" : sync?.signing ? "Termine a entrada no navegador" : "Este computador não sincroniza · veja em Sincronização",
+        onSelect: call("syncNow"),
+    };
+}
+
 export function buildMenus(ctx) {
     const a = ctx.act || {};
     const call = (name, ...args) => () => a[name]?.(...args);
@@ -45,6 +67,7 @@ export function buildMenus(ctx) {
     // What every console shows (owner 2026-10-29, consoleSetlist.js): the
     // shared Setlist, or the culto the church activated — on every computer.
     const activeId = ctx.activeId || "";
+    const unread = ctx.teamUnread || {};
     const culto = [
         head("No console · todos os computadores"),
         { label: "Setlist", icon: "list", checked: !activeId, title: "A setlist compartilhada, quando nenhum culto está ativo", onSelect: call("activate", null) },
@@ -55,6 +78,11 @@ export function buildMenus(ctx) {
         mi("novoCulto", { onSelect: call("planner", "new") }),
         { label: "Modelos de culto", icon: "copy", title: "Configurações › Culto", onSelect: call("settings", "culto") },
         { label: "Exportar a setlist em PDF", icon: "download", disabled: !ctx.serviceId || !ctx.itemsCount, title: ctx.serviceId ? undefined : "Escolha um culto primeiro", onSelect: call("exportPdf") },
+        // The culto's team (owner 2026-11-09, Equipe = A): its tab in the
+        // Painel, a gold dot while something came that was not seen there.
+        sep,
+        { label: "Pedidos da equipe", icon: "user", dot: unread.pedidos ? "pedidos novos" : undefined, title: "Os pedidos de louvor que a equipe manda pelo celular · aba Pedidos do Painel", onSelect: call("teamTab", "pedidos") },
+        { label: "Chat da equipe", icon: "chat", dot: unread.chat ? "mensagens novas" : undefined, title: "A conversa com a equipe pelo celular · aba Chat do Painel", onSelect: call("teamTab", "chat") },
     ];
 
     const letra = f
@@ -70,12 +98,24 @@ export function buildMenus(ctx) {
     const musica = [
         mi("novaMusica", { onSelect: call("newSong") }),
         { label: "Buscar letras na internet…", icon: "search", onSelect: call("lyricsSearch") },
+        // Importing (owner 2026-11-09, Importar = A): the Biblioteca's
+        // Letras (+) doors, one click from the bar.
+        sep,
+        { label: "Importar músicas…", icon: "folder", title: "Arquivos de letra: Holyrics, OpenLyrics, ChordPro, cifra ou texto", onSelect: call("importFiles") },
         { label: "Importar uma pasta…", icon: "folder", onSelect: call("importFolder") },
+        mi("abrirPacote", { title: "Um arquivo .keryx de outra igreja ou de outro computador: músicas, temas, avisos e mídias", onSelect: call("openPackage") }),
         sep,
         { label: "Sincronizar a música…", icon: "synced", disabled: !ctx.songId, title: ctx.songId ? "A música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("syncSong", ctx.songId) },
         { label: "Letra automática", icon: "music", sub: letra },
         sep,
         mi("temasEFundos", { title: "Configurações › Temas e fundos", onSelect: call("settings", "temas") }),
+        // The Bíblia (owner 2026-11-09, Bíblia = A): its theme and its
+        // editions, as Configurações › Bíblia e músicas keeps them together.
+        sep,
+        head("Bíblia"),
+        { label: "Tema da Bíblia…", icon: "palette", title: "O tema das passagens · a passagem no ar muda na hora", onSelect: call("bibleTheme") },
+        { label: "Escolher as Bíblias…", icon: "book", title: "As edições que este computador baixa", onSelect: call("bibleSetup") },
+        { label: "Bíblias instaladas", icon: "book", title: "Configurações › Bíblia e músicas", onSelect: call("settings", "biblia") },
     ];
 
     const midia = [
@@ -96,6 +136,13 @@ export function buildMenus(ctx) {
         sep,
         { label: "Escola bíblica", icon: "book", onSelect: call("school") },
         { label: "Relatórios", icon: "history", onSelect: call("reports") },
+        // Conexões (owner 2026-11-09, Conexões = A): the phones and the sync
+        // between the church's computers. Never Ajuda (learning, support).
+        sep,
+        head("Conexões"),
+        { label: "KERYX no celular", icon: "tablet", title: "O Controle e a Equipe pelo celular: conectar um aparelho, os códigos · Configurações › Telas na rede", onSelect: call("settings", "rede") },
+        syncItem(ctx.sync, call),
+        { label: "Sincronização", icon: "cloud", title: "Configurações › Sincronização", onSelect: call("settings", "sincronizacao") },
     ];
 
     // Ajuda (Rodada M0): learning the console, checking it, and what support
@@ -156,7 +203,8 @@ export function flattenMenus(menus, { maxServices = 5, onAllServices } = {}) {
             } else if (it.sub) {
                 out.push({ head: it.label, minor: true });
                 for (const s of it.sub) out.push({ title: s.label, ...s, indent: true });
-            } else out.push(it);
+            } else if (it.head != null) out.push({ ...it, minor: true }); // a group inside a menu (Bíblia, Conexões): under the menu's own head
+            else out.push(it);
         }
         if (cut) out.splice(lastService + 1, 0, mi("planejar", { label: "Todos os cultos…", title: "Planejar o culto", onSelect: onAllServices }));
     });

@@ -27,7 +27,7 @@ import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 import { useLibraryPicker } from "./library/libraryContext";
 import { useThemes } from "./useConsoleData";
 import { themeForKind, themeName } from "@/lib/console/themes";
-import { applyThemeOnAir } from "./themeActions";
+import { chooseBibleTheme } from "./themeActions";
 import useKeepInView, { useFocusFollows } from "./useKeepInView";
 import { ScreenActions } from "./CenterPanel";
 import { captionParts, airInPlayer } from "@/lib/console/caption";
@@ -171,16 +171,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const themes = useThemes();
     const bibleTheme = themeForKind(themes, "bible", prefs.bible_theme_id, c.themeId);
     const pickTheme = useLibraryPicker();
-    const chooseTheme = async () => {
-        const r = await pickTheme({ accept: "theme", value: prefs.bible_theme_id || bibleTheme?.id || null, title: "Tema da Bíblia", allowNone: true, noneLabel: "O mesmo das músicas", useLabel: "Usar na Bíblia" });
-        const id = r?.theme ? r.theme.id : r?.none ? "" : null;
-        if (id === null) return;
-        updateUser({ bible_theme_id: id }).then(() => c.say(id ? `Bíblia: tema ${themeName(r.theme)}.` : "Bíblia: o mesmo tema das músicas.")).catch(() => c.say("Não foi possível salvar o tema da Bíblia."));
-        // On the passage on air at once: its look and its Fundo (padlock
-        // respected), never the songs' theme in use.
-        const theme = r?.theme || themeForKind(themes, "bible", "", c.themeId);
-        if (theme && canTouchAir()) applyThemeOnAir(c, theme, { inUse: false });
-    };
+    // The same chooser as Música › Bíblia › Tema da Bíblia… (themeActions.js).
+    const chooseTheme = () => chooseBibleTheme({ getC: () => live.current.c, pick: pickTheme, themes, touchAir: () => canTouchAir() });
     // Bumped after an install, so the installed list and the version are read again.
     const [installRev, setInstallRev] = useState(0);
     const [installed, setInstalled] = useState([]);
