@@ -1,4 +1,4 @@
-// Named arrangements (Ver › Disposição; owner 2026-10-13, the "Disposição
+// Named arrangements (Ver › Painéis salvos, once "Disposição"; owner 2026-10-13, the "Disposição
 // do console" prototype): the operator saves an environment's dock as it is
 // under a name ("Culto", "Ensaio", "Estudo") and switches between them. Each
 // belongs to its environment (its dock's env: the culto or the Bíblia);
@@ -39,10 +39,10 @@ export function normalizePresets(saved) {
 // `list`: the arrangements of its environment (presetsFor).
 export function nameProblem(list, name) {
     const n = cleanName(name);
-    if (!n) return "Dê um nome à disposição.";
-    if (sameName(n, PADRAO)) return "“Padrão” é a disposição de fábrica; escolha outro nome.";
-    if (list.some((p) => sameName(p.name, n))) return `Já existe uma disposição “${n}”.`;
-    if (list.length >= MAX_PRESETS) return `Cabem ${MAX_PRESETS} disposições; exclua uma antes.`;
+    if (!n) return "Dê um nome aos painéis.";
+    if (sameName(n, PADRAO)) return "“Padrão” são os painéis de fábrica; escolha outro nome.";
+    if (list.some((p) => sameName(p.name, n))) return `Já existem painéis “${n}”.`;
+    if (list.length >= MAX_PRESETS) return `Cabem ${MAX_PRESETS} conjuntos de painéis; exclua um antes.`;
     return null;
 }
 

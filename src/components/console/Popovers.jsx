@@ -52,16 +52,16 @@ export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets 
             ...DENSITIES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: densityOf(layout) === key, onSelect: () => setLayout({ ...layout, density: key }), title: key === "auto" ? "Compacta numa tela baixa (notebook), Confortável nas outras" : key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item" })),
             "sep",
             // Named arrangements (dockPresets.js): Padrão and the operator's.
-            { head: "Disposição" },
+            { head: "Painéis salvos" },
             ...[{ id: null, name: "Padrão" }, ...presets].map((p) => ({
                 label: `${p.name}${presetId === p.id && presetDirty ? " · alterada" : ""}`, role: "menuitemcheckbox", checked: presetId === p.id, onSelect: () => onPickPreset?.(p.id),
-                title: p.id ? `Trocar para a disposição “${p.name}”` : "A disposição de fábrica do console",
+                title: p.id ? `Trocar para os painéis “${p.name}”` : "Os painéis de fábrica do console",
             })),
             "sep",
-            { label: editing ? "Concluir a edição" : "Editar disposição", icon: "grip", checked: editing, onSelect: onEditLayout, title: "Mudar os módulos de lugar, salvar disposições com nome · Esc conclui" },
+            { label: editing ? "Concluir a edição" : "Editar painéis", icon: "grip", checked: editing, onSelect: onEditLayout, title: "Mudar os painéis de lugar, destacar um numa janela, salvar painéis com nome · Esc conclui" },
             // Travar fora da edição (Rodada P4-1): the environment on screen's.
-            ...(onDockLock ? [{ label: "Travar fora da edição", role: "menuitemcheckbox", checked: dockLocked, onSelect: () => onDockLock(!dockLocked), title: "Os divisores só mudam em Editar disposição (vale para o ambiente na tela: o Culto ou a Bíblia)" }] : []),
-            { label: "Restaurar disposição", onSelect: () => { restoreLayout(); setOpen(null); } },
+            ...(onDockLock ? [{ label: "Travar fora da edição", role: "menuitemcheckbox", checked: dockLocked, onSelect: () => onDockLock(!dockLocked), title: "Os divisores só mudam em Editar painéis (vale para o ambiente na tela: o Culto ou a Bíblia)" }] : []),
+            { label: "Restaurar painéis", onSelect: () => { restoreLayout(); setOpen(null); } },
         ];
         return (
             // Under the top bar's Ver button, its right edge on the button's.

@@ -96,7 +96,7 @@ export const SETTINGS_INDEX = [
 
     e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas, No ar e Setlist · deste computador", ["biblioteca", "slides", "camadas", "temas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "automática, confortável ou compacta · da igreja, viaja no backup", ["automática", "compacta", "confortável", "linhas", "altura", "notebook", "tela pequena"]),
-    e("console", "Disposição", "restaurar os módulos, a densidade e as colunas · deste computador", ["escopo", "Restaurar", "restaurar disposição", "layout", "colunas", "tamanhos", "padrão"]),
+    e("console", "Painéis", "restaurar os painéis, a densidade e as colunas · deste computador", ["escopo", "Restaurar", "restaurar painéis", "restaurar disposição", "disposição", "layout", "colunas", "tamanhos", "padrão"]),
     e("console", "Este computador", "zoom, ao fechar e iniciar com o Windows · deste computador", ["máquina", "zoom", "fechar", "iniciar", "windows"]),
     e("console", "Teclas de uma letra", "B, L, C, / e ?: ligadas, com Shift ou desligadas · da igreja", ["teclas", "letras", "shift", "atalho", "tela preta", "ditado", "voz", "acessibilidade", "desligar"]),
     e("console", "Zoom", "aumentar ou diminuir tudo no console (Ctrl+= Ctrl+− Ctrl+0) · deste computador", ["zoom", "tamanho", "texto", "letra maior", "aumentar", "diminuir", "ampliar", "acessibilidade", "escala"]),

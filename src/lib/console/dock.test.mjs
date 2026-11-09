@@ -27,7 +27,7 @@ test("the No ar strip under the columns beside the Setlist: the default band (ow
     assert.deepEqual(d.tree.children[0].sizes, [null, ONAIR_H]);
     assert.deepEqual(leaves(d.tree.children[0].children[0]), ["lib", "slides", "programa", "previa", "abas"]);
     assert.deepEqual(d.tree.children[0].children[1], g("onair"));
-    // Editar disposição › No ar: the strip moves between the bands and back.
+    // Editar painéis › No ar: the strip moves between the bands and back.
     assert.deepEqual(moveBand(d, "window"), defaultDock(W));
     assert.deepEqual(moveBand(defaultDock(W), "columns"), d);
     assert.deepEqual(moveBand(d, "columns"), d, "already there");

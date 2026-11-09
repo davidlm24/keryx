@@ -118,9 +118,11 @@ test("search: the Tela ociosa lives in Temas e fundos (Rodada H1) and the groups
     assert.equal(idle.section, "temas");
     assert.equal(placeOf(idle), "Temas e fundos");
     assert.ok(!SETTINGS_INDEX.some((x) => x.section === "telas" && x.label === "Tela ociosa"));
-    // The restore row of Console is "Restaurar"; "Disposição" still finds it.
-    assert.ok(SETTINGS_INDEX.find((x) => x.label === "Disposição").keywords.includes("Restaurar"));
-    assert.ok(searchSettings("restaurar disposição").some((h) => h.label === "Disposição"));
+    // The restore row of Console is "Restaurar"; "Painéis" finds it, and the
+    // old word "disposição" still does (owner 2026-11-09: disposição → painéis).
+    assert.ok(SETTINGS_INDEX.find((x) => x.label === "Painéis").keywords.includes("Restaurar"));
+    assert.ok(searchSettings("restaurar painéis").some((h) => h.label === "Painéis"));
+    assert.ok(searchSettings("restaurar disposição").some((h) => h.label === "Painéis"));
     // Backup's first row is "Fazer backup".
     assert.equal(searchSettings("fazer backup")[0].label, "Fazer backup");
     for (const [section, label] of [["telas", "Saídas"], ["telas", "Arquivo de ajustes"], ["rede", "Endereços"], ["sincronizacao", "Andamento"], ["backup", "Pasta de dados"]]) {

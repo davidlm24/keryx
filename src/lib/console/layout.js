@@ -1,8 +1,8 @@
 // The console's layout: where the modules go (the docks, dock.js; Ver ›
-// Editar disposição), the sizes and order the old columns had (read once to
+// Editar painéis), the sizes and order the old columns had (read once to
 // build the first dock), the named arrangements, the tab rows and the
 // multiview. Saved per operator profile in localStorage; "Restaurar
-// disposição" returns to DEFAULT_LAYOUT.
+// painéis" returns to DEFAULT_LAYOUT.
 import { DEFAULT_ORDER, DEFAULT_STACKS, normalizeArrangement } from "./arrange.js";
 import { DEFAULT_TILES, normalizeTiles } from "./multiview.js";
 import { DEFAULT_TABS, normalizeTabs } from "./panelTabs.js";
@@ -58,7 +58,7 @@ export const DEFAULT_LAYOUT = {
     // the Prévia and the Biblioteca.
     tabs: DEFAULT_TABS,
     // The culto environment's arrangement as a tree (dock.js, Ver › Editar
-    // disposição); null until the operator changes it: the console builds it
+    // painéis); null until the operator changes it: the console builds it
     // from the columns above (fromArrangement), so an old save keeps its look.
     dock: null,
     // The Bíblia's, the same way (fromBibleArrangement until it changes).
@@ -79,7 +79,7 @@ export const DEFAULT_LAYOUT = {
     // "Painéis em janela"): { [moduleId]: true }, every width tier. They keep
     // their place in the dock (fitDock's `away`).
     detached: {},
-    // Its band (dock.js ONAIR_SPANS; Editar disposição › No ar): under the
+    // Its band (dock.js ONAIR_SPANS; Editar painéis › No ar): under the
     // columns beside the Setlist's, or the whole window.
     onairSpan: "columns",
     // The Bíblia's Livros, Capítulos and Versículos: small, medium or large
@@ -107,7 +107,7 @@ export const DEFAULT_LAYOUT = {
     // preference hid (console_hidden_modules) in the tray; after a restore,
     // with every module (false).
     trayFromChurch: true,
-    // Named arrangements (dockPresets.js, Ver › Disposição) and the one in
+    // Named arrangements (dockPresets.js, Ver › Painéis salvos) and the one in
     // use (null = Padrão).
     dockPresets: [],
     dockPreset: null,

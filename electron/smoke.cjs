@@ -769,7 +769,7 @@ async function checkConsole(webContents, { live, outputs }) {
     // read the title of the Programa (".prog") or the Prévia (".prev-panel .kx-mon").
     const PROG = ".prog";
     const PREV = ".prev-panel .kx-mon";
-    // The culto environment's modules (the dock, Ver › Editar disposição):
+    // The culto environment's modules (the dock, Ver › Editar painéis):
     // every group inside the window, none over another.
     const GROUPS_FIT = `(() => {
         const gs = [...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.getBoundingClientRect());
@@ -1108,7 +1108,7 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.colsFit = Object.values(result.cols).every(Boolean);
-        // Ver › Editar disposição (dock.js; Rodada R, R5): a banner with the
+        // Ver › Editar painéis (dock.js; Rodada R, R5): a banner with the
         // tray, every group's panel header is the handle (no bar above it, so
         // Camadas keeps its height); the Biblioteca dragged by its name to the
         // right of the Slides goes there (the drop region shows where while
@@ -1121,7 +1121,7 @@ async function checkConsole(webContents, { live, outputs }) {
             const camadasH = () => js("(() => { const g = document.querySelector('.console .dock .dock-group[data-dock-mods=\"camadas\"]'); return g ? Math.round(g.getBoundingClientRect().height) : -1; })()");
             const camadasOut = await camadasH();
             await click(".topbar .tb-ver");
-            await click(".pop .kx-menu-item", "Editar disposição");
+            await click(".pop .kx-menu-item", "Editar painéis");
             result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner [data-dock-tray]')) && !document.querySelector('.dock-bar') && [...document.querySelectorAll('.console .dock .dock-group')].every((g) => g.querySelector('.kx-panel-h.is-dock-edit, :scope > .dock-tabs.is-edit'))"));
             const camadasIn = await camadasH();
             result.editHonest = camadasOut === camadasIn ? true : { camadasOut, camadasIn };
@@ -1155,7 +1155,7 @@ async function checkConsole(webContents, { live, outputs }) {
             await press("Escape");
             result.editEsc = await waitFor(() => js("!document.querySelector('.arr-banner')")) && JSON.stringify(live.get().content || null) === airBefore;
             await click(".topbar .tb-ver");
-            await click(".pop .kx-menu-item", "Editar disposição");
+            await click(".pop .kx-menu-item", "Editar painéis");
             await click(".arr-banner button", "Restaurar");
             await click(".arr-banner button", "Concluir");
             result.editRestore = (await groupOrder()) === orderBefore;

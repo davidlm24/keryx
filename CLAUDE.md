@@ -42,7 +42,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   YouTube…"; Aviso rápido; Atalhos (one place: Ajuda); "Autoplay" (the
   Setlist's switch, the one English word, Rodada O3: see above); "Temas e
   fundos" (the section's one name, "Fundos" the library alone); "Instalar e
-  reiniciar"; Ver › "Editar disposição" (o arranjo do console — "layout" é
+  reiniciar"; Ver › "Editar painéis" (o arranjo do console, owner 2026-11-09:
+  "painéis", never "disposição" — the panels saved with a name are "Painéis
+  salvos", Restaurar painéis; "layout" é
   das telas). Heading hierarchy: the page title is the Panel's header; a
   listhead is a smaller sub-title (its "· hint" never in caps, console.css)
   that NEVER repeats the page title, only where a section has 2+ groups;
@@ -149,7 +151,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `CfgGroup`): the order inside a page is identity first, then what changes
   most, then the rare; a page's first area is a plain heading
   (`fold={false}`: Telas, Conexão, Temas padrão, Passagens, Planejamento,
-  Disposição, Andamento, Backup) and only the areas after it fold, the rare
+  Painéis, Andamento, Backup) and only the areas after it fold, the rare
   ones starting closed (Transições, Som e YouTube, Arquivo de ajustes, Importação
   de letras, Equipe de louvor, Atalhos, O que vai e o que fica, Código da
   igreja, Dados); what is chosen goes in the group's `summary` — a plain
@@ -196,7 +198,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   only the deviations from each default (`src/lib/console/cfgGroups.js`,
   tested; `useCfgGroup`, one store per window, a detached /Janela follows
   through `storage`) — never `layout` (the editors have none, Restaurar
-  disposição must not reset it). H1, H2 and HF3 build on it: its API is the
+  painéis must not reset it). H1, H2 and HF3 build on it: its API is the
   contract. **The other pages of THE window** (Rodada H4) use `CfgGroup`
   too (Editor de música, Planejar o culto, Aviso, Escola bíblica; ids
   `song.*`, `planner.*`, `notice.*`, `school.turma`; summaries in
@@ -1115,10 +1117,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   in windowState.cjs: bounds and a 300 px minimum per panel; main brings an
   open one forward instead of a second), hosted by `PanelPage.jsx` (the
   WinBar with the module's name, then the panel as in the console, its
-  title left to the bar). The door is the ⧉ `external` right before the
-  fold chevron (`Panel detach`, TabsPanel's too, `DetachBtn` in kx.jsx)
-  and Editar disposição › Mover para… › "Para uma janela própria" / "Voltar
-  ao console". It is `layout.detached` (per computer, every width tier;
+  title left to the bar). **The door is only in Ver › Editar painéis**
+  (owner 2026-11-09, after the first build had a ⧉ on every header): the ⧉
+  `external` in the panel's edit header, right before its × (Dock.jsx
+  `editOf` → `edit.detach`, kx.jsx `DockEditHead`; on a panel already in
+  a window it is the `undo` "Voltar ao console"), and Mover para… › "Para
+  uma janela própria" / "Voltar ao console"; never on a header outside the
+  edit. It is `layout.detached` (per computer, every width tier;
   `restoreEnv`/Restaurar drop it): **the module stays in its place in the
   dock** and fitDock's `away` takes it out of the frame like the No ar
   strip's `gone` (never the tray: the Setlist is `required`, and
@@ -1239,7 +1244,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `fromArrangement`, so an old save keeps its look). Every module is built
   apart from where it goes (`modulePanels` in Console.jsx: Biblioteca,
   Slides, Programa, `PreviaPanel`, the Painel, Setlist, Camadas,
-  No ar, `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
+  No ar, `PlayerSlot`). Ver › Editar painéis: drag a module by its name to a
   side of another (splits) or its middle (tabs), a click on the name opens
   "Mover para…", × puts it in the tray (the edit banner). **The handle is
   the panel's own header** (owner 2026-10-29, Rodada R, R5; no gold bar
@@ -1266,9 +1271,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `--dur-fold`/`--ease-fold`; one that comes from the tray fades in; reduced
   motion cuts; `useDockEase` is untouched). Esc mid-drag cancels only the
   drag. **The banner is one line where it fits** (wraps only when it must):
-  "Editando a disposição" (the long hint is its tooltip), a short hint
+  "Editando os painéis" (the long hint is its tooltip), a short hint
   hidden under 1500 px, the Bandeja inline, Tamanhos, Divisão (Exato), No
-  ar Colunas | Janela, Travar, the Disposição button (its menu: Salvar,
+  ar Colunas | Janela, Travar, the Painéis button (its menu: Salvar,
   Salvar como…, Excluir…), Restaurar, Concluir. While editing,
   every splitter shows its side's size in % of the split and a click on
   that badge lets one type it (`Split` label/onPercent in kx.jsx, Dock.jsx). The banner's **Tamanhos: Livre | Por %** (owner 2026-10-15, Rodada D; per environment, per dock): Por % keeps `mode: "pct"` and `ref` (the box the sizes were made for) on the dock, `fitDock` scales the fixed sizes by the box on screen over `ref` so the proportions survive another window size (minimums and locked heights still win), and splitters snap to 5 % (`rebaseDock`, `setDockMode`, `snapPct` in dock.js, tested). **Exato** (owner 2026-10-22, Rodada P4-2 = A) keeps `mode: "exact"` and `ref` and every split's `weights` (one per child, summing 100): the open children share the room by them, so 33 · 33 · 34 is exactly that at any window size (no 5 % snap, no flexible child; the last open one only takes the rounding); minimums, locked heights, folds and the Programa's 16:9 still win (`allocateWeights` in `fitNode`), and the `sizes` follow the weights as drawn in `ref` (`syncExact` in `normalizeDock`), so a structural edit or leaving Exato keeps what is on screen (`setDockMode` takes the frame on screen). A splitter there trades weight between the open children on its two sides only, in whole % (`resizeExact`; typed on its badge: as typed; double click: the two share evenly, `evenExact`); the banner's one-click 50 · 50, 33 · 33 · 34 and 25 · 50 · 25 (`presetsForSplit`) and "Digitar…" (`parseWeights`) act on the split whose splitter was touched last while editing, else the outer one (`setSplitWeights`; `Split onPick`). **Travar fora da edição** (owner 2026-10-22, Rodada P4-1 = A): one switch per environment, in the banner (`DockLockSwitch`) and in Ver; on, outside the edit, every gap is a plain `dock-gap` (no drag, arrows or double click). It is `lock: true` on the dock beside `mode`/`ref` (`dockLocked`, `setDockLock`), so it rides `normalizeDock`; a named arrangement or another tier's dock coming in takes the switch as it is (`withLockOf`; `switchTier`'s `fresh` gives a tier never arranged the console's own, locked), Padrão and Restaurar posições keep it, and it never makes an arrangement "· alterada". The Programa, the
@@ -1304,15 +1309,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   would otherwise move each time the No ar strip comes and goes.
   A new module is an entry in
   dock.js `MODULES` and in `modulePanels` (and, if it may leave for a
-  window of its own, in detach.js `DETACHABLE` and `PanelPage.jsx`). **Disposições com nome**
+  window of its own, in detach.js `DETACHABLE` and `PanelPage.jsx`). **Painéis salvos**
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
   as it is ("Salvar como…", "Salvar" over the one in use, "Excluir…" via
-  useConfirm), Ver › Disposição switches (Padrão = the console's own, never
+  useConfirm), Ver › Painéis salvos switches (Padrão = the console's own, never
   in the list; "· alterada" when the dock differs from it), each
   environment its own (names unique within one; `presetsFor`); kept with
   the layout per computer (`dockPresets`; in use: `dockPreset`,
   `bibleDockPreset`). Padrão and the banner's Restaurar posições restore
-  only the environment on screen (`restoreEnv`); "Restaurar disposição"
+  only the environment on screen (`restoreEnv`); "Restaurar painéis"
   keeps the list. **Four columns** are the
   default dock (the console audit,
   owner 2026-10-13, which replaced the two-band centre of #136/#138):
@@ -1357,7 +1362,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`TabsPanel.jsx`); under the Biblioteca, the Slides and the centre the **No ar**
   strip, the Setlist's column running to the bottom beside it (owner
   2026-10-14, `layout.onairSpan` "columns", the default; "window" puts it
-  under every column, edge to edge — Editar disposição › No ar, dock.js
+  under every column, edge to edge — Editar painéis › No ar, dock.js
   `withBand`/`moveBand`/`bandOf`; a structure with no Setlist column
   falls back to the window band); the strip is at least `ONAIR_H` (108 px)
   and as tall as its slides' lines (`onAirHeight`; the cards at 13 px,
@@ -1419,7 +1424,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   in the list's order, at least one always, "Restaurar abas padrão" at the
   bottom (the Biblioteca's has "Nas letras" — Mostrar o artista, o tom, a
   duração — above it); saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
-  tested; "Restaurar disposição" resets it). **A new tab checked by default
+  tested; "Restaurar painéis" resets it). **A new tab checked by default
   appears once on a computer whose list was saved before it existed** (owner
   2026-10-24: after the update the Chat stayed hidden): `layout.tabs.seen`
   keeps, per row, every tab that computer has met (`normalizeTabs`; a save

@@ -55,7 +55,7 @@ const MODES = [["ler", "Ler"], ["comparar", "Comparar"]];
 export const bibleVersionWanted = () => getPrefs().bible_version;
 
 // The Bíblia environment, Holyrics-style, in three columns (their order is
-// the operator's, Ver › Editar disposição): Livro, Capítulo and Versículo
+// the operator's, Ver › Editar painéis): Livro, Capítulo and Versículo
 // stacked (the version, Abrev | Nomes, the install + and the view menu in
 // Livros' header — the old "Versão e busca" module is gone, 2026-10-14);
 // the chapter — read it (Ler) or set versions side by side (Comparar), with
@@ -599,7 +599,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // The Bíblia's modules (owner layout 2026-10-12: Livro · Capítulo ·
     // Versículo stacked on the left under the version and search, the
     // chosen text in the middle, what is on air on the right). Where they go
-    // is the Bíblia's dock (Ver › Editar disposição; src/lib/console/dock.js,
+    // is the Bíblia's dock (Ver › Editar painéis; src/lib/console/dock.js,
     // Console.jsx keeps it): each is built here apart from its place.
     const modules = {
         books: (

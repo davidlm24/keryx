@@ -260,7 +260,7 @@ compositions), it is given.
 - `kx-banner`: one 28 px line across the grid, tinted, a 1 px border all
   round in the state's colour (`--brand-ring`, `--warn-ring`, `--rh-ring`;
   no top rule) and the state's glyph first (`kx-banner-i`): gold
-  `is-edit` for Editando a disposição, blue `is-rh` for `TELAS TRAVADAS —
+  `is-edit` for Editando os painéis, blue `is-rh` for `TELAS TRAVADAS —
   nada novo vai às telas`, amber `is-warn` for an output that failed (its
   title in `kx-alert-title`, the detail `kx-sub`). The ways out are 24 px
   buttons that read on the tint: the main one filled in the state's colour
@@ -586,7 +586,7 @@ screen actions live in the Programa's pill; a new top-level action goes in
 the menu bar's model, never as another icon.
 
 **Each environment is a dock** (`dock.js`, tested; `Dock.jsx`): splits and
-tab groups the operator arranges in **Ver › Editar disposição** (drag a
+tab groups the operator arranges in **Ver › Editar painéis** (drag a
 module by its name to a side or the middle of another, "Mover para…", × to
 the tray; every splitter shows its %, Tamanhos: Livre | Por %), with named
 arrangements per environment. Never place a column by hand: a new module is
@@ -670,7 +670,7 @@ bottom); each output picks its position, style, colours, size and entrance.
 
 Views the app has and the canvas never drew; they follow this system but were
 designed in the app: THE window and its pages, the background library, the
-dock and Editar disposição, the Temas panel, the player's two rows, the
+dock and Editar painéis, the Temas panel, the player's two rows, the
 Bíblia's dock, the pills, the groups, the switch and the check.
 
 ## Histórico
@@ -699,7 +699,7 @@ Kept so old commits and the canvas make sense; none of this is a rule.
   Camadas** moved out on 2026-10-14: Camadas edits no look.
 - **2026-10-12 — Editar layout**: columns and stacked cards moved by grips
   (`layout.order`/`layout.stacks`, `arrange.js`, now only read to build a
-  first dock). The free dock and Editar disposição replaced it on 2026-10-13.
+  first dock). The free dock and Editar painéis (then "Editar disposição") replaced it on 2026-10-13.
 - **2026-10-12 — Layouts das telas**: designs as a catalogue assigned to
   screens (*Usar em…*). Since 2026-10-13 each screen owns its design.
 - **2026-10-13/14 — slides and verses as cards** with a 2 px side bar, then

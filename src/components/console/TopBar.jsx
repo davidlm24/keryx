@@ -103,7 +103,7 @@ export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLab
                 {/* Ver: the modules, the density and the arrangements; beside the bell.
                     Its gold dot: pedidos not seen while the Painel is in the tray (Rodada Q, S9 = B). */}
                 <span className="tb-bell">
-                    <IconBtn name="panels" className="tb-ver" title={verDot ? "Ver · módulos, densidade e disposição · pedidos novos no Painel" : "Ver · módulos, densidade e disposição"} on={open === "ver"} onClick={() => toggle("ver")} aria-haspopup="menu" aria-expanded={open === "ver"} />
+                    <IconBtn name="panels" className="tb-ver" title={verDot ? "Ver · painéis e densidade · pedidos novos no Painel" : "Ver · painéis e densidade"} on={open === "ver"} onClick={() => toggle("ver")} aria-haspopup="menu" aria-expanded={open === "ver"} />
                     {verDot && open !== "ver" && <i className="tb-bell-dot tb-new-dot" aria-hidden="true" />}
                 </span>
                 {/* tb-notifs: the bell's own name, the Notificações popover's

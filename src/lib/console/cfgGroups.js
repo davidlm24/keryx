@@ -5,7 +5,7 @@
 // each group's default — so a group that starts closed and was never
 // touched is not in the store, and changing a default later reaches every
 // computer that left it alone. Not in `layout`: the Editor pages and a
-// detached /Janela have none, and "Restaurar disposição" must not reset it.
+// detached /Janela have none, and "Restaurar painéis" must not reset it.
 // Pure (tested); the hook `useCfgGroup` in parts.jsx reads it.
 export const GROUPS_KEY = "keryx.cfg.groups";
 

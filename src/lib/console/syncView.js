@@ -283,5 +283,5 @@ export function joinNote(pending, st, songsNow, nowMs = Date.now()) {
 
 // O que vai e o que fica, the Google page's one line each (board 1).
 export const GOOGLE_GOES = "Vão: músicas, cultos, setlists, temas, fundos, mídia, avisos, Escola, pedidos.";
-export const GOOGLE_STAYS = "Ficam aqui: as Bíblias instaladas, as telas e saídas, a disposição do console.";
+export const GOOGLE_STAYS = "Ficam aqui: as Bíblias instaladas, as telas e saídas, os painéis do console.";
 export const GOOGLE_TRAVEL_SUMMARY = "músicas, cultos, mídia vão; Bíblias e telas ficam";
