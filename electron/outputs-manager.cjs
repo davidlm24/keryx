@@ -7,7 +7,7 @@
 // change or the operator reassigns it.
 
 const {
-    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, autoScreens, resolvePlacement, windowedBounds, normalizeAssignment, canRemove, identifyHtml,
+    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, autoScreens, resolvePlacement, windowedBounds, normalizeAssignment, canRemove, identifyHtml, identifyPlan,
 } = require("./outputs.cjs");
 
 const SETTINGS_KEY = "outputs";
@@ -376,50 +376,38 @@ function createOutputManager({
         if (win && !win.isDestroyed()) win.close();
     }
 
-    // Shows each display's number on it for a few seconds.
-    function identify(durationMs = 3000) {
-        displays().forEach((d, index) => {
-            const win = new Win({
-                x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height,
-                frame: false, transparent: true, focusable: false, skipTaskbar: true, alwaysOnTop: true,
-                webPreferences: { sandbox: true, contextIsolation: true },
-            });
-            win.setIgnoreMouseEvents(true);
-            const html = `<body style="margin:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);font:700 28vh system-ui;color:#fff">${index + 1}</body>`;
-            win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-            setTimeout(() => { if (!win.isDestroyed()) win.close(); }, durationMs);
-        });
-    }
-
-    // Identificar saídas: each open output that is on screen gets the veil
-    // over its own box, "Tela N" (the number Identificar telas shows) or
-    // "Janela", and its name (`names`: the console's, which knows a name
-    // the church gave it; else the factory one). Above the output, which may
-    // be on top of everything itself.
-    function identifyOutputs(names = {}, durationMs = 3000) {
-        const current = displays();
-        let shownCount = 0;
+    // Identificar telas (one for all, owner 2026-11-09; identifyPlan in
+    // outputs.cjs): every monitor its number and the outputs full screen on
+    // it, every windowed output "Janela" and its name over its own box.
+    // `names`: the console's (it knows a name the church gave an output),
+    // else the factory one. Above the outputs, which may be on top of
+    // everything themselves. -> how many monitors it marked.
+    function identify(names = {}, durationMs = 3000) {
+        const nameOf = (key) => (typeof names?.[key] === "string" && names[key].trim() ? names[key].trim().slice(0, 80) : outputForKey(key).label);
+        const open = [];
         for (const [key, out] of windows) {
             if (out.isDestroyed() || !out.isVisible()) continue;
-            const full = shown.get(out) === "fullscreen";
-            const n = full ? current.findIndex((d) => d.id === heldOn.get(out)) + 1 : 0;
-            const where = n ? `Tela ${n}` : "Janela";
-            const name = typeof names[key] === "string" && names[key].trim() ? names[key].trim().slice(0, 80) : outputForKey(key).label;
-            const b = out.getBounds();
+            open.push({ key, name: nameOf(key), full: shown.get(out) === "fullscreen", displayId: heldOn.get(out) ?? null, bounds: out.getBounds() });
+        }
+        const plan = identifyPlan({ displays: displays(), outputs: open, consoleId: operatorDisplayId() });
+        const veil = (box, html) => {
             const win = new Win({
-                x: b.x, y: b.y, width: b.width, height: b.height,
+                x: box.x, y: box.y, width: box.width, height: box.height,
                 frame: false, transparent: true, focusable: false, skipTaskbar: true, alwaysOnTop: true, show: false,
                 webPreferences: { sandbox: true, contextIsolation: true, javascript: false },
             });
             win.setIgnoreMouseEvents(true);
             if (win.setAlwaysOnTop) win.setAlwaysOnTop(true, "screen-saver");
-            win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(identifyHtml({ where, name }))}`);
+            win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
             win.once("ready-to-show", () => { if (!win.isDestroyed()) win.showInactive(); });
             setTimeout(() => { if (!win.isDestroyed()) win.close(); }, durationMs);
-            shownCount += 1;
-        }
-        return shownCount;
+        };
+        for (const sc of plan.screens) veil(sc.bounds, identifyHtml(sc));
+        for (const w of plan.windows) veil(w.bounds, identifyHtml(w));
+        return plan.screens.length;
     }
+    // The popover's old name: the same thing now.
+    const identifyOutputs = (names = {}, durationMs = 3000) => identify(names, durationMs);
 
     return {
         windowOptions,

@@ -179,15 +179,33 @@ function normalizeAssignment(value) {
     return { target: "auto", openAtLaunch, removed };
 }
 
-// Identificar saídas (owner 2026-11-08, mockup I1 = A): over each open
-// output, for a few seconds, a dark veil with its screen's number (or
-// "Janela") big and the output's name under it, in the brand's gold. Only
-// those two lines. Text only, escaped: the name may be one the church typed.
+// Identificar telas (owner 2026-11-09, one identify for all; there were two,
+// the Saídas popover's covering only the open outputs): for a few seconds
+// every connected monitor shows its number big and, under it, the outputs
+// full screen on it by the console's names ("Projeção · Letras") —
+// "Console" on the operator's own, "livre" on one with nothing —, and every
+// output open in a window gets "Janela" and its name over its own box.
+// Text only, escaped: a name may be one the church typed. `muted`: the
+// line in grey ("livre"), else the brand's gold.
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-function identifyHtml({ where, name }) {
+function identifyHtml({ where, name, muted = false }) {
     return "<!doctype html><html lang=\"pt-BR\"><meta charset=\"utf-8\"><body style=\"margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;background:rgba(0,0,0,.72);font-family:Geist,'Segoe UI',system-ui,sans-serif;overflow:hidden\">"
         + `<div style="font-size:17vh;font-weight:700;color:#fff;line-height:1">${escapeHtml(where)}</div>`
-        + `<div style="font-size:5.6vh;font-weight:500;color:#e2c08a;line-height:1.1">${escapeHtml(name)}</div></body></html>`;
+        + `<div style="font-size:5.6vh;font-weight:500;color:${muted ? "#bbb6ac" : "#e2c08a"};line-height:1.1;text-align:center;padding:0 4vw">${escapeHtml(name)}</div></body></html>`;
+}
+
+// What Identificar telas draws. `displays`: in their order ("Tela 1" first,
+// as everywhere); `outputs`: the open, visible ones, { key, name, full,
+// displayId, bounds }; `consoleId`: the operator's monitor. -> { screens:
+// [{ id, bounds, where, name, muted }], windows: [{ key, bounds, where, name }] }.
+function identifyPlan({ displays = [], outputs = [], consoleId = null } = {}) {
+    const screens = displays.map((d, i) => {
+        const here = outputs.filter((o) => o.full && o.displayId === d.id).map((o) => o.name);
+        const name = here.length ? here.join(" · ") : d.id === consoleId ? "Console" : "livre";
+        return { id: d.id, bounds: d.bounds, where: `Tela ${i + 1}`, name, muted: !here.length && d.id !== consoleId };
+    });
+    const windows = outputs.filter((o) => !o.full).map((o) => ({ key: o.key, bounds: o.bounds, where: "Janela", name: o.name }));
+    return { screens, windows };
 }
 
 // The main projection is the output the console mirrors (the Prévia) and
@@ -196,6 +214,7 @@ function identifyHtml({ where, name }) {
 const canRemove = (key) => key !== "/Projection";
 
 module.exports = {
+    identifyPlan,
     staysOnTop,
     inPlace,
     OUTPUTS,
