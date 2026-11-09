@@ -32,6 +32,12 @@ export function newNotice(type = "countdown") {
     };
 }
 
+// What an aviso draws under itself (owner 2026-11-09): its own picture or
+// colour; with neither, the screen is black, never the Fundo (the papel de
+// parede) of what was on air before. Its video or file loop covers the screen
+// on top of that. ScreenRenderer's Background and bgKey read it.
+export const noticeHasGround = (item) => Boolean(item?.background_image || item?.background_color);
+
 const two = (n) => String(n).padStart(2, "0");
 export const clockOf = (ms) => {
     const s = Math.max(0, Math.round(ms / 1000));

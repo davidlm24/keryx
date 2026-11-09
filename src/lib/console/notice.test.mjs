@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newNotice, noticeTime, noticeLeft, fileAt, clockOf, noticeLabel } from "./notice.js";
+import { newNotice, noticeTime, noticeLeft, fileAt, clockOf, noticeLabel, noticeHasGround } from "./notice.js";
+
+test("an aviso without its own picture or colour is drawn on black, never on the Fundo", () => {
+    assert.equal(noticeHasGround(newNotice("announcement")), false);
+    assert.equal(noticeHasGround({ background_video: "keryx-media://a.mp4" }), false);
+    assert.equal(noticeHasGround({ background_color: "#123456" }), true);
+    assert.equal(noticeHasGround({ background_image: "http://127.0.0.1:7700/media/a.jpg" }), true);
+    assert.equal(noticeHasGround(null), false);
+});
 
 test("countdown and cronômetro times", () => {
     const c = newNotice("countdown");

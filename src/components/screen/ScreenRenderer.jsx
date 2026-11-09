@@ -9,7 +9,7 @@ import { sizeCqw } from "@/lib/textSize";
 import { fontStack } from "@/lib/fonts";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
-import { noticeTime, fileAt, clockOf } from "@/lib/console/notice";
+import { noticeTime, fileAt, clockOf, noticeHasGround } from "@/lib/console/notice";
 import { ringBell } from "@/lib/bell";
 import { usePrefs } from "@/hooks/useUser";
 import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
@@ -146,7 +146,7 @@ function bgKey(state, layer) {
         : layer === "tool" ? state.tool.style?.background_image
         : (state.communication.item.background_image || state.communication.item.background_color);
     if (own) return `own:${own}:${cs?.background_dim ?? ""}:${cs?.background_blur ?? ""}`;
-    if (hidden) return "black";
+    if (hidden || layer === "communication") return "black";
     return state.background ? `fundo:${JSON.stringify(state.background)}` : "default";
 }
 
@@ -219,9 +219,11 @@ const slideStyle = (content) => {
 
 function Background({ state, layer, preview, motion }) {
     if (layer === "media" || isPresentation(state, layer)) return <div className="ks-black" />;
+    // An aviso draws its own picture or colour, else black: never the Fundo
+    // (owner 2026-11-09, noticeHasGround in notice.js).
+    if (layer === "communication" && !noticeHasGround(state.communication.item)) return <div className="ks-black" />;
     // Camadas' eye on the Fundo: no Fundo, and no picture of a song's own
-    // either; an aviso's or a tool's own look stays (it is theirs, not the
-    // Fundo's), and without one the screen is black.
+    // either; a tool's own look stays (it is its own, not the Fundo's).
     const hidden = layerHidden(state, "background");
     if (hidden && layer !== "tool" && layer !== "communication") return <div className="ks-black" />;
     const cs = layer === "content" ? slideStyle(state.content) : null;
