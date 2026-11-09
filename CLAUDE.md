@@ -426,7 +426,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Avisos (CommunicationVideo) are the `communication` layer, drawn in full
   by `ScreenRenderer` (look, background, logo, chime; arithmetic in
   `src/lib/console/notice.js`); outputs move a "Tocar todos" sequence on
-  with `useNoticeAdvance`. Escola bíblica materials go on air as ordinary
+  with `useNoticeAdvance`. **An aviso with no picture or colour of its own
+  is drawn on black**, never on the Fundo or the papel de parede (owner
+  2026-11-09, `noticeHasGround`). Escola bíblica materials go on air as ordinary
   stages (`stageFromMaterial`; teacher notes ride in `content.stage` —
   each question's in `stage.slide_notes` (`materialStage`) — never on the
   projector). **Activities** (owner 2026-10-16, Rodada E4): a slide may
