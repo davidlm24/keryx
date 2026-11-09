@@ -44,6 +44,19 @@ export async function refreshSyncStatus() {
     return status;
 }
 
+// The last status read (null outside the desktop app or before the first poll).
+export const currentSyncStatus = () => status;
+
+// Sincronizar agora (the cloud's popover and Ferramentas › Conexões): one
+// pass with what is waiting sent at once; its answer is the status.
+export async function syncNow(say) {
+    const b = syncBridge();
+    if (!b) return;
+    const res = await b.call("now");
+    if (res?.error) say?.(`Sincronizar agora: ${res.error.message}`);
+    else if (res?.data) setSyncStatus(res.data);
+}
+
 function subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
