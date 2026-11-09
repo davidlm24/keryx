@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { versionsBetween, parseNotes } from "@/lib/console/releaseNotes";
 import { RELEASE_NOTES } from "@/lib/console/releaseNotesData";
 import ShortcutList from "./ShortcutList";
@@ -6,7 +6,7 @@ import { keyHint } from "@/lib/console/keys";
 import { firstSteps } from "@/lib/console/firstSteps";
 import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
-import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
+import { Btn, MenuItem, Empty, Seg } from "./kx";
 import { MenuList, useFocusFirst, usePlaced } from "./Menu";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
 import { PANEL_TABS, TABS_MENU_TITLE, tabsMenu } from "@/lib/console/panelTabs";
@@ -23,6 +23,9 @@ import { useOutputLooks } from "@/hooks/useOutputPref";
 import { Switch } from "./settings/parts";
 import { useDialogFocus } from "./useDialogFocus";
 import { mediaIcon } from "@/lib/console/libraryRows";
+import { stageItem } from "@/lib/console/setlist";
+import { searchBible } from "@/lib/bibleText";
+import { SCOPES, SCOPE_LIMIT, BIBLE_HITS, fold, ranked, markParts, paletteGroups, sectionOrder, nextScope, stepIndex, recentEntries, agoWords, nextEntries, enterWord } from "@/lib/console/paletteSearch";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
@@ -358,71 +361,233 @@ export function EndDialog({ open, setOpen, onEnd }) {
     );
 }
 
-// The command palette: everything by name. Opened from the KERYX
-// environment, a reference with verses goes to the Prévia right here (one
-// verse: its chapter from there) and Shift+Enter adds it to the Setlist;
-// "Abrir na Bíblia" is the row below it. A chapter alone, or the palette
-// opened in the Bíblia, opens the reference there. It opens centred over the
-// console, on the dimmed scrim (owner decision 2026-10-11).
-// The palette's hover buttons are glyphs (Rodada G1, CLAUDE.md "Hover
-// buttons are glyphs only"): the word stays inside as screen-reader text
-// and in the tooltip. Pôr na prévia is the eye, as in every menu.
-const ACT_ICON = { "Pôr na prévia": "prev", Abrir: "book", Buscar: "search" };
+// The search, the palette (`/`; owner 2026-11-09, mockup "Console · busca
+// (/)": P1 = B — no preview pane —, P2 to P5 = A). Everything by name, and
+// the commands: matched without case or accents and ranked
+// (src/lib/console/paletteSearch.js, tested); the kinds as chips with their
+// counts (Tab walks them; Backspace on an empty field goes back to Tudo);
+// before typing what was on air and what comes next in the Setlist; a word
+// that is not a reference shows its first verses of the Bíblia here, "Ver
+// as N na Bíblia" opening its Buscar (in the Bíblia, "Buscar … na Bíblia"
+// stays first). Enter puts the row in the Prévia (the row says what its
+// Enter does), Ctrl+Enter sends it on air, Shift+Enter adds it to the
+// Setlist (songs, references, media, Escola materials). A reference with
+// verses from the console goes to the Prévia without leaving it; a chapter
+// alone, or the palette opened in the Bíblia, opens it there. It opens
+// centred over the console, on the dimmed scrim, as a combobox: the field
+// keeps the focus, ↑/↓ walk the options (round), the mouse picks too.
+// Every button inside takes no Tab (the keys do it all from the field).
 
-export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, openReference, onPrepareReference, onAddReference, onBibleSearch, env, style }) {
+export function Palette({ open, setOpen, data, items, history = [], airItemId = null, commands = [], bibleVersion = "", onPrepare, onSend, onAddStage, onAddSong, openReference, onPrepareReference, onSendReference, onAddReference, onBibleSearch, env, style }) {
     const [q, setQ] = useState("");
+    const [scope, setScope] = useState("all");
     const [idx, setIdx] = useState(0);
+    const [hits, setHits] = useState(null);
     const inputRef = useRef(null);
-    useEffect(() => { if (open === "palette") { setQ(""); setIdx(0); setTimeout(() => inputRef.current?.focus(), 0); } }, [open]);
-    if (open !== "palette") return null;
-    const ql = q.trim().toLowerCase();
-    const has = (...f) => f.some((x) => String(x || "").toLowerCase().includes(ql));
-    const groups = [];
+    const listRef = useRef(null);
+    const boxRef = useRef(null);
+    const listId = useId();
+    const isOpen = open === "palette";
+    useEffect(() => { if (isOpen) { setQ(""); setScope("all"); setIdx(0); setHits(null); setTimeout(() => inputRef.current?.focus(), 0); } }, [isOpen]);
+    useDialogFocus(boxRef, isOpen);
+    const typed = q.trim();
     // "Jo 3:16", or the quick jump's "jo 3 16".
-    const ref = ql ? referenceFrom(q) : null;
-    const here = Boolean(ref?.verseStart && env !== "biblia" && onPrepareReference);
-    const bible = !ref ? []
-        : here ? [
-            { icon: "book", title: formatReference(ref), meta: "Na prévia, sem sair do console · Shift+Enter adiciona à setlist", pick: () => onPrepareReference(ref), add: onAddReference ? () => onAddReference(ref) : null },
-            { icon: "external", title: "Abrir na Bíblia", meta: formatReference(ref), act: "Abrir", pick: () => openReference(ref) },
-        ]
-        : [{ icon: "book", title: formatReference(ref), meta: ref.verseStart ? "Abrir na Bíblia · pôr os versículos na prévia" : "Abrir o capítulo na Bíblia", act: "Abrir", pick: () => openReference(ref) }];
-    // Not a reference: the words can still be searched in the Bíblia.
-    if (!ref && onBibleSearch && ql.length >= 3) bible.push({ icon: "search", title: `Buscar “${q.trim()}” na Bíblia`, meta: "Busca por palavra na Bíblia instalada", act: "Buscar", pick: () => onBibleSearch(q.trim()) });
-    const rund = (ql ? items.filter((it) => has(it.title)) : []).slice(0, 4).map((it) => ({ icon: "list", title: it.title, meta: "Setlist", pick: () => onPrepare(it, items.indexOf(it)) }));
-    const songs = (ql ? data.songs.filter((s) => has(s.title, s.artist)) : data.songs.slice(0, 4)).slice(0, 5).map((s) => ({ icon: "music", title: s.title, meta: [s.artist, s.song_key].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromSong(s, {}, data.themes)), add: onAddSong ? () => onAddSong(s) : null }));
-    const media = (ql ? data.media.filter((m) => has(m.title)) : []).slice(0, 4).map((m) => ({ icon: mediaIcon(m), title: m.title, meta: m.type, pick: () => onPrepare(stageFromMedia(m)) }));
-    const pieces = (ql ? data.pieces.filter((p) => has(p.title, p.text)) : []).slice(0, 4).map((p) => ({ icon: "megaphone", title: p.title || p.text, meta: "Aviso", pick: () => onPrepare(stageFromPiece(p)) }));
-    const mats = (ql ? (data.materials || []).filter((m) => has(m.title, m.subject, m.class_name)) : []).slice(0, 4).map((m) => ({ icon: materialIcon(m.type), title: m.title, meta: ["Escola bíblica", m.subject, materialMeta(m)].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromMaterial(m)) }));
-    // A reference typed in the KERYX environment is what the operator wants: first.
-    const order = env === "biblia" || here ? [["Bíblia", bible], ["Músicas", songs], ["Setlist", rund], ["Mídia", media], ["Avisos", pieces], ["Escola bíblica", mats]] : [["Setlist", rund], ["Músicas", songs], ["Bíblia", bible], ["Mídia", media], ["Avisos", pieces], ["Escola bíblica", mats]];
-    for (const [name, list] of order) if (list.length) groups.push({ name, list });
-    const flat = groups.flatMap((g) => g.list);
-    const run = (i, add) => { const r = flat[i]; if (!r) return; setOpen(null); if (add && r.add) r.add(); else r.pick(); };
+    const ref = typed ? referenceFrom(q) : null;
+    const words = Boolean(!ref && onBibleSearch && fold(typed).length >= 3);
+    // The Bíblia's words, a moment after typing stops (the installed edition
+    // in use; none installed or the preview: the "Buscar" row alone).
+    useEffect(() => {
+        if (!isOpen || !words) { setHits(null); return undefined; }
+        let gone = false;
+        const t = setTimeout(async () => {
+            try { const r = await searchBible(typed, bibleVersion, { limit: SCOPE_LIMIT }); if (!gone) setHits(r && !r.short ? { q: typed, ...r } : null); }
+            catch { if (!gone) setHits(null); }
+        }, 250);
+        return () => { gone = true; clearTimeout(t); };
+    }, [isOpen, words, typed, bibleVersion]);
+    // The option chosen stays in view.
+    useEffect(() => {
+        const box = listRef.current;
+        const el = box?.querySelector(`[data-pal-i="${idx}"]`);
+        if (!box || !el) return;
+        if (el.offsetTop < box.scrollTop) box.scrollTop = el.offsetTop - 28;
+        else if (el.offsetTop + el.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = el.offsetTop + el.offsetHeight - box.clientHeight;
+    }, [idx, scope, q]);
+    if (!isOpen) return null;
+
+    const inBible = env === "biblia";
+    const toSetlist = (st) => (onAddStage && stageItem(st) ? () => onAddStage(st) : null);
+    // Each kind's rows, whole and ranked (an empty field: in data order).
+    const rank = (list, fields) => (typed ? ranked(list, q, fields) : list);
+    const songs = rank(data.songs, (s) => [s.title, s.artist]).map((s) => {
+        const st = () => stageFromSong(s, {}, data.themes);
+        return { key: `s${s.id}`, icon: "music", title: s.title, meta: [s.artist, s.song_key].filter(Boolean).join(" · "), pick: () => onPrepare(st()), send: onSend ? () => onSend(st()) : null, add: onAddSong ? () => onAddSong(s) : null };
+    });
+    const media = rank(data.media, (m) => [m.title, m.category]).map((m) => {
+        const st = stageFromMedia(m);
+        return { key: `m${m.id}`, icon: mediaIcon(m), title: m.title, meta: MEDIA_WORD[m.type] || m.type, pick: () => onPrepare(st), send: onSend ? () => onSend(st) : null, add: toSetlist(st) };
+    });
+    const pieces = rank(data.pieces, (p) => [p.title || p.text, p.text]).map((p) => {
+        const st = stageFromPiece(p);
+        return { key: `p${p.id}`, icon: "megaphone", title: p.title || p.text, meta: "Aviso", pick: () => onPrepare(st), send: onSend ? () => onSend(st) : null };
+    });
+    const school = rank(data.materials || [], (m) => [m.title, m.subject, m.class_name]).map((m) => {
+        const st = stageFromMaterial(m);
+        return { key: `e${m.id}`, icon: materialIcon(m.type), title: m.title, meta: [m.subject, materialMeta(m)].filter(Boolean).join(" · "), pick: () => onPrepare(st), send: onSend ? () => onSend(st) : null, add: toSetlist(st) };
+    });
+    const setlist = rank(items, (it) => [it.title]).map((it) => {
+        const i = items.indexOf(it);
+        return { key: `l${it.id}`, icon: "list", title: it.title, meta: `Item ${i + 1} da setlist`, pick: () => onPrepare(it, i), send: onSend ? () => onSend(it, i) : null };
+    });
+    const cmds = rank(commands, (c) => [c.label, c.meta]).map((c) => ({ key: `c${c.id}`, icon: c.icon, title: c.label, meta: c.meta, kbd: c.kbd, act: "Fazer", pick: c.run }));
+    // The Bíblia: a reference (here: the Prévia, on air or the Setlist; in the
+    // Bíblia or a chapter alone: open it there), else the words.
+    const here = Boolean(ref?.verseStart && !inBible && onPrepareReference);
+    const verseRow = (r, extra) => ({
+        icon: "book", ...extra,
+        pick: here ? () => onPrepareReference(r) : () => openReference(r),
+        act: here ? undefined : "Abrir",
+        send: here && onSendReference ? () => onSendReference(r) : null,
+        add: here && onAddReference ? () => onAddReference(r) : null,
+    });
+    let bible = [];
+    let bibleTotal = 0;
+    if (ref) {
+        bible = here
+            ? [verseRow(ref, { key: "ref", title: formatReference(ref), meta: "O capítulo vai, parado neste versículo: as setas seguem dali" }),
+                { key: "open", icon: "external", title: "Abrir na Bíblia", meta: formatReference(ref), act: "Abrir", pick: () => openReference(ref) }]
+            : [verseRow(ref, { key: "ref", title: formatReference(ref), meta: ref.verseStart ? "Abrir na Bíblia · pôr os versículos na prévia" : "Abrir o capítulo na Bíblia" })];
+        bibleTotal = bible.length;
+    } else if (words) {
+        const find = { key: "find", icon: "search", title: `Buscar “${typed}” na Bíblia`, meta: hits?.q === typed ? (hits.total ? `Todos os versículos na ${hits.version}` : `Nenhum versículo na ${hits.version} · a busca da Bíblia mostra por quê`) : "Busca por palavra na Bíblia instalada", act: "Buscar", pick: () => onBibleSearch(typed) };
+        const found = hits?.q === typed ? hits.verses.map((v) => {
+            const r = { book: v.book, chapter: v.chapter, verseStart: v.verse, verseEnd: v.verse };
+            return verseRow(r, { key: `v${v.book}${v.chapter}:${v.verse}`, title: `${v.book} ${v.chapter}:${v.verse}`, meta: v.text, metaMarks: true });
+        }) : [];
+        // In the Bíblia its Buscar is the full list: first. In the console
+        // the verses first, the rest behind "Ver as N na Bíblia".
+        // No verse has the words (searched): nothing to offer in the console.
+        const none = hits?.q === typed && !hits.total;
+        bible = inBible ? [find, ...found] : found.length ? found : none ? [] : [find];
+        bibleTotal = bible.length + (found.length ? Math.max(0, hits.total - found.length) : 0);
+    }
+    const bibleSection = { id: "bible", rows: bible, total: bibleTotal, limit: inBible || !hits ? undefined : (bible.length - (hits?.verses?.length || 0)) + BIBLE_HITS, note: hits?.q === typed && hits.total ? `${hits.total} ${hits.total === 1 ? "versículo" : "versículos"} · ${hits.version}` : "" };
+    const byId = { songs, media, pieces, school, setlist, commands: cmds };
+    const sections = sectionOrder({ bibleFirst: inBible || here }).map((id) => (id === "bible" ? bibleSection : { id, rows: byId[id] }));
+
+    // Before typing, in Tudo (P2): what was on air, what comes next.
+    let view;
+    if (!typed && scope === "all") {
+        const recent = recentEntries(history).map((h) => {
+            const st = stageFromHistory(h, restoreArgs);
+            return { key: `h${h.at}`, icon: KIND_ICON[st.kind] || HISTORY_ICON[h.layer] || "history", title: h.title, meta: KIND_WORD[st.kind] || LAYER_WORD[h.layer] || "Esteve no ar", right: agoWords(h.at), pick: () => onPrepare(st), send: onSend ? () => onSend(st) : null };
+        });
+        const next = nextEntries(items, airItemId).map(({ it, i }) => ({ key: `n${it.id}`, icon: "list", title: `${i + 1} · ${it.title}`, meta: "Setlist", pick: () => onPrepare(it, i), send: onSend ? () => onSend(it, i) : null }));
+        view = paletteGroups([{ id: "recent", name: "Recentes", note: "esteve no ar", rows: recent }, { id: "next", name: "Próximos na setlist", rows: next }], "all");
+    } else view = paletteGroups(sections, scope);
+    const { groups, flat } = view;
+    const at = Math.min(idx, Math.max(0, flat.length - 1));
+    const sel = flat[at] || null;
+
+    const run = (i, mode = "pick") => {
+        const r = flat[i];
+        if (!r) return;
+        const fn = mode === "send" ? r.send : mode === "add" ? r.add : r.pick;
+        if (!fn) return;
+        setOpen(null);
+        fn();
+    };
+    const toScope = (s) => { setScope(s); setIdx(0); inputRef.current?.focus(); };
     const onKey = (e) => {
-        if (e.key === "Escape") { setOpen(null); }
-        else if (e.key === "ArrowDown") { e.preventDefault(); setIdx((i) => Math.min(flat.length - 1, i + 1)); }
-        else if (e.key === "ArrowUp") { e.preventDefault(); setIdx((i) => Math.max(0, i - 1)); }
-        else if (e.key === "Enter") { e.preventDefault(); run(idx, e.shiftKey); }
+        if (e.key === "Escape") setOpen(null);
+        else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); setIdx(stepIndex(at, e.key === "ArrowDown" ? 1 : -1, flat.length)); }
+        else if (e.key === "Enter") { e.preventDefault(); run(at, e.ctrlKey || e.metaKey ? "send" : e.shiftKey ? "add" : "pick"); }
+        else if (e.key === "Tab") { e.preventDefault(); toScope(nextScope(scope, e.shiftKey ? -1 : 1, sectionCounts(sections), Boolean(typed))); }
+        else if (e.key === "Backspace" && !q && scope !== "all") { e.preventDefault(); toScope("all"); }
         e.stopPropagation();
     };
+    const chipCounts = typed ? sectionCounts(sections) : {};
+    const scopeName = SCOPES.find((s) => s.id === scope)?.label;
     let n = -1;
     return (
-        <div className="palette" style={style}>
-            <Field inputRef={inputRef} value={q} onChange={(v) => { setQ(v); setIdx(0); }} placeholder="Músicas, versículos (Jo 3:16), mídia, avisos, itens da setlist" onKeyDown={onKey} kbd="Esc" />
-            <div className="res">
+        <div ref={boxRef} className="palette" style={style} role="dialog" aria-modal="true" aria-label="Buscar em tudo">
+            <div className="kx-field kx-t pal-field">
+                <Icon name="search" />
+                {scope !== "all" && <span className="pal-scope">{scopeName}</span>}
+                <input ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setIdx(0); }} onKeyDown={onKey} spellCheck={false}
+                    placeholder={scope === "all" ? "Músicas, versículos (Jo 3:16), mídia, avisos, Escola bíblica, setlist, comandos" : `Buscar em ${scopeName}`}
+                    role="combobox" aria-label="Buscar em tudo" aria-expanded="true" aria-controls={listId} aria-autocomplete="list" aria-activedescendant={sel ? `${listId}-${at}` : undefined} />
+                {ref && <span className="pal-as">= {formatReference(ref)}</span>}
+                <kbd>Esc</kbd>
+            </div>
+            <div className="pal-chips" role="toolbar" aria-label="Tipos">
+                {SCOPES.map((s) => {
+                    const c = s.id === "all" ? null : chipCounts[s.id];
+                    return (
+                        <button key={s.id} type="button" tabIndex={-1} className={`pal-chip kx-t ${scope === s.id ? "is-on" : ""} ${typed && c === 0 ? "is-none" : ""}`} aria-pressed={scope === s.id} onClick={() => toScope(s.id)}>
+                            {s.label}{c != null && typed ? <span className="pal-n">{c}</span> : null}
+                        </button>
+                    );
+                })}
+            </div>
+            <div className="pal-res" ref={listRef} id={listId} role="listbox" aria-label="Resultados">
                 {groups.map((g) => (
-                    <React.Fragment key={g.name}>
-                        <div className="kx-menu-h"><span className="kx-section">{g.name}</span></div>
-                        {g.list.map((r) => { n += 1; const i = n; return (
-                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title={`${r.act || "Pôr na prévia"} · Enter`} aria-label={`${r.act || "Pôr na prévia"}: ${r.title}`}><span className="kx-act-i"><Icon name={ACT_ICON[r.act] || "prev"} /></span><span className="kx-act-l">{r.act || "Pôr na prévia"}</span></Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar à setlist · Shift+Enter" aria-label={`Adicionar ${r.title} à setlist`}><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar à setlist</span></Btn>}</>} />
-                        ); })}
-                    </React.Fragment>
+                    <div key={g.id} role="group" aria-label={g.name}>
+                        <div className="kx-menu-h" aria-hidden="true"><span className="kx-section">{g.name}</span>{(g.note || (g.id === "bible" && bibleSection.note)) && <span className="kx-meta">{g.id === "bible" ? bibleSection.note : g.note}</span>}</div>
+                        {g.list.map((r) => {
+                            n += 1;
+                            const i = n;
+                            const on = i === at;
+                            return (
+                                <div key={r.key} id={`${listId}-${i}`} data-pal-i={i} role="option" aria-selected={on} className={`kx-row kx-t pal-opt ${on ? "is-selected" : ""}`}
+                                    onMouseMove={() => { if (!on) setIdx(i); }} onClick={() => run(i)} onDoubleClick={() => run(i, "send")}>
+                                    <span className="kx-glyph"><Icon name={r.icon} /></span>
+                                    <div className="kx-row-main">
+                                        <div className="kx-row-title">{typed ? <Marked text={r.title} q={q} /> : r.title}</div>
+                                        {r.meta && <div className="kx-row-meta">{r.metaMarks ? <Marked text={r.meta} q={q} /> : r.meta}</div>}
+                                    </div>
+                                    {r.kbd && <kbd className="pal-key">{r.kbd}</kbd>}
+                                    {r.right && <span className="pal-right">{r.right}</span>}
+                                    {on && <span className="pal-hint" aria-hidden="true"><kbd>↵</kbd>{enterWord(r)}</span>}
+                                    {on && (r.send || r.add) && (
+                                        <span className="pal-acts">
+                                            {r.send && <Btn tabIndex={-1} onClick={(e) => { e.stopPropagation(); run(i, "send"); }} title="Enviar ao ar · Ctrl+Enter" aria-label={`Enviar ao ar: ${r.title}`}><span className="kx-act-i"><Icon name="send" /></span><span className="kx-act-l">Enviar ao ar</span></Btn>}
+                                            {r.add && <Btn tabIndex={-1} onClick={(e) => { e.stopPropagation(); run(i, "add"); }} title="Adicionar à setlist · Shift+Enter" aria-label={`Adicionar ${r.title} à setlist`}><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar à setlist</span></Btn>}
+                                        </span>
+                                    )}
+                                    <span className="kx-sr">{on ? `, Enter: ${enterWord(r)}${r.send ? ", Ctrl+Enter: enviar ao ar" : ""}${r.add ? ", Shift+Enter: adicionar à setlist" : ""}` : ""}</span>
+                                </div>
+                            );
+                        })}
+                        {g.more > 0 && (g.id === "bible"
+                            ? <button type="button" tabIndex={-1} className="pal-more kx-t" onClick={() => { setOpen(null); onBibleSearch(typed); }}>Ver {hits?.total > 1 ? `os ${hits.total}` : "todos"} na Bíblia</button>
+                            : <button type="button" tabIndex={-1} className="pal-more kx-t" onClick={() => toScope(g.id)}>Ver mais {g.more}</button>)}
+                    </div>
                 ))}
-                {!flat.length && <Empty title={ql ? `Nada com "${q}"` : "Digite para buscar"}>{ql ? "Tente um título, um trecho ou uma referência como Jo 3:16." : "Músicas, versículos, mídia, avisos e itens da setlist."}</Empty>}
+                {!flat.length && <Empty title={typed ? `Nada com "${typed}"${scope !== "all" ? ` em ${scopeName}` : ""}` : "Digite para buscar"}>{typed ? (scope !== "all" ? "Tab passa para outro tipo; Backspace volta a Tudo." : "Tente um título, um trecho, uma referência como Jo 3:16 ou um comando.") : "Músicas, versículos, mídia, avisos, Escola bíblica, setlist e comandos."}</Empty>}
+            </div>
+            <div className="pal-foot" aria-hidden="true">
+                <span><kbd>↑ ↓</kbd> escolher</span>
+                {sel && <span><kbd>↵</kbd> {enterWord(sel).toLowerCase()}</span>}
+                {sel?.send && <span><kbd>Ctrl ↵</kbd> enviar ao ar</span>}
+                {sel?.add && <span><kbd>⇧ ↵</kbd> setlist</span>}
+                <span><kbd>Tab</kbd> tipo</span>
+                <span><kbd>Esc</kbd> fechar</span>
             </div>
         </div>
     );
+}
+
+const MEDIA_WORD = { video: "Vídeo", image: "Imagem", audio: "Áudio", pdf: "Apresentação (PDF)", powerpoint: "PowerPoint", youtube: "YouTube", gif: "GIF" };
+const LAYER_WORD = { media: "Mídia", video: "Vídeo", audio: "Áudio", communication: "Aviso", tool: "Ferramenta" };
+const KIND_WORD = { lyrics: "Letra", bible: "Bíblia", text: "Texto", presentation: "Apresentação", activity: "Escola bíblica" };
+const KIND_ICON = { lyrics: "music", bible: "book", text: "text", presentation: "presentation" };
+const HISTORY_ICON = { content: "text", media: "media", video: "film", audio: "volume", communication: "megaphone", tool: "clock" };
+const sectionCounts = (sections) => Object.fromEntries(sections.map((s) => [s.id, s.total ?? s.rows.length]));
+
+// A title or a verse with the words found in bold.
+function Marked({ text, q }) {
+    return markParts(text, q).map((p, i) => (p.hit ? <b key={i} className="pal-mark">{p.text}</b> : <React.Fragment key={i}>{p.text}</React.Fragment>));
 }
 
 // The update popup: the download's progress, live (the main process pushes

@@ -63,7 +63,8 @@ import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { WinEdges, useWinState, setWinState } from "@/components/console/winLayout";
 import { withSize } from "@/lib/console/winLayout";
 import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec, janelaName } from "@/lib/console/nav";
-import { resolveSection } from "@/lib/console/settings";
+import { resolveSection, SECTIONS } from "@/lib/console/settings";
+import { commandRows } from "@/lib/console/paletteSearch";
 import { useSyncStatusSelect, syncNow, currentSyncStatus } from "@/hooks/useSyncStatus";
 import { useSyncJoinNote, signInWithGoogle } from "@/hooks/useGoogleSync";
 import { syncsHere, cloudView, googlePage } from "@/lib/console/syncView";
@@ -921,17 +922,21 @@ export default function Console() {
         const two = w2 && w2 !== version ? await readChapter(w2, ref.book, ref.chapter).catch(() => null) : null;
         return { version, verses, pair: two?.version === w2 ? { version: w2, verses: two.verses } : null };
     };
-    // Its verses in the Prévia (one verse: its chapter from there, as in the Bíblia).
-    const prepareReference = async (ref) => {
+    // Its verses as a stage (one verse: its chapter from there, as in the
+    // Bíblia), null when it cannot be read (said so). The palette puts it
+    // in the Prévia, or on air with Ctrl+Enter (owner 2026-11-09, P5 = A).
+    const referenceStage = async (ref) => {
         try {
             const { version, verses, pair } = await referenceVerses(ref);
             const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
             const look = lookDefaults(prefs).bible;
             const st = stageFromVerses({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, onAir, pair, look, fit: c.fitFor("bible", pair ? look.pair || "side" : null) });
-            if (!st) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
-            c.setPrev(st);
-        } catch (err) { c.say(err?.message || "Não foi possível abrir a passagem."); }
+            if (!st) c.say(`${formatReference(ref)} não existe na ${version}.`);
+            return st;
+        } catch (err) { c.say(err?.message || "Não foi possível abrir a passagem."); return null; }
     };
+    const prepareReference = async (ref) => { const st = await referenceStage(ref); if (st) c.setPrev(st); };
+    const sendReference = async (ref) => { const st = await referenceStage(ref); if (st) sendStage(st); };
     // Or as a passage at the end of the Setlist (never the whole chapter).
     // The verses already read -> { title } | null (no such verses); the
     // controle remoto's setlist.add goes through here too.
@@ -1595,6 +1600,22 @@ export default function Console() {
             updateNow: () => updateNow(),
         },
     });
+    // The palette's commands (owner 2026-11-09, P4 = A): the screen actions,
+    // everything the menu bar holds (its model, so nothing is left out) and
+    // Configurações' sections. Only built while the palette is open.
+    const paletteCommands = open === "palette" ? commandRows(menus, {
+        screen: [
+            { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: keyHint("black", letters), onSelect: () => c.toggleScreen("black") },
+            { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: keyHint("logo", letters), onSelect: () => c.toggleScreen("logo") },
+            { label: "Limpar texto", icon: "eraser", kbd: keyHint("clear", letters), onSelect: c.clearText },
+            menuItem("encerrar", { onSelect: () => setOpen("encerrar") }, letters),
+            { label: c.locked ? "Destravar telas" : "Travar telas", icon: c.locked ? "unlock" : "lock", onSelect: () => c.setLocked(!c.locked) },
+            { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
+            { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
+            { label: "Saídas", icon: "monitor", onSelect: () => setOpen("outs") },
+        ],
+        sections: SECTIONS, onSection: (id) => openSettings(id),
+    }) : [];
 
     // What the window's pages get from the console (WinPages.jsx): the same
     // props a detached page's window gives them, through the relay there.
@@ -1793,7 +1814,9 @@ export default function Console() {
             {pkg.element}
             <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />
             <BibleSetupDialog open={Boolean(bibleAsk)} first={bibleAsk === "first"} setup={bibleSetup} say={c.say} onClose={() => setBibleAsk(false)} />
-            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
+            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} history={c.live?.history || []} airItemId={airItemId} bibleVersion={open === "palette" ? bibleVersionWanted() : ""} commands={paletteCommands}
+                onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onSend={(s, i) => (s?.op ? sendStage(s) : buildStage(s, i).then((st) => sendStage(st)).catch((err) => c.say(err?.message || "Não foi possível abrir o item.")))}
+                onAddSong={addSong} onAddStage={(st) => addStageToSetlist(st)} openReference={openReference} onPrepareReference={prepareReference} onSendReference={sendReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !winOpen && env === "culto" && (() => {
                 // Never over the Programa: on the side of it with more room
                 // (the dock can put it anywhere), up to its edge.
