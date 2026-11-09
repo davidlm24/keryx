@@ -232,6 +232,7 @@ export default function Janela() {
         sendStage: (s) => (!s ? toConsole("prev.send", {}) : s.blocked ? (say(s.blocked), false) : toConsole("stage.send", { stage: s })),
         songSaved: (row) => { if (row?.id) relaySend("janela", "song.saved", { song: row }); },
         addMaterial: (m) => toConsole("setlist.material", { material: { id: m.id, title: m.title || "Material" } }),
+        noticeToSetlist: (row) => toConsole("setlist.notice", { notice: { id: row.id, title: row.title || row.text || "Aviso", duration: Number(row.duration) || 0 } }),
         cfg, setCfg, uiLayout: null, setUiLayout: () => {}, restoreLayout: () => {},
         openScreen: (path) => setStack((s) => winPush(s, { page: "screen", props: { path: path || "/Projection" } }, "Telas e saídas")),
         openWhatsNew: () => toConsole("console.open", { what: "novidades" }, "As novidades abriram no console."),

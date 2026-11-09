@@ -81,7 +81,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
             const row = isNew ? await keryx.entities.CommunicationVideo.create(payload()) : await keryx.entities.CommunicationVideo.update(noticeId, payload());
             setSaved(row);
             setDraft((d) => ({ ...d, title: row.title }));
-            c.say("Aviso salvo na Biblioteca · Avisos.");
+            c.say("Aviso salvo em Painel › Avisos.");
             onSaved?.(row);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
         saving.current = false;
@@ -256,7 +256,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                         <div className="nv-screen"><ScreenRenderer state={preview} logoUrl={logoUrl} preview motion audio={false} /></div>
                     </div>
                     <div className="listhead nv-note">
-                        <span className="kx-meta">Salvar não muda as telas: o aviso entra na Biblioteca e vai ao ar pelo console.</span>
+                        <span className="kx-meta">Salvar não muda as telas: o aviso entra em Painel › Avisos e vai ao ar pelo console.</span>
                         <span style={{ flex: 1 }} />
                         <Btn kind="outline" onClick={toPrev}>Pôr na prévia do console</Btn>
                     </div>

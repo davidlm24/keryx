@@ -598,9 +598,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (owner 2026-10-14, "Frente 2 = A"): Sobreposição de texto and Logo no
   canto. Principle: *Camadas put or take elements over the projection
   that are not in the themes; the Editor de telas is the permanent design
-  of one type of screen.* Relógio, Cronômetro, Timer, Texto livre and
+  of one type of screen.* Relógio, Cronômetro, Timer, avisos and the
   Aviso rápido are not layers' business: they stay in the tabs panel
-  (Ferramentas, Timers, Aviso rápido) and the Setlist's + — don't put
+  (Ferramentas, Timers, Avisos) and the Setlist's + — don't put
   them back in Camadas' +. **Sobreposição de texto always makes a NEW
   overlay** (owner 2026-10-14, "adicionar camadas a mais"), up to 5
   (`OVERLAY_LIMIT` in `src/lib/console/overlays.js`, tested; the menu item
@@ -620,9 +620,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   of the tabs panel are prepared in the Prévia (`stageFromTool`), the aviso
   goes to the screens at once (`alert.show`); a text is asked with
   `askText` (PromptDialog.jsx; Esc closes it first). The Setlist's **+** is a menu
-  too: Buscar… (the palette), Seção…, Texto… and Timer… (a ServiceItem under
-  the item in the Prévia, else at the end; Planejar o culto is the button
-  beside it, not an item: Rodada M1); the
+  too: Buscar… (the palette), Seção…, Aviso (Novo aviso, then the
+  church's avisos; owner 2026-11-09, A2 = A — it replaced Texto…) and
+  Timer… (a ServiceItem under the item in the Prévia, else at the end;
+  Planejar o culto is the button beside it, not an item: Rodada M1); the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
   **song files are read by content, never extension** (`songsFromFile` in
   songImport.js: JSON, ChordPro, cifra, text and OpenLyrics/OpenLP —
@@ -1436,12 +1437,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Notas tab is not on screen — and the operator's own free notes,
   `Service.operator_notes`, saved a moment after typing stops and on
   leaving the field; never in the PDF, never on a screen; with no service
-  the first one starts the day's draft), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
+  the first one starts the day's draft), **Avisos**, **Timers** (`QuickTools.jsx`; the
   defaults), **Pedidos** and **Chat** (Rodada Q, PR2 and S12 = B: the
-  Equipe's song requests and the chat with it, below), **Ferramentas** and **Esteve no ar** (the "Voltar ao
-  anterior" history). Where the panel shows the Aviso rápido or the
-  Ferramentas, Biblioteca › Avisos leaves them out (`elsewhere`); the
-  Biblioteca's header "+" stays "add content". **One gutter
+  Equipe's song requests and the chat with it, below), **Ferramentas**
+  (Relógio, Cronômetro, Timer) and **Esteve no ar** (the "Voltar ao
+  anterior" history); the Biblioteca's header "+" stays "add content".
+  **Avisos live in the Painel** (owner 2026-11-09, mockup "Avisos · um
+  lugar só", A1–A5 = A): Painel › Avisos (`AvisosTab.jsx`; id `avisos`,
+  the old `aviso` tab renamed by panelTabs.js `RENAMED`) is the Aviso
+  rápido on top and the church's avisos under it (Novo aviso, Tocar todos,
+  Editar, multi-select, drag to the Prévia, Programa or Setlist); the
+  Biblioteca is songs and media only (no Avisos tab) and there is no Texto
+  livre — a text for the screens is an aviso, made in the editor of avisos
+  (old TEXT items and a `tool.show` freetext in the history still draw).
+  Ferramentas › Avisos focuses that tab (in the tray: the toast). Novo
+  aviso started from the Setlist's + or the planner opens the editor with
+  `addTo` ("setlist" or `{ serviceId }`): once saved the aviso becomes an
+  item there (`addNoticeTo` in WinPages.jsx, `noticeItem` in setlist.js;
+  a detached Setlist relays `setlist.notice`). **One gutter
   everywhere**: `.console` overrides `--gutter` to 6px and the rows and
   stacks use `gap: 0` — the splitter IS the gap, as in `.main` (two cards
   stacked without one keep the gutter as a margin); don't add a second gap

@@ -7,6 +7,11 @@ import { cultosOf, setlistTitle } from "@/lib/console/consoleSetlist";
 import { statusOf, total } from "@/lib/console/setlist";
 import { menuItem } from "@/lib/console/menuLabels";
 import { timerChoices, minutesLabel } from "@/lib/console/timerPresets";
+import { noticeItem } from "@/lib/console/setlist";
+import { noticeIcon } from "@/lib/console/notice";
+
+// How many avisos the Setlist's + › Aviso lists; past that, Buscar….
+const NOTICES_IN_MENU = 12;
 
 // The planned cultos the Setlist's title offers (U2 = A): not done, by
 // date, the active one always among them.
@@ -37,16 +42,24 @@ export function setlistHeadItems({ view, service, services, active, items, saveT
 }
 
 // The (+) (owner 2026-10-14, the "Menus (+)" proposal): the palette first
-// (the console only: `palette`), then what only Planejar made — a section, a
-// text, a timer — right under the item in the Prévia (addRow decides where).
-// openMenu opens the timers where the first menu was.
-export function setlistAddItems({ e, openMenu, askText, addRow, timerPresets, palette = null }) {
+// (the console only: `palette`), then what only Planejar made — a section, an
+// aviso, a timer — right under the item in the Prévia (addRow decides where).
+// openMenu opens the timers where the first menu was. "Aviso" (owner
+// 2026-11-09, A2 = A; it replaced "Texto…": a text for the screens is an
+// aviso) is Novo aviso — the editor of avisos, the new one added here when
+// saved (`onNewNotice`) — then the church's avisos.
+export function setlistAddItems({ e, openMenu, askText, addRow, timerPresets, palette = null, pieces = [], onNewNotice = null }) {
     const at = { clientX: e.clientX, clientY: e.clientY, preventDefault() {}, stopPropagation() {} };
     const timers = () => openMenu(at, { title: "Timer na setlist", items: timerChoices(timerPresets).map((t) => ({ label: minutesLabel(t.minutes), icon: "clock", onSelect: () => addRow({ type: "TIMER", title: `Timer ${t.minutes} min`, duration: t.minutes * 60 }) })) });
     return [
         ...(palette ? [{ label: "Buscar música, versículo, mídia…", icon: "search", kbd: palette.kbd, onSelect: palette.onSelect }, "sep"] : []),
         { label: "Seção…", icon: "list", onSelect: async () => { const t = await askText({ title: "Seção da setlist", placeholder: "Pré-culto, Louvor, Palavra…", ok: "Adicionar" }); if (t) addRow({ type: "SECTION", title: t, duration: 0 }); } },
-        { label: "Texto…", icon: "text", onSelect: async () => { const t = await askText({ title: "Texto na setlist", placeholder: "O texto que vai às telas", ok: "Adicionar", multiline: true, hint: "Ctrl+Enter adiciona" }); if (t) addRow({ type: "TEXT", title: t.split("\n")[0].slice(0, 60), notes: t, duration: 60 }); } },
+        { label: "Aviso", icon: "megaphone", sub: [
+            onNewNotice && menuItem("novoAviso", { onSelect: onNewNotice }),
+            ...(pieces.length && onNewNotice ? ["sep"] : []),
+            ...pieces.slice(0, NOTICES_IN_MENU).map((p) => ({ label: p.title || p.text || "Aviso", icon: noticeIcon(p.type), onSelect: () => addRow(noticeItem(p)) })),
+            ...(pieces.length > NOTICES_IN_MENU && palette ? [{ label: "Buscar aviso…", icon: "search", kbd: palette.kbd, onSelect: palette.onSelect }] : []),
+        ].filter(Boolean) },
         { label: "Timer…", icon: "clock", onSelect: timers },
     ];
 }

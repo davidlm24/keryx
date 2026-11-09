@@ -124,33 +124,26 @@ export function ReadyTimers({ c, data, onPrepare, onGo, onPrepared }) {
     );
 }
 
-// Ferramentas: Relógio and Cronômetro go to the Prévia at once; Timer and
-// Texto livre open their own line (the ready timers; the text field).
+// Ferramentas: Relógio and Cronômetro go to the Prévia at once; Timer opens
+// the ready timers. There is no Texto livre any more (owner 2026-11-09): a
+// text for the screens is an aviso, made in the editor of avisos.
 export function ToolsPicker({ c, data, onPrepare, onGo }) {
     const [tool, setTool] = useState(null);
-    const [freeText, setFreeText] = useState("");
     const pickTool = (mode) => {
         if (mode === "clock" || mode === "stopwatch") { onPrepare(stageFromTool(mode)); setTool(null); return; }
         setTool(tool === mode ? null : mode);
     };
-    const sendText = () => { if (freeText.trim()) { onPrepare(stageFromTool("freetext", { text: freeText.trim() })); setTool(null); } };
     return (
         <>
             <div className="kx-tools">
-                {[["clock", "Relógio"], ["stopwatch", "Cronômetro"], ["timer", "Timer"], ["freetext", "Texto livre"]].map(([mode, label]) => (
+                {[["clock", "Relógio"], ["stopwatch", "Cronômetro"], ["timer", "Timer"]].map(([mode, label]) => (
                     <button type="button" key={mode} className={`kx-tool kx-t ${tool === mode || c.cur?.tool?.mode === mode ? "is-on" : ""}`} onClick={() => pickTool(mode)}>
-                        <Icon name={mode === "freetext" ? "text" : "clock"} />{label}
+                        <Icon name="clock" />{label}
                     </button>
                 ))}
             </div>
             <OnAirTimer c={c} />
             {tool === "timer" && <ReadyTimers c={c} data={data} onPrepare={onPrepare} onGo={onGo} onPrepared={() => setTool(null)} />}
-            {tool === "freetext" && (
-                <div className="kx-tool-pick">
-                    <Field icon={null} value={freeText} onChange={setFreeText} placeholder="Texto livre" style={{ flex: 1 }} inputProps={{ spellCheck: true }} onKeyDown={(e) => { if (e.key === "Enter") sendText(); }} />
-                    <Btn onClick={sendText}>Pôr na prévia</Btn>
-                </div>
-            )}
         </>
     );
 }

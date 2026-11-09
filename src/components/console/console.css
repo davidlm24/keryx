@@ -328,6 +328,9 @@
 .console .tabrow > button[role="tab"] { height: var(--row); white-space: nowrap; min-width: 0; max-width: 100%; overflow: clip; overflow-clip-margin: 1px; text-overflow: ellipsis; }
 .console .tabs-panel > .kx-tabs { flex: none; overflow: hidden; }
 .console .tabs-pad { padding-top: var(--space-2); }
+/* Painel › Avisos (AvisosTab.jsx): the Aviso rápido stays, the avisos scroll under it. */
+.console .avisos-tab { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.console .avisos-list { flex: 1; min-height: 0; overflow: auto; }
 .console .tabs-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); min-height: 100%; box-sizing: border-box; }
 .console .tabs-notes .tnotes { max-height: none; }
 /* Notas do operador (the Notas tab's free field, Service.operator_notes). */

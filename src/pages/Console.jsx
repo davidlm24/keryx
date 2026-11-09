@@ -106,7 +106,7 @@ import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromVerses, stageFromSong, stageFromMedia, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, neighbours, itemOnAir } from "@/lib/console/setlist";
+import { plan, playableItems, neighbours, itemOnAir, noticeItem } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { lookDefaults } from "@/lib/console/lookDefaults";
@@ -335,7 +335,8 @@ export default function Console() {
         if (!window.keryxDesktop?.janela) c.say("O navegador bloqueou a janela: permita pop-ups para destacar o painel.");
         return Boolean(window.keryxDesktop?.janela);
     }, [c]);
-    const openNotice = useCallback((id) => { setOpen(null); setWin(openStack({ page: "notice", props: { id: id || "new" } })); }, []);
+    // addTo: "setlist" when Novo aviso came from the Setlist's + (WinPages addNoticeTo).
+    const openNotice = useCallback((id, addTo = null) => { setOpen(null); setWin(openStack({ page: "notice", props: { id: id || "new", ...(addTo ? { addTo } : {}) } })); }, []);
     // The Editor de temas e telas: every openEditor call lands in the
     // window — with `from` (the title of the page it came from) it pushes
     // a level IN the window on screen ("← Temas", "← Telas e saídas"), and
@@ -368,11 +369,12 @@ export default function Console() {
     // The header slot the Biblioteca's + is drawn into (Library, a portal; I2 = A).
     const [libAddSlot, setLibAddSlot] = useState(null);
     const [setlistPicking, setSetlistPicking] = useState(false);
-    const [libTab, setLibTab] = useState(() => {
-        try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "letras"; } catch { return "letras"; }
+    const [libTab, setLibTab] = useState("letras");
+    // The tab in front of the panel beside the Prévia (its tabs: layout.tabs);
+    // the old /Communication link (?lib=avisos) opens it on Avisos.
+    const [panelTab, setPanelTab] = useState(() => {
+        try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "notas"; } catch { return "notas"; }
     });
-    // The tab in front of the panel beside the Prévia (its tabs: layout.tabs).
-    const [panelTab, setPanelTab] = useState("notas");
     // Procurar a letra… from a pedido (the Pedidos tab): the search opens with its song.
     const [lyricsQ, setLyricsQ] = useState("");
     useEffect(() => { if (open !== "lyrics") setLyricsQ(""); }, [open]);
@@ -467,11 +469,6 @@ export default function Console() {
     };
     const libTabNow = activeTab("lib", tabLists.lib, libTab);
     const panelTabNow = activeTab("panel", tabLists.panel, panelTab);
-    // KERYX › Avisos: the Biblioteca on its Avisos tab, shown again if it was unchecked.
-    const openNotices = () => {
-        setOpen(null); setWin([]); setEnvState("culto"); setLibTab("avisos");
-        if (!tabLists.lib.includes("avisos")) setTabList("lib", showTab("lib", tabLists.lib, "avisos"));
-    };
 
     // The Setlist every console shows (owner 2026-10-29, U1–U5 = A;
     // consoleSetlist.js): the church's active culto, else the shared Setlist.
@@ -1034,6 +1031,13 @@ export default function Console() {
         reachable: pedidosReachable, show: showPanelTabs, focus: focusTeamTab,
         bell: (note) => upd.call("notificationAdd", note).catch(() => {}) });
     const pedidosUnread = teamUnread.pedidos || teamUnread.chat;
+    // Ferramentas › Avisos (owner 2026-11-09, A3 = A): Painel › Avisos, shown
+    // again if it was unchecked; with the Painel in the tray the toast says
+    // where (S9 = B: the dock never moves by itself).
+    const openNotices = () => {
+        setWin([]); focusTeamTab("avisos");
+        if (!pedidosReachable) c.say("Avisos: veja em Ver › Painel.");
+    };
     // A YouTube link the player refused on air (live.refused): say why, offer the download.
     useYouTubeRefused({ c, media: data.media, askText });
     const playerDocked = !onScreen("player");
@@ -1187,7 +1191,7 @@ export default function Console() {
     // The Setlist's + (setlistMenus.jsx): the palette first, then a section,
     // a text, a timer, right under the item in the Prévia (at the end with none).
     const addRowToSetlist = (row) => addRowAt(row, prevItemId);
-    const setlistMenu = (e) => openMenu(e, { title: "Adicionar à setlist", items: setlistAddItems({ e, openMenu, askText, addRow: addRowToSetlist, timerPresets: data.timerPresets, palette: { kbd: keyHint("search", letters), onSelect: () => setOpen("palette") } }) });
+    const setlistMenu = (e) => openMenu(e, { title: "Adicionar à setlist", items: setlistAddItems({ e, openMenu, askText, addRow: addRowToSetlist, timerPresets: data.timerPresets, palette: { kbd: keyHint("search", letters), onSelect: () => setOpen("palette") }, pieces: data.pieces || [], onNewNotice: () => openNotice("new", "setlist") }) });
     const setlistHeadMenu = (e) => openMenu(e, { title: "Setlist", items: setlistHeadItems({ view, service, services, active, items, saveToCulto, onPlan: () => openPlanner(view.active ? serviceId : null) }) });
     const setlistCount = setlistCountOf(setPlan);
     const setlistHead = <SetlistTitle view={view} service={service} onClick={setlistHeadMenu} />;
@@ -1236,13 +1240,12 @@ export default function Console() {
     // Chat each with its dot.
     const panelTabsShown = shownTabs("panel", tabLists.panel).map((t) => (teamUnread[t.id] ? { ...t, dot: "novos" } : t));
     const panelOnScreen = onScreen("abas");
-    const panelHas = panelOnScreen ? Object.fromEntries(tabLists.panel.map((id) => [id, true])) : {};
     const prepare = (s) => c.setPrev(s);
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
             items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend}
-            messages={messages} onAddSong={addSong} onAddMedia={(m, extra) => addStageToSetlist(stageFromMedia(m), undefined, { extra })} onAddStage={(s) => addStageToSetlist(s)} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} />
+            messages={messages} onAddSong={addSong} onAddMedia={(m, extra) => addStageToSetlist(stageFromMedia(m), undefined, { extra })} onAddStage={(s) => addStageToSetlist(s)} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} onEditNotice={openNotice} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" actions={<>
@@ -1257,8 +1260,8 @@ export default function Console() {
             <span className="lib-add-slot" ref={setLibAddSlot} />
             <TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />
         </>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <Library c={c} data={data} askText={askText} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
-                onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
+            <Library c={c} data={data} askText={askText} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)}
+                onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia}
                 dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} songLine={songLine} picking={libPicking} setPicking={setLibPicking} addSlot={libAddSlot} folders={libFolders} />
         </Panel>
     );
@@ -1454,7 +1457,7 @@ export default function Console() {
         replaceTop: (props, opts) => setWin((s) => winReplaceTop(s, props, opts)),
         sendNow: (s) => { c.setPrev(s); sendStage(s); },
         sendStage: (s) => sendStage(s),
-        songSaved, addMaterial,
+        songSaved, addMaterial, noticeToSetlist: (row) => addRowToSetlist(noticeItem(row)),
         cfg, setCfg, uiLayout, setUiLayout, restoreLayout, openScreen, openWhatsNew,
         plannerFocus,
     };
@@ -1505,6 +1508,7 @@ export default function Console() {
             case "prev.step": selectSlide(m.d); break;
             case "song.saved": songSaved(m.song); break;
             case "setlist.material": addMaterial(m.material); break;
+            case "setlist.notice": addRowToSetlist(noticeItem(m.notice)); break;
             case "console.open": if (m.what === "novidades") openWhatsNew(); else openSettings(m.section || "console"); break;
             case "console.hello": tellPrev(c.prev); tellPages(); relaySend("console", "console.autoplay", { pending: autoplay.pending || null }); relaySend("console", "console.last", { last: c.last || null }); relaySend("console", "console.panels", { placed: placedPanels }); break;
             // A dock panel in a window of its own (Painéis em janela).

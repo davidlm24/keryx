@@ -38,6 +38,9 @@ export const JANELA_MESSAGES = {
     "song.saved": { from: "janela", ok: (m) => isRow(m.song) },
     // Escola bíblica › Setlist: a material at the end of the setlist.
     "setlist.material": { from: "janela", ok: (m) => isRow(m.material) && typeof m.material.title === "string" },
+    // Novo aviso started from a detached Setlist's + › Aviso: the aviso just
+    // saved goes into the Setlist under the Prévia's item (2026-11-09).
+    "setlist.notice": { from: "janela", ok: (m) => isRow(m.notice) && typeof m.notice.title === "string" && (m.notice.duration === undefined || Number.isFinite(m.notice.duration)) },
     // What only the console has: its Novidades popover, its Configurações
     // (Console: the arrangement is the console's).
     "console.open": { from: "janela", ok: (m) => m.what === "novidades" || (m.what === "settings" && (m.section === undefined || isId(m.section))) },

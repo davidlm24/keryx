@@ -2,11 +2,12 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Row, Empty, FoldBtn, FoldStrip, foldStrip, onTabsKey, tabStop, DockEditCtx, DockEditHead } from "./kx";
 import { TeacherNotes } from "./CenterPanel";
-import { QuickAlert, ReadyTimers, OnAirTimer, ToolsPicker } from "./QuickTools";
+import { ReadyTimers, OnAirTimer, ToolsPicker } from "./QuickTools";
 import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory } from "@/lib/console/stage";
 import { TABS_MENU_TITLE } from "@/lib/console/panelTabs";
 import PedidosTab from "./PedidosTab";
+import AvisosTab from "./AvisosTab";
 import ChatTab from "./ChatTab";
 
 // A row of tabs the operator trims (the Biblioteca's, the panel beside the
@@ -153,7 +154,7 @@ function AirHistory({ c, onPrepare, onGo }) {
 // audit): one tab at a time, the ones the operator checked in its chooser. Its
 // thin header (title "Painel", the chooser at its right) is Rodada E1's;
 // the fold chevron (`fold`, the dock's: Panel) right of it, Rodada F4.
-export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo, fold, messages, onAddSong, onAddMedia, onAddStage, onLyricsSearch, onWriteMessage }) {
+export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo, fold, messages, onAddSong, onAddMedia, onAddStage, onLyricsSearch, onWriteMessage, onEditNotice }) {
     const strip = foldStrip(fold);
     // Editar painéis: its header is the handle, as every panel's (kx.jsx Panel).
     const edit = useContext(DockEditCtx);
@@ -173,7 +174,7 @@ export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, me
             {!fold?.on && <TabRow tabs={tabs} active={active} onPick={setActive} />}
             <div className="kx-panel-b" inert={fold?.on ? "" : undefined} style={strip ? { display: "none" } : undefined}>
                 {active === "notas" && <ItemNotes c={c} items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={onSaveNotes} />}
-                {active === "aviso" && <div className="tabs-pad"><QuickAlert c={c} data={data} /></div>}
+                {active === "avisos" && <AvisosTab c={c} data={data} onPrepare={onPrepare} onGo={onGo} onEditNotice={onEditNotice} />}
                 {active === "timers" && <div className="tabs-pad"><OnAirTimer c={c} /><ReadyTimers c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
                 {active === "ferramentas" && <div className="tabs-pad"><ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
                 {active === "pedidos" && <PedidosTab c={c} data={data} messages={messages} onPrepare={onPrepare} onAddSong={onAddSong} onAddMedia={onAddMedia} onAddStage={onAddStage} onLyricsSearch={onLyricsSearch} onWrite={onWriteMessage} />}

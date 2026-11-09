@@ -28,7 +28,7 @@ import { CfgGroup, Switch } from "./settings/parts";
 import { END_ACTIONS, END_LABEL, endChoice, GAPS, gapLabel } from "@/lib/console/autoplay";
 import ThemeChip from "./library/ThemeChip";
 import { lookOf, lookFields, lookForService, templateLookFields } from "@/lib/console/serviceLook";
-import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
+import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS, noticeItem } from "@/lib/console/setlist";
 import { useWinCol } from "./winLayout";
 import { TabRow } from "./TabsPanel";
 import { usePlaced } from "./Menu";
@@ -39,7 +39,7 @@ import { PLANNER_TABS_KEY, NO_TABS, readTabs, pruneTabs, adoptTabs, openTab, clo
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
-    ["IMAGE", "image", "Imagem"], ["ANNOUNCEMENT", "megaphone", "Aviso"], ["TEXT", "text", "Texto"], ["TIMER", "clock", "Timer"], ["MATERIAL", "book", "Escola bíblica"], ["SECTION", "list", "Seção"],
+    ["IMAGE", "image", "Imagem"], ["ANNOUNCEMENT", "megaphone", "Aviso"], ["TIMER", "clock", "Timer"], ["MATERIAL", "book", "Escola bíblica"], ["SECTION", "list", "Seção"],
 ];
 const MEDIA_FOR = { VIDEO: ["video"], AUDIO: ["audio"], IMAGE: ["image", "gif", "pdf", "powerpoint"] };
 const MEDIA_TYPE = { video: "VIDEO", audio: "AUDIO", image: "IMAGE", gif: "IMAGE", pdf: "PDF", powerpoint: "POWERPOINT" };
@@ -60,7 +60,7 @@ const saveTabs = (tabs) => { try { window.localStorage.setItem(PLANNER_TABS_KEY,
 // opens or brings forward that culto's tab (the console's Planejar, a deep
 // link ?planner=<id>); `onFront` tells the window which tab is in front, so
 // "Destacar em janela" opens on it (nav.js detachSpec).
-export default function ServicePlanner({ c, data, openId = null, focusId = null, active = true, onFront, onClose, escRef, onEditSong = null }) {
+export default function ServicePlanner({ c, data, openId = null, focusId = null, active = true, onFront, onClose, escRef, onEditSong = null, onNewNotice = null }) {
     // The planned cultos: the console's shared Setlist is never one of them
     // (consoleSetlist.js). Which one is active is the church's, the same on
     // every computer (useActiveService).
@@ -167,7 +167,7 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
             {bar}
             {showsPlan
                 ? <CultoPlan key={front} c={c} services={services} serviceId={front} data={data} focusId={focus?.id === front ? focus.item : null} onFocused={() => setFocus(null)}
-                    escRef={innerEsc} onEditSong={onEditSong} onDeleted={(id) => { if (id === activeId) activate(null); close(id); }} />
+                    escRef={innerEsc} onEditSong={onEditSong} onNewNotice={onNewNotice} onDeleted={(id) => { if (id === activeId) activate(null); close(id); }} />
                 : <NewTab services={services} loaded={loaded} open={tabs.ids} last={last} onNew={newService} onDuplicate={duplicateLast} onOpen={showNew} />}
         </>
     );
@@ -202,7 +202,7 @@ function NewTab({ services, loaded, open, last, onNew, onDuplicate, onOpen }) {
 // item, totals and the end time; templates (which keep each item's
 // content), duplicating the previous culto, PDF. Everything saves as it
 // changes; nothing here touches the screens.
-function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, escRef, onEditSong = null, onDeleted }) {
+function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, escRef, onEditSong = null, onNewNotice = null, onDeleted }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colCulto = useWinCol("planner.culto", { name: "Culto", def: 360, min: 300, max: 640 });
     const church = useChurch();
@@ -409,7 +409,7 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
         : adding === "MATERIAL"
             ? (data.materials || []).filter((m) => match(pick.toLowerCase(), m.title, m.subject, m.class_name)).slice(0, 30).map((m) => ({ key: m.id, icon: "book", title: m.title, meta: [m.subject, m.class_name].filter(Boolean).join(" · ") || "Escola bíblica", row: { type: "MATERIAL", title: m.title, contentId: m.id, duration: 300 } }))
         : adding === "ANNOUNCEMENT"
-            ? data.pieces.filter((x) => match(pick.toLowerCase(), x.title, x.text)).slice(0, 30).map((x) => ({ key: x.id, icon: "megaphone", title: x.title || x.text, meta: "Aviso", row: { type: "ANNOUNCEMENT", title: x.title || x.text || "Aviso", contentId: x.id, duration: x.duration || 60 } }))
+            ? data.pieces.filter((x) => match(pick.toLowerCase(), x.title, x.text)).slice(0, 30).map((x) => ({ key: x.id, icon: "megaphone", title: x.title || x.text, meta: "Aviso", row: noticeItem(x) }))
             : MEDIA_FOR[adding]
                 ? data.media.filter((m) => MEDIA_FOR[adding].includes(m.type) && match(pick.toLowerCase(), m.title)).slice(0, 30).map((m) => ({ key: m.id, icon: typeIcon(MEDIA_TYPE[m.type]), title: m.title, meta: typeLabel(MEDIA_TYPE[m.type]), row: { type: MEDIA_TYPE[m.type], title: m.title, contentId: m.id, duration: m.duration || (m.type === "video" || m.type === "audio" ? 180 : 30) } }))
                 : [];
@@ -561,8 +561,10 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
                                 {busy === "bible" && <span className="kx-meta">Buscando a passagem…</span>}
                             </div>
                             <div className="pl-adder-list">
+                                {/* Novo aviso (2026-11-09): the editor of avisos, the new one added to this culto when saved. */}
+                                {adding === "ANNOUNCEMENT" && onNewNotice && <Row icon="plus" title="Novo aviso" meta="abre o editor de aviso" onClick={() => { setAdding(null); onNewNotice(serviceId); }} />}
                                 {pickList.map((r) => <Row key={r.key} icon={r.icon} title={r.title} meta={r.meta} onClick={() => add(r.row)} />)}
-                                {!["BIBLE", "TEXT", "SECTION", "TIMER"].includes(adding) && !pickList.length && <Empty title="Nada encontrado">{adding === "SONG" ? "Cadastre a música na Biblioteca › Letras." : adding === "MATERIAL" ? "Crie o material em Escola bíblica (menu KERYX)." : adding === "ANNOUNCEMENT" ? "Crie o aviso em Comunicação." : "Adicione o arquivo na Biblioteca › Mídia."}</Empty>}
+                                {!["BIBLE", "TEXT", "SECTION", "TIMER"].includes(adding) && !pickList.length && <Empty title="Nada encontrado">{adding === "SONG" ? "Cadastre a música na Biblioteca › Letras." : adding === "MATERIAL" ? "Crie o material em Escola bíblica (menu KERYX)." : adding === "ANNOUNCEMENT" ? (onNewNotice ? "Nenhum aviso ainda: use Novo aviso, acima." : "Crie o aviso em Painel › Avisos.") : "Adicione o arquivo na Biblioteca › Mídia."}</Empty>}
                             </div>
                         </div>
                     )}

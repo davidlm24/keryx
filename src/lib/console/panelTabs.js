@@ -10,20 +10,23 @@
 export const PANEL_TABS = {
     panel: [
         { id: "notas", name: "Notas", on: true },
-        { id: "aviso", name: "Aviso rápido", on: true },
+        // Avisos (owner 2026-11-09, mockup "Avisos · um lugar só", A1 = A):
+        // the Aviso rápido on top and the church's avisos under it, the one
+        // place they live (the Biblioteca is for songs and media only). It
+        // was "aviso", the Aviso rápido alone: RENAMED carries old saves.
+        { id: "avisos", name: "Avisos", on: true },
         { id: "timers", name: "Timers", on: true },
         // The Equipe's song requests and the chat with it, each its own tab
         // (Rodada Q; S12 = B: PedidosTab.jsx, ChatTab.jsx).
         { id: "pedidos", name: "Pedidos", on: true },
         { id: "chat", name: "Chat", on: true },
-        { id: "ferramentas", name: "Ferramentas", hint: "relógio, cronômetro, texto" },
+        { id: "ferramentas", name: "Ferramentas", hint: "relógio, cronômetro, timer" },
         { id: "historico", name: "Esteve no ar" },
     ],
     lib: [
         { id: "letras", name: "Letras", on: true },
         { id: "imagens", name: "Imagens", on: true },
         { id: "videos", name: "Vídeos", on: true },
-        { id: "avisos", name: "Avisos", on: true },
         // Off at first (owner 2026-10-14): checked in the (+), each takes its
         // files out of the tab that held them (libMediaKinds).
         { id: "audios", name: "Áudios", hint: "músicas, playbacks, efeitos" },
@@ -55,10 +58,16 @@ const ids = (row) => PANEL_TABS[row].map((t) => t.id);
 
 export const DEFAULT_TABS = Object.fromEntries(Object.keys(PANEL_TABS).map((row) => [row, PANEL_TABS[row].filter((t) => t.on).map((t) => t.id)]));
 
+// Tabs that changed id: a saved list keeps them under the new one. The
+// Painel's "aviso" (the Aviso rápido alone) is "avisos" since 2026-11-09;
+// the Biblioteca's "avisos" is gone (the avisos live in the Painel).
+const RENAMED = { panel: { aviso: "avisos" }, lib: {} };
+const renamed = (row, list) => list.map((id) => RENAMED[row]?.[id] || id);
+
 // One row's saved list made safe: known ids only, in the list's order, no
 // repeats; nothing left (or not a list) is the defaults.
 export function normalizeRow(row, saved) {
-    const want = new Set(Array.isArray(saved) ? saved : []);
+    const want = new Set(Array.isArray(saved) ? renamed(row, saved) : []);
     const out = ids(row).filter((id) => want.has(id));
     return out.length ? out : [...DEFAULT_TABS[row]];
 }

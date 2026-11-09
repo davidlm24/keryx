@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { plan, templateItems, itemsFor, playableItems, statusOf, parseMember, clockAt, span, startOf, total, itemOnAir, stageItem, addedSay, neighbours } from "./setlist.js";
+import { plan, templateItems, itemsFor, playableItems, statusOf, parseMember, clockAt, span, startOf, total, itemOnAir, stageItem, addedSay, neighbours, noticeItem } from "./setlist.js";
+
+test("an aviso as a Setlist item", () => {
+    assert.deepEqual(noticeItem({ id: "n1", title: "Retiro", duration: 20 }), { type: "ANNOUNCEMENT", title: "Retiro", contentId: "n1", duration: 20 });
+    assert.deepEqual(noticeItem({ id: "n2", text: "Atenção", duration: 0 }), { type: "ANNOUNCEMENT", title: "Atenção", contentId: "n2", duration: 60 }, "no duration: a minute");
+});
 
 const items = [
     { id: "s1", type: "SECTION", title: "Pré-culto" },
