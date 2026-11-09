@@ -1,4 +1,4 @@
-// The console's columns as the layout saved them before Editar disposição
+// The console's columns as the layout saved them before Editar painéis
 // became a tree (dock.js, 2026-10-13): the order of the columns in each
 // environment and of the cards stacked in a column. Nothing renders from
 // them any more; dock.js reads them once (fromArrangement,

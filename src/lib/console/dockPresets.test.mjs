@@ -28,7 +28,7 @@ test("a saved list is made safe: an id, a name that is not Padrão, a dock; no r
 
 test("names: required, never Padrão, never twice, a limited list", () => {
     const list = [{ id: "a", name: "Culto", dock }];
-    assert.equal(nameProblem(list, "  "), "Dê um nome à disposição.");
+    assert.equal(nameProblem(list, "  "), "Dê um nome aos painéis.");
     assert.match(nameProblem(list, "PADRÃO"), /de fábrica/);
     assert.match(nameProblem(list, "culto"), /Já existe/);
     assert.equal(nameProblem(list, "Ensaio"), null);

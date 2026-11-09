@@ -45,11 +45,11 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
     const inConsole = () => { if (relaySend("janela", "console.open", { what: "settings", section: "console" })) c.say("Configurações › Console abriu no console."); };
     return (
         <>
-            <CfgGroup id="console.disposicao" k="Disposição" fold={false}>
+            <CfgGroup id="console.disposicao" k="Painéis" fold={false}>
             <div className="frm">
-                {!layout && <FormRow k="Disposição">
+                {!layout && <FormRow k="Painéis">
                     <Btn small onClick={inConsole}>Abrir no console</Btn>
-                    <span className="kx-meta">os módulos, a densidade e a disposição são do console · ajuste-os lá</span>
+                    <span className="kx-meta">os painéis e a densidade são do console · ajuste-os lá</span>
                 </FormRow>}
                 {layout && <><FormRow k="Módulos">
                     {MODULES.map(([key, name]) => (
@@ -65,8 +65,8 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                     <span className="kx-meta">a altura das linhas das listas · da igreja, viaja no backup</span>
                 </FormRow>
                 <FormRow k="Restaurar">
-                    <Btn small onClick={restoreLayout}>Restaurar disposição</Btn>
-                    <span className="kx-meta">volta os módulos, a densidade, os tamanhos e a ordem das colunas ao padrão · deste computador</span>
+                    <Btn small onClick={restoreLayout}>Restaurar painéis</Btn>
+                    <span className="kx-meta">volta os painéis, a densidade, os tamanhos e a ordem das colunas ao padrão · deste computador</span>
                 </FormRow></>}
             </div>
             </CfgGroup>

@@ -1,4 +1,4 @@
-// The console's arrangement as a tree (Ver › Editar disposição; the
+// The console's arrangement as a tree (Ver › Editar painéis; the
 // 2026-10-13 prototype "Disposição do console", model Livre): every module
 // of an environment (the culto, the Bíblia) can go anywhere in it. Pure:
 // the console renders what fitDock returns and reports drops and splitter
@@ -15,7 +15,7 @@
 //     side columns have today, so widening the window grows the flexible
 //     one. Nodes have no ids: a place is a path of child indices from the
 //     root ([] is the root), recomputed on every render.
-//   - hidden: the modules in the tray (Ver › Editar disposição), in order.
+//   - hidden: the modules in the tray (Ver › Editar painéis), in order.
 // The player is the one module with a home: while it is not in the tree it
 // rides under the Programa (owner's decision 2026-10-13, always visible), so
 // it is never in the tray. The Programa, the Prévia and the Setlist are
@@ -110,7 +110,7 @@ const make = (env, tree, hidden, from = null) => ({ ...(env === "culto" ? { tree
 export const MODULE_IDS = envModules("culto");
 
 // ---------- Livre | Por % | Exato (owner 2026-10-15, Rodada D; Exato 2026-10-22, Rodada P4-2) ----------
-// Editar disposição sizes the panels either freely (pixels, as always) or
+// Editar painéis sizes the panels either freely (pixels, as always) or
 // by percent: then the dock keeps `mode: "pct"` and `ref`, the box its sizes
 // were made for, and fitDock scales every fixed size by the box on screen
 // over `ref` — the proportions survive a smaller window or another monitor
@@ -276,7 +276,7 @@ function syncExact(tree, ref) {
     walk(t, box.w, box.h);
     return t;
 }
-// The weights of the split at `path` set to `list` (Editar disposição's
+// The weights of the split at `path` set to `list` (Editar painéis's
 // 50 · 50, 33 · 33 · 34, 25 · 50 · 25, or what was typed): one number per
 // child, in proportion. An exact dock only, and only a list as long as the
 // split's children.
@@ -547,7 +547,7 @@ function withBand(tree, id, env, span = "columns") {
     return clean(row, new Set(), env);
 }
 
-// The strip to the band of `span` (Editar disposição › No ar): the dock
+// The strip to the band of `span` (Editar painéis › No ar): the dock
 // otherwise as it is; in the tray it stays there.
 export function moveBand(dock, span) {
     const d = normalizeDock(dock);
@@ -557,7 +557,7 @@ export function moveBand(dock, span) {
 
 export const isPinned = (id) => Boolean(MODULES[id]?.pinned);
 
-// The dock that matches the console before Editar disposição became a tree,
+// The dock that matches the console before Editar painéis became a tree,
 // from the layout saved then (the column order, the order of the stacked
 // cards, the hidden modules, the sizes) and, as the console did then, the
 // width it is shown at (`tier`, layout.js tierFor):

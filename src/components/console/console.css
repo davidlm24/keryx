@@ -561,7 +561,7 @@ html[data-resizing] .console :is(.temas-panel, .kx-measure) { overflow: hidden; 
 /* The Programa first or in the middle: the drawer opens on its right when there is more room there. */
 .console .drawer.is-right { left: auto; right: var(--gutter); }
 
-/* Ver › Editar disposição (Arrange.jsx, Dock.jsx; Rodada R, owner
+/* Ver › Editar painéis (Arrange.jsx, Dock.jsx; Rodada R, owner
    2026-10-29, R5): the banner on one line where it fits, the panel's own
    header as the handle (kx.jsx DockEditHead: tinted gold, the grip before
    the name, its actions dimmed and inert, the × at its end), a 28 px header
@@ -2638,7 +2638,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
   .console .kx-row-progress > b { background: Highlight; }
   /* The page cells of Capítulos and Versículos (mockup R6). */
   .console :is(.chapters, .verse-cells) .bpage { outline: 1px solid ButtonText; outline-offset: -1px; }
-  /* Editar disposição (Rodada R, R5): the panel header that is the handle
+  /* Editar painéis (Rodada R, R5): the panel header that is the handle
      and a tab strip being edited get a boundary; the drop region a solid
      highlight ring (no fill), its label the system's colours;
      the tray lit for a drop the same ring. */

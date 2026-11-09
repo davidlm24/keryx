@@ -3,8 +3,9 @@ import { flushSync } from "react-dom";
 import Icon, { iconSvg } from "./Icon";
 import { Split, onTabsKey, DockEditCtx } from "./kx";
 import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct, dockMotion, easesBetween, PANEL_HEAD, dockLocked, resizeExact, evenExact } from "@/lib/console/dock";
+import { canDetach } from "@/lib/console/detach";
 
-// Ver › Editar disposição for the culto environment (2026-10-13; the
+// Ver › Editar painéis for the culto environment (2026-10-13; the
 // prototype "Disposição do console", model Livre): the console as a tree of
 // splits and tab groups (src/lib/console/dock.js decides everything; these
 // only draw it and report what the operator does).
@@ -283,12 +284,12 @@ export function DockTray({ dock, dnd, onChipMenu }) {
 
 // Travar fora da edição (owner 2026-10-22, Rodada P4-1 = A), in the edit
 // banner: the environment on screen's switch (dock.js setDockLock). On,
-// the splitters only move in Editar disposição. The small switch, as the
+// the splitters only move in Editar painéis. The small switch, as the
 // Setlist's Autoplay; "Travar" on screen, the whole name for the reader.
 export function DockLockSwitch({ on, onChange }) {
     return (
         <button type="button" className="dock-lock" role="switch" aria-checked={Boolean(on)} aria-label="Travar fora da edição"
-            title={on ? "Travada: fora de Editar disposição os divisores não se movem" : "Travar fora da edição: fora de Editar disposição os divisores não se movem (nem com as setas, nem com o duplo clique)"} onClick={() => onChange(!on)}>
+            title={on ? "Travados: fora de Editar painéis os divisores não se movem" : "Travar fora da edição: fora de Editar painéis os divisores não se movem (nem com as setas, nem com o duplo clique)"} onClick={() => onChange(!on)}>
             <span className={`sw2 kx-switch kx-switch-sm ${on ? "is-on" : ""}`} aria-hidden="true" /><span>Travar</span>
         </button>
     );
@@ -305,27 +306,27 @@ export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, pr
     if (naming !== null) {
         return (
             <span className="dock-presets">
-                <span className="kx-field dock-name"><input autoFocus value={naming} maxLength={40} placeholder="Nome da disposição" aria-label="Nome da disposição"
+                <span className="kx-field dock-name"><input autoFocus value={naming} maxLength={40} placeholder="Nome dos painéis" aria-label="Nome dos painéis"
                     onChange={(e) => setNaming(e.target.value)}
                     onKeyDown={(e) => {
                         if (e.key === "Enter") { e.preventDefault(); done(); }
                         if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setNaming(null); }
                     }} /></span>
-                <button type="button" className="kx-btn kx-btn-outline kx-t" disabled={Boolean(problem)} title={problem || "Salvar a disposição como está"} onClick={done}>Salvar</button>
+                <button type="button" className="kx-btn kx-btn-outline kx-t" disabled={Boolean(problem)} title={problem || "Salvar os painéis como estão"} onClick={done}>Salvar</button>
                 <button type="button" className="kx-btn kx-t" onClick={() => setNaming(null)}>Cancelar</button>
                 {problem && naming.trim() && <span className="kx-meta kx-warn">{problem}</span>}
             </span>
         );
     }
     const name = preset ? preset.name : "Padrão";
-    const menu = (e) => openMenu(e, { title: `Disposição: ${name}${changed ? " · alterada" : ""}`, items: [
+    const menu = (e) => openMenu(e, { title: `Painéis: ${name}${changed ? " · alterados" : ""}`, items: [
         preset && changed && { label: `Salvar em “${preset.name}”`, icon: "save", onSelect: onSave },
-        { label: "Salvar como…", icon: "plus", onSelect: () => setNaming(""), title: "Salvar a disposição como está, com um nome, para trocar depois em Ver" },
+        { label: "Salvar como…", icon: "plus", onSelect: () => setNaming(""), title: "Salvar os painéis como estão, com um nome, para trocar depois em Ver" },
         preset && { label: "Excluir…", icon: "trash", onSelect: onDelete },
     ].filter(Boolean) });
     return (
-        <button type="button" className="kx-btn kx-t dock-preset-btn" aria-haspopup="menu" onClick={menu} title="A disposição em edição: salvar, salvar com outro nome, excluir">
-            <span className="kx-meta">Disposição:</span> <b className="dock-preset-name">{name}</b>{changed ? <span className="kx-meta"> · alterada</span> : null}<Icon name="chevron-down" />
+        <button type="button" className="kx-btn kx-t dock-preset-btn" aria-haspopup="menu" onClick={menu} title="Os painéis em edição: salvar, salvar com outro nome, excluir">
+            <span className="kx-meta">Painéis:</span> <b className="dock-preset-name">{name}</b>{changed ? <span className="kx-meta"> · alterados</span> : null}<Icon name="chevron-down" />
         </button>
     );
 }
@@ -338,7 +339,7 @@ export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, pr
 // while editing); `onPickSplit(path)`: a splitter touched while editing
 // (the split the banner's 50 · 50, 33 · 33 · 34, 25 · 50 · 25 act on,
 // Rodada P4-2).
-export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked, onFold, onPickSplit, away = [] }) {
+export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked, onFold, onPickSplit, away = [], onDetach = null, onAttach = null }) {
     // The tab in front of a group made of a split that does not fit (it is
     // not in the dock: a bigger screen splits it again).
     const [shown, setShown] = useState({});
@@ -371,6 +372,13 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             name: nameOf(id), grip: drag(id), onMenu: menu(id),
             // In a window of its own (Painéis em janela): shown in its place to be arranged.
             note: away.includes(id) ? "em janela" : null,
+            // "Destacar em janela" lives here, in Editar painéis only (owner
+            // 2026-11-09, after the first build had it on every header):
+            // a panel in the console goes to its window, one in a window
+            // comes back to the console.
+            detach: canDetach(id) && onDetach && onAttach ? (away.includes(id)
+                ? { away: true, title: "Voltar ao console: fecha a janela própria; o painel fica aqui", run: () => onAttach(id) }
+                : { away: false, title: "Destacar em janela: este painel numa janela própria, para usar vendo outra tela", run: () => onDetach(id) }) : null,
             onX: out?.run || null, xTitle: out?.title,
             extra: id === "programa" && playerDocked ? playerChip : null,
         };
@@ -425,7 +433,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         );
     };
 
-    // Por % (Editar disposição, owner 2026-10-15): a splitter works on the
+    // Por % (Editar painéis, owner 2026-10-15): a splitter works on the
     // sizes as drawn in this box (rebaseDock) and snaps to PCT_STEP %.
     const pct = dock?.mode === "pct";
     const base = () => (pct ? rebaseDock(dock, frame.w, frame.h) : dock);

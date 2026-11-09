@@ -409,7 +409,7 @@ export default function Console() {
     // medium or narrow. Measured on .main, so banners and the window frame
     // count, not the window.
     const mainRef = useRef(null);
-    // The grid's size too: the dock (Editar disposição) fits the culto
+    // The grid's size too: the dock (Editar painéis) fits the culto
     // environment's modules into it.
     const [mainSize, setMainSize] = useState(() => ({ w: window.innerWidth - 12, h: window.innerHeight - 64 }));
     const tier = tierFor(mainSize.w);
@@ -972,7 +972,7 @@ export default function Console() {
     };
     useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
 
-    // Where the culto environment's modules go (Ver › Editar disposição;
+    // Where the culto environment's modules go (Ver › Editar painéis;
     // src/lib/console/dock.js): the operator's tree, or, until they change
     // it, the one the old columns make (fromArrangement; the modules the
     // church's old preference hid start in the tray).
@@ -981,7 +981,7 @@ export default function Console() {
     const dockOpts = { width: mainSize.w, height: mainSize.h, tier, onairSpan: layout.onairSpan };
     const dock = useMemo(() => (layout.dock ? normalizeDock(layout.dock) : fromArrangement(layout.trayFromChurch === false ? { ...layout, hidden: {} } : layout, dockOpts)),
         [layout.dock, layout.order, layout.stacks, layout.libW, layout.slidesW, layout.rightW, layout.camadasH, layout.prevPct, layout.hidden, layout.trayFromChurch, layout.onairSpan, mainSize.w, mainSize.h]); // eslint-disable-line react-hooks/exhaustive-deps
-    // Editar disposição › No ar: the strip's band (dock.js moveBand); a dock
+    // Editar painéis › No ar: the strip's band (dock.js moveBand); a dock
     // never edited follows through fromArrangement.
     const setOnairSpan = (v) => setLayout({ ...layout, onairSpan: v, dock: layout.dock ? moveBand(layout.dock, v) : null });
     // The No ar strip only while lyrics are on air (owner 2026-10-14): it folds
@@ -1008,7 +1008,6 @@ export default function Console() {
     // while editing they show there, "· em janela", to be arranged.
     const detachedNow = detachedList(layout).join();
     const away = editing ? "" : detachedNow;
-    const detachPanel = (id) => (canDetach(id) ? () => setLayout(detachModule(layout, id)) : null);
     const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, {
         gone: gone ? gone.split(",") : [],
         locked: { onair: onAirH, ...(camadasFitH ? { camadas: PANEL_HEAD + camadasFitH } : {}), ...(temasFitH ? { temas: PANEL_HEAD + temasFitH } : {}) },
@@ -1074,13 +1073,13 @@ export default function Console() {
     const envDock = env === "biblia" ? bibleDock : dock;
     const setEnvDock = env === "biblia" ? setBibleDock : setDock;
     const dockDrag = useDockDrag({ dock: envDock, onDock: setEnvDock });
-    // Editar disposição › Tamanhos: Livre | Por % | Exato (dock.js
+    // Editar painéis › Tamanhos: Livre | Por % | Exato (dock.js
     // setDockMode), the environment on screen; what is drawn stays as it is.
     const envFrame = env === "biblia" ? bibleFrame : dockFrame;
     const setEnvMode = (m) => setEnvDock(setDockMode(envDock, m, mainSize.w, mainSize.h, envFrame));
     // Travar fora da edição (Rodada P4-1): the environment on screen's switch.
     const envLocked = dockLocked(envDock);
-    const setEnvLock = (on) => { setEnvDock(setDockLock(envDock, on)); c.say(on ? "Disposição travada: os divisores só mudam em Editar disposição." : "Disposição destravada."); };
+    const setEnvLock = (on) => { setEnvDock(setDockLock(envDock, on)); c.say(on ? "Painéis travados: os divisores só mudam em Editar painéis." : "Painéis destravados."); };
     // Exato's one-click splits act on the split whose splitter was touched
     // last while editing (each environment its own), else the outer one.
     const [editSplit, setEditSplit] = useState({});
@@ -1098,7 +1097,7 @@ export default function Console() {
         if (xs) setWeights(xs);
         else c.say(`Digite ${n} números, um para cada painel (ex.: ${n === 2 ? "50 50" : "33 33 34"}).`);
     };
-    // Named arrangements (Ver › Disposição; src/lib/console/dockPresets.js),
+    // Named arrangements (Ver › Painéis salvos; src/lib/console/dockPresets.js),
     // each environment its own: the list, the one in use, Padrão.
     const allPresets = layout.dockPresets || [];
     const presetKey = env === "biblia" ? "bibleDockPreset" : "dockPreset";
@@ -1118,16 +1117,16 @@ export default function Console() {
     };
     const pickPreset = (id) => {
         const p = presetOf(presets, id);
-        if (!p) { setLayout(restoreHere()); c.say("Disposição padrão."); return; }
+        if (!p) { setLayout(restoreHere()); c.say("Painéis no padrão."); return; }
         setLayout({ ...layout, [dockKey]: withLockOf(p.dock, envDock), [presetKey]: p.id });
-        c.say(`Disposição “${p.name}”.`);
+        c.say(`Painéis “${p.name}”.`);
     };
     const savePresetAs = (name) => {
         const id = globalThis.crypto?.randomUUID?.() || `d${Date.now()}`;
         const r = addPreset(allPresets, name, envDock, id);
         if (!r.id) return;
         setLayout({ ...layout, [dockKey]: envDock, dockPresets: r.list, [presetKey]: r.id });
-        c.say(`Disposição “${r.list.at(-1).name}” salva. Troque em Ver.`);
+        c.say(`Painéis “${r.list.at(-1).name}” salvos. Troque em Ver.`);
     };
     const savePreset = () => {
         if (!preset) return;
@@ -1135,7 +1134,7 @@ export default function Console() {
         c.say(`“${preset.name}” salva.`);
     };
     const deletePreset = async () => {
-        if (!preset || !(await askConfirm(deleteQuestion("a disposição", preset.name, "O console fica como está agora.")))) return;
+        if (!preset || !(await askConfirm(deleteQuestion("os painéis", preset.name, "O console fica como está agora.")))) return;
         setLayout({ ...layout, [dockKey]: envDock, dockPresets: removePreset(allPresets, preset.id), [presetKey]: null });
     };
     // "Mover para…" (a click on a module's name while editing, or on it in
@@ -1195,7 +1194,7 @@ export default function Console() {
     const setlistPanel = (
         // The title is what every console shows (U2 = A): "Setlist", or the
         // active culto's name; a click opens the menu that switches it.
-        <Panel title="Setlist" caption={setlistHead} className={`setlist-panel ${coverCls}`} detach={detachPanel("setlist")}
+        <Panel title="Setlist" caption={setlistHead} className={`setlist-panel ${coverCls}`}
             actions={<>{coverTag}{setlistPicking && <SelectManyBtn on onToggle={setSetlistPicking} />}<IconBtn name="planner" title="Planejar o culto" small onClick={() => openPlanner(view.active ? serviceId : null)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} media={data.media} askText={askText} onOpenMedia={openMedia} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={view.active ? (it) => openPlanner(serviceId, it?.id || null) : null} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
@@ -1214,7 +1213,7 @@ export default function Console() {
     // slots (Measure → locked.temas), like Camadas.
     const temasBtns = <><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
     // The theme in use is the marked slot (and the header's tooltip), not a subtitle (H1 = A).
-    const temasPanel = <Panel title="Temas" tip={themeInUseName ? `Em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns} detach={detachPanel("temas")}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
+    const temasPanel = <Panel title="Temas" tip={themeInUseName ? `Em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");
     const layers = (
         <>
@@ -1228,7 +1227,7 @@ export default function Console() {
     // (Ferramentas, Timers, Aviso rápido) and the Setlist's +.
     const camadasMenu = (e) => openMenu(e, { title: "Adicionar camada", items: camadasAddItems(c, () => addOverlayRef.current?.()) });
     const camadasPanel = (
-        <Panel title="Camadas" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={camadasMenu} />} detach={detachPanel("camadas")}>
+        <Panel title="Camadas" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo no canto" small onClick={camadasMenu} />}>
             <Measure onHeight={setCamadasFitH}>{layers}</Measure>
         </Panel>
     );
@@ -1241,12 +1240,12 @@ export default function Console() {
     const prepare = (s) => c.setPrev(s);
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
     const tabsPanel = (
-        <TabsPanel c={c} data={data} detach={detachPanel("abas")} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
+        <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
             items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend}
             messages={messages} onAddSong={addSong} onAddMedia={(m, extra) => addStageToSetlist(stageFromMedia(m), undefined, { extra })} onAddStage={(s) => addStageToSetlist(s)} onLyricsSearch={(q) => { setLyricsQ(q); setOpen("lyrics"); }} onWriteMessage={writeMessage} />
     );
     const libraryPanel = (
-        <Panel title="Biblioteca" detach={detachPanel("lib")} actions={<>
+        <Panel title="Biblioteca" actions={<>
             {/* The header holds the doors (owner's pick, Rodada H, H1): the
                 media library, a page of its own, one click away on every tab,
                 then the + (the Library's menu, through this slot) and the
@@ -1264,7 +1263,7 @@ export default function Console() {
         </Panel>
     );
     const slidesPanel = (
-        <Panel title="Slides" className={coverCls} count={handTitle(c) || ""} actions={coverTag} detach={detachPanel("slides")} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Slides" className={coverCls} count={handTitle(c) || ""} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} />
         </Panel>
     );
@@ -1601,7 +1600,7 @@ export default function Console() {
             )}
             {/* Travar telas: the console prepares, the screens keep what they show. */}
             {editing && (
-                <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
+                <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou aos painéis padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!winOpen && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
                     {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small label="Tamanhos" value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }], ["exact", "Exato", { title: "Divisões exatas (33 · 33 · 34), sem o pulo de 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
                     {!winOpen && splitNames.length > 0 && (
@@ -1627,7 +1626,8 @@ export default function Console() {
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH} onBooksH={setBooksFitH} onVersesH={setVersesFitH} booksRoom={booksRoom}
                     readSize={layout.bibleRead} setReadSize={(v) => setLayout({ ...layout, bibleRead: v })} onSettings={openSettings}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold, onPickSplit: pickSplit }} />}
-                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} onPickSplit={pickSplit} away={detachedNow ? detachedNow.split(",") : []} />}
+                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} onPickSplit={pickSplit} away={detachedNow ? detachedNow.split(",") : []}
+                    onDetach={(id) => setLayout(detachModule(layout, id))} onAttach={(id) => setLayout(attachModule(layout, id))} />}
             </main>
 
             {/* THE window (Rodada C): one dialog, its pages stacked by
