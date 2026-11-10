@@ -126,6 +126,43 @@ export function linesFromStarts(slides, starts) {
     return out;
 }
 
+// One press per slide (owner 2026-11-11, option 1): Espaço marks the start
+// of a slide and the gold goes to the first line of the next slide (the
+// lines inside a slide need no mark: the slide comes in at its first one).
+// `firsts`: each slide's first line. -> that line, or -1 after the last slide.
+export function nextSlideStart(firsts, i) {
+    for (const f of firsts || []) if (f > i) return f;
+    return -1;
+}
+
+// The first line of the first slide with no mark in any of its lines (where
+// recording starts), else 0.
+export function firstUnmarkedSlide(firsts, starts, count) {
+    const fs = firsts || [];
+    for (let k = 0; k < fs.length; k++) {
+        const end = k + 1 < fs.length ? fs[k + 1] : count;
+        let any = false;
+        for (let i = fs[k]; i < end; i++) if (isMark(starts?.[i])) { any = true; break; }
+        if (!any) return fs[k];
+    }
+    return 0;
+}
+
+// Lyrics that are one slide, split before marking (2 or 4 linhas on the
+// page): the slides as groups of `n` lines, the label on the first.
+export function chunkGroups(count, n, label = "") {
+    if (!(n > 0)) return [{ first: 0, label }];
+    return Array.from({ length: Math.ceil(count / n) }, (_, k) => ({ first: k * n, label: k === 0 ? label : "" }));
+}
+
+// "Distribuir pelo tempo", one mark per slide: the slides spread evenly, the
+// time on each one's first line, the other lines unmarked.
+export function distributeSlides(firsts, count, total, intro = 0) {
+    const out = Array(Math.max(0, count)).fill(null);
+    distribute((firsts || []).length, total, intro).forEach((t, k) => { if (firsts[k] < count) out[firsts[k]] = t; });
+    return out;
+}
+
 // The line Espaço marks next (the gold one) after line `i` was marked: the
 // next line with no mark, never past a gap the operator left; -1 = all
 // marked from there on.

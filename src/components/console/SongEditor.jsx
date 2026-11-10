@@ -344,7 +344,14 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         groups: slideFirstLines(slides).map((first, k) => ({ first, label: slides[k].label || "" })),
         starts: fitMarks(lineStarts, lineCount(slides)),
         // Aplicar brings the marks, and the video or playback chosen there.
-        onApply: (next, extra) => { setLineStarts(next); if (extra?.audio_url !== undefined && extra.audio_url !== song.audio_url) set({ audio_url: extra.audio_url }); setDirty(true); },
+        onApply: (next, extra) => {
+            setLineStarts(next);
+            if (extra?.audio_url !== undefined && extra.audio_url !== song.audio_url) set({ audio_url: extra.audio_url });
+            // The page split one-slide lyrics before marking (option 1): the
+            // editor takes the same split (2/4 linhas rewrite the text).
+            if (extra?.split > 0) pickSplit(extra.split);
+            setDirty(true);
+        },
     });
 
     const save = useCallback(async () => {
@@ -598,7 +605,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <span className="kx-meta">No ar: Iniciar letra por tempo no player, quando a banda começar. ← → continuam valendo, e o tempo segue do slide escolhido.</span>
                         </>}
                         {advance === "marks" && <>
-                            <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{linesMarked}/{linesTotal} linhas marcadas</span>
+                            <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} slides marcados</span>
                             <span className="kx-meta">{!marked ? "Sem marcas: use Marcar os tempos"
                                 : !media ? "No ar: Iniciar letra automática no player, na introdução."
                                 : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>

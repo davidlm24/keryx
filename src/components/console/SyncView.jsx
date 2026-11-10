@@ -7,7 +7,7 @@ import SyncMarks from "./SyncMarks";
 import PlaybackPicker, { useMediaFromComputer } from "./PlaybackPicker";
 import { useLibrary } from "./useConsoleData";
 import { isVideoUrl } from "@/lib/console/content";
-import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP } from "@/lib/console/lyricSync";
+import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP } from "@/lib/console/lyricSync";
 import { anchorIndex, anchorMarks, fmtDelta } from "@/lib/console/lrcPick";
 
 const isMark = (v) => Number.isFinite(v);
@@ -69,9 +69,13 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const { media: libMedia } = useLibrary();
     const mediaFromComputer = useMediaFromComputer(libMedia, ask, say);
     const [finished, setFinished] = useState(false);
+    // Lyrics that are one slide (owner 2026-11-11, option 1): split them
+    // here, in 2 or 4 lines, before marking; Aplicar takes the split along.
+    const [split, setSplit] = useState(0);
+    const groupsNow = split > 0 ? chunkGroups(n, split, groups?.[0]?.label || "") : groups;
     const [starts, setStarts] = useState(() => Array.from({ length: n }, (_, i) => (isMark(initial[i]) ? initial[i] : null)));
     const [undo, setUndo] = useState([]);
-    const [sel, setSel] = useState(() => Math.max(0, nextUnmarked(initial)));
+    const [sel, setSel] = useState(() => (lines && groups?.length ? firstUnmarkedSlide(groups.map((g) => g.first), initial, lines.length) : Math.max(0, nextUnmarked(initial))));
     const [rec, setRec] = useState(null); // the slide Espaço marks next while recording
     const [speed, setSpeed] = useState(1);
     const [t, setT] = useState(0);
@@ -94,13 +98,21 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const playingIdx = indexAt(starts, t);
     // The slides as groups of lines: each one's first line and start (its
     // first marked line), and the slide playing now.
-    const slideOf = (groups || []).map((g, k) => {
-        const end = k + 1 < groups.length ? groups[k + 1].first : n;
+    const slideOf = (groupsNow || []).map((g, k) => {
+        const end = k + 1 < groupsNow.length ? groupsNow[k + 1].first : n;
         let start = null;
         for (let i = g.first; i < end; i++) if (isMark(starts[i])) { start = starts[i]; break; }
         return { ...g, end, start };
     });
     const slideNow = byLine ? indexAt(slideOf.map((g) => g.start), t) : -1;
+    const firsts = slideOf.map((g) => g.first);
+    const slideAt = (i) => slideOf.findIndex((g) => i >= g.first && i < g.end);
+    const slidesMarked = slideOf.filter((g) => isMark(g.start)).length;
+    // The lyrics are one long slide: offer the split before marking.
+    const oneSlide = byLine && !split && (groups || []).length === 1 && n > 4;
+    // Where Espaço goes after line `i`: the next slide's first line (one
+    // press per slide); slide by slide on the old page.
+    const after = (marks, i) => (byLine ? nextSlideStart(firsts, i) : nextToMark(marks, i));
 
     const now = useCallback(() => {
         if (live) { const c = clk.current; return c.at === null ? c.base : c.base + ((performance.now() - c.at) / 1000) * speed; }
@@ -189,15 +201,15 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         const next = recordMark(starts, rec, now());
         change(next);
         setSel(rec);
-        // On to the next line with no mark; none left: the end, said.
-        const to = nextToMark(next, rec);
+        // On to the next slide; none left: the end, said.
+        const to = after(next, rec);
         if (to < 0) { setRec(null); pause(); setFinished(true); } else setRec(to);
     };
     const markHere = (i) => {
         const next = setMark(starts, i, now());
         change(next);
         setSel(i);
-        if (rec !== null) { const to = nextToMark(next, i); if (to < 0) setRec(null); else setRec(to); }
+        if (rec !== null) { const to = after(next, i); if (to < 0) setRec(null); else setRec(to); }
     };
     const unmark = (i) => { change(setMark(starts, i, null)); pointAt(i); };
     // The video or playback chosen here (a Mídia row, or a file the
@@ -206,15 +218,20 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const fromComputer = async (file) => { try { const row = await mediaFromComputer(file); if (row) chooseMedia(row); } catch (err) { say?.(err?.message || "Não foi possível enviar o arquivo."); } };
     const spread = async () => {
         if (!duration) return;
-        if (marked && !(await ask({ title: byLine ? "Distribuir as linhas?" : "Distribuir os slides?", text: `As ${marked} marcas de agora dão lugar a ${n} marcas espalhadas por ${fmtTime(duration).slice(0, -3)}. Desfazer volta atrás.`, ok: "Distribuir" }))) return;
-        change(distribute(n, duration));
+        const count = byLine ? slideOf.length : n;
+        if (marked && !(await ask({ title: "Distribuir os slides?", text: `As ${marked} marcas de agora dão lugar a ${count} marcas espalhadas por ${fmtTime(duration).slice(0, -3)}. Desfazer volta atrás.`, ok: "Distribuir" }))) return;
+        change(byLine ? distributeSlides(firsts, n, duration) : distribute(n, duration));
     };
 
     const leave = async (all = false) => {
         if (dirty && !(await ask({ title: "Descartar as marcas?", text: `As marcas de "${title}" mudaram e não foram aplicadas.`, ok: "Descartar" }))) return;
         onClose(all);
     };
-    const apply = () => { onApply?.(starts, (media || "") !== (mediaIn || "") ? { audio_url: media } : undefined); onClose(false); };
+    const apply = () => {
+        const extra = { ...((media || "") !== (mediaIn || "") ? { audio_url: media } : {}), ...(split > 0 ? { split } : {}) };
+        onApply?.(starts, Object.keys(extra).length ? extra : undefined);
+        onClose(false);
+    };
     if (escRef) escRef.current = (mode) => {
         if (mode === "esc" && picking) setPicking(false);
         else if (mode === "esc" && find) setFind(null);
@@ -283,7 +300,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
 
     return (
         <>
-            <WinBar title="Marcar os tempos" sub={`${title || "Música"} · ${sug ? `0/${n} ${byLine ? "linhas marcadas" : "marcados"} · ${marked} da internet` : `${marked}/${n} ${byLine ? "linhas marcadas" : "marcados"}${dirty ? " · não aplicado" : ""}`}`}
+            <WinBar title="Marcar os tempos" sub={`${title || "Música"} · ${sug ? `${marked} marcas da internet` : `${byLine ? slidesMarked : marked}/${byLine ? slideOf.length : n} ${byLine ? "slides marcados" : "marcados"}${dirty || split ? " · não aplicado" : ""}`}`}
                 actions={<>
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={!dirty || Boolean(sug)} onClick={apply} title={sug ? `Marque a 1ª ${unit} com Espaço, ou Pular` : "Leva as marcas (e o vídeo ou playback escolhido) para o Editor de música; o Salvar de lá grava"}>Aplicar</Btn>
@@ -300,8 +317,8 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                         <Seg small label="Velocidade" value={String(speed)} onChange={(v) => toSpeed(Number(v))} options={SPEEDS.map((v) => [String(v), `${String(v).replace(".", ",")}×`, { title: `Tocar a ${String(v).replace(".", ",")}× · [ e ]` }])} />
                         <Btn small disabled={!n} onClick={openFind} title="As marcas de uma gravação da música no LRCLIB; depois você acerta o 1º slide no seu playback"><Icon name="globe" />Buscar marcas…</Btn>
                         {rec === null
-                            ? <Btn small kind="outline" disabled={!n} onClick={startRecording} title={`Toca e, a cada Espaço, marca a próxima ${unit} a partir da escolhida · as outras marcas ficam`}>Gravar a partir da {unit} {Math.min(sel + 1, n)}</Btn>
-                            : <Btn small kind="rh" onClick={stopRecording} title="Parar de gravar · Esc">Gravando · Espaço marca a {unit} {rec + 1}</Btn>}
+                            ? <Btn small kind="outline" disabled={!n} onClick={startRecording} title={byLine ? "Toca e, a cada Espaço, marca o começo de um slide e pula para o próximo · as outras marcas ficam" : "Toca e, a cada Espaço, marca o próximo slide a partir do escolhido · as outras marcas ficam"}>{byLine ? `Gravar a partir do slide ${slideAt(sel) + 1}` : `Gravar a partir do slide ${Math.min(sel + 1, n)}`}</Btn>
+                            : <Btn small kind="rh" onClick={stopRecording} title="Parar de gravar · Esc">Gravando · Espaço marca o slide {byLine ? slideAt(rec) + 1 : rec + 1}</Btn>}
                         <Btn small disabled={!duration || !n} onClick={spread} title={duration ? `Espalha as ${byLine ? "linhas" : "marcas"} igualmente pela duração da música · depois ajuste as que destoarem` : "Preencha a duração da música no editor"}>Distribuir pelo tempo…</Btn>
                     </>} bodyStyle={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", padding: "var(--space-2)" }}>
                         {sug && (
@@ -315,11 +332,28 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 <Btn small onClick={skipAnchor} title="Usa os tempos como vieram, sem deslocar">Pular</Btn>
                             </div>
                         )}
+                        {oneSlide && (
+                            <div className="sync-note is-ask" role="status">
+                                <span className="sync-note-t">
+                                    <b>A letra é um slide só ({n} linhas)</b>
+                                    <span>Divida antes de marcar: aí o Espaço marca o começo de cada slide. A divisão vai junto no Aplicar.</span>
+                                </span>
+                                <Btn small onClick={() => { setSplit(2); setRec(null); }}>2 linhas</Btn>
+                                <Btn small onClick={() => { setSplit(4); setRec(null); }}>4 linhas</Btn>
+                            </div>
+                        )}
+                        {split > 0 && (
+                            <div className="sync-note" role="status">
+                                <Icon name="check" className="sync-ok" />
+                                <span className="sync-note-t"><b>Dividida em {split} linhas por slide</b><span>No Aplicar, a letra também se divide assim no editor.</span></span>
+                                <Btn small onClick={() => setSplit(0)}>Desfazer</Btn>
+                            </div>
+                        )}
                         {finished && (
                             <div className="sync-note" role="status">
                                 <Icon name="check" className="sync-ok" />
                                 <span className="sync-note-t">
-                                    <b>Todas as {byLine ? "linhas" : "marcas"} marcadas</b>
+                                    <b>Todos os slides marcados</b>
                                     <span>Toque e confira. Uma fora do lugar: clique nela, ✕ e Espaço, ou − / +.</span>
                                 </span>
                                 <Btn small kind="brand" onClick={apply}>Aplicar</Btn>
@@ -344,11 +378,11 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 : !marked && rec === null
                                     ? (
                                         <div className="sync-empty">
-                                            <span className="kx-meta">{byLine ? "Nenhuma linha marcada ainda" : "Nenhum slide marcado ainda"}</span>
-                                            <span>{byLine ? "Toque e aperte Espaço no começo de cada linha cantada; os slides entram na primeira linha deles. Ou busque as marcas da gravação original na internet." : "Busque as marcas da gravação original na internet e acerte só o 1º slide, ou grave tocando e apertando Espaço."}</span>
+                                            <span className="kx-meta">Nenhum slide marcado ainda</span>
+                                            <span>{byLine ? "Toque e aperte Espaço quando cada slide começar: o dourado pula sozinho para o próximo. Ou busque as marcas da gravação original na internet." : "Busque as marcas da gravação original na internet e acerte só o 1º slide, ou grave tocando e apertando Espaço."}</span>
                                             <span className="sync-empty-b">
                                                 <Btn kind="brand" disabled={!n} onClick={openFind}>Buscar marcas…</Btn>
-                                                <Btn disabled={!n} onClick={startRecording}>Gravar a partir da {unit} {Math.min(sel + 1, n)}</Btn>
+                                                <Btn disabled={!n} onClick={startRecording}>{byLine ? `Gravar a partir do slide ${slideAt(sel) + 1}` : `Gravar a partir do slide ${Math.min(sel + 1, n)}`}</Btn>
                                             </span>
                                         </div>
                                     )
@@ -404,7 +438,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                             ))}
                         </div>
                         {missing.length > 0 && <div className="listhead"><span className="kx-meta">{missing.length === 1 ? `${missing[0] + 1} · "${firstLine(slides[missing[0]]?.text)}" não está nessa gravação: marque com Aqui.` : `${missing.map((i) => i + 1).join(", ")} não estão nessa gravação: marque com Aqui.`}</span></div>}
-                        <div className="listhead"><span className="kx-meta">Verde: {byLine ? "a linha" : "o slide"} tocando agora · dourado: {byLine ? "a" : "o"} que Espaço marca (um clique, o ✕ ou o Backspace o trazem de volta) · clique numa linha para ir ao tempo dela.</span></div>
+                        <div className="listhead"><span className="kx-meta">{byLine ? "Verde: a linha tocando agora · dourado: onde o Espaço marca, o começo do próximo slide (um clique numa linha, o ✕ ou o Backspace o trazem para ela) · clique numa linha para ir ao tempo dela." : "Verde: o slide tocando agora · dourado: o que Espaço marca · clique numa linha para ir ao tempo dela."}</span></div>
                     </Panel>
                 </div>
             </div>

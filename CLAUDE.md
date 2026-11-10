@@ -2833,10 +2833,17 @@ lyricSync.js, tested), so Estrofe / 2 / 4 linhas never lose the marks and
 lyrics with no blank line can be marked; save writes both `line_starts` and
 the derived `slides[].start` (the screens read only the slides); an old
 song's slide marks go to each slide's first line (`linesFromStarts`).
-Marcar os tempos lists the lines under slide dividers; **the gold row is
-the one Espaço marks** and a click, its ✕ or Backspace bring it back
-(`nextToMark`); the last line pauses and says "Todas as linhas
-marcadas"; its header has "Vídeo ou playback…" (PlaybackPicker; Aplicar
+Marcar os tempos lists the lines under slide dividers; **one press per
+slide** (owner 2026-11-11, option 1: "se já está separado por slide, por
+que marcar por linhas?"): Espaço marks the gold line and the gold jumps to
+the next slide's first line (`nextSlideStart`); a click, its ✕ or
+Backspace bring the gold to a line; lyrics that are one slide get "A letra
+é um slide só" with 2 linhas / 4 linhas on the page (`chunkGroups`; Aplicar
+carries `split` and the editor's pickSplit rewrites the text the same
+way) — splitting while listening was weighed and dropped (two keys a line,
+errors become wrong splits); the last slide pauses and says "Todos os
+slides marcados"; Distribuir spreads the slides (`distributeSlides`); the
+counters count slides; its header has "Vídeo ou playback…" (PlaybackPicker; Aplicar
 carries the file chosen). LRCLIB marks and Procurar letra's "com tempo"
 match per line. **"Marcar os tempos com uma letra…"** (MENU_LABELS
 `marcarTempos`) on a video or an audio of the computer (Biblioteca, the
