@@ -795,19 +795,37 @@ test("slides keep their start; a song with marks follows its source", () => {
     assert.equal(followPosition(v, T0 + 5 * S), 5);
 });
 
-test("the arrows re-sync the follow there, the follower's own moves do not", () => {
+test("a playback or video: moving the slide seeks the media, the marks never move (2026-11-10)", () => {
     let s = run([["content.show", { ...timed, follow: { source: "audio", url: "/a.mp3" } }], ["audio.show", { url: "/a.mp3" }]]);
-    // At 12 s the operator jumps to "três" (30 s): from then on it follows 18 s ahead.
+    // At 12 s the operator jumps to "três" (30 s): the playback goes to 30 s.
     s = applyOp(s, "content.goTo", { index: 3 }, T0 + 12 * S);
-    assert.equal(s.content.follow.offset, 18);
+    assert.equal(s.content.index, 3);
+    assert.equal(s.content.follow.offset, 0, "the marks stay where they were made");
     assert.equal(s.content.follow.paused, false, "the arrows never turn it off");
+    assert.equal(followPosition(s, T0 + 12 * S), 30, "the music jumped to the slide's mark");
     assert.equal(followIndex(s, T0 + 12.5 * S), 3);
-    // The follower's own move (auto) keeps the offset.
-    s = applyOp(s, "content.goTo", { index: 1, auto: true }, T0 + 13 * S);
-    assert.equal(s.content.follow.offset, 18);
-    // content.next re-syncs too.
-    s = applyOp(s, "content.next", {}, T0 + 14 * S);
-    assert.equal(s.content.follow.offset, 6);
+    // The follower's own move (auto) seeks nothing.
+    const auto = applyOp(s, "content.goTo", { index: 1, auto: true }, T0 + 13 * S);
+    assert.equal(followPosition(auto, T0 + 13 * S), 31);
+    // content.prev goes back to "dois": 20 s.
+    s = applyOp(s, "content.prev", {}, T0 + 14 * S);
+    assert.equal(followPosition(s, T0 + 14 * S), 20);
+    // Seeking the player back to the start, then the slide follows the music.
+    s = applyOp(s, "transport", { layer: "audio", action: "seek", time: 0 }, T0 + 15 * S);
+    assert.equal(followIndex(s, T0 + 25.5 * S), 1, "10 s in: slide 1, as marked");
+    assert.equal(s.content.follow.offset, 0);
+    // A video on the video channel seeks the same way.
+    let v = run([["content.show", { ...timed, follow: { source: "video", url: "/v.mp4" } }], ["video.show", { kind: "video", url: "/v.mp4" }]]);
+    v = applyOp(v, "content.goTo", { index: 2 }, T0 + 3 * S);
+    assert.equal(followPosition(v, T0 + 3 * S), 20);
+    // Moved while paused, then resumed: the music goes to the slide on air.
+    let p = run([["content.show", { ...timed, follow: { source: "audio", url: "/a.mp3" } }], ["audio.show", { url: "/a.mp3" }]]);
+    p = applyOp(p, "content.follow", { action: "pause" }, T0 + 5 * S);
+    p = applyOp(p, "content.goTo", { index: 3 }, T0 + 6 * S);
+    assert.equal(followPosition(p, T0 + 6 * S), 6, "paused: the slide moves alone");
+    p = applyOp(p, "content.follow", { action: "resume" }, T0 + 7 * S);
+    assert.equal(followPosition(p, T0 + 7 * S), 30);
+    assert.equal(p.content.follow.offset, 0);
 });
 
 test("the live clock: waits for Iniciar, pauses, resumes from the slide moved to", () => {

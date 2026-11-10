@@ -50,7 +50,7 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 12,
-      "description": "Como a letra vira slides: 0 = uma estrofe por slide, 1 a 12 = no maximo tantas linhas por slide (editor de musica); a letra nunca e reescrita por isso"
+      "description": "Como a letra vira slides: 0 = uma estrofe por slide, 1 a 12 = no maximo tantas linhas por slide (editor de musica); escolher 1 a 12 reescreve a letra em blocos (reflowLyrics, 2026-11-10)"
     },
     "follow_mode": {
       "type": "string",
@@ -63,6 +63,11 @@
       "minimum": 1,
       "maximum": 120,
       "description": "Por tempo: segundos de cada slide (vazio = 8)"
+    },
+    "line_starts": {
+      "type": "array",
+      "items": { "type": ["number", "null"] },
+      "description": "Marcar os tempos linha a linha (2026-11-10): o início de cada linha cantada, em segundos, na ordem (sungLines em songImport.js); null = linha sem marca. Os slides entram na primeira linha marcada deles (startsFromLines), então trocar Estrofe/2/4 linhas não perde as marcas"
     },
     "slides": {
       "type": "array",

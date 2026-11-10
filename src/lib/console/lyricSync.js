@@ -94,6 +94,46 @@ export const fitMarks = (starts, count) => Array.from({ length: count }, (_, i) 
 
 export const sameMarks = (a, b) => a.length === b.length && a.every((v, i) => (isMark(v) ? v === b[i] : !isMark(b[i])));
 
+// ---------- Marcar os tempos linha a linha (owner 2026-11-10) ----------
+// The marks belong to the sung LINES (Song.line_starts: one entry per line,
+// in order, as sungLines in songImport.js lists them): a slide comes in at
+// the first marked time among its lines, so Estrofe / 2 / 4 linhas can
+// change without marking again. Slides are counted by their text rows.
+const rowsOf = (slide) => String(slide?.text ?? "").split("\n").length;
+export const lineCount = (slides) => (slides || []).reduce((n, s) => n + rowsOf(s), 0);
+
+// Each slide's first line index (where its lines start in line_starts).
+export function slideFirstLines(slides) {
+    let at = 0;
+    return (slides || []).map((s) => { const i = at; at += rowsOf(s); return i; });
+}
+
+// The slides' starts from the lines' times: the first marked line of each
+// slide (null when none of its lines is marked).
+export function startsFromLines(slides, lineStarts) {
+    const firsts = slideFirstLines(slides);
+    return (slides || []).map((s, k) => {
+        for (let i = firsts[k]; i < firsts[k] + rowsOf(s); i++) if (isMark(lineStarts?.[i])) return lineStarts[i];
+        return null;
+    });
+}
+
+// A song marked by slide (before 2026-11-10): each slide's mark goes to its
+// first line, the others unmarked.
+export function linesFromStarts(slides, starts) {
+    const out = Array(lineCount(slides)).fill(null);
+    slideFirstLines(slides).forEach((i, k) => { if (isMark(starts?.[k])) out[i] = starts[k]; });
+    return out;
+}
+
+// The line Espaço marks next (the gold one) after line `i` was marked: the
+// next line with no mark, never past a gap the operator left; -1 = all
+// marked from there on.
+export function nextToMark(starts, i) {
+    for (let k = i + 1; k < (starts || []).length; k++) if (!isMark(starts[k])) return k;
+    return -1;
+}
+
 // ---------- Avançar sozinha (owner 2026-10-22, Rodada P7) ----------
 // Song.follow_mode: "off" (Não), "marks" (Pelas marcas) or "time" (Por
 // tempo, a band with no media: Song.slide_seconds a slide, a slide's own

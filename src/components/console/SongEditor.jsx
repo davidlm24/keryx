@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
-import { importMediaFiles, importSummary, pickRepeats } from "@/lib/mediaImport";
 import { useLibrary } from "./useConsoleData";
-import PlaybackPicker from "./PlaybackPicker";
+import PlaybackPicker, { useMediaFromComputer } from "./PlaybackPicker";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
@@ -11,7 +10,7 @@ import { songContent, isVideoUrl } from "@/lib/console/content";
 import { soundModeFor } from "@/lib/console/videoSound";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { parseChords, slidesFromLyrics, reflowLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
-import { fitMarks, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength } from "@/lib/console/lyricSync";
+import { fitMarks, startsFromLines, linesFromStarts, slideFirstLines, lineCount, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength } from "@/lib/console/lyricSync";
 import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeInline, transposeChords, transposeChord } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
@@ -41,6 +40,13 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // song's video or playback with lyric timing on the right. Nothing here
 // changes what is on air. Opening a song keeps its saved slides; editing the
 // lyrics (or the split) redoes them, keeping timings by position.
+// What Song.line_starts keeps: one entry per sung line of the slides saved,
+// or none when no line is marked.
+const linesMarkedOf = (lineStarts, slides) => {
+    const out = fitMarks(lineStarts, lineCount(slides));
+    return out.some((v) => Number.isFinite(v)) ? out : [];
+};
+
 export default function SongEditor({ c, songId, themes = [], onClose, onSaved, escRef, active = true, onSync = null, autoSync = false }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colDados = useWinCol("song.dados", { name: "Dados", def: 340, min: 280, max: 560 });
@@ -60,7 +66,10 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // The old separate Cifra block (C-19): shown only while the song has text
     // there, and kept on screen while it is being edited (emptied included).
     const [cifraKept, setCifraKept] = useState(false);
-    const [starts, setStarts] = useState([]);
+    // The marks are the sung LINES' times (Song.line_starts, owner
+    // 2026-11-10): the slides take their first marked line (startsFromLines),
+    // so changing the split never loses them.
+    const [lineStarts, setLineStarts] = useState([]);
     // Por tempo (Rodada P7): each slide's own time, its exception (null:
     // the song's). Read from a song saved Por tempo only — another mode's
     // durations are the gaps between its marks, not exceptions.
@@ -109,7 +118,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             setSong({ ...NEW_SONG, ...row, lyrics: unCR(row.lyrics) });
             setSplit(linesLimit(row.lines_per_slide));
             setDurationText(formatDuration(row.duration));
-            setStarts((row.slides || []).map((s) => (Number.isFinite(s.start) ? s.start : null)));
+            setLineStarts(Array.isArray(row.line_starts) && row.line_starts.length ? row.line_starts.map((v) => (Number.isFinite(v) ? v : null)) : linesFromStarts(row.slides || [], (row.slides || []).map((x) => (Number.isFinite(x.start) ? x.start : null))));
             setSecs(row.follow_mode === "time" ? (row.slides || []).map((s) => (s.duration > 0 ? s.duration : null)) : []);
             setResplit(!(row.slides || []).length);
         }).catch((err) => { if (alive) setError(err?.message || "Música não encontrada."); });
@@ -126,14 +135,16 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // twin, saved for the screens that show chords).
     // Por tempo, the marks stay (Pelas marcas again finds them) and the
     // durations are the exceptions alone.
+    const baseSlides = useMemo(() => (!song ? [] : resplit ? slidesFromLyrics(song.lyrics, { lines: split, chorded: true }) : (song.slides || [])), [song, resplit, split]);
+    const starts = useMemo(() => startsFromLines(baseSlides, lineStarts), [baseSlides, lineStarts]);
     const slides = useMemo(() => {
         if (!song) return [];
-        const base = resplit ? slidesFromLyrics(song.lyrics, { lines: split, chorded: true }) : (song.slides || []);
+        const base = baseSlides;
         if (song.follow_mode === "time") {
             return base.map(({ start: _start, duration: _duration, ...rest }, i) => ({ ...rest, ...(Number.isFinite(starts[i]) ? { start: starts[i] } : {}), ...(secs[i] > 0 ? { duration: secs[i] } : {}) }));
         }
         return withTimings(base.map(({ start: _start, ...rest }) => rest), starts, mediaRef.current?.duration || song.duration || null);
-    }, [song, resplit, split, starts, secs]);
+    }, [song, baseSlides, starts, secs]);
 
     // 2/4 linhas / Outro rewrite the lyrics as the slides read (owner
     // 2026-11-10, reversing the "never a rewrite" of 2026-10-14): the text
@@ -158,16 +169,13 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             reflowBase.current = next === source ? null : { from: source, to: next };
             set({ lyrics: next });
         }
-        const marksGo = starts.some((x) => Number.isFinite(x)) && count !== slides.length;
+        // The marks belong to the lines (2026-11-10): a new split keeps them.
         if (count !== slides.length) setSecs([]);
-        if (marksGo) setStarts([]);
-        const again = marksGo ? ` ${count} ${count === 1 ? "slide" : "slides"} · marque os tempos de novo.` : "";
         if (next !== now) {
-            const keptStarts = starts;
-            c.say((lines > 0 ? `Letra dividida em blocos de ${lines} ${lines === 1 ? "linha" : "linhas"}.` : "A letra voltou às estrofes de antes.") + again, {
-                label: "Desfazer", run: () => { set({ lyrics: now }); setSplit(was); setStarts(keptStarts); reflowBase.current = base; },
+            c.say(lines > 0 ? `Letra dividida em blocos de ${lines} ${lines === 1 ? "linha" : "linhas"}.` : "A letra voltou às estrofes de antes.", {
+                label: "Desfazer", run: () => { set({ lyrics: now }); setSplit(was); reflowBase.current = base; },
             });
-        } else if (again) c.say(again.trim());
+        }
     };
     // Chords at the cursor: "[]" with the caret inside, or one chord of the key.
     const insertChord = (chord = "") => {
@@ -303,17 +311,13 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         setPicking(false);
         if (!row?.file_url || row.file_url === song.audio_url) return;
         set({ audio_url: row.file_url });
-        setStarts([]);
+        setLineStarts([]);
     };
+    const mediaFromComputer = useMediaFromComputer(libMedia, ask, c.say);
     const fromComputer = async (file) => {
         if (!file) return;
         setBusy("audio_url");
-        try {
-            const { list, there } = await pickRepeats([file], libMedia, ask);
-            if (!list.length) { if (there[0]) { chooseMedia(there[0]); c.say("Já estava na Mídia: escolhido de lá."); } return; }
-            const res = await importMediaFiles(list);
-            if (res.created[0]) { chooseMedia(res.created[0]); c.say("Arquivo adicionado à Mídia e escolhido para a música."); } else c.say(importSummary(res, " à Mídia"));
-        } catch (err) { c.say(err?.message || "Não foi possível enviar o arquivo."); } finally { setBusy(""); }
+        try { const row = await mediaFromComputer(file); if (row) chooseMedia(row); } catch (err) { c.say(err?.message || "Não foi possível enviar o arquivo."); } finally { setBusy(""); }
     };
 
     // Lyric timing (Rodada D4): the marks are made in Sincronizar, a page of
@@ -334,8 +338,13 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         slides: slides.map(({ text, label }) => ({ text, ...(label ? { label } : {}) })),
         media,
         duration: mediaRef.current?.duration || parseDuration(durationText) || song.duration || null,
-        starts: fitMarks(starts, slides.length),
-        onApply: (next) => { setStarts(next); setDirty(true); },
+        // Marcar os tempos works line by line (2026-11-10): every sung line,
+        // the slides as groups of them (where each starts, its label).
+        lines: slides.flatMap((x) => String(x.text || "").split("\n").map((text) => ({ text, label: x.label || "" }))),
+        groups: slideFirstLines(slides).map((first, k) => ({ first, label: slides[k].label || "" })),
+        starts: fitMarks(lineStarts, lineCount(slides)),
+        // Aplicar brings the marks, and the video or playback chosen there.
+        onApply: (next, extra) => { setLineStarts(next); if (extra?.audio_url !== undefined && extra.audio_url !== song.audio_url) set({ audio_url: extra.audio_url }); setDirty(true); },
     });
 
     const save = useCallback(async () => {
@@ -352,6 +361,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             lines_per_slide: Number(split),
             // Each slide keeps its chorded twin (the lyrics' [G] chords) for
             // the screens that show chords; before, saving lost them.
+            line_starts: linesMarkedOf(lineStarts, slides),
             slides: slides.map(({ text, chorded, duration, is_chorus, start, label }) => ({ text, ...(chorded && chorded !== text && hasInlineChords(chorded) ? { chorded } : {}), ...(label ? { label } : {}), ...(is_chorus ? { is_chorus } : {}), ...(Number.isFinite(start) ? { start } : {}), ...(Number.isFinite(duration) ? { duration } : {}) })),
         };
         for (const k of ["id", "created_date", "updated_date", "created_by_id"]) delete data[k];
@@ -363,7 +373,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
         saving.current = false;
         setBusy("");
-    }, [song, slides, durationText, songId, split, c, onSaved]);
+    }, [song, slides, lineStarts, durationText, songId, split, c, onSaved]);
 
     const remove = async () => {
         if (!(await ask(deleteQuestion("a música", song.title)))) return;
@@ -405,6 +415,10 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const soundMode = soundModeFor(media);
     const soundOnly = soundMode === "switch" && song.playback_mode === "sound";
     const marked = starts.filter((x) => Number.isFinite(x)).length;
+    const linesTotal = lineCount(slides);
+    const linesMarked = fitMarks(lineStarts, linesTotal).filter((x) => Number.isFinite(x)).length;
+    // The lyrics changed their line count since the marks: they may be off.
+    const linesMoved = linesMarked > 0 && lineStarts.length > 0 && lineStarts.length !== linesTotal;
     // Avançar sozinha (Rodada P7): Não, Pelas marcas or Por tempo.
     const advance = followModeOf(song, starts.map((start) => ({ start })));
     const each = slideSeconds(song);
@@ -584,11 +598,11 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <span className="kx-meta">No ar: Iniciar letra por tempo no player, quando a banda começar. ← → continuam valendo, e o tempo segue do slide escolhido.</span>
                         </>}
                         {advance === "marks" && <>
-                            <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} marcados</span>
+                            <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{linesMarked}/{linesTotal} linhas marcadas</span>
                             <span className="kx-meta">{!marked ? "Sem marcas: use Marcar os tempos"
                                 : !media ? "No ar: Iniciar letra automática no player, na introdução."
                                 : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>
-                            {marked > 0 && resplit && <span className="kx-meta kx-warn">A letra mudou: confira as marcas em Marcar os tempos</span>}
+                            {linesMoved && <span className="kx-meta kx-warn">A letra mudou de linhas: confira as marcas em Marcar os tempos</span>}
                         </>}
                         {advance === "off" && <span className="kx-meta">{marked ? "A letra não avança sozinha; as marcas ficam guardadas." : "A letra não avança sozinha: as setas mudam o slide."}</span>}
                     </div>

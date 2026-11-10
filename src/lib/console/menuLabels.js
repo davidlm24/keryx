@@ -32,6 +32,9 @@ export const MENU_LABELS = {
     // at once, the Terms question only before the very first download).
     baixarParaMidia: { label: "Baixar para a Mídia", icon: "download" },
     abrirNoYouTube: { label: "Abrir no YouTube", icon: "youtube" },
+    // A video or an audio of the Mídia: the song whose lyric times are
+    // marked with it (owner 2026-11-10; it asks which song first).
+    marcarTempos: { label: "Marcar os tempos com uma letra…", icon: "synced" },
     // The KERYX package (src/lib/keryxPackage.js): Exportar… asks how (the
     // export dialog); Abrir… asks for the file.
     exportar: { label: "Exportar…", icon: "save" },

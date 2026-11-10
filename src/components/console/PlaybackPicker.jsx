@@ -3,6 +3,22 @@ import Icon from "./Icon";
 import { Row, Seg } from "./kx";
 import { usePlaced } from "./Menu";
 import { pickRows, pedidoMediaKind } from "@/lib/console/pedidos";
+import { importMediaFiles, importSummary, pickRepeats } from "@/lib/mediaImport";
+
+// "Do computador…": the file enters the Mídia first (a repeat asks "Já está
+// na Mídia"; Pular uses the row already there). -> the Media row | null.
+// The song editor and Marcar os tempos share it.
+export function useMediaFromComputer(libMedia, ask, say) {
+    return async (file) => {
+        if (!file) return null;
+        const { list, there } = await pickRepeats([file], libMedia, ask);
+        if (!list.length) { if (there[0]) say?.("Já estava na Mídia: escolhido de lá."); return there[0] || null; }
+        const res = await importMediaFiles(list);
+        if (res.created[0]) { say?.("Arquivo adicionado à Mídia e escolhido para a música."); return res.created[0]; }
+        say?.(importSummary(res, " à Mídia"));
+        return null;
+    };
+}
 
 // The song's video or playback, chosen from the Mídia (owner 2026-11-10,
 // "Vídeo ou playback…" only opened the PC's files): Vídeos · Áudios with a

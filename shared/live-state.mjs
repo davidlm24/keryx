@@ -629,7 +629,24 @@ function backgroundOf(a) {
     return background;
 }
 
-// The follow re-synced so the slide `at` is where the source is now.
+// A song following its video or playback (owner 2026-11-10: "nada modifica
+// a sincronização"): moving the slide never moves the marks — the media
+// goes to that slide's mark instead, the layer playing `f.url` seeking as
+// the player's seek does. -> that layer's patch, or null (no such layer, or
+// the slide has no mark).
+function seekToSlide(s, f, at, now) {
+    if (!f?.url || !Number.isFinite(at?.start)) return null;
+    for (const k of ["video", "audio", "media"]) {
+        const l = s[k];
+        if (!l || l.url !== f.url || !l.playback) continue;
+        const moved = { ...l.playback, position: Math.max(0, at.start), at: now };
+        return { [k]: { ...l, playback: l.playback.paused ? ramped(moved, null) : moved } };
+    }
+    return null;
+}
+
+// The follow re-synced so the slide `at` is where the source is now (the
+// live clock and Por tempo: a band, no media to keep in step with).
 function resynced(s, f, at, now) {
     const pos = followPosition({ ...s, content: { ...s.content, follow: f } }, now);
     if (pos === null || !Number.isFinite(at?.start)) return f;
@@ -742,14 +759,20 @@ const OPS = {
         return { content: next };
     },
     // `auto`: the automatic lyrics moving on (useLyricFollow). Anyone else
-    // moving the slide of a song that follows re-syncs it there: from then
-    // on it follows from the new place (owner 2026-10-15, "continua seguindo").
+    // moving the slide of a song that follows: with a video or playback the
+    // media jumps to that slide's mark and the marks never move (owner
+    // 2026-11-10); with the live clock or Por tempo it re-syncs there and
+    // follows from the new place (owner 2026-10-15, "continua seguindo").
     "content.goTo": (s, { index, auto }, now) => {
         const current = need(s.content, "projetado");
         const i = clampIndex(index, current.slides.length);
         if (i === current.index) return null;
         const f = current.follow;
         if (auto || !f || f.paused) return { content: { ...current, index: i } };
+        if (f.url) {
+            const media = seekToSlide(s, f, current.slides[i], now);
+            return { content: { ...current, index: i, follow: f.offset ? { ...f, offset: 0 } : f }, ...(media || {}) };
+        }
         return { content: { ...current, index: i, follow: resynced(s, f, current.slides[i], now) } };
     },
     // Letra automática: start the live clock, pause following (the band
@@ -774,8 +797,15 @@ const OPS = {
             if (!f.paused) return null;
             const clock = f.clock && f.clock.paused ? { paused: false, position: f.clock.position, at: now } : f.clock;
             const running = { ...f, paused: false, pausedIndex: null, clock };
-            // Moved while paused: it goes on from the slide on air.
-            next = f.pausedIndex !== null && f.pausedIndex !== current.index ? resynced(s, running, at, now) : running;
+            const moved = f.pausedIndex !== null && f.pausedIndex !== current.index;
+            // Moved while paused: it goes on from the slide on air — a video
+            // or playback jumps to its mark (the marks never move), the
+            // clock re-syncs.
+            if (moved && f.url) {
+                const media = seekToSlide(s, running, at, now);
+                return { content: { ...current, follow: { ...running, offset: 0 } }, ...(media || {}) };
+            }
+            next = moved ? resynced(s, running, at, now) : running;
         }
         return { content: { ...current, follow: next } };
     },

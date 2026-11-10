@@ -1481,6 +1481,10 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .cfg .cfg-devs-acts .kx-btn { gap: var(--space-1); }
 /* Conectar um aparelho… (mockup board 2): the QR on white, the countdown. */
 .console .dialog.confirm-dialog.pair-dialog { width: min(380px, calc(100% - 32px)); top: 50%; }
+/* Marcar os tempos com uma letra… (owner 2026-11-10): the songs, those using the file first. */
+.console .dialog.confirm-dialog.songpick { width: min(420px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); display: flex; flex-direction: column; }
+.console .songpick-list { min-height: 0; max-height: 320px; overflow: auto; }
+.console .songpick-none { margin: 0; padding: var(--space-2); }
 .console .pair-dialog .rp-head { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; color: var(--fg-1); }
 .console .pair-body, .console .pair-done { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) 0; text-align: center; }
 .console .pair-qr { padding: var(--space-2); border-radius: var(--radius-control); background: var(--qr-ground); line-height: 0; forced-color-adjust: none; }
@@ -2450,6 +2454,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-mk::after { content: ""; position: absolute; left: 50%; bottom: -4px; width: 1px; height: 4px; background: var(--fg-2); }
 .console .sync .sync-mk.is-sel { box-shadow: inset 0 0 0 1px var(--fg-1); }
 .console .sync .sync-mk.is-air { background: var(--live-bg); color: var(--live-fg); box-shadow: inset 0 0 0 1px var(--live); }
+/* Line by line (2026-11-10): a line that is not a slide's start is a thin tick; the slide starts keep their numbered marker. */
+.console .sync .sync-mk.is-line { min-width: 6px; width: 6px; padding: 0; height: 14px; top: 8px; color: transparent; }
 .console .sync .sync-head { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--air); border-radius: 1px; pointer-events: none; z-index: var(--z-mark); }
 .console .sync .sync-scale { flex: none; position: relative; height: 14px; margin: 0 8px; font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; }
 .console .sync .sync-scale > span { position: absolute; transform: translateX(-50%); }
@@ -2459,6 +2465,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-row:hover { background: var(--bg-2); }
 .console .sync .sync-row.is-sel { background: var(--bg-3); }
 .console .sync .sync-row.is-prev { background: var(--prev-bg); }
+.console .sync .sync-div { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 2px; font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; }
+.console .sync .sync-div::after { content: ""; flex: 1; border-top: 1px solid var(--line-soft); }
 .console .sync .sync-row.is-air { background: var(--live-bg); }
 .console .sync .sync-row .n { flex: none; width: 20px; text-align: right; font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; }
 .console .sync .sync-row .sync-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-ui); color: var(--fg-1); }

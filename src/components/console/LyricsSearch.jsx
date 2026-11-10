@@ -3,7 +3,8 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn, Field, Row, Empty } from "./kx";
 import LinesPicker from "./LinesPicker";
-import { songFromText, lrcMarks, withTimings } from "@/lib/songImport";
+import { songFromText, lrcMarks, withTimings, sungLines } from "@/lib/songImport";
+import { startsFromLines } from "@/lib/console/lyricSync";
 import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 
 // "+ › Na internet…" for songs, like the Holyrics search: one field, the
@@ -74,11 +75,13 @@ export default function LyricsSearch({ c, initial = "", onClose, onImported }) {
         if (!hit || !lyrics.trim()) return;
         try {
             const base = songFromText(lyrics, { title: hit.title, artist: hit.artist, lines: getPrefs().import_lines });
-            // Com tempo: the recording's timed lines as the slides' marks.
-            const marks = hit.hasLyrics && preview.synced ? lrcMarks(base.slides, preview.synced) : [];
+            // Com tempo: the recording's timed lines as the lines' marks
+            // (2026-11-10: line by line), the slides from their first lines.
+            const lineMarks = hit.hasLyrics && preview.synced ? lrcMarks(sungLines(base.lyrics), preview.synced) : [];
+            const marks = startsFromLines(base.slides, lineMarks);
             const marked = marks.filter((t) => Number.isFinite(t)).length;
             const song = marked
-                ? { ...base, slides: withTimings(base.slides, marks, preview.duration), ...(preview.duration ? { duration: preview.duration } : {}) }
+                ? { ...base, line_starts: lineMarks, slides: withTimings(base.slides, marks, preview.duration), ...(preview.duration ? { duration: preview.duration } : {}) }
                 : base;
             const row = await keryx.entities.Song.create(song);
             c.say(marked ? `${song.title} importada com ${marked} de ${base.slides.length} slides marcados, nos tempos desta gravação.` : `${song.title} importada para as Letras.`);
