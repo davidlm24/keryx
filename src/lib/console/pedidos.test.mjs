@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
     messagesInOrder, messageSay, freshMessages, hasUnread, newestAt, songOfPedido, FRESH_MS,
     isOperator, pedidosOf, chatOf, tabOf, chatHead, pedidoBy, operatorChat, operatorPedido, pedidoItem, singerOf, PEDIDO_MAX,
-    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pickRows, PICK_TABS, pedidoNote, withPedido, pedidoYouTube,
+    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pedidoThumb, pickRows, PICK_TABS, pedidoNote, withPedido, pedidoYouTube,
 } from "./pedidos.js";
 
 const row = (id, sentAt, extra = {}) => ({ id, sentAt, kind: "chat", sender: "Ana", text: "oi", status: "open", ...extra });
@@ -123,6 +123,20 @@ test("a pedido's louvor may be a video or an audio, nothing else", () => {
     assert.equal(mediaOfPedido({ ...r, kind: "chat" }, MEDIA), null);
     assert.equal(mediaOfPedido({ ...r, mediaId: undefined }, MEDIA), null);
     assert.deepEqual([MEDIA[0], { ...MEDIA[0], missing: true }, { ...MEDIA[0], missing: true, syncing: true }, null].map(pedidoMediaWarn), ["", "arquivo não encontrado", "baixando…", ""]);
+});
+
+test("a video's pedido shows its picture at the card's left; the rest keep their glyph (owner 2026-11-10)", () => {
+    const r = { id: "r", kind: "pedido", song: "Raridade" };
+    const still = "http://127.0.0.1:7700/media/r.jpg";
+    assert.equal(pedidoThumb(r, { ...MEDIA[0], thumbnail_url: still }), still, "a video of the Mídia: its still");
+    assert.equal(pedidoThumb(r, MEDIA[0]), null, "no still yet: the glyph");
+    assert.equal(pedidoThumb(r, { ...MEDIA[0], thumbnail_url: still, posterSyncing: true }), null, "a still still coming");
+    assert.equal(pedidoThumb(r, MEDIA[1]), "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg", "a link row: YouTube's cover");
+    assert.equal(pedidoThumb(r, { ...MEDIA[1], thumbnail_url: still }), still, "a link row with its own still");
+    assert.equal(pedidoThumb({ ...r, link: "https://youtu.be/dQw4w9WgXcQ" }, null), "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg", "a link only");
+    assert.equal(pedidoThumb(r, MEDIA[2]), null, "an audio");
+    assert.equal(pedidoThumb(r, null), null, "a song");
+    assert.equal(pedidoThumb({ ...r, link: "não é link" }, null), null);
 });
 
 test("a pedido sent as a YouTube link is the Mídia's row of that video, downloaded first (owner 2026-11-10)", () => {
