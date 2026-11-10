@@ -1,6 +1,6 @@
 import React from "react";
 import Icon from "../Icon";
-import { Btn } from "../kx";
+import { Btn, IconBtn } from "../kx";
 import { cleanSpec, bgLabel } from "@/lib/console/backgroundSpec";
 import { cssFallback, GENERATORS } from "@/lib/generators";
 import { useLibraryPicker } from "./libraryContext";
@@ -21,7 +21,10 @@ export function BgThumb({ spec }) {
 // What is chosen and a button that opens the background library (the one
 // picker for every background). onPick(spec | null): null is "Sem fundo".
 //   accept     kinds offered (default: all four)
-//   noneLabel  the library's "no background" button (none when omitted)
+//   noneLabel  the library's "no background" button (none when omitted),
+//              and the chip's own × beside Trocar… while one is chosen
+//              (owner 2026-11-10: "Sem fundo" hidden in the library was not
+//              found; the clip, audio and sequence beside it had their ×)
 //   empty      what the row says with nothing chosen (short)
 //   emptyHint  its tooltip, the whole sentence
 //   className  added to the chip ("is-missing": a background is required)
@@ -38,6 +41,7 @@ export default function BgChip({ value, onPick, accept, title, noneLabel, empty 
             <BgThumb spec={s} />
             <span className="bgchip-l" title={s ? undefined : emptyHint}>{s ? names[s.value] || bgLabel(s, GEN_NAMES) : empty}</span>
             <Btn small disabled={disabled} onClick={open}>{s ? "Trocar…" : label}</Btn>
+            {s && noneLabel && <IconBtn name="x" small disabled={disabled} title={`Tirar o fundo · ${noneLabel}`} onClick={() => onPick(null)} />}
         </span>
     );
 }
