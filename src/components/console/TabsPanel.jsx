@@ -158,6 +158,13 @@ export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, me
     const strip = foldStrip(fold);
     // Editar painéis: its header is the handle, as every panel's (kx.jsx Panel).
     const edit = useContext(DockEditCtx);
+    // Novo pedido (owner 2026-11-10): the (+) beside the eye while Pedidos is
+    // one of the tabs — it opens that tab with the form (PedidosTab).
+    const [noting, setNoting] = useState(false);
+    const canNote = (tabs || []).some((t) => (t?.id ?? t) === "pedidos");
+    // Another tab chosen: the form closes (it never waits behind another tab).
+    useEffect(() => { if (active !== "pedidos") setNoting(false); }, [active]);
+    const novoPedido = canNote && <button type="button" className={`kx-btn kx-btn-icon kx-t tabs-novo-pedido ${noting && active === "pedidos" ? "is-on" : ""}`} title="Novo pedido…" aria-label="Novo pedido" aria-pressed={noting && active === "pedidos"} onClick={() => { setActive("pedidos"); setNoting(true); }}><Icon name="plus" /></button>;
     return (
         <div className={`kx-panel bb-side tabs-panel ${fold?.on ? "is-collapsed" : ""} ${strip ? "kx-strip" : ""}`} data-panel-tab={active}>
             {strip ? <FoldStrip fold={fold} /> : edit ? (
@@ -167,6 +174,7 @@ export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, me
             ) : (
                 <div className="kx-panel-h tabs-panel-h">
                     <span className="kx-section">Painel</span>
+                    {novoPedido}
                     {onMenu && <TabsPlus row="panel" onMenu={onMenu} menuOpen={menuOpen} />}
                     <FoldBtn fold={fold} />
                 </div>
@@ -177,7 +185,7 @@ export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, me
                 {active === "avisos" && <AvisosTab c={c} data={data} onPrepare={onPrepare} onGo={onGo} onEditNotice={onEditNotice} />}
                 {active === "timers" && <div className="tabs-pad"><OnAirTimer c={c} /><ReadyTimers c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
                 {active === "ferramentas" && <div className="tabs-pad"><ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
-                {active === "pedidos" && <PedidosTab c={c} data={data} messages={messages} onPrepare={onPrepare} onAddSong={onAddSong} onAddMedia={onAddMedia} onAddStage={onAddStage} onLyricsSearch={onLyricsSearch} />}
+                {active === "pedidos" && <PedidosTab c={c} data={data} messages={messages} onPrepare={onPrepare} onAddSong={onAddSong} onAddMedia={onAddMedia} onAddStage={onAddStage} onLyricsSearch={onLyricsSearch} onWrite={onWriteMessage} noting={noting} setNoting={setNoting} />}
                 {active === "chat" && <ChatTab c={c} data={data} messages={messages} onPrepare={onPrepare} onWrite={onWriteMessage} />}
                 {active === "historico" && <AirHistory c={c} onPrepare={onPrepare} onGo={onGo} />}
             </div>
