@@ -163,6 +163,20 @@ export function distributeSlides(firsts, count, total, intro = 0) {
     return out;
 }
 
+// One time per slide, on its first line (owner 2026-11-11: "se marco por
+// slide, por que posso marcar as outras linhas?"): each slide's time — its
+// first marked line — moves to its first line and its inner lines are
+// cleared (marks made line by line, LRCLIB's per-line matches).
+export function onFirsts(lineStarts, firsts, count) {
+    const out = Array(Math.max(0, count)).fill(null);
+    const fs = firsts || [];
+    fs.forEach((f, k) => {
+        const end = k + 1 < fs.length ? fs[k + 1] : count;
+        for (let i = f; i < end; i++) if (isMark(lineStarts?.[i])) { out[f] = lineStarts[i]; break; }
+    });
+    return out;
+}
+
 // The line Espaço marks next (the gold one) after line `i` was marked: the
 // next line with no mark, never past a gap the operator left; -1 = all
 // marked from there on.
