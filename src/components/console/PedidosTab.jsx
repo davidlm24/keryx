@@ -25,7 +25,8 @@ import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, ped
 // (vistoria 31/10, M1 = A): a link-only pedido wears the youtube glyph and
 // has Pôr na prévia, Setlist (the link under the pedido's name, who sings
 // kept) and Adicionar à Mídia — nothing enters the Mídia by itself; one with
-// a song too adds the link's Pôr na prévia. A card that can go to the
+// a song too adds the link's Pôr na prévia. Once the Mídia has that video
+// (saved or downloaded) the card is that row (mediaOfPedido, 2026-11-10). A card that can go to the
 // Setlist drags there too (M2 = ok), as a Biblioteca row, with who sings and
 // the note (withPedido). Two lines a card
 // (owner 2026-10-28, C1 = A): "X canta Y", its marks and the hour; then who
@@ -104,7 +105,7 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                                 <IconBtn name="prev" small title={`Pôr ${ready.title} na prévia`} onClick={() => onPrepare(song ? stageFromSong(song, {}, data.themes) : stageFromMedia(media))} />
                                                 <IconBtn name="plus" small title={r.singer ? `Adicionar à setlist, com ${r.singer}` : "Adicionar à setlist"} aria-label={`Adicionar ${ready.title} à setlist`} onClick={() => (song ? onAddSong(song, pedidoItem(r)) : onAddMedia(media, pedidoItem(r)))} />
                                             </>}
-                                            {!done && yt && ready && <IconBtn name="youtube" small title="Pôr o vídeo do link na prévia" aria-label={`Pôr o vídeo do link de ${what} na prévia`} onClick={() => onPrepare(ytStage)} />}
+                                            {!done && yt && song && <IconBtn name="youtube" small title="Pôr o vídeo do link na prévia" aria-label={`Pôr o vídeo do link de ${what} na prévia`} onClick={() => onPrepare(ytStage)} />}
                                             {!done && !ready && yt && <>
                                                 <IconBtn name="prev" small title="Pôr o vídeo na prévia" aria-label={`Pôr ${yt.title} na prévia`} onClick={() => onPrepare(ytStage)} />
                                                 {onAddStage && <IconBtn name="plus" small title={r.singer ? `Adicionar à setlist, com ${r.singer}` : "Adicionar à setlist"} aria-label={`Adicionar ${yt.title} à setlist`} onClick={() => onAddStage(stage)} />}

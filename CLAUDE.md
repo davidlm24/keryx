@@ -2189,7 +2189,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Atendido (`status` done, the card dims, the toast has Desfazer);
   Excluir… via useConfirm. A YouTube link shows its cover with Pôr na
   prévia and Adicionar à Mídia (`mediaFromYouTube`): nothing enters the
-  Mídia by itself. The toast is `usePedidos` (Console.jsx only, never
+  Mídia by itself. Once the Mídia has that video (saved, or downloaded:
+  its `source_url`) the card IS that row (`mediaOfPedido` by the video's
+  id, the downloaded copy first; owner 2026-11-10), so it plays the file,
+  and a refused link says so (`linkNote`); the refusal's toast offers
+  Baixar para a Mídia for any link, saving it first (`useYouTubeRefused`). The toast is `usePedidos` (Console.jsx only, never
   /Janela): a row sent within 2 min (`FRESH_MS`) whose id this window has
   not said (sessionStorage, so a reload never repeats one) says "Pedido de
   <nome>: <louvor>" / "Mensagem de <nome>" with Ver (to that row's tab),

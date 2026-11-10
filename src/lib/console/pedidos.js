@@ -9,6 +9,8 @@
 import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" };
 import { fold } from "../bibleSearch.js";
 import { mediaIcon, mmss } from "./libraryRows.js";
+import { getYouTubeId } from "../../utils/youtube.js";
+import { linkNote } from "../youtubeLinks.js";
 
 const REQ = PROTOCOL.actions["request.send"].args;
 
@@ -100,15 +102,27 @@ export function pedidoMediaKind(m) {
 export const pedidoMediaTag = (m) => ({ video: "vídeo", youtube: "vídeo", audio: "áudio" })[pedidoMediaKind(m)] || "";
 
 // The video or audio a pedido names (its mediaId, while the Mídia has it
-// as a video or an audio). -> the Media row | null.
+// as a video or an audio). A pedido sent as a YouTube link has no mediaId:
+// it is the Mídia's row of that video once the church saved or downloaded
+// it (owner 2026-11-10: the link was refused on air, the church downloaded
+// it, and the card went on sending the link) — found by the video's id in
+// the row's link or, once downloaded, its source_url (youtubeRow's rule),
+// the downloaded copy before one still a link. -> the Media row | null.
 export function mediaOfPedido(r, media = []) {
-    if (!isPedido(r) || !r.mediaId) return null;
-    const m = media.find((x) => x.id === r.mediaId);
-    return pedidoMediaKind(m) ? m : null;
+    if (!isPedido(r)) return null;
+    if (r.mediaId) {
+        const m = media.find((x) => x.id === r.mediaId);
+        if (pedidoMediaKind(m)) return m;
+    }
+    const id = r.link ? getYouTubeId(String(r.link)) : null;
+    if (!id) return null;
+    const same = media.filter((m) => pedidoMediaKind(m) && (getYouTubeId(m.file_url || "") === id || getYouTubeId(m.source_url || "") === id));
+    return same.find((m) => pedidoMediaKind(m) !== "youtube") || same[0] || null;
 }
 
-// What the card says of that file when it cannot go yet ("" = it can).
-export const pedidoMediaWarn = (m) => (!m ? "" : m.syncing ? "baixando…" : m.missing ? "arquivo não encontrado" : "");
+// What the card says of that file when it cannot go yet ("" = it can); a
+// link the player refused says it as the Mídia and the Setlist do (linkNote).
+export const pedidoMediaWarn = (m) => (!m ? "" : m.syncing ? "baixando…" : m.missing ? "arquivo não encontrado" : linkNote(m));
 
 // The picker of O louvor (S15 = A): one field, three tabs. Images, PDFs,
 // fonts and backgrounds never show.
