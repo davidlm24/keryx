@@ -399,6 +399,8 @@
 .console .ped-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px var(--space-2); margin: 0 var(--space-1); padding: 6px var(--space-2) 6px 10px; border-radius: var(--radius-control); background: var(--bg-3); }
 .console .ped-card.is-done { opacity: .55; }
 .console .ped-c-i { width: 14px; height: 14px; color: var(--brand); }
+/* A video's picture (owner 2026-11-10): the two lines' height, never more — height 0 + min-height 100% so it never sizes the card — at 16:9. */
+.console .ped-c-thumb { grid-row: 1 / span 2; align-self: stretch; height: 0; min-height: 100%; width: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; background: var(--bg-4); }
 .console .ped-c-l1 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--fs-content); color: var(--fg-1); }
 .console .ped-c-l1 b { font-weight: 600; }
 .console .ped-c-who { color: var(--fg-2); }
