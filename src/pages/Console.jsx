@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// The window title strip says the version beside KERYX (owner 2026-11-10): the
+// same number app.getVersion() reads (electron-builder takes package.json).
+import { version as appVersion } from "../../package.json";
 import { useSetlistWrites } from "@/components/console/useSetlistWrites";
 import { useBuildStage } from "@/components/console/useBuildStage";
 import { setlistHeadItems, setlistAddItems, setlistCountOf, SetlistTitle } from "@/components/console/setlistMenus";
@@ -1575,7 +1578,7 @@ export default function Console() {
         <ImportSongsContext.Provider value={openImport}>
         <PackageContext.Provider value={pkg.value}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
-            <div className="winbar" aria-hidden="true">KERYX</div>
+            <div className="winbar" aria-hidden="true">KERYX<span className="winbar-v">· v{appVersion}</span></div>
             <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} verDot={pedidosUnread && !pedidosReachable} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
                 menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq || bibleAsk)} />
 

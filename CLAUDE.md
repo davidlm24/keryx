@@ -1771,6 +1771,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   dialog; it gives up after 60 s. Never always on top, never in a smoke
   run, off with `KERYX_NO_SPLASH=1`. No React, no network: Geist from the
   source in dev, the built asset installed (`fontFile`).
+  The console's title strip (`.winbar`, the drag strip beside Windows'
+  buttons) says "KERYX · v0.2.28", the version dimmed (owner 2026-11-10,
+  mockup B), read from package.json as `app.getVersion()` is.
 - **After a crash the screens come back lit** (owner 2026-10-20; a normal
   start still reopens on Tela preta): `running.json` (`electron/runMarker.cjs`,
   tested) lives in the data folder while KERYX runs, rewritten every 15 s
