@@ -2150,21 +2150,22 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   fixed at the bottom (Enter sends). **What the operator writes goes through
   the store, never a network action**: Console.jsx's `writeMessage`
   (`ensureService`, then `ServiceMessage.create`) with the fields of
-  `operatorChat` / `operatorPedido` (`side: "operator"`, sender
-  "Operador"); the phones read it with their next `requests`. A pedido is a
+  `operatorChat` (`side: "operator"`, sender "Operador"); the phones
+  read it with their next `requests`. A pedido is a
   card "<singer> canta <song>" with its note, every text drawn as plain
-  text (it came from a phone). **Novo pedido** (S14 = A) on top of the
-  Pedidos tab notes one with the phone's fields (Quem canta, O louvor typed
-  or picked from the library; Observação), "Anotar pedido" · Cancelar.
+  text (it came from a phone). **There is no Novo pedido in the console any
+  more** (owner 2026-11-10; S14 of 2026-10-24 had it): whoever is at the
+  console adds the song to the Setlist and sets who sings with the row's
+  right click **"Quem canta…"** (one row or every row marked; "Tirar quem
+  canta" clears it; Rundown.jsx, `ServiceItem.requested_by`, at most the
+  pedido's singer length), the gold tag on the row and the Equipe's Setlist
+  say it; an old pedido the operator noted still shows as "Anotado por você".
   **O louvor is a song, a video or an audio** (owner 2026-10-24, S15 = A,
-  "um campo só, com abas Letras · Vídeos · Áudios"): under the field, while
-  it has the focus, a picker with those three tabs and Buscar (empty, what
-  O louvor says; `pickRows`, `PICK_TABS`), closed by a pick, Esc or a click
-  outside; images, PDFs, fonts and backgrounds never show
-  (`pedidoMediaKind`); typing by hand is still free text with no id. The
-  row keeps `ServiceMessage.mediaId` beside `songId` (never both; the
-  runner and `operatorPedido` drop one the Mídia does not have as a video
-  or an audio, keeping the typed name). Its card wears the file's glyph
+  "um campo só, com abas Letras · Vídeos · Áudios", on the phone's pedido
+  sheet); images, PDFs, fonts and backgrounds never count
+  (`pedidoMediaKind`). The row keeps `ServiceMessage.mediaId` beside
+  `songId` (never both; the runner drops one the Mídia does not have as a
+  video or an audio, keeping the typed name). Its card wears the file's glyph
   (`mediaIcon`; a song the `music` one), a "vídeo" / "áudio" tag
   (`pedidoMediaTag`) and "arquivo não encontrado" / "baixando…"
   (`pedidoMediaWarn`); Pôr na prévia is `stageFromMedia` and Setlist the
@@ -2181,7 +2182,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   keeps who sings** (S13 = A, `pedidoItem`: `ServiceItem.requested_by`
   and the note as its `notes`; the Setlist and the planner rows wear a
   gold tag with the `user` glyph, `SingerTag` in kx.jsx, **always whole**
-  (owner 2026-10-28: it never compacts; the title gives way with its "…"); Planejar o culto edits it as "Pedido de";
+  (owner 2026-10-28: it never compacts; the title gives way with its "…"); Planejar o culto edits it as "Quem canta" (the tag's tooltip too);
   the culto's PDF prints "· pedido de <nome>" after the title; the Equipe's
   Setlist shows it, `teamState` items' `singer`) —, else "não está na
   biblioteca" and

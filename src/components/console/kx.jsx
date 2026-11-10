@@ -396,7 +396,7 @@ export function SelectManyBtn({ on, onToggle }) {
 // item without one.
 export function SingerTag({ name }) {
     if (!name) return null;
-    return <span className="rund-who" title={`Pedido de ${name}`}><Icon name="user" /><span>{name}</span></span>;
+    return <span className="rund-who" title={`Quem canta: ${name}`}><Icon name="user" /><span>{name}</span></span>;
 }
 
 export function RowMark() {

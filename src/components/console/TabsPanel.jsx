@@ -177,7 +177,7 @@ export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, me
                 {active === "avisos" && <AvisosTab c={c} data={data} onPrepare={onPrepare} onGo={onGo} onEditNotice={onEditNotice} />}
                 {active === "timers" && <div className="tabs-pad"><OnAirTimer c={c} /><ReadyTimers c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
                 {active === "ferramentas" && <div className="tabs-pad"><ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
-                {active === "pedidos" && <PedidosTab c={c} data={data} messages={messages} onPrepare={onPrepare} onAddSong={onAddSong} onAddMedia={onAddMedia} onAddStage={onAddStage} onLyricsSearch={onLyricsSearch} onWrite={onWriteMessage} />}
+                {active === "pedidos" && <PedidosTab c={c} data={data} messages={messages} onPrepare={onPrepare} onAddSong={onAddSong} onAddMedia={onAddMedia} onAddStage={onAddStage} onLyricsSearch={onLyricsSearch} />}
                 {active === "chat" && <ChatTab c={c} data={data} messages={messages} onPrepare={onPrepare} onWrite={onWriteMessage} />}
                 {active === "historico" && <AirHistory c={c} onPrepare={onPrepare} onGo={onGo} />}
             </div>
