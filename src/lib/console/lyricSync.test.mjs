@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark } from "./lyricSync.js";
+import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides } from "./lyricSync.js";
 import { sungLines, slidesFromLyrics } from "../songImport.js";
 import { applyOp, emptyState, followIndex } from "../../../shared/live-state.mjs";
 
@@ -135,4 +135,26 @@ test("old songs marked by slide, and the gold line after a mark", () => {
     assert.equal(nextToMark([1, 2, null, 4, null], 1), 2);
     assert.equal(nextToMark([1, 2, null, 4, null], 3), 4);
     assert.equal(nextToMark([1, 2, 3], 2), -1);
+});
+
+test("one press per slide (2026-11-11, option 1): Espaço jumps to the next slide's first line", () => {
+    const firsts = [0, 4, 6];
+    assert.equal(nextSlideStart(firsts, 0), 4, "slide 1 marked: on to slide 2, its inner lines skipped");
+    assert.equal(nextSlideStart(firsts, 2), 4, "a line inside slide 1 marked: still slide 2");
+    assert.equal(nextSlideStart(firsts, 6), -1, "the last slide: the end");
+    // Where recording starts: the first slide with nothing marked in it.
+    assert.equal(firstUnmarkedSlide(firsts, [10, null, null, null, null, null, null, null], 8), 4);
+    assert.equal(firstUnmarkedSlide(firsts, [10, null, null, null, 20, null, 30, null], 8), 0, "all marked: from the top");
+    assert.equal(firstUnmarkedSlide(firsts, [null, 12, null, null, 20, null, 30], 8), 0, "a slide with an inner line marked counts as marked");
+    assert.equal(firstUnmarkedSlide(firsts, [null, 12, null, null, null, null, 30], 8), 4);
+});
+
+test("one-slide lyrics split on the page, and Distribuir by slide", () => {
+    assert.deepEqual(chunkGroups(8, 4, "Verso"), [{ first: 0, label: "Verso" }, { first: 4, label: "" }]);
+    assert.deepEqual(chunkGroups(5, 2).map((g) => g.first), [0, 2, 4]);
+    assert.deepEqual(chunkGroups(5, 0), [{ first: 0, label: "" }]);
+    // The same groups as 2/4 linhas give a one-stanza lyric (what Aplicar sends to the editor).
+    const lyrics = "a\nb\nc\nd\ne";
+    assert.deepEqual(slideFirstLines(slidesFromLyrics(lyrics, { lines: 2 })), chunkGroups(5, 2).map((g) => g.first));
+    assert.deepEqual(distributeSlides([0, 4, 6], 8, 30), [0, null, null, null, 10, null, 20, null]);
 });
