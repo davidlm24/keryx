@@ -2153,16 +2153,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `operatorChat` (`side: "operator"`, sender "Operador"); the phones
   read it with their next `requests`. A pedido is a
   card "<singer> canta <song>" with its note, every text drawn as plain
-  text (it came from a phone). **There is no Novo pedido in the console any
-  more** (owner 2026-11-10; S14 of 2026-10-24 had it): whoever is at the
-  console adds the song to the Setlist and sets who sings with the row's
-  right click **"Quem canta…"** (one row or every row marked; "Tirar quem
-  canta" clears it; Rundown.jsx, `ServiceItem.requested_by`, at most the
-  pedido's singer length), the gold tag on the row and the Equipe's Setlist
-  say it; an old pedido the operator noted still shows as "Anotado por você".
+  text (it came from a phone). **Novo pedido is the (+) beside the eye in
+  the Painel's header** (owner 2026-11-10; S14 of 2026-10-24 had it as a band
+  on the tab, removed and brought back the same day): shown while Pedidos is
+  one of the panel's tabs, it opens that tab with the form in its place
+  (TabsPanel holds `noting`; another tab closes it) — Quem canta, O louvor
+  typed or picked (`pickRows`, `PICK_TABS`: Letras · Vídeos · Áudios),
+  Observação, "Anotar pedido" · Cancelar, `operatorPedido`; the card says
+  "Anotado por você". Beside it, **"Quem canta…"** on a Setlist row's right
+  click (one row or every row marked; "Tirar quem canta" clears it;
+  Rundown.jsx, `ServiceItem.requested_by`) sets who sings an item already in
+  the Setlist; the gold tag on the row and the Equipe's Setlist say it.
   **O louvor is a song, a video or an audio** (owner 2026-10-24, S15 = A,
   "um campo só, com abas Letras · Vídeos · Áudios", on the phone's pedido
-  sheet); images, PDFs, fonts and backgrounds never count
+  sheet and in the console's Novo pedido); images, PDFs, fonts and backgrounds never count
   (`pedidoMediaKind`). The row keeps `ServiceMessage.mediaId` beside
   `songId` (never both; the runner drops one the Mídia does not have as a
   video or an audio, keeping the typed name). Its card wears the file's glyph

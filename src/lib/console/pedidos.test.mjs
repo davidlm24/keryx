@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
     messagesInOrder, messageSay, freshMessages, hasUnread, newestAt, songOfPedido, FRESH_MS,
-    isOperator, pedidosOf, chatOf, tabOf, chatHead, pedidoBy, operatorChat, pedidoItem, singerOf, PEDIDO_MAX,
-    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pedidoNote, withPedido, pedidoYouTube,
+    isOperator, pedidosOf, chatOf, tabOf, chatHead, pedidoBy, operatorChat, operatorPedido, pedidoItem, singerOf, PEDIDO_MAX,
+    pedidoMediaKind, pedidoMediaTag, pedidoMediaWarn, mediaOfPedido, pickRows, PICK_TABS, pedidoNote, withPedido, pedidoYouTube,
 } from "./pedidos.js";
 
 const row = (id, sentAt, extra = {}) => ({ id, sentAt, kind: "chat", sender: "Ana", text: "oi", status: "open", ...extra });
@@ -89,6 +89,19 @@ test("the operator's chat message: trimmed, at most the contract's length, nothi
     assert.equal(operatorChat("x".repeat(400), at).text.length, PEDIDO_MAX.chat);
 });
 
+test("a pedido the operator notes (S14 = A)", () => {
+    const at = "2026-10-23T19:09:00.000Z";
+    const songs = [{ id: "s1", title: "Great Is Thy Faithfulness" }];
+    assert.deepEqual(operatorPedido({ singer: " Diác.  Marcos ", song: "Great Is Thy Faithfulness", songId: "s1", note: " Pediu no corredor. " }, songs, at).fields, {
+        kind: "pedido", side: "operator", sender: "Operador", song: "Great Is Thy Faithfulness", status: "open", sentAt: at,
+        singer: "Diác. Marcos", text: "Pediu no corredor.", songId: "s1",
+    });
+    assert.equal(operatorPedido({ song: "Raridade", songId: "gone" }, songs, at).fields.songId, undefined, "a song no longer here is only its title");
+    assert.deepEqual(Object.keys(operatorPedido({ song: "Raridade" }, songs, at).fields).sort(), ["kind", "sender", "sentAt", "side", "song", "status"]);
+    assert.equal(operatorPedido({ singer: "Ana", song: " " }, songs, at).error, "song");
+    assert.equal(operatorPedido({ song: "y".repeat(200) }, songs, at).fields.song.length, PEDIDO_MAX.song);
+});
+
 // S15 = A: a pedido of a video or an audio of the Mídia.
 const MEDIA = [
     { id: "v1", type: "video", title: "Raridade · lyric video", file_url: "keryx-media://r.mp4", duration: 312 },
@@ -125,6 +138,31 @@ test("a pedido sent as a YouTube link is the Mídia's row of that video, downloa
     assert.equal(mediaOfPedido({ ...r, link: "não é link" }, MEDIA), null);
     assert.equal(pedidoMediaWarn({ ...MEDIA[1], youtube_state: "blocked" }), "o dono não deixa tocar fora do YouTube");
     assert.equal(pedidoMediaWarn({ ...got, youtube_state: "blocked" }), "", "a downloaded file plays");
+});
+
+test("the picker's three tabs: Letras · Vídeos · Áudios", () => {
+    assert.deepEqual(PICK_TABS.map((t) => t.label), ["Letras", "Vídeos", "Áudios"]);
+    const lib = { songs: [{ id: "s1", title: "Raridade", artist: "Anderson Freire" }, { id: "s2", title: "Bondade de Deus" }], media: MEDIA };
+    assert.deepEqual(pickRows("songs", "raridade", lib), [{ id: "s1", kind: "song", title: "Raridade", sub: "Anderson Freire", icon: "music" }]);
+    assert.deepEqual(pickRows("songs", "", lib).map((r) => r.id), ["s1", "s2"], "nothing typed: the first ones");
+    assert.deepEqual(pickRows("video", "", lib), [
+        { id: "v1", kind: "media", title: "Raridade · lyric video", sub: "5:12", icon: "film" },
+        { id: "y1", kind: "media", title: "Bondade de Deus · clipe", sub: "", icon: "youtube" },
+    ], "images, PDFs, backgrounds and fonts stay out");
+    assert.deepEqual(pickRows("video", "raridade", lib).map((r) => r.id), ["v1"]);
+    assert.deepEqual(pickRows("audio", "", lib), [{ id: "a1", kind: "media", title: "Grande é o Senhor · playback", sub: "4:20", icon: "volume" }]);
+    assert.equal(pickRows("songs", "", { songs: Array.from({ length: 9 }, (_, i) => ({ id: String(i), title: "x" })) }, 4).length, 4);
+});
+
+test("a pedido the operator notes may name a video or an audio (S15)", () => {
+    const at = "2026-10-23T19:09:00.000Z";
+    const songs = [{ id: "s1", title: "Raridade" }];
+    assert.equal(operatorPedido({ song: "Raridade · lyric video", mediaId: "v1" }, songs, at, MEDIA).fields.mediaId, "v1");
+    assert.equal(operatorPedido({ song: "Playback", mediaId: "a1" }, songs, at, MEDIA).fields.mediaId, "a1");
+    assert.equal(operatorPedido({ song: "Capa", mediaId: "i1" }, songs, at, MEDIA).fields.mediaId, undefined, "an image is only its title");
+    assert.equal(operatorPedido({ song: "Sumiu", mediaId: "gone" }, songs, at, MEDIA).fields.mediaId, undefined);
+    const both = operatorPedido({ song: "Raridade", songId: "s1", mediaId: "v1" }, songs, at, MEDIA).fields;
+    assert.deepEqual([both.songId, both.mediaId], ["s1", undefined], "never both");
 });
 
 test("a pedido on the Setlist keeps who sings and its note (S13 = A)", () => {
