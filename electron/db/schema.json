@@ -1822,6 +1822,9 @@
         "slide_seconds": {
           "type": "real"
         },
+        "line_starts": {
+          "type": "json"
+        },
         "slides": {
           "type": "json"
         },

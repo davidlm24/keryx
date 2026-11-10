@@ -155,7 +155,7 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
 
     // The pages it opens: a level of this window.
     const from = title;
-    const openSong = (id) => h.push({ page: "song", props: { id } }, from);
+    const openSong = (id, more = {}) => h.push({ page: "song", props: { id, ...more } }, from);
     const openMedia = (intent = null) => h.push({ page: "media", props: intent ? { intent } : {} }, from);
     const openNotice = (id, addTo = null) => h.push({ page: "notice", props: { id: id || "new", ...(addTo ? { addTo } : {}) } }, from);
     const openPlanner = (id) => h.push({ page: "planner", props: id ? { serviceId: id } : {} }, from);

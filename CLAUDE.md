@@ -2815,12 +2815,35 @@ its **playback** (now sent to the **audio channel**, `stage.playback` →
 `audio.show`; `content.audio` is no longer sent) or the **live clock** the
 operator starts with "Iniciar letra automática" in the player. The console
 moves the slide (`useConsole`, `followIndex`, `content.goTo` with
-`auto`); **the arrows never turn it off**: any other `content.goTo`
-re-syncs `follow.offset` so it goes on from the new slide; the player's
+`auto`); **the arrows never turn it off**: with a video or playback **the
+marks never move** (owner 2026-11-10: "nada modifica a sincronização") —
+any other `content.goTo` (a click, ←/→, the phone) seeks the layer playing
+`follow.url` to that slide's mark (`seekToSlide` in live-state.mjs, offset
+stays 0; Retomar after a move while paused the same), so the player's
+ticks stay put and seeking the bar only moves the music; with the live
+clock or Por tempo it re-syncs `follow.offset` from the new slide; the player's
 chip (`FollowChip`; its words `followLabel`/`followAction` in
 `src/lib/console/followWords.js`, kept apart because player.js rides in
 every output's chunk and the phone has an output's budget) pauses/resumes
-on purpose. The Biblioteca says "com tempos". **The song's video or playback is a
+on purpose. The Biblioteca says "com tempos". **Marks are by LINE** (owner
+2026-11-10, Line by line = A): `Song.line_starts` keeps one time per sung
+line (`sungLines` in songImport.js: no [Label], no chords-only row); a
+slide comes in at its first marked line (`startsFromLines` in
+lyricSync.js, tested), so Estrofe / 2 / 4 linhas never lose the marks and
+lyrics with no blank line can be marked; save writes both `line_starts` and
+the derived `slides[].start` (the screens read only the slides); an old
+song's slide marks go to each slide's first line (`linesFromStarts`).
+Marcar os tempos lists the lines under slide dividers; **the gold row is
+the one Espaço marks** and a click, its ✕ or Backspace bring it back
+(`nextToMark`); the last line pauses and says "Todas as linhas
+marcadas"; its header has "Vídeo ou playback…" (PlaybackPicker; Aplicar
+carries the file chosen). LRCLIB marks and Procurar letra's "com tempo"
+match per line. **"Marcar os tempos com uma letra…"** (MENU_LABELS
+`marcarTempos`) on a video or an audio of the computer (Biblioteca, the
+Mídia's menu and side panel): `SongPickDialog.jsx` (`useMarkTimes`; the
+songs using the file first, `songPick.js`, tested) makes the file the
+song's (asks before swapping another) and opens the editor with Marcar os
+tempos on top. **The song's video or playback is a
 Mídia row** (owner 2026-11-10): the editor's "Vídeo ou playback…" opens
 `PlaybackPicker.jsx` (Vídeos · Áudios, a search, the Mídia's rows through
 `pickRows` of pedidos.js; a YouTube link listed but not chosen: it does

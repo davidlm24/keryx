@@ -22,6 +22,8 @@ import { isYouTubeRow, jobMeta, jobFraction } from "@/lib/youtubeLinks";
 import { downloadToMedia, useYouTubeJobs } from "@/hooks/useYouTubeJobs";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles, importSummary, pickRepeats } from "@/lib/mediaImport";
+import { useMarkTimes } from "./SongPickDialog";
+import { marksWith } from "@/lib/console/songPick";
 import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
 import { useCopyingFiles } from "@/hooks/useCopyingFiles";
@@ -167,6 +169,8 @@ export default function Library({ c, data, tab, setTab, tabs, onPrepare, onGo, o
     const menu = useContextMenu();
     // "Excluir…" in the menus asks first (ConfirmDialog.jsx).
     const confirm = useConfirm();
+    // A video or an audio: "Marcar os tempos com uma letra…" (owner 2026-11-10).
+    const markTimes = useMarkTimes({ songs: data.songs, openSong: (id) => onEditSong?.(id, { sync: true }), say: c.say });
     const toggleFav = (s) => keryx.entities.Song.update(s.id, { is_favorite: !s.is_favorite }).catch((err) => c.say(err?.message || "Não foi possível."));
     // "+ › Do computador" in Mídia: videos, audio, images, PDF, PowerPoint.
     const importMedia = async (files) => {
@@ -377,6 +381,7 @@ export default function Library({ c, data, tab, setTab, tabs, onPrepare, onGo, o
                         onContextMenu={rowMenu(m.id, (e) => menu(e, { title: m.title, items: [
                             menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromMedia(m)) }),
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
+                            onEditSong && marksWith(m) && menuItem("marcarTempos", { onSelect: () => markTimes.open(m) }),
                             onOpenMedia && { label: "Abrir a Mídia", icon: "media", onSelect: () => onOpenMedia() },
                             // The Mídia with this file chosen and in view: there it is renamed (vistoria 31/10).
                             onOpenMedia && menuItem("editar", { onSelect: () => onOpenMedia(`select:${m.id}`) }),
@@ -421,6 +426,7 @@ export default function Library({ c, data, tab, setTab, tabs, onPrepare, onGo, o
                 <Btn small onClick={() => removeRows(picked)} title={`Excluir · ${keyHint("delete")}`}>Excluir…</Btn>
             </SelBar>
             {mediaKinds && <MediaPeek peek={peek} />}
+            {markTimes.dialog}
         </>
     );
 }

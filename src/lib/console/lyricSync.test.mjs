@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts } from "./lyricSync.js";
+import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark } from "./lyricSync.js";
+import { sungLines, slidesFromLyrics } from "../songImport.js";
 import { applyOp, emptyState, followIndex } from "../../../shared/live-state.mjs";
 
 test("times: shown as m:ss.cc, typed in any usual way", () => {
@@ -103,4 +104,35 @@ test("on air: the follow walks the unmarked slides and starts from one without g
     const band = withFollowStarts([{ text: "a" }, { text: "b", duration: 4 }, { text: "c" }], { source: "time", each: 8 });
     assert.deepEqual(band.map((x) => x.start), [0, 8, 12]);
     assert.equal(withFollowStarts(band, null), band);
+});
+
+test("line by line (2026-11-10): the slides take their first marked line, whatever the split", () => {
+    const lyrics = "[Verso]\num\n[G]dois\n[G] [D]\ntrês\nquatro\ncinco\n\n[Refrão]\nseis\nsete";
+    const lines = sungLines(lyrics);
+    assert.deepEqual(lines.map((l) => l.text), ["um", "dois", "três", "quatro", "cinco", "seis", "sete"], "no label, no chords-only row, chords stripped");
+    assert.equal(lines[5].label, "Refrão");
+    const times = [10, 14, 18, 22, 26, 40, 44];
+    const four = slidesFromLyrics(lyrics, { lines: 4 });
+    assert.equal(lineCount(four), 7);
+    assert.deepEqual(slideFirstLines(four), [0, 4, 5]);
+    assert.deepEqual(startsFromLines(four, times), [10, 26, 40]);
+    // Another split: the same marks, new slide starts — nothing marked again.
+    assert.deepEqual(startsFromLines(slidesFromLyrics(lyrics, { lines: 2 }), times), [10, 18, 26, 40]);
+    assert.deepEqual(startsFromLines(slidesFromLyrics(lyrics), times), [10, 40]);
+    // A slide whose first line has no time takes its first marked one.
+    assert.deepEqual(startsFromLines(four, [null, 14, null, null, null, null, 44]), [14, null, 44]);
+    // Lyrics with no blank line: one slide by Estrofe, every line its own mark.
+    const flat = slidesFromLyrics("a\nb\nc\nd");
+    assert.equal(flat.length, 1);
+    assert.equal(sungLines("a\nb\nc\nd").length, 4);
+});
+
+test("old songs marked by slide, and the gold line after a mark", () => {
+    const slides = slidesFromLyrics("um\ndois\n\ntrês\nquatro", { lines: 0 });
+    assert.deepEqual(linesFromStarts(slides, [5, 20]), [5, null, 20, null]);
+    assert.deepEqual(linesFromStarts(slides, [null, 20]), [null, null, 20, null]);
+    // Espaço goes to the next line with no mark, never past a gap.
+    assert.equal(nextToMark([1, 2, null, 4, null], 1), 2);
+    assert.equal(nextToMark([1, 2, null, 4, null], 3), 4);
+    assert.equal(nextToMark([1, 2, 3], 2), -1);
 });

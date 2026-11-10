@@ -322,6 +322,11 @@ export function slidesFromLyrics(lyrics, { lines = 0, chorded = false } = {}) {
     return out;
 }
 
+// The sung lines of the lyrics, in order, as the slides show them (no
+// [Label] row, no chords-only row, no blank line, chords stripped): what
+// Marcar os tempos marks one by one (owner 2026-11-10). -> [{ text, label }]
+export const sungLines = (lyrics) => slidesFromLyrics(lyrics, { lines: 1 }).map(({ text, label }) => ({ text, label }));
+
 // Saved slides from before the editor kept their chorded twins (chords
 // in the lyrics, none in the slides): the twins from the lyrics, when the
 // lyrics still split into exactly those slides; else the slides as saved.

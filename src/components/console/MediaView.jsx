@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useMarkTimes } from "./SongPickDialog";
+import { marksWith } from "@/lib/console/songPick";
 import { tileUrl } from "@/lib/mediaPoster";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
@@ -58,7 +60,9 @@ const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().inc
 // take rows out (the files stay in the media folder). A click selects
 // (Ctrl/Shift for more), a double click or Enter sends to air, "Tocar
 // todos" plays the selection (or everything shown) one after the other.
-export default function MediaView({ c, media, onSend, onClose, escRef, active = true, askText = null, intent = null }) {
+export default function MediaView({ c, media, onSend, onClose, escRef, active = true, askText = null, intent = null, songs = [], onMarkTimes = null }) {
+    // A video or an audio: "Marcar os tempos com uma letra…" (owner 2026-11-10).
+    const markTimes = useMarkTimes({ songs, openSong: (id) => onMarkTimes?.(id), say: c.say });
     const [cat, setCat] = useState("todas");
     const [category, setCategory] = useState(ALL);
     const [editCats, setEditCats] = useState(false);
@@ -246,6 +250,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     ] }) : menu(e, { title: m.title, items: [
         !m.missing && !m.syncing && menuItem("porNaPrevia", { onSelect: () => c.setPrev(stageFromMedia(m)) }),
         !m.missing && !m.syncing && m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => c.setPrev(stageFromMedia(m, { toVideo: true })) },
+        onMarkTimes && marksWith(m) && menuItem("marcarTempos", { onSelect: () => markTimes.open(m) }),
         menuItem("renomear", { onSelect: () => { ms.set([m.id]); setRenaming(m.id); } }),
         m.missing && !m.syncing && { label: "Localizar…", icon: "folder", onSelect: () => locate(m) },
         isYouTubeRow(m) && !jobActive(jobs.get(m.id)) && menuItem("baixarParaMidia", { onSelect: () => download(m) }),
@@ -284,7 +289,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     // to a dialog over the page (its own scrim does not count) and sleep
     // while another page covers this one; the console's B and L still
     // reach the screens.
-    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (editCats) setEditCats(false); else if (renaming) setRenaming(null); else if (ms.count || ms.picking) ms.clear(); else onClose(); };
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (markTimes.dialog) markTimes.open(null); else if (editCats) setEditCats(false); else if (renaming) setRenaming(null); else if (ms.count || ms.picking) ms.clear(); else onClose(); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
         if (e.key === "Escape" || !active) return;
@@ -428,8 +433,10 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
             <MediaDetail picked={picked} categories={allCats} kind={(m) => (isYouTube(m) ? "YouTube" : KIND[m.type] || m.type)} length={mmss} size={bytes}
                 onPrev={(m) => c.setPrev(stageFromMedia(m))} onSend={send} onLocate={locate}
                 onCategory={recategorise} onInfo={saveInfo} onUnlink={unlink} onExport={exportRows} onRemove={remove} onPlay={sequence} onClear={ms.clear} onAll={ms.all} total={shown.length}
-                job={picked.length === 1 ? jobs.get(picked[0].id) : null} onDownload={download} onCancelDownload={cancelDownload} onOpenYouTube={openYouTube} />
+                job={picked.length === 1 ? jobs.get(picked[0].id) : null} onDownload={download} onCancelDownload={cancelDownload} onOpenYouTube={openYouTube}
+                onMarkTimes={onMarkTimes ? markTimes.open : null} />
         </div>
+        {markTimes.dialog}
         </>
     );
 }
@@ -438,7 +445,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
 // B3-2 = C): the file chosen — its picture, what it is, its length and size,
 // its category, and what can be done with it —; with several marked, how
 // many and what can be done with them all; with none, where to start.
-function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onLocate, onCategory, onInfo, onUnlink, onExport, onRemove, onPlay, onClear, onAll, total, job, onDownload, onCancelDownload, onOpenYouTube }) {
+function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, onLocate, onCategory, onInfo, onUnlink, onExport, onRemove, onPlay, onClear, onAll, total, job, onDownload, onCancelDownload, onOpenYouTube, onMarkTimes = null }) {
     const catSelect = (value, rows) => (
         <select className="pl-pick" value={value} onChange={(e) => e.target.value && onCategory(e.target.value, rows)} aria-label="Categoria">
             {!value && <option value="">Mudar para…</option>}
@@ -487,6 +494,7 @@ function MediaDetail({ picked, categories, kind, length, size, onPrev, onSend, o
                 {yt && <Btn small onClick={() => onOpenYouTube(m)}><Icon name="youtube" />Abrir no YouTube</Btn>}
                 {ok && <Btn small onClick={() => onPrev(m)} title="Pôr na Prévia do console">Pôr na prévia</Btn>}
                 {ok && <Btn small onClick={() => onSend(m)} title={sendTip(false)}>{SEND_LABEL}</Btn>}
+                {onMarkTimes && marksWith(m) && <Btn small onClick={() => onMarkTimes(m)} title="Escolher a música e marcar os tempos da letra com este arquivo"><Icon name="synced" />Marcar os tempos…</Btn>}
                 {m.missing && !m.syncing && <Btn small kind="outline" onClick={() => onLocate(m)}><Icon name="folder" />Localizar…</Btn>}
                 <Btn small onClick={() => onRemove([m])} title="Excluir da Mídia · Delete"><Icon name="trash" />Excluir…</Btn>
             </div>

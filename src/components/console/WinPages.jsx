@@ -66,14 +66,15 @@ export function winPage(entry, { active, escRef, onClose }, h) {
                 onEditSong={(id) => h.push({ page: "song", props: { id } }, "Planejar o culto")}
                 onNewNotice={(serviceId) => h.push({ page: "notice", props: { id: "new", addTo: { serviceId } } }, "Planejar o culto")} />;
         case "media":
-            return <MediaView c={c} intent={p.intent || null} media={data.media} onSend={h.sendNow} onClose={onClose} escRef={escRef} active={active} askText={h.askText} />;
+            return <MediaView c={c} intent={p.intent || null} media={data.media} onSend={h.sendNow} onClose={onClose} escRef={escRef} active={active} askText={h.askText}
+                songs={data.songs} onMarkTimes={(id) => h.push({ page: "song", props: { id, sync: true } }, "Mídia")} />;
         case "notice":
             return <NoticeEditor c={c} noticeId={p.id} logoUrl={h.logoUrl} media={data.media} onClose={onClose} onSaved={(row) => { if (p.id === "new" && row?.id) { if (p.addTo) addNoticeTo(row, p.addTo, h); h.replaceTop({ id: row.id }); } }} escRef={escRef} active={active} />;
         case "song":
             return <SongEditor c={c} songId={p.id} autoSync={Boolean(p.sync)} themes={data.themes} onClose={onClose} onSaved={(row) => { h.songSaved(row); if (p.id === "new" && row?.id) h.replaceTop({ id: row.id }); }} escRef={escRef} active={active}
                 onSync={(props) => h.push({ page: "sync", props }, "Editor de música")} />;
         case "sync":
-            return <SyncView {...p} onClose={onClose} escRef={escRef} active={active} />;
+            return <SyncView {...p} say={c.say} onClose={onClose} escRef={escRef} active={active} />;
         case "school":
             return <SchoolView c={c} logoUrl={h.logoUrl} media={data.media} onSend={h.sendStage} onAddToSetlist={h.addMaterial} onClose={onClose} escRef={escRef} askText={h.askText}
                 onEditMaterial={(id, kid) => h.push({ page: "material", props: { id: id || null, classId: kid || "" } }, "Escola bíblica")} />;
