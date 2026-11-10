@@ -7,6 +7,7 @@ import { reportedDuration } from "@/components/console/meterStore";
 import { installedVersions } from "@/lib/bibleText";
 import { getPrefs } from "@/hooks/useUser";
 import { pagesProgressOf } from "@/hooks/usePagesBackfill";
+import { youtubeTitle } from "@/lib/console/youtubeTitle";
 import { moveToIndex } from "@/lib/console/dropOrder";
 
 const STAGES = { song: stageFromSong, media: stageFromMedia, piece: stageFromPiece, material: stageFromMaterial, verses: stageFromVerses, tool: stageFromTool };
@@ -54,11 +55,7 @@ export function useRemote({ c, data, service, items, rows, airItemId, airNow, ne
         },
         createMessage: (fields) => keryx.entities.ServiceMessage.create(fields),
         // A link-only pedido is named by YouTube's oEmbed (electron/youtube.cjs check).
-        youtubeTitle: async (url) => {
-            const r = await window.keryxDesktop?.youtube?.call?.("check", { url });
-            const check = r?.data || r;
-            return check?.state === "ok" ? check.title : "";
-        },
+        youtubeTitle: (url) => youtubeTitle(url, 5000),
     };
     useEffect(() => {
         const remote = window.keryxDesktop?.remote;

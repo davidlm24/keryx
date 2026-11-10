@@ -2159,7 +2159,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   one of the panel's tabs, it opens that tab with the form in its place
   (TabsPanel holds `noting`; another tab closes it) — Quem canta, O louvor
   typed or picked (`pickRows`, `PICK_TABS`: Letras · Vídeos · Áudios),
-  Observação, "Anotar pedido" · Cancelar, `operatorPedido`; the card says
+  **Link do YouTube** (optional, as the phone's sheet: kept only as the URL
+  rebuilt from its id, `youtubeLink` in youtubeLinks.js; another link is an
+  error; with only a link the louvor is YouTube's title, `youtubeTitle`,
+  else "Vídeo do YouTube"), Observação, "Anotar pedido" · Cancelar,
+  `operatorPedido`; the card says
   "Anotado por você". Beside it, **"Quem canta…"** on a Setlist row's right
   click (one row or every row marked; "Tirar quem canta" clears it;
   Rundown.jsx, `ServiceItem.requested_by`) sets who sings an item already in

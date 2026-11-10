@@ -189,3 +189,16 @@ test("a pedido in the bell: who asked, who sings and the note, its Ver the Pedid
     assert.equal(pedidoNote(row("p2", "x", { kind: "pedido", sender: "Lucas", song: "Santo", text: "" })).body, "");
     assert.equal(pedidoNote(row("c1", "x")), null, "the chat stays out of the bell");
 });
+
+test("a pedido the operator notes may carry a YouTube link, rebuilt from its id (2026-11-10)", () => {
+    const at = "2026-11-10T19:00:00.000Z";
+    const f = operatorPedido({ singer: "Ana", song: "Bondade de Deus", link: " https://youtu.be/dQw4w9WgXcQ?si=abc " }, [], at).fields;
+    assert.equal(f.link, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "never the link as typed");
+    assert.equal(f.song, "Bondade de Deus");
+    const bad = operatorPedido({ song: "X", link: "https://evil.com/watch?v=dQw4w9WgXcQ" }, [], at);
+    assert.equal(bad.error, "link");
+    assert.equal(operatorPedido({ link: "https://youtu.be/dQw4w9WgXcQ", linkTitle: " Bondade  de Deus (Ao vivo) " }, [], at).fields.song, "Bondade de Deus (Ao vivo)", "only a link: YouTube's title");
+    assert.equal(operatorPedido({ link: "https://youtu.be/dQw4w9WgXcQ" }, [], at).fields.song, "Vídeo do YouTube");
+    assert.equal(operatorPedido({ singer: "Ana" }, [], at).error, "song", "neither a louvor nor a link");
+    assert.equal(operatorPedido({ song: "X" }, [], at).fields.link, undefined);
+});

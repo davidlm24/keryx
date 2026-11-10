@@ -10,7 +10,7 @@ import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" }
 import { fold } from "../bibleSearch.js";
 import { mediaIcon, mmss } from "./libraryRows.js";
 import { getYouTubeId } from "../../utils/youtube.js";
-import { linkNote } from "../youtubeLinks.js";
+import { linkNote, youtubeLink } from "../youtubeLinks.js";
 
 const REQ = PROTOCOL.actions["request.send"].args;
 
@@ -173,10 +173,18 @@ export function operatorChat(text, sentAt = new Date().toISOString()) {
 // when that song is in the library; mediaId (S15) only when that video or
 // audio is in the Mídia, and never beside a songId. `media`: the console's
 // Mídia rows. -> { fields } | { error, message }
-export function operatorPedido({ singer, song, songId, mediaId, note } = {}, songs = [], sentAt = new Date().toISOString(), media = []) {
-    const title = clip(song, REQ.song.max);
-    if (!title) return { error: "song", message: "Escreva o louvor ou escolha da biblioteca." };
+// A YouTube link (owner 2026-11-10, as the phone's sheet): kept only as the
+// URL rebuilt from its id (youtubeLink); a link that is not YouTube's is an
+// error. With a link the louvor may be left empty: its name is `linkTitle`
+// (YouTube's title, which the form asks for), else "Vídeo do YouTube".
+export function operatorPedido({ singer, song, songId, mediaId, note, link, linkTitle } = {}, songs = [], sentAt = new Date().toISOString(), media = []) {
+    const typed = String(link ?? "").trim();
+    const yt = typed ? youtubeLink(typed) : null;
+    if (typed && !yt) return { error: "link", message: "Esse link não é do YouTube." };
+    const title = clip(song, REQ.song.max) || (yt ? clip(linkTitle, REQ.song.max) || "Vídeo do YouTube" : "");
+    if (!title) return { error: "song", message: "Escreva o louvor, escolha da biblioteca ou cole um link do YouTube." };
     const fields = { kind: "pedido", side: "operator", sender: OPERATOR, song: title, status: "open", sentAt };
+    if (yt) fields.link = yt;
     const who = clip(singer, REQ.singer.max);
     if (who) fields.singer = who;
     const obs = String(note ?? "").trim().slice(0, REQ.note.max);
@@ -186,7 +194,7 @@ export function operatorPedido({ singer, song, songId, mediaId, note } = {}, son
     return { fields };
 }
 // The fields' maxLength in the Novo pedido form, the contract's.
-export const PEDIDO_MAX = { singer: REQ.singer.max, song: REQ.song.max, note: REQ.note.max, chat: PROTOCOL.limits.requestText };
+export const PEDIDO_MAX = { singer: REQ.singer.max, song: REQ.song.max, note: REQ.note.max, link: REQ.link.max, chat: PROTOCOL.limits.requestText };
 
 // What a pedido gives the ServiceItem it becomes (its + Setlist, S13 = A):
 // who sings, and its note as the item's notes.
