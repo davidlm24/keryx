@@ -2,7 +2,10 @@ import React, { useMemo } from "react";
 import { keryx } from "@/api/keryxClient";
 import { getDragStage, getDragStages, clearDragStage } from "@/lib/console/dragStage";
 import { Row, Btn, IconBtn, Empty, SelBar, RowMark, SingerTag } from "./kx";
-import { singerOf } from "@/lib/console/pedidos";
+import { singerOf, PEDIDO_MAX } from "@/lib/console/pedidos";
+
+// Who sings, at most the phone's pedido length (the contract's).
+const SINGER_MAX = PEDIDO_MAX.singer;
 import { useMultiSelect } from "./useMultiSelect";
 import { pickedOf, selectionCount } from "@/lib/console/multiSelect";
 import { takeOutManyQuestion } from "@/lib/console/bulkDelete";
@@ -120,6 +123,36 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
             onSay?.(`${rows.length - failed} ${rows.length - failed === 1 ? "item tirado" : "itens tirados"} da setlist.`);
         } catch (err) { onSay?.(err?.message || "Não foi possível tirar os itens."); }
     };
+    // Quem canta (owner 2026-11-10): who sings an item is the item's own
+    // (ServiceItem.requested_by, the gold tag on the row; the Equipe's
+    // Setlist shows it too), set from its right click — one row, or every
+    // row marked at once; "Tirar quem canta" clears it. It replaced the
+    // Painel's Novo pedido: whoever is at the console already has the song.
+    const writeSinger = async (rows, name) => {
+        try {
+            await Promise.all(rows.map((it) => keryx.entities.ServiceItem.update(it.id, { requested_by: name })));
+            const what = rows.length === 1 ? rows[0].title || typeLabel(rows[0].type) : `${rows.length} itens`;
+            onSay?.(name ? `${name} canta ${what}.` : `Quem canta tirado de ${what}.`);
+        } catch (err) { onSay?.(err?.message || "Não foi possível salvar quem canta."); }
+    };
+    const askSinger = async (rows) => {
+        if (!askText || !rows.length) return;
+        const now = rows.length === 1 ? singerOf(rows[0]) : "";
+        const name = await askText({
+            title: rows.length === 1 ? `Quem canta · ${rows[0].title || typeLabel(rows[0].type)}` : `Quem canta · ${rows.length} itens`,
+            placeholder: "Nome de quem canta", ok: "Salvar", initial: now,
+            hint: "Aparece no item, no planejador e na Setlist da equipe.",
+        });
+        const clean = String(name || "").replace(/\s+/g, " ").trim().slice(0, SINGER_MAX);
+        if (clean && clean !== now) writeSinger(rows, clean);
+    };
+    const singerItems = (rows) => {
+        const sung = rows.filter((it) => singerOf(it));
+        return [
+            askText && { label: "Quem canta…", icon: "user", onSelect: () => askSinger(rows) },
+            sung.length > 0 && { label: rows.length > 1 ? "Tirar quem canta" : `Tirar quem canta · ${singerOf(rows[0])}`, icon: "x", onSelect: () => writeSinger(sung, "") },
+        ].filter(Boolean);
+    };
     const p = plan(service, items);
     const airIdx = items.findIndex((i) => i.id === airItemId);
     // Dragging (owner 2026-10-15, Rodada D; lit slot, Rodada E2): a gold
@@ -220,6 +253,8 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                         onClick={(e) => { if (!ms.click(it.id, e)) onPrepare(it, i); }}
                         onDoubleClick={() => { if (!ms.picking) onGo(it, i); }}
                         onContextMenu={(e) => (picked.length > 1 && ms.has(it.id) ? menu(e, { title: selectionCount(picked.length), items: [
+                            ...singerItems(picked),
+                            "sep",
                             menuItem("tirar", { label: `Tirar ${picked.length} da setlist…`, kbd: keyHint("delete"), onSelect: takeOutPicked }),
                             { label: "Limpar a seleção", icon: "x", onSelect: ms.clear },
                         ] }) : menu(e, { title: it.title || typeLabel(it.type), items: [
@@ -228,6 +263,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, airN
                             // A file of the Mídia: Editar opens it chosen there (rename, category).
                             linked && onOpenMedia && menuItem("editar", { onSelect: () => onOpenMedia(`select:${linked.id}`) }),
                             menuItem("enviarAoAr", { air: true, onSelect: () => onGo(it, i) }),
+                            ...singerItems([it]),
                             isYouTubeRow(linked) && menuItem("baixarParaMidia", { onSelect: () => downloadToMedia(linked, { askText, say: onSay }) }),
                             ...endItems(it),
                             menuItem("selecionarVarios", { onSelect: () => ms.pickFrom(it.id) }),

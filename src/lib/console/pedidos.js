@@ -124,27 +124,6 @@ export function mediaOfPedido(r, media = []) {
 // link the player refused says it as the Mídia and the Setlist do (linkNote).
 export const pedidoMediaWarn = (m) => (!m ? "" : m.syncing ? "baixando…" : m.missing ? "arquivo não encontrado" : linkNote(m));
 
-// The picker of O louvor (S15 = A): one field, three tabs. Images, PDFs,
-// fonts and backgrounds never show.
-export const PICK_TABS = [
-    { id: "songs", label: "Letras", icon: "music" },
-    { id: "video", label: "Vídeos", icon: "film" },
-    { id: "audio", label: "Áudios", icon: "volume" },
-];
-// A tab's rows for what was typed (nothing = the first ones), the first `n`:
-// { id, kind: song | media, title, sub, icon }.
-export function pickRows(tab, query, { songs = [], media = [] } = {}, n = 6) {
-    const want = key(query);
-    if (tab === "songs") {
-        return songs.filter((s) => !want || key(s.title).includes(want) || key(s.artist).includes(want)).slice(0, n)
-            .map((s) => ({ id: s.id, kind: "song", title: s.title || "", sub: s.artist || "", icon: "music" }));
-    }
-    return media.filter((m) => {
-        const k = pedidoMediaKind(m);
-        return k && (tab === "audio" ? k === "audio" : k !== "audio") && (!want || key(m.title).includes(want));
-    }).slice(0, n).map((m) => ({ id: m.id, kind: "media", title: m.title || "", sub: m.duration > 0 ? mmss(m.duration) : "", icon: mediaIcon(m) }));
-}
-
 // A chat bubble's line over the text: "Marcos · 18:52", "Operador · 18:53".
 export function chatHead(r) {
     const who = isOperator(r) ? OPERATOR : String(r?.sender || "").trim() || "Equipe";
@@ -168,24 +147,7 @@ export function operatorChat(text, sentAt = new Date().toISOString()) {
     return { kind: "chat", side: "operator", sender: OPERATOR, text: t, status: "open", sentAt };
 }
 
-// A pedido the operator notes (Novo pedido; the phone's fields and limits:
-// quem canta, o louvor — from the library or typed —, a note). songId only
-// when that song is in the library; mediaId (S15) only when that video or
-// audio is in the Mídia, and never beside a songId. `media`: the console's
-// Mídia rows. -> { fields } | { error, message }
-export function operatorPedido({ singer, song, songId, mediaId, note } = {}, songs = [], sentAt = new Date().toISOString(), media = []) {
-    const title = clip(song, REQ.song.max);
-    if (!title) return { error: "song", message: "Escreva o louvor ou escolha da biblioteca." };
-    const fields = { kind: "pedido", side: "operator", sender: OPERATOR, song: title, status: "open", sentAt };
-    const who = clip(singer, REQ.singer.max);
-    if (who) fields.singer = who;
-    const obs = String(note ?? "").trim().slice(0, REQ.note.max);
-    if (obs) fields.text = obs;
-    if (songId && songs.some((s) => s.id === songId)) fields.songId = songId;
-    else if (mediaId && pedidoMediaKind(media.find((m) => m.id === mediaId))) fields.mediaId = mediaId;
-    return { fields };
-}
-// The fields' maxLength in the Novo pedido form, the contract's.
+// The fields' maxLength (the chat's composer), the contract's.
 export const PEDIDO_MAX = { singer: REQ.singer.max, song: REQ.song.max, note: REQ.note.max, chat: PROTOCOL.limits.requestText };
 
 // What a pedido gives the ServiceItem it becomes (its + Setlist, S13 = A):
