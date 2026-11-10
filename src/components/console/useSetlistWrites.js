@@ -15,7 +15,7 @@ import { getPrefs } from "@/hooks/useUser";
 import { serviceFundo } from "@/lib/console/defaultFundo";
 import { lookFields, lookOf } from "@/lib/console/serviceLook";
 import { CONSOLE_KIND, consoleSetlistOf, consoleSetlistRow, copyItems } from "@/lib/console/consoleSetlist";
-import { AUTOPLAY_SAY } from "@/lib/console/autoplay";
+import { AUTOPLAY_SAY, gapLabel } from "@/lib/console/autoplay";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { stageItem, addedSay } from "@/lib/console/setlist";
 
@@ -41,6 +41,15 @@ export function useSetlistWrites({ say, serviceId, service, services, items, pic
             const sid = serviceId || await ensureService();
             await keryx.entities.Service.update(sid, { autoplay: Boolean(on) });
             say(on ? AUTOPLAY_SAY.on : AUTOPLAY_SAY.off);
+        } catch (err) { say(err?.message || "Não foi possível salvar."); }
+    }, [serviceId, ensureService, say]);
+    // The pause before the next item (Service.autoplay_gap; null = the
+    // church's, Configurações › Culto): the footer's "5s" beside Autoplay.
+    const setAutoplayGap = useCallback(async (s) => {
+        try {
+            const sid = serviceId || await ensureService();
+            await keryx.entities.Service.update(sid, { autoplay_gap: s });
+            say(s == null ? "Pausa entre itens: a de Configurações › Culto." : `Pausa entre itens: ${gapLabel(s).toLowerCase()}.`);
         } catch (err) { say(err?.message || "Não foi possível salvar."); }
     }, [serviceId, ensureService, say]);
 
@@ -167,5 +176,5 @@ export function useSetlistWrites({ say, serviceId, service, services, items, pic
         } catch (err) { say(err?.message || "Não foi possível guardar no culto."); }
     }, [items, say]);
 
-    return { ensureService, setAutoplay, pickServiceFundo, saveOperatorNotes, addStageToSetlist, addMaterial, addSong, writeMessage, addRowToSetlist, saveToCulto };
+    return { ensureService, setAutoplay, setAutoplayGap, pickServiceFundo, saveOperatorNotes, addStageToSetlist, addMaterial, addSong, writeMessage, addRowToSetlist, saveToCulto };
 }

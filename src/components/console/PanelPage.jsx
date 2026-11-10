@@ -208,7 +208,7 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
                 <Rundown service={service} items={items} media={data.media} askText={askText} onOpenMedia={openMedia} loaded={loaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId}
                     onPrepare={prepareItem} onGo={goItem} onAddStage={writes.addStageToSetlist} onPlan={view.active ? () => openPlanner(serviceId) : null} onSay={say}
                     autoplay={{ on, pending, cancel: () => toConsole("autoplay.cancel"), endsAlone }} picking={picking} setPicking={setPicking} />
-                <SetlistFooter count={setlistCountOf(plan(service, items))} autoplay={{ on, onChange: writes.setAutoplay }} prev={nb.prev} next={nb.next} onStep={stepSetlist} />
+                <SetlistFooter count={setlistCountOf(plan(service, items))} autoplay={{ on, onChange: writes.setAutoplay, gap: { service, onChange: writes.setAutoplayGap } }} prev={nb.prev} next={nb.next} onStep={stepSetlist} />
             </Panel>
         );
     } else if (module === "lib") {

@@ -1072,6 +1072,11 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 /* In the edit banner the Travar switch reads as its other controls (B3 = A). */
 .console .kx-banner .dock-lock { color: var(--fg-1); }
 .console .rund-auto:disabled { opacity: var(--dim); cursor: default; }
+/* The pause beside Autoplay (owner 2026-11-10): "5s", a menu of 0/3/5/10 s and Padrão; dimmed while Autoplay is off. */
+.console .rund-gap { flex: none; height: var(--control-sm); min-width: var(--control-sm); padding: 0 6px; border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: 500 var(--fs-ui)/1 var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer; }
+.console .rund-gap:not(:disabled):hover { background: var(--bg-3); color: var(--fg-1); }
+.console .rund-gap.is-off { color: var(--fg-3); }
+.console .rund-gap:disabled { opacity: var(--dim); cursor: default; }
 /* The word "Autoplay" (Rodada O3) stays beside the switch; the count "· n
    itens · tempo" ellipsizes first (the title's kx-section shrinks). Only
    where even "Setlist" would be cut does the word go: the switch alone, a
