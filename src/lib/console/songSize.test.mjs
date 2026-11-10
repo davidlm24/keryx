@@ -80,3 +80,9 @@ test("a song's own theme, part themes and look are not read: the theme in use dr
     assert.equal(out.style.transition, "slide");
     assert.equal(out.style.font_size, steppedSize("6", -1), "the step still moves the theme's size");
 });
+
+test("isVideoUrl: every container the Mídia imports is a video (a .webm went to the audio channel)", async () => {
+    const { isVideoUrl } = await import("./content.js");
+    for (const u of ["keryx-media://a.mp4", "http://127.0.0.1:7700/media/b.webm", "x.MOV", "y.m4v", "z.mkv?t=1"]) assert.equal(isVideoUrl(u), true, u);
+    for (const u of ["keryx-media://a.mp3", "x.m4a", "playback.wav", "", null]) assert.equal(isVideoUrl(u), false, String(u));
+});

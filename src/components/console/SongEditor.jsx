@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
-import { uploadFile } from "@/lib/mediaImport";
+import { importMediaFiles, importSummary, pickRepeats } from "@/lib/mediaImport";
+import { useLibrary } from "./useConsoleData";
+import PlaybackPicker from "./PlaybackPicker";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
@@ -8,7 +10,7 @@ import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
 import { soundModeFor } from "@/lib/console/videoSound";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
-import { parseChords, slidesFromLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
+import { parseChords, slidesFromLyrics, reflowLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { fitMarks, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength } from "@/lib/console/lyricSync";
 import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeInline, transposeChords, transposeChord } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
@@ -86,6 +88,11 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     }, [Boolean(song)]); // the body only exists once the song loaded
     const mediaRef = useRef(null);
     const fileRef = useRef(null);
+    // Vídeo ou playback… (owner 2026-11-10): the Mídia's videos and audios
+    // first (PlaybackPicker), the computer last.
+    const { media: libMedia } = useLibrary();
+    const [picking, setPicking] = useState(false);
+    const pickAnchor = useRef(null);
     const lyricsRef = useRef(null);
 
     useEffect(() => {
@@ -128,20 +135,39 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         return withTimings(base.map(({ start: _start, ...rest }) => rest), starts, mediaRef.current?.duration || song.duration || null);
     }, [song, resplit, split, starts, secs]);
 
-    // The split is the song's setting, never a rewrite of the lyrics (owner
-    // 2026-10-14; before, 2/4 linhas rewrote the text and could not be
-    // undone): any choice, any order, the slides follow. Timings are by
-    // slide index, so when the count changes they are cleared.
+    // 2/4 linhas / Outro rewrite the lyrics as the slides read (owner
+    // 2026-11-10, reversing the "never a rewrite" of 2026-10-14): the text
+    // gets a blank line every N sung lines (reflowLyrics). While the text is
+    // still what the last pick wrote, another pick starts from the text
+    // before it (so typing 1 then 12 in Outro, or 2 then 4, never stacks)
+    // and Estrofe gives it back; once edited by hand, the text is the new
+    // start. The toast has Desfazer. Timings are by slide index, so when the
+    // count changes they are cleared.
+    const reflowBase = useRef(null);
     const pickSplit = (n) => {
         const lines = linesLimit(n);
         if (lines === split && resplit) return;
-        const count = slidesFromLyrics(song.lyrics, { lines }).length;
+        const now = song.lyrics || "";
+        const base = reflowBase.current?.to === now ? reflowBase.current : null;
+        const source = base ? base.from : now;
+        const next = lines > 0 ? reflowLyrics(source, lines) : source;
+        const count = slidesFromLyrics(next, { lines }).length;
+        const was = split;
         setSplit(lines); setResplit(true); setDirty(true);
-        if (count !== slides.length) setSecs([]);
-        if (starts.some((x) => Number.isFinite(x)) && count !== slides.length) {
-            setStarts([]);
-            c.say(`${count} ${count === 1 ? "slide" : "slides"} · marque os tempos de novo.`);
+        if (next !== now) {
+            reflowBase.current = next === source ? null : { from: source, to: next };
+            set({ lyrics: next });
         }
+        const marksGo = starts.some((x) => Number.isFinite(x)) && count !== slides.length;
+        if (count !== slides.length) setSecs([]);
+        if (marksGo) setStarts([]);
+        const again = marksGo ? ` ${count} ${count === 1 ? "slide" : "slides"} · marque os tempos de novo.` : "";
+        if (next !== now) {
+            const keptStarts = starts;
+            c.say((lines > 0 ? `Letra dividida em blocos de ${lines} ${lines === 1 ? "linha" : "linhas"}.` : "A letra voltou às estrofes de antes.") + again, {
+                label: "Desfazer", run: () => { set({ lyrics: now }); setSplit(was); setStarts(keptStarts); reflowBase.current = base; },
+            });
+        } else if (again) c.say(again.trim());
     };
     // Chords at the cursor: "[]" with the caret inside, or one chord of the key.
     const insertChord = (chord = "") => {
@@ -269,23 +295,33 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         c.say("Letra refeita com os acordes nas linhas · confira e salve.");
     };
     const showCifra = cifraKept || Boolean((song?.chords || "").trim());
-    const upload = async (file, field) => {
+    // The song's video or playback is a Mídia row (owner 2026-11-10): one
+    // chosen there, or a file from the computer that enters the Mídia first
+    // (a repeat asks "Já está na Mídia"; Pular uses the one already there).
+    // The marks are by the old media's time, so they are cleared.
+    const chooseMedia = (row) => {
+        setPicking(false);
+        if (!row?.file_url || row.file_url === song.audio_url) return;
+        set({ audio_url: row.file_url });
+        setStarts([]);
+    };
+    const fromComputer = async (file) => {
         if (!file) return;
-        setBusy(field);
+        setBusy("audio_url");
         try {
-            const { file_url } = await uploadFile(file);
-            set({ [field]: file_url });
-            if (field === "audio_url") setStarts([]);
-        } catch (err) { c.say(err?.message || "Não foi possível enviar o arquivo."); }
-        setBusy("");
+            const { list, there } = await pickRepeats([file], libMedia, ask);
+            if (!list.length) { if (there[0]) { chooseMedia(there[0]); c.say("Já estava na Mídia: escolhido de lá."); } return; }
+            const res = await importMediaFiles(list);
+            if (res.created[0]) { chooseMedia(res.created[0]); c.say("Arquivo adicionado à Mídia e escolhido para a música."); } else c.say(importSummary(res, " à Mídia"));
+        } catch (err) { c.say(err?.message || "Não foi possível enviar o arquivo."); } finally { setBusy(""); }
     };
 
     // Lyric timing (Rodada D4): the marks are made in Sincronizar, a page of
     // the window pushed from here ("← Editor de música"); Aplicar brings them
     // back to this draft, Salvar keeps them. The same marks follow the video,
     // the playback or — no media — the live clock on air (content.follow).
-    // Música › Sincronizar a música… (the menu bar): the editor opens with
-    // Sincronizar on top of it, once the song is read.
+    // Música › Marcar os tempos da música (the menu bar): the editor opens
+    // with Marcar os tempos on top of it, once the song is read.
     const didAutoSync = useRef(false);
     useEffect(() => {
         if (!autoSync || didAutoSync.current || !song || !slides.length) return;
@@ -346,7 +382,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // unsaved); the (x) leaves the whole window the same way. Ctrl+S saves
     // — the editor's own key; it defers to a dialog over the editor (its
     // own scrim does not count) and sleeps while another page covers this.
-    if (escRef) escRef.current = (mode) => { if (mode === "esc" && cifraOpen) setCifraOpen(false); else close(mode === "all"); };
+    if (escRef) escRef.current = (mode) => { if (mode === "esc" && picking) setPicking(false); else if (mode === "esc" && cifraOpen) setCifraOpen(false); else close(mode === "all"); };
     useEffect(() => {
         const onKey = (e) => {
             if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") || !active) return;
@@ -445,7 +481,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             {(!narrow || fold === "letra") && <>
             {!narrow && colDados.split}
             <div className="col" style={narrow ? { flex: 1, minWidth: 0 } : colLetra.style}>
-                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<>{foldSeg}<LinesPicker value={split} onChange={pickSplit} titles={{ stanza: "Uma estrofe por slide · a letra não muda, só os slides" }} /></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<>{foldSeg}<LinesPicker value={split} onChange={pickSplit} titles={{ stanza: "Uma estrofe por slide · a letra volta às estrofes de antes, se não foi editada depois" }} /></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="ed-tools">
                         <Btn small kind="outline" onClick={() => addMarker("Verso")}>[Verso]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Refrão")}>[Refrão]</Btn>
@@ -500,13 +536,16 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     </div>
                 </Panel>
                 {rowSlides.split}
-                <Panel className="ed-video" title="Vídeo e sincronização" style={{ flex: 1, minHeight: 120 }} actions={<>
-                    {onSync && <Btn small kind="outline" disabled={!slides.length} onClick={openSync} title="Marcar onde cada slide entra: com o vídeo, o playback ou, sem mídia, um relógio (para os músicos ao vivo)">Sincronizar…</Btn>}
-                    <Btn small disabled={busy === "audio_url"} onClick={() => fileRef.current?.click()}>{busy === "audio_url" ? "Enviando…" : media ? "Trocar…" : "Vídeo ou playback…"}</Btn>
+                <Panel className="ed-video" title="Vídeo e tempos" style={{ flex: 1, minHeight: 120 }} actions={<>
+                    {onSync && <Btn small kind="outline" disabled={!slides.length} onClick={openSync} title="Marcar onde cada slide entra: com o vídeo, o playback ou, sem mídia, um relógio (para os músicos ao vivo)">Marcar os tempos</Btn>}
+                    <span className="pl-popwrap" ref={pickAnchor}>
+                        <Btn small className={picking ? "is-on" : ""} disabled={busy === "audio_url"} onClick={() => setPicking(!picking)} title="Um vídeo ou um playback da Mídia, ou do computador" aria-haspopup="dialog" aria-expanded={picking}>{busy === "audio_url" ? "Enviando…" : media ? "Trocar…" : "Vídeo ou playback…"}</Btn>
+                    </span>
+                    {picking && <PlaybackPicker anchorRef={pickAnchor} media={libMedia} current={media} onPick={chooseMedia} onClose={() => setPicking(false)} onComputer={() => { setPicking(false); fileRef.current?.click(); }} />}
                     {media && <Btn small onClick={() => set({ audio_url: "" })} title="As marcas ficam: sem mídia, a letra segue o relógio ao vivo">Remover</Btn>}
                 </>} bodyStyle={{ display: "flex", flexDirection: media ? "row" : "column", gap: "var(--space-2)", padding: "0 var(--space-2) var(--space-2)", overflow: "auto" }}>
-                    <input ref={fileRef} type="file" accept="video/*,audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload(f, "audio_url"); }} />
-                    {!media && <Empty icon="film" title="Sem vídeo nem playback">Um vídeo vai para as telas de vídeo junto com a letra; um playback toca no canal de áudio. Sem mídia, a letra pode seguir a banda: pelas marcas (Sincronizar…) ou por tempo, e no ar o Iniciar do player começa.</Empty>}
+                    <input ref={fileRef} type="file" accept="video/*,audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; fromComputer(f); }} />
+                    {!media && <Empty icon="film" title="Sem vídeo nem playback">Um vídeo vai para as telas de vídeo junto com a letra; um playback toca no canal de áudio. Sem mídia, a letra pode seguir a banda: pelas marcas (Marcar os tempos) ou por tempo, e no ar o Iniciar do player começa.</Empty>}
                     {media && (
                         <div className="ed-media">{video
                             ? <video ref={mediaRef} src={media} controls preload="metadata" />
@@ -546,10 +585,10 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         </>}
                         {advance === "marks" && <>
                             <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} marcados</span>
-                            <span className="kx-meta">{!marked ? "Sem marcas: marque em Sincronizar…"
+                            <span className="kx-meta">{!marked ? "Sem marcas: use Marcar os tempos"
                                 : !media ? "No ar: Iniciar letra automática no player, na introdução."
                                 : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>
-                            {marked > 0 && resplit && <span className="kx-meta kx-warn">A letra mudou: confira as marcas em Sincronizar…</span>}
+                            {marked > 0 && resplit && <span className="kx-meta kx-warn">A letra mudou: confira as marcas em Marcar os tempos</span>}
                         </>}
                         {advance === "off" && <span className="kx-meta">{marked ? "A letra não avança sozinha; as marcas ficam guardadas." : "A letra não avança sozinha: as setas mudam o slide."}</span>}
                     </div>

@@ -12,7 +12,7 @@ test("the bar: the menus of the owner's picks, in order (Rodada D4, A; E0; M0)",
     // Where each thing lives (the artifact's table).
     for (const [id, labels] of Object.entries({
         culto: ["Planejar o culto", "Novo culto", "Modelos de culto", "Exportar a setlist em PDF", "Pedidos da equipe", "Chat da equipe"],
-        musica: ["Nova música", "Buscar letras na internet…", "Importar músicas…", "Importar uma pasta…", "Abrir pacote do KERYX…", "Sincronizar a música…", "Letra automática", "Temas e fundos",
+        musica: ["Nova música", "Buscar letras na internet…", "Importar músicas…", "Importar uma pasta…", "Abrir pacote do KERYX…", "Marcar os tempos da música", "Letra automática", "Temas e fundos",
             "Tema da Bíblia…", "Escolher as Bíblias…", "Bíblias instaladas"],
         midia: ["Mídia", "Do computador…", "Link do YouTube…", "Fundos"],
         ferramentas: ["Avisos", "Novo aviso", "Aviso rápido…", "Timers", "Escola bíblica", "Relatórios", "KERYX no celular", "Sincronizar agora", "Sincronização"],
@@ -37,13 +37,13 @@ test("items say their state and act through the console", () => {
     assert.equal(sunday.checked, true);
     assert.equal(sunday.kbd, "18/10");
     sunday.onSelect();
-    find(menus, "musica", "Sincronizar a música…").onSelect();
+    find(menus, "musica", "Marcar os tempos da música").onSelect();
     find(menus, "midia", "Pausar o player").onSelect();
     find(menus, "ferramentas", "Timers").sub[0].onSelect();
     // The live clock waits for Iniciar, refused while locked.
     const letra = find(menus, "musica", "Letra automática").sub;
     assert.equal(letra[0].label, "Segue o relógio ao vivo");
-    assert.equal(letra[1].label, "Iniciar");
+    assert.equal(letra[1].label, "Iniciar a letra automática");
     assert.equal(letra[1].disabled, true);
     assert.deepEqual(calls, [["activate", "s1"], ["syncSong", "song9"], ["playerToggle"], ["timer", 5]]);
 });
@@ -71,7 +71,7 @@ test("the menu review of 2026-11-09: the team, the imports, the Bíblia and Cone
     const heads = (menus, id) => menus.find((m) => m.id === id).items.filter((it) => it.head != null).map((it) => it.head);
     const menus = buildMenus({ act, sync: { act: "now" } });
     // Each group under its own heading, in the menu its meaning belongs to.
-    assert.deepEqual(heads(menus, "musica"), ["Bíblia"]);
+    assert.deepEqual(heads(menus, "musica"), ["Letra no tempo", "Bíblia"]);
     assert.deepEqual(heads(menus, "ferramentas"), ["Conexões"]);
     // Ajuda never holds a connection or a setting.
     const ajuda = menus.find((m) => m.id === "ajuda").items.map((it) => it.label);
@@ -116,14 +116,22 @@ test("Pedidos and Chat wear the gold dot while something new waits", () => {
 
 test("what is off when there is nothing to act on", () => {
     const menus = buildMenus({});
-    assert.equal(find(menus, "musica", "Sincronizar a música…").disabled, true);
+    assert.equal(find(menus, "musica", "Marcar os tempos da música").disabled, true);
     assert.equal(find(menus, "culto", "Exportar a setlist em PDF").disabled, true);
     assert.equal(find(menus, "midia", "Tocar o player").disabled, true);
     assert.equal(find(menus, "musica", "Letra automática").sub[0].disabled, true);
     const playing = buildMenus({ follow: { source: "audio", paused: false } });
-    assert.equal(find(playing, "musica", "Letra automática").sub[1].label, "Pausar");
+    assert.equal(find(playing, "musica", "Letra automática").sub[1].label, "Pausar a letra automática");
     const paused = buildMenus({ follow: { source: "video", paused: true } });
-    assert.equal(find(paused, "musica", "Letra automática").sub[1].label, "Retomar");
+    assert.equal(find(paused, "musica", "Letra automática").sub[1].label, "Retomar a letra automática");
+    // Nothing to follow says why (owner 2026-11-10).
+    assert.equal(find(menus, "musica", "Letra automática").sub[0].label, "Nenhuma música no ar");
+    const still = buildMenus({ songOnAir: true });
+    assert.deepEqual(find(still, "musica", "Letra automática").sub.map((x) => x.label), ["A música no ar não avança sozinha", "Editor de música › Avançar sozinha"]);
+    const timed = buildMenus({ follow: { source: "time" } });
+    assert.equal(find(timed, "musica", "Letra automática").sub[1].label, "Iniciar a letra por tempo");
+    const clock = buildMenus({ follow: { source: "clock" } });
+    assert.equal(find(clock, "musica", "Letra automática").sub[1].label, "Iniciar a letra automática");
 });
 
 test("Ajuda: the update item, the help key and what only the desktop does", () => {
@@ -205,12 +213,12 @@ test("flattenMenus: submenus inline, state carried over, same handlers", () => {
     flat[timers + 1].onSelect();
     // disabled / checked / kbd ride along unchanged.
     const iniciar = flat[at("Letra automática") + 2];
-    assert.equal(iniciar.label, "Iniciar");
+    assert.equal(iniciar.label, "Iniciar a letra automática");
     assert.equal(iniciar.disabled, true);
     const svc = flat[at("A")];
     assert.equal(svc.checked, true);
     assert.equal(svc.kbd, "18/10");
-    assert.equal(flat[at("Sincronizar a música…")].disabled, true);
+    assert.equal(flat[at("Marcar os tempos da música")].disabled, true);
     assert.deepEqual(calls, [["timer", 5]]);
 });
 

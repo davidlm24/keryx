@@ -85,16 +85,23 @@ export function buildMenus(ctx) {
         { label: "Chat da equipe", icon: "chat", dot: unread.chat ? "mensagens novas" : undefined, title: "A conversa com a equipe pelo celular · aba Chat do Painel", onSelect: call("teamTab", "chat") },
     ];
 
+    // Letra automática (owner 2026-11-10: the items said neither what they
+    // do nor what they follow): the first line names what the lyrics on air
+    // follow, the action names itself; with nothing to follow it says why
+    // and where to change it.
+    const what = f?.source === "time" ? "a letra por tempo" : "a letra automática";
     const letra = f
         ? [
             { label: `Segue ${FOLLOW_WORD[f.source]}`, disabled: true },
             (f.source === "clock" || f.source === "time") && !f.clock
-                ? { label: "Iniciar", icon: "play", disabled: ctx.locked, onSelect: call("follow", "start") }
+                ? { label: `Iniciar ${what}`, icon: "play", disabled: ctx.locked, title: f.source === "time" ? "Quando a banda começar: cada slide fica o seu tempo" : "Na introdução: a letra segue as marcas no relógio", onSelect: call("follow", "start") }
                 : f.paused
-                    ? { label: "Retomar", icon: "play", disabled: ctx.locked, onSelect: call("follow", "resume") }
-                    : { label: "Pausar", icon: "pause", disabled: ctx.locked, onSelect: call("follow", "pause") },
+                    ? { label: `Retomar ${what}`, icon: "play", disabled: ctx.locked, onSelect: call("follow", "resume") }
+                    : { label: `Pausar ${what}`, icon: "pause", disabled: ctx.locked, title: "← → continuam valendo", onSelect: call("follow", "pause") },
         ]
-        : [{ label: "A música no ar não tem tempos marcados", disabled: true }];
+        : ctx.songOnAir
+            ? [{ label: "A música no ar não avança sozinha", disabled: true }, { label: "Editor de música › Avançar sozinha", disabled: true }]
+            : [{ label: "Nenhuma música no ar", disabled: true }];
     const musica = [
         mi("novaMusica", { onSelect: call("newSong") }),
         { label: "Buscar letras na internet…", icon: "search", onSelect: call("lyricsSearch") },
@@ -105,8 +112,12 @@ export function buildMenus(ctx) {
         { label: "Importar uma pasta…", icon: "folder", onSelect: call("importFolder") },
         mi("abrirPacote", { title: "Um arquivo .keryx de outra igreja ou de outro computador: músicas, temas, avisos e mídias", onSelect: call("openPackage") }),
         sep,
-        { label: "Sincronizar a música…", icon: "synced", disabled: !ctx.songId, title: ctx.songId ? "A música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("syncSong", ctx.songId) },
-        { label: "Letra automática", icon: "music", sub: letra },
+        // Letra no tempo (owner 2026-11-10): making the marks is "Marcar os
+        // tempos" ("Sincronizar" is the cloud between computers); following
+        // them on air is Letra automática.
+        head("Letra no tempo"),
+        { label: "Marcar os tempos da música", icon: "synced", disabled: !ctx.songId, title: ctx.songId ? "Marcar onde cada slide entra, com o vídeo, o playback ou um relógio · a música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("syncSong", ctx.songId) },
+        { label: "Letra automática", icon: "music", title: "A letra no ar avança sozinha: pelas marcas ou pelo tempo de cada slide", sub: letra },
         sep,
         mi("temasEFundos", { title: "Configurações › Temas e fundos", onSelect: call("settings", "temas") }),
         // The Bíblia (owner 2026-11-09, Bíblia = A): its theme and its
@@ -211,7 +222,7 @@ export function flattenMenus(menus, { maxServices = 5, onAllServices } = {}) {
     return out;
 }
 
-// The song the Música menu's Sincronizar acts on: the one in the Prévia,
+// The song the Música menu's Marcar os tempos acts on: the one in the Prévia,
 // else the one on air. null when neither is a song.
 export function songInHand(prev, cur) {
     const fromPrev = typeof prev?.id === "string" && prev.id.startsWith("song:") ? prev.id.slice(5) : null;

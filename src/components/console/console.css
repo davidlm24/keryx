@@ -1596,6 +1596,16 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .pl-pop { position: absolute; right: 0; top: 26px; width: 280px; max-height: 320px; overflow: auto; z-index: var(--z-dialog); }
 /* Placed by usePlaced (the Culto panel clips what hangs out of it). */
 .console .pl-pop.is-placed { position: fixed; right: auto; top: auto; z-index: var(--z-menu); }
+/* The song editor's "Vídeo ou playback…": the Mídia's videos and audios, the computer last (owner 2026-11-10). */
+.console .ed-mpick { width: 320px; max-height: 380px; display: flex; flex-direction: column; overflow: hidden; padding: var(--space-1); }
+.console .ed-mpick-h { display: flex; flex-direction: column; gap: var(--space-1); padding-bottom: var(--space-1); }
+.console .ed-mpick-h .kx-seg { align-self: stretch; }
+.console .ed-mpick-h .kx-seg > button { flex: 1; }
+.console .ed-mpick-list { flex: 1; min-height: 0; overflow: auto; }
+.console .ed-mpick-f { border-top: 1px solid var(--line-soft); margin-top: var(--space-1); padding-top: var(--space-1); }
+.console .ed-mpick .kx-row.is-dim { opacity: .55; cursor: default; }
+.console .ed-mpick-on { display: inline-flex; color: var(--prev); margin-left: var(--space-1); }
+.console .ed-mpick-none { margin: 0; padding: var(--space-2); color: var(--fg-3); }
 /* The cultos' tabs in the window's bar (Rodada O, O9: as in a browser). The
    tab in front is the page's surface; its × is out of the Tab order (Delete
    closes the focused tab); the culto of the console has a green dot. */

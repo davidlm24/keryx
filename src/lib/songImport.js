@@ -352,6 +352,40 @@ export function songSlidesFor(song) {
     };
 }
 
+// The lyrics rewritten so the text reads like the slides (owner request
+// 2026-10-11; removed 2026-10-14, back 2026-11-10: the owner wants 2/4
+// linhas to show in the text field, knowing Estrofe cannot join the
+// stanzas again): each stanza cut into blocks of `lines` rows separated by
+// a blank line, a "[Label]" row kept on its first block. lines 0 returns
+// the text untouched: merged stanzas cannot be rebuilt.
+export function reflowLyrics(lyrics, lines = 0) {
+    if (!(lines > 0)) return String(lyrics || "");
+    const out = [];
+    String(lyrics || "").replace(/\r/g, "").split(/\n\s*\n/).forEach((block) => {
+        let rows = block.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
+        if (!rows.length) return;
+        let head = null;
+        if (/^\s*\[(.+?)\]\s*$/.test(rows[0]) && !hasInlineChords(rows[0])) { head = rows[0].trim(); rows = rows.slice(1); }
+        if (!rows.length) { out.push(head); return; }
+        // Only sung rows count toward the block size; a chords-only row
+        // ("[G] [D]") rides with the row after it, never a slide of its own.
+        const groups = [];
+        let lead = [];
+        for (const raw of rows) {
+            if (!stripLine(raw).trim()) { lead.push(raw); continue; }
+            groups.push([...lead, raw]);
+            lead = [];
+        }
+        if (lead.length) (groups[groups.length - 1] || groups[0] || (groups.push([]) && groups[0])).push(...lead);
+        if (!groups.length) { out.push([head, ...rows].filter(Boolean).join("\n")); return; }
+        for (let i = 0; i < groups.length; i += lines) {
+            const chunk = groups.slice(i, i + lines).flat().join("\n");
+            out.push(i === 0 && head ? head + "\n" + chunk : chunk);
+        }
+    });
+    return out.join("\n\n");
+}
+
 // Lyric timing (the song's video): each slide's start in seconds, the
 // duration up to the next start (the last one to the end of the video).
 // starts: [seconds | null] by slide index. Slides without a start keep theirs.

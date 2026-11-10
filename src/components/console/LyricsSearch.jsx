@@ -120,7 +120,7 @@ export default function LyricsSearch({ c, initial = "", onClose, onImported }) {
                             {hit.hasLyrics && preview.loading && <Empty title="Buscando a letra…" />}
                             {hit.hasLyrics && preview.error && <div className="warnline"><Icon name="warn" /><span>{preview.error}</span></div>}
                             {hit.hasLyrics && preview.lyrics && preview.synced && (
-                                <div className="lyr-note"><Icon name="clock" /><span>Com tempo: cada slide entra marcado no tempo desta gravação. Para o playback da igreja, abra Sincronizar no Editor de música: "Buscar marcas…" acerta o 1º slide e o resto acompanha. Para a banda ao vivo, use Por tempo.</span></div>
+                                <div className="lyr-note"><Icon name="clock" /><span>Com tempo: cada slide entra marcado no tempo desta gravação. Para o playback da igreja, abra Marcar os tempos no Editor de música: "Buscar marcas…" acerta o 1º slide e o resto acompanha. Para a banda ao vivo, use Por tempo.</span></div>
                             )}
                             {hit.hasLyrics && preview.lyrics && <pre className="lyr-text">{preview.lyrics}</pre>}
                             {!hit.hasLyrics && (

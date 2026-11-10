@@ -17,7 +17,7 @@ export const mediaIcon = (m) => (isYouTubeMedia(m) ? "youtube" : MEDIA_GLYPH[m?.
 // A badge is an icon with its words (tooltip and aria-label), in this order.
 export const SONG_BADGES = {
     syncing: { id: "syncing", icon: "download", label: "Baixando o playback…" },
-    synced: { id: "synced", icon: "synced", label: "Sincronizada" },
+    synced: { id: "synced", icon: "synced", label: "Com tempos" },
     duplicate: { id: "duplicate", icon: "copy", label: "Parece repetida", warn: true },
 };
 
