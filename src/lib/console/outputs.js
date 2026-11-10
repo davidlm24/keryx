@@ -145,6 +145,22 @@ export function rowStatus(row, { locked = false } = {}) {
     return { switchOn: false, text: "Fechada", tone: "off", hint: null };
 }
 
+// "Fechar todas as saídas" in the Saídas popover (owner 2026-11-10): the
+// local outputs whose window exists now (an open one or one waiting for its
+// monitor), in the list's order. Network screens have no switch: the
+// console cannot close a tablet.
+export const openLocalKeys = (rows) => (rows || []).filter((r) => r.local && rowStatus(r).switchOn).map((r) => r.key);
+// Its question: closing takes what the church sees off those screens.
+export function closeAllQuestion(names) {
+    const n = names.length;
+    return {
+        title: n === 1 ? "Fechar a saída?" : `Fechar as ${n} saídas?`,
+        text: `${names.join(", ")} ${n === 1 ? "fecha" : "fecham"}: a igreja deixa de ver o que estiver no ar nessas telas até abrir de novo.`,
+        ok: n === 1 ? "Fechar" : "Fechar todas",
+        danger: true,
+    };
+}
+
 // Everything the UI says about the outputs, from the main process's list,
 // the session memory, the lock and what is on air. An output the operator
 // removed (Telas e saídas › Remover saída) is no row, no count and no

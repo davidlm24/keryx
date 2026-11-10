@@ -1,6 +1,24 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, localId, DROP_GRACE_MS, isPhone, screenClients, showsOn, byGroup, groupOf, outputsSummary, outputStatusText } from "./outputs.js";
+import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, localId, DROP_GRACE_MS, isPhone, screenClients, showsOn, byGroup, groupOf, outputsSummary, outputStatusText, openLocalKeys, closeAllQuestion } from "./outputs.js";
+
+test("Fechar todas as saídas: only the local windows that exist, and its question", () => {
+    const rows = [
+        { local: true, key: "/Projection", state: "connected" },
+        { local: true, key: "/StageView", state: "reconnecting" },
+        { local: true, key: "/LyricProjection", state: "closed" },
+        { local: true, key: "/VideoProjection", state: "unused" },
+        { local: false, id: "net:1", state: "connected" },
+    ];
+    assert.deepEqual(openLocalKeys(rows), ["/Projection", "/StageView"], "a screen waiting for its monitor is a window too; network screens never");
+    assert.deepEqual(openLocalKeys(null), []);
+    const two = closeAllQuestion(["Projeção", "Palco"]);
+    assert.equal(two.title, "Fechar as 2 saídas?");
+    assert.equal(two.ok, "Fechar todas");
+    assert.equal(two.danger, true, "it opens on Cancelar: Enter answers no");
+    assert.match(two.text, /^Projeção, Palco fecham:/);
+    assert.equal(closeAllQuestion(["Projeção"]).title, "Fechar a saída?");
+});
 
 const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção", open, placement: { mode: "fullscreen", displayId: 2, missing } });
 const stage = (open) => ({ key: "/StageView", label: "Palco", open, placement: { mode: "window", displayId: null, missing: false } });
