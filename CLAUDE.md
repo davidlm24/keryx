@@ -499,7 +499,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   old `background_image`/`background_generator`; `bgFields` writes both).
   **Every background or theme picker opens the library**
   (`library/BackgroundLibrary.jsx`: Temas · Imagens · Vídeos · Gerados ·
-  Cor; awaited with `useLibraryPicker()`, the chip `library/BgChip.jsx`);
+  Cor; awaited with `useLibraryPicker()`, the chip `library/BgChip.jsx`;
+  a chip given `noneLabel` also has a × beside Trocar… that takes the
+  background off, the library's "Sem fundo" at hand — owner 2026-11-10);
   don't add a gallery of thumbnails to a form.
   **Nothing enters the Mídia twice without a question** (owner 2026-11-07,
   `src/lib/mediaRepeats.js`, tested): a picked file with the same kind, title
