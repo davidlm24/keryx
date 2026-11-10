@@ -16,7 +16,8 @@ import { materialIcon, materialMeta } from "@/lib/console/school";
 import { formatReference } from "@/lib/bibleBooks";
 import { referenceFrom } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
-import { byGroup, rowStatus } from "@/lib/console/outputs";
+import { byGroup, rowStatus, openLocalKeys, closeAllQuestion } from "@/lib/console/outputs";
+import { useConfirm } from "./ConfirmDialog";
 import { placementOptions, placementTarget, placementValue, placementWord } from "@/lib/console/placement";
 import { PREF_OUTPUTS, ruleLabel, ruleSummary } from "@/lib/outputPrefs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
@@ -160,6 +161,16 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
     // The same for the destination: the button shows the choice at once, the
     // main process moves the window, and the row reads it back when done.
     const [placing, setPlacing] = useState({});
+    // Fechar todas as saídas (owner 2026-11-10): every local window at once,
+    // after one question (it opens on Cancelar: what is on air leaves those
+    // screens). Each closes as its own switch would.
+    const confirm = useConfirm();
+    const closeAll = async (keys) => {
+        if (!keys.length) return;
+        const names = keys.map((k) => health.rows.find((r) => r.local && r.key === k)?.name || k);
+        if (!(await confirm(closeAllQuestion(names)))) return;
+        for (const k of keys) flip(k, false);
+    };
     const pick = (key, value) => {
         const target = placementTarget(value, displays);
         if (!target) return;
@@ -168,10 +179,14 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
     };
     if (open !== "outs") return null;
     const rows = health.rows;
+    const openKeys = openLocalKeys(rows).filter((k) => want[k] !== false);
     const summary = health.total ? `${health.connected} de ${health.total} conectadas${locked ? " · travadas" : ""}` : "nenhuma aberta";
     return (
         <div ref={box} role="dialog" aria-label="Saídas" className="pop kx-pop pop-outs" style={{ left: anchor?.left ?? 6, top: "var(--pop-top)", width: anchor?.width ?? 440, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }}>
-            <div className="kx-menu-h"><span className="kx-section" style={{ color: "var(--fg-1)" }}>Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
+            <div className="kx-menu-h"><span className="kx-section" style={{ color: "var(--fg-1)" }}>Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span>
+                {/* Fechar todas as saídas (owner 2026-11-10): the open ones on this computer, after a question. */}
+                {openKeys.length > 0 && <Btn small onClick={() => closeAll(openKeys)} title={`Fechar ${openKeys.length === 1 ? "a saída aberta" : `as ${openKeys.length} saídas abertas`} neste computador`}>Fechar todas…</Btn>}
+            </div>
             {byGroup(rows, (r) => (r.local ? r.key : r.screen)).map((g) => (
                 <React.Fragment key={g.key}>
                 <div className="kx-menu-h out-group"><span className="kx-section">{g.label}</span></div>
