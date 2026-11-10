@@ -658,7 +658,7 @@ export default function Console() {
 
     // What changes the list and its rows (useSetlistWrites.js, shared with a
     // Setlist, Painel or Biblioteca in a window of its own).
-    const { ensureService, setAutoplay, pickServiceFundo, saveOperatorNotes, addStageToSetlist, addMaterial, addSong, writeMessage, addRowToSetlist: addRowAt, saveToCulto } = useSetlistWrites({ say: c.say, serviceId, service, services, items, pickFromLibrary });
+    const { ensureService, setAutoplay, setAutoplayGap, pickServiceFundo, saveOperatorNotes, addStageToSetlist, addMaterial, addSong, writeMessage, addRowToSetlist: addRowAt, saveToCulto } = useSetlistWrites({ say: c.say, serviceId, service, services, items, pickFromLibrary });
 
     // A library row dropped on the Prévia prepares it, on the Programa sends
     // it. Several marked rows (Rodada O2, the mockup's words): only the first,
@@ -1203,7 +1203,7 @@ export default function Console() {
             actions={<>{coverTag}{setlistPicking && <SelectManyBtn on onToggle={setSetlistPicking} />}<IconBtn name="planner" title="Planejar o culto" small onClick={() => openPlanner(view.active ? serviceId : null)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} media={data.media} askText={askText} onOpenMedia={openMedia} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={view.active ? (it) => openPlanner(serviceId, it?.id || null) : null} onSay={c.say}
                 autoplay={{ on: Boolean(service?.autoplay), pending: autoplay.pending, cancel: autoplay.cancel, endsAlone }} picking={setlistPicking} setPicking={setSetlistPicking} />
-            <SetlistFooter count={setlistCount} autoplay={{ on: Boolean(service?.autoplay), onChange: setAutoplay }} prev={stepNb.prev} next={stepNb.next} onStep={stepSetlist} />
+            <SetlistFooter count={setlistCount} autoplay={{ on: Boolean(service?.autoplay), onChange: setAutoplay, gap: { service, onChange: setAutoplayGap } }} prev={stepNb.prev} next={stepNb.next} onStep={stepSetlist} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes

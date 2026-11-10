@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../../shared/live-state.mjs";
 import {
-    endChoice, endActionOf, gapOf, gapLabel, hasSound, endsByItself, itemEnded, nextPlayable, shouldAdvance, newOnAir, END_ACTIONS, END_LABEL, END_ICON, countdownSay,
+    endChoice, endActionOf, gapOf, gapLabel, pauseWord, hasSound, endsByItself, itemEnded, nextPlayable, shouldAdvance, newOnAir, END_ACTIONS, END_LABEL, END_ICON, countdownSay,
 } from "./autoplay.js";
 
 const T0 = 1_000_000;
@@ -30,6 +30,9 @@ test("the pause: the culto's, else the church's, else 5 s", () => {
     assert.equal(gapOf({ autoplay_gap: 7 }, { autoplay_gap: 4 }), 5, "only 0, 3, 5, 10");
     assert.equal(gapLabel(0), "Sem pausa");
     assert.equal(gapLabel(5), "5 s");
+    assert.equal(pauseWord(5), "5s");
+    assert.equal(pauseWord(0), "0s");
+    assert.equal(pauseWord(null), "0s");
     assert.equal(countdownSay("Abertura", 5), "Próximo em 5 s: Abertura");
 });
 

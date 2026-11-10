@@ -1705,7 +1705,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   next — the default, "" and the old `autoAdvance` too — loop or stop; the
   row's menu and Planejar o culto): the next playable item (sections and
   disabled ones skipped) goes on air after the pause (`Service.autoplay_gap`,
-  else Configurações › Culto's `User.autoplay_gap`, 5 s), counted down on its
+  else Configurações › Culto's `User.autoplay_gap`, 5 s — set beside the
+  footer's switch as a short "5s", owner 2026-11-10: `AutoplayGap` in
+  Rundown.jsx, a menu of 0s/3s/5s/10s and "Padrão", `pauseWord`, dimmed
+  while Autoplay is off; Planejar o culto keeps its select), counted down on its
   row and in a toast with Cancelar. "Ended" is `itemEnded`
   (`src/lib/console/autoplay.js`, tested): a file's end as an output reports
   it (`live.ended`: `media.clear`/`video.clear` with `ended`, a list past its

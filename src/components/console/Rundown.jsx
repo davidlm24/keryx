@@ -21,7 +21,8 @@ import useSortable from "./useSortable";
 import useRowStep from "./useRowStep";
 import { menuItem } from "@/lib/console/menuLabels";
 import { useLiveNow } from "@/hooks/useLiveState";
-import { END_ACTIONS, END_LABEL, END_ICON, END_TIP, endChoice, NO_DURATION } from "@/lib/console/autoplay";
+import { usePrefs } from "@/hooks/useUser";
+import { END_ACTIONS, END_LABEL, END_ICON, END_TIP, endChoice, NO_DURATION, gapOf, gapLabel, pauseWord, GAPS } from "@/lib/console/autoplay";
 import { isYouTubeRow, linkNote } from "@/lib/youtubeLinks";
 import { downloadToMedia } from "@/hooks/useYouTubeJobs";
 
@@ -37,6 +38,34 @@ export function AutoplaySwitch({ on, onChange, disabled }) {
     return (
         <button type="button" className="rund-auto" role="switch" aria-checked={Boolean(on)} aria-label="Autoplay: avançar sozinho" title={tip} disabled={disabled} onClick={() => onChange(!on)}>
             <span className={`sw2 kx-switch kx-switch-sm ${on ? "is-on" : ""}`} aria-hidden="true" /><span className="rund-auto-l">Autoplay</span>
+        </button>
+    );
+}
+
+// The pause before the next item, beside the switch (owner 2026-11-10: it
+// was only in Planejar o culto): "5s", the culto's (Service.autoplay_gap)
+// else the church's (Configurações › Culto); a click lists 0s, 3s, 5s, 10s
+// and "Padrão", which gives the culto's own back. Dimmed while Autoplay is
+// off, still editable. gap: { service, onChange(seconds | null) }.
+export function AutoplayGap({ on, disabled, gap }) {
+    const prefs = usePrefs();
+    const menu = useContextMenu();
+    if (!gap?.onChange) return null;
+    const now = gapOf(gap.service, prefs);
+    const own = gap.service?.autoplay_gap != null && gap.service?.autoplay_gap !== "";
+    const church = gapOf(null, prefs);
+    const open = (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        menu({ clientX: r.left, clientY: r.top, preventDefault() {}, stopPropagation() {} }, { title: "Pausa entre itens", items: [
+            ...GAPS.map((g) => ({ label: g ? pauseWord(g) : `${pauseWord(0)} · sem pausa`, checked: own && now === g, onSelect: () => gap.onChange(g) })),
+            "sep",
+            { label: `Padrão · ${pauseWord(church)}`, checked: !own, title: "A pausa de Configurações › Culto", onSelect: () => gap.onChange(null) },
+        ] });
+    };
+    return (
+        <button type="button" className={`rund-gap kx-t ${on ? "" : "is-off"}`} disabled={disabled} onClick={open}
+            title={`Pausa entre itens: ${gapLabel(now).toLowerCase()} · antes de o próximo ir ao ar${own ? "" : " (a padrão)"}`} aria-label={`Pausa entre itens: ${gapLabel(now)}`} aria-haspopup="menu">
+            {pauseWord(now)}
         </button>
     );
 }
@@ -57,6 +86,7 @@ export function SetlistFooter({ autoplay, prev, next, onStep, count = "" }) {
     return (
         <div className="rund-foot" role="group" aria-label="Setlist: avançar">
             <AutoplaySwitch {...autoplay} />
+            <AutoplayGap on={autoplay?.on} disabled={autoplay?.disabled} gap={autoplay?.gap} />
             {count && <span className="rund-foot-n kx-meta" title={count}>{count}</span>}
             <span className="rund-foot-steps">
                 {btn(prev, "skip-back", "Item anterior", "Não há item anterior")}

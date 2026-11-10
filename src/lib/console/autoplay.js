@@ -23,6 +23,9 @@ export const endActionOf = (item, service) => (service?.autoplay ? endChoice(ite
 // The pause before the next one goes on air (seconds): the culto's, else the church's.
 export const GAPS = [0, 3, 5, 10];
 export const gapLabel = (s) => (s ? `${s} s` : "Sem pausa");
+// The pause as the Setlist's footer says it beside Autoplay (owner
+// 2026-11-10: very short): "5s", "0s".
+export const pauseWord = (s) => `${Number(s) || 0}s`;
 export const gapOf = (service, prefs) => {
     const own = service?.autoplay_gap;
     if (own !== null && own !== undefined && own !== "" && GAPS.includes(Number(own))) return Number(own);
