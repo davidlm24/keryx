@@ -1316,13 +1316,14 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear", {});
         await waitFor(() => !live.get().content);
 
-        // Aparência › Fundos: a song whose background has its own dim and
-        // blur goes on air with them, and the projector draws them. The
-        // song's background goes to the Fundo layer (backgroundSpec.js
-        // fundoOps), so it is the Fundo that carries them, and Esc keeps it.
+        // Temas e fundos: a picture with its own dim and blur goes on air with
+        // them, and the projector draws them. A song has no background of its
+        // own since 2026-11-09 (#419): the default theme's picture dresses it,
+        // and goes to the Fundo layer (backgroundSpec.js fundoOps), so it is
+        // the Fundo that carries them, and Esc keeps it.
         const BG = "1557672172-298e090bd0f1";
         const bgPref = (await js(`window.keryxDesktop.db.call("BackgroundPref", "create", [{ source: "bundled:${BG}", dim_pct: 70, blur_px: 6 }])`)).data;
-        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "keryx-media://bundled/backgrounds/${BG}.webp" }])`);
+        const bgTheme = (await js(`window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Fundo Smoke", is_default: true, background_image: "keryx-media://bundled/backgrounds/${BG}.webp" }])`)).data;
         await sleep(800);
         await dblclick(".kx-row", "Canto do console");
         result.bgPrefStamped = await waitFor(() => { const b = live.get().background; const st = live.get().content && live.get().content.style; return Boolean(b && String(b.value).includes(BG) && b.dim === 0.7 && b.blur === 6 && st && !st.background_image); }, 5000);
@@ -1336,6 +1337,7 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear", {});
         await waitFor(() => !live.get().content);
         result.bgSongStays = Boolean(live.get().background && String(live.get().background.value).includes(BG));
+        if (bgTheme && bgTheme.id) await js(`window.keryxDesktop.db.call("ProjectionTheme", "delete", [${JSON.stringify(bgTheme.id)}])`);
         // The idle checks below need no Fundo (the idle look shows only without one).
         live.call("background.clear", {});
         await waitFor(() => !live.get().background);
@@ -1862,7 +1864,7 @@ async function checkConsole(webContents, { live, outputs }) {
         const menuItem = (label) => js(`(() => { const b = [...document.querySelectorAll(".tabs-menu .kx-menu-item")].find((x) => x.textContent.startsWith(${JSON.stringify(label)})); if (b) b.click(); return Boolean(b); })()`);
         await click('[data-tabs-plus="panel"]');
         const tabsMenuOpen = await waitFor(() => js(`Boolean(document.querySelector(".tabs-menu"))`), 3000);
-        await menuItem("Aviso rápido");
+        await menuItem("Avisos");
         const tabsHidden = await waitFor(async () => (await panelTabs()) === "Notas,Timers,Pedidos,Chat", 3000);
         // Pedidos and Chat are default tabs too since Rodada Q (PR2, S12).
         for (const t of ["Timers", "Pedidos", "Chat"]) { await menuItem(t); await sleep(200); }
@@ -1870,7 +1872,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(300);
         const tabsLastStays = (await panelTabs()) === "Notas";
         await menuItem("Restaurar abas padrão");
-        const tabsRestored = await waitFor(async () => (await panelTabs()) === "Notas,Aviso rápido,Timers,Pedidos,Chat", 3000);
+        const tabsRestored = await waitFor(async () => (await panelTabs()) === "Notas,Avisos,Timers,Pedidos,Chat", 3000);
         await press("Escape");
         const tabsClosed = await waitFor(() => js(`!document.querySelector(".tabs-menu")`), 3000);
         result.tabsMenu = tabsMenuOpen && tabsHidden && tabsLastStays && tabsRestored && tabsClosed;
