@@ -14,6 +14,7 @@ import { songSlidesFor } from "../songImport.js";
 import { partOf } from "./songTheme.js";
 import { getYouTubeId } from "../../utils/youtube.js";
 import { pedidoMediaKind } from "./pedidos.js";
+import { youtubeLink } from "../youtubeLinks.js";
 
 export { PROTOCOL };
 const { limits } = PROTOCOL;
@@ -297,16 +298,9 @@ export function cleanText(value, max) {
     return t.slice(0, max);
 }
 
-// A link from the phone: only YouTube (youtube.com, youtu.be), kept as the
-// one URL rebuilt from its id, never what was typed. -> the URL | null.
-const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"]);
-export function youtubeLink(value) {
-    let url;
-    try { url = new URL(String(value || "").trim()); } catch { return null; }
-    if (!/^https?:$/.test(url.protocol) || url.username || url.password || !YOUTUBE_HOSTS.has(url.hostname.toLowerCase())) return null;
-    const id = getYouTubeId(url.href);
-    return id ? `https://www.youtube.com/watch?v=${id}` : null;
-}
+// youtubeLink (a link from the phone or the console's Novo pedido) lives in
+// youtubeLinks.js; re-exported here for the runner and its tests.
+export { youtubeLink };
 
 // The ServiceMessage row a phone's chat.send / request.send makes (no id,
 // no serviceId: the console adds them). at: ISO time. -> the fields, or

@@ -9,6 +9,7 @@ import { mediaFromYouTube } from "@/lib/mediaImport";
 import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { setDragGhost, stageGhost } from "./dragGhost";
+import { youtubeTitle } from "@/lib/console/youtubeTitle";
 import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, pedidoMediaTag, pedidoMediaWarn, pedidoBy, operatorPedido, pickRows, PICK_TABS, pedidoItem, PEDIDO_MAX, withPedido, pedidoYouTube } from "@/lib/console/pedidos";
 
 // The Pedidos tab of the panel beside the Prévia (Rodada Q, PR2; the
@@ -134,6 +135,7 @@ function NewPedido({ songs, media, onWrite, onDone }) {
     const [tab, setTab] = useState("songs");
     const [find, setFind] = useState("");
     const [note, setNote] = useState("");
+    const [link, setLink] = useState("");
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
     const first = useRef(null);
@@ -159,9 +161,13 @@ function NewPedido({ songs, media, onWrite, onDone }) {
         setError("");
     };
     const save = async () => {
-        const v = operatorPedido({ singer, song, note, songId: pick?.kind === "song" ? pick.id : "", mediaId: pick?.kind === "media" ? pick.id : "" }, songs, undefined, media);
-        if (v.error) { setError(v.message); return; }
+        const fields = { singer, song, note, link, songId: pick?.kind === "song" ? pick.id : "", mediaId: pick?.kind === "media" ? pick.id : "" };
+        const check = operatorPedido(fields, songs, undefined, media);
+        if (check.error) { setError(check.message); return; }
         setBusy(true);
+        // Only a link: YouTube's title names the louvor (2 s at most).
+        const linkTitle = !song.trim() && check.fields.link ? await youtubeTitle(check.fields.link) : "";
+        const v = linkTitle ? operatorPedido({ ...fields, linkTitle }, songs, undefined, media) : check;
         try { await onWrite(v.fields); onDone(true); } catch (err) { setError(err?.message || "Não foi possível anotar."); setBusy(false); }
     };
     const enter = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); save(); } };
@@ -202,6 +208,11 @@ function NewPedido({ songs, media, onWrite, onDone }) {
                     </div>
                 )}
             </div>
+            <label className="ped-f">
+                <span>Link do YouTube (opcional)</span>
+                <input className={`kx-input ${error && /não é do YouTube/.test(error) ? "is-bad" : ""}`} value={link} onChange={(e) => { setLink(e.target.value); setError(""); }} maxLength={PEDIDO_MAX.link} onKeyDown={enter}
+                    placeholder="https://youtu.be/…" type="url" inputMode="url" autoComplete="off" spellCheck={false} />
+            </label>
             <label className="ped-f">
                 <span>Observação (opcional)</span>
                 <textarea className="kx-input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={PEDIDO_MAX.note} spellCheck />

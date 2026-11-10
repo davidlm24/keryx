@@ -5,6 +5,17 @@
 
 import { getYouTubeId } from "../utils/youtube.js";
 
+// A link from the phone or the console's Novo pedido: only YouTube (youtube.com, youtu.be), kept as the
+// one URL rebuilt from its id, never what was typed. -> the URL | null.
+const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"]);
+export function youtubeLink(value) {
+    let url;
+    try { url = new URL(String(value || "").trim()); } catch { return null; }
+    if (!/^https?:$/.test(url.protocol) || url.username || url.password || !YOUTUBE_HOSTS.has(url.hostname.toLowerCase())) return null;
+    const id = getYouTubeId(url.href);
+    return id ? `https://www.youtube.com/watch?v=${id}` : null;
+}
+
 // A Media row that is a YouTube link (not a file downloaded from one).
 export const isYouTubeRow = (m) => Boolean(m) && m.type === "video" && Boolean(getYouTubeId(m.file_url || ""));
 
