@@ -112,6 +112,21 @@ test("a pedido's louvor may be a video or an audio, nothing else", () => {
     assert.deepEqual([MEDIA[0], { ...MEDIA[0], missing: true }, { ...MEDIA[0], missing: true, syncing: true }, null].map(pedidoMediaWarn), ["", "arquivo não encontrado", "baixando…", ""]);
 });
 
+test("a pedido sent as a YouTube link is the Mídia's row of that video, downloaded first (owner 2026-11-10)", () => {
+    const link = "https://youtu.be/dQw4w9WgXcQ?si=abc";
+    const r = { id: "r", kind: "pedido", song: "Bondade de Deus", link };
+    assert.equal(mediaOfPedido(r, MEDIA).id, "y1", "saved, still a link: that row (the refusal then offers Baixar)");
+    const got = { id: "d1", type: "video", title: "Bondade de Deus", file_url: "keryx-media://b.mp4", source_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" };
+    assert.equal(mediaOfPedido(r, [...MEDIA, got]).id, "d1", "the downloaded copy before the link");
+    assert.equal(mediaOfPedido(r, [{ ...MEDIA[1], file_url: got.file_url, source_url: got.source_url }]).id, "y1", "the same row, downloaded in place");
+    assert.equal(mediaOfPedido({ ...r, link: "https://youtu.be/AAAAAAAAAAA" }, [...MEDIA, got]), null, "another video");
+    assert.equal(mediaOfPedido(r, [{ ...got, category: "background" }]), null, "never a background");
+    assert.equal(mediaOfPedido({ ...r, mediaId: "a1" }, [...MEDIA, got]).id, "a1", "its mediaId first");
+    assert.equal(mediaOfPedido({ ...r, link: "não é link" }, MEDIA), null);
+    assert.equal(pedidoMediaWarn({ ...MEDIA[1], youtube_state: "blocked" }), "o dono não deixa tocar fora do YouTube");
+    assert.equal(pedidoMediaWarn({ ...got, youtube_state: "blocked" }), "", "a downloaded file plays");
+});
+
 test("a pedido on the Setlist keeps who sings and its note (S13 = A)", () => {
     const p = row("p", "x", { kind: "pedido", singer: " Ana  Souza ", text: "Depois da oferta" });
     assert.deepEqual(pedidoItem(p), { requested_by: "Ana Souza", notes: "Depois da oferta" });
