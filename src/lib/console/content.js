@@ -11,7 +11,9 @@ import { followModeOf, slideSeconds, timedLength, withFollowStarts } from "./lyr
 // A song's audio_url may be its video clip (sent to the video screen) or a
 // playback track (sent to the audio channel, Rodada D4: with the player's
 // transport, and the lyrics can follow it).
-export const isVideoUrl = (url) => Boolean(url) && (url.includes(".mp4") || url.includes("video") || url.startsWith("data:video"));
+// A Mídia's video may be any of the containers it imports (owner
+// 2026-11-10: a .webm chosen from the Mídia went to the audio channel).
+export const isVideoUrl = (url) => Boolean(url) && (/\.(mp4|m4v|webm|mov|mkv)(?=$|[?#])/i.test(url) || url.includes("video") || url.startsWith("data:video"));
 
 // What a song's automatic lyrics follow (content.follow, owner 2026-10-15,
 // Rodada D4): its video, its playback, or — no media, the musicians play —

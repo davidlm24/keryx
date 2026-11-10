@@ -1388,7 +1388,7 @@ export default function Console() {
     const menus = buildMenus({
         desktop: desktopApp, helpKey: keyHint("help", letters), update: upd.update,
         services: cultosOf(services), serviceId, activeId: active.activeId, itemsCount: items.length, locked: c.locked,
-        songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null,
+        songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null, songOnAir: c.cur?.content?.kind === "lyrics" && Boolean(c.cur.content.ref?.songId),
         playerOn: Boolean(barLayer), playing: Boolean(barLayer && !c.cur[barLayer]?.playback?.paused),
         timers: timerChoices(data.timerPresets).map((t) => ({ minutes: t.minutes, label: minutesLabel(t.minutes) })),
         teamUnread, sync: { act: syncAct, running: syncRunning, signing: syncSigning },

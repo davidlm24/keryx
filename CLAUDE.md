@@ -878,9 +878,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   saídas the Saídas popover — don't put it back. Its open menu is the console's
   `open` (`"mb:<id>"`): Esc and the scrim close it, pointing at another
   menu switches, ← / → walk them. Every item is something the console
-  already does (Música › Sincronizar a música… opens the song in the Prévia
-  or on air with Sincronizar on top; Letra automática › Iniciar/Pausar/
-  Retomar; Mídia › Do computador… / Link do YouTube… open the Mídia on
+  already does (Música's group "Letra no tempo": Marcar os tempos da
+  música opens the song in the Prévia or on air with Marcar os tempos on
+  top; Letra automática says what it follows and Iniciar/Pausar/Retomar a
+  letra automática (or por tempo), or why it cannot — "A música no ar não
+  avança sozinha" / "Nenhuma música no ar" (owner 2026-11-10); Mídia › Do computador… / Link do YouTube… open the Mídia on
   that step; Mídia › Fundos opens the backgrounds library at once; Culto ›
   Pedidos/Chat da equipe focus that tab of the Painel, a gold `dot` while
   something new waits, and with the Painel in the tray say "veja em Ver ›
@@ -2731,9 +2733,13 @@ stays one line and a line too long for the column ends in "…" (`SlideText`
 in SlidesPanel.jsx, `.kx-ln`); the whole text is the card's tooltip and the
 Prévia. Verses (prose) still wrap. **Lines per slide** (owner 2026-10-14):
 the song editor's Estrofe / 2 / 4 / Outro (1–12, `LinesPicker`; also the
-import preference) is `Song.lines_per_slide` (`linesLimit`), a setting —
-it never rewrites the lyrics (the old `reflowLyrics` did, one way, and is
-gone), so any choice in any order works. Saving rebuilds the Prévia and
+import preference) is `Song.lines_per_slide` (`linesLimit`). **2/4/Outro
+rewrite the lyrics as the slides read** (owner 2026-11-10, reversing
+2026-10-14's "never rewrites"): `reflowLyrics` (songImport.js, tested) puts
+a blank line every N sung lines; while the text is still what the last
+pick wrote, another pick starts from the text before it (Outro typed 1 then
+12, or 2 then 4, never stacks) and Estrofe gives it back; once edited by
+hand the text is the new start; the toast has Desfazer. Saving rebuilds the Prévia and
 `content.update`s the song on air (`songSaved` in Console.jsx). On every
 screen one line of the lyrics is one line: ScreenRenderer shrinks a song
 slide's font so its longest line fits (`useFit`, a hidden probe,
@@ -2793,9 +2799,11 @@ inserts chords at the cursor (Acorde, the Tom's chips from `keyChords`) and
 transposes the whole song (Tom − / +). A new kind of element is an entry in
 `ELEMENT_TYPES` (with its `group`) plus its case in `elementText` or the
 renderer's `Body`. **Sincronizar e letra automática** (owner 2026-10-15, Rodada D4): a
-song's marks are `Song.slides[].start` (seconds), made in **Sincronizar**,
-a page of THE window (`SyncView.jsx`, nav page `sync`, Editor size) pushed
-from the Editor de música's "Sincronizar…" ("← Editor de música"): the
+song's marks are `Song.slides[].start` (seconds), made in **Marcar os
+tempos** (named so since 2026-11-10: "Sincronizar" is only the cloud
+between computers), a page of THE window (`SyncView.jsx`, nav page `sync`,
+Editor size) pushed from the Editor de música's "Marcar os tempos" ("←
+Editor de música"): the
 media big with the slide playing over it, a time line with a draggable
 marker per slide, the slides with typed times, − / +, Aqui, ×; recording
 marks from the chosen slide on and never wipes the others; no media = a
@@ -2812,7 +2820,13 @@ re-syncs `follow.offset` so it goes on from the new slide; the player's
 chip (`FollowChip`; its words `followLabel`/`followAction` in
 `src/lib/console/followWords.js`, kept apart because player.js rides in
 every output's chunk and the phone has an output's budget) pauses/resumes
-on purpose. The Biblioteca says "sincronizada". **Avançar sozinha** (owner
+on purpose. The Biblioteca says "com tempos". **The song's video or playback is a
+Mídia row** (owner 2026-11-10): the editor's "Vídeo ou playback…" opens
+`PlaybackPicker.jsx` (Vídeos · Áudios, a search, the Mídia's rows through
+`pickRows` of pedidos.js; a YouTube link listed but not chosen: it does
+not play hidden) and "Do computador…" at its end, which brings the file
+into the Mídia first (`pickRepeats`, `importMediaFiles`; Pular uses the
+row already there); `isVideoUrl` knows .webm/.mov/.m4v/.mkv. **Avançar sozinha** (owner
 2026-10-22, Rodada P7 = A/A): the Editor de música's "Avançar sozinha: Não
 | Pelas marcas | Por tempo" is `Song.follow_mode` (off | marks | time; ""
 = by the marks when there are any, as before; `followModeOf`). **Por

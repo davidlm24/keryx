@@ -25,7 +25,7 @@ export const PAGE_TITLES = {
     notice: "Aviso",
     song: "Editor de música",
     // Rodada D4: the song's marks, pushed from the Editor de música.
-    sync: "Sincronizar",
+    sync: "Marcar os tempos",
     school: "Escola bíblica",
     material: "Material",
     reports: "Relatórios",

@@ -229,7 +229,7 @@ export default function SyncView({ title = "", artist = "", slides = [], media =
 
     return (
         <>
-            <WinBar title="Sincronizar" sub={`${title || "Música"} · ${sug ? `0/${n} marcados · ${marked} da internet` : `${marked}/${n} marcados${dirty ? " · não aplicado" : ""}`}`}
+            <WinBar title="Marcar os tempos" sub={`${title || "Música"} · ${sug ? `0/${n} marcados · ${marked} da internet` : `${marked}/${n} marcados${dirty ? " · não aplicado" : ""}`}`}
                 actions={<>
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={!dirty || Boolean(sug)} onClick={apply} title={sug ? "Marque o 1º slide com Espaço, ou Pular" : "Leva as marcas para o Editor de música; o Salvar de lá grava"}>Aplicar</Btn>
