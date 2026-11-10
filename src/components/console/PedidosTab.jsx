@@ -10,7 +10,7 @@ import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { setDragGhost, stageGhost } from "./dragGhost";
 import { youtubeTitle } from "@/lib/console/youtubeTitle";
-import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, pedidoMediaTag, pedidoMediaWarn, pedidoBy, operatorPedido, pickRows, PICK_TABS, pedidoItem, PEDIDO_MAX, withPedido, pedidoYouTube } from "@/lib/console/pedidos";
+import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, pedidoThumb, pedidoMediaTag, pedidoMediaWarn, pedidoBy, operatorPedido, pickRows, PICK_TABS, pedidoItem, PEDIDO_MAX, withPedido, pedidoYouTube } from "@/lib/console/pedidos";
 
 // The Pedidos tab of the panel beside the Prévia (Rodada Q, PR2; the
 // owner's mockup "Q8 · Aba Pedidos no console", S6 = A, S8 = A; S12 = B
@@ -29,7 +29,8 @@ import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, ped
 // a song too adds the link's Pôr na prévia. Once the Mídia has that video
 // (saved or downloaded) the card is that row (mediaOfPedido, 2026-11-10). A card that can go to the
 // Setlist drags there too (M2 = ok), as a Biblioteca row, with who sings and
-// the note (withPedido). Two lines a card
+// the note (withPedido). A video wears its picture at the left, as tall as
+// the two lines and never taller (pedidoThumb; owner 2026-11-10). Two lines a card
 // (owner 2026-10-28, C1 = A): "X canta Y", its marks and the hour; then who
 // noted it and the note, cut with "…" (whole in the tooltip), and the
 // actions as glyphs, always on screen. Novo pedido is the (+) beside the
@@ -72,6 +73,8 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                 const yt = pedidoYouTube(r);
                                 const ytStage = yt ? stageFromYouTube(yt.url, yt.title) : null;
                                 const stage = withPedido(song ? stageFromSong(song, {}, data.themes) : media ? stageFromMedia(media) : ytStage, r);
+                                const thumb = pedidoThumb(r, media);
+                                const glyph = media ? mediaIcon(media) : !ready && yt ? "youtube" : "music";
                                 const drag = !done && stage ? {
                                     draggable: true,
                                     onDragStart: (e) => {
@@ -83,8 +86,8 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                     onDragEnd: () => clearDragStage(),
                                 } : {};
                                 return (
-                                    <div key={r.id} className={`ped-card ${done ? "is-done" : ""} ${by.operator ? "is-op" : ""}`} {...drag}>
-                                        <Icon name={media ? mediaIcon(media) : !ready && yt ? "youtube" : "music"} className="ped-c-i" />
+                                    <div key={r.id} className={`ped-card ${done ? "is-done" : ""} ${by.operator ? "is-op" : ""} ${thumb ? "has-thumb" : ""}`} {...drag}>
+                                        <PedidoPic url={thumb} glyph={glyph} />
                                         <span className="ped-c-l1" title={line}>{r.singer ? <><span className="ped-c-who">{r.singer} canta </span><b>{what}</b></> : <b>{what}</b>}</span>
                                         <span className="ped-c-meta">
                                             {tag && <span className="ped-badge is-kind">{tag}</span>}
@@ -224,6 +227,14 @@ function NewPedido({ songs, media, onWrite, onDone }) {
             </span>
         </form>
     );
+}
+
+// The card's picture, else its glyph — also when the picture does not load
+// (no internet for YouTube's cover, a still gone).
+function PedidoPic({ url, glyph }) {
+    const [failed, setFailed] = useState(null);
+    if (!url || failed === url) return <Icon name={glyph} className="ped-c-i" />;
+    return <img className="ped-c-thumb" src={url} alt="" loading="lazy" draggable={false} onError={() => setFailed(url)} />;
 }
 
 // The list keeps its newest row in view as rows come in (unless the

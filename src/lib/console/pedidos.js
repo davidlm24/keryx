@@ -9,7 +9,7 @@
 import PROTOCOL from "../../../shared/remoteProtocol.json" with { type: "json" };
 import { fold } from "../bibleSearch.js";
 import { mediaIcon, mmss } from "./libraryRows.js";
-import { getYouTubeId } from "../../utils/youtube.js";
+import { getYouTubeId, getYouTubeThumbnail } from "../../utils/youtube.js";
 import { linkNote, youtubeLink } from "../youtubeLinks.js";
 
 const REQ = PROTOCOL.actions["request.send"].args;
@@ -118,6 +118,18 @@ export function mediaOfPedido(r, media = []) {
     if (!id) return null;
     const same = media.filter((m) => pedidoMediaKind(m) && (getYouTubeId(m.file_url || "") === id || getYouTubeId(m.source_url || "") === id));
     return same.find((m) => pedidoMediaKind(m) !== "youtube") || same[0] || null;
+}
+
+// The picture at the card's left (owner 2026-11-10): a video's still, a
+// YouTube link's cover (its row's still, else YouTube's own, which needs the
+// internet). A song, an audio or a video with no still yet keeps its glyph.
+// `m` is mediaOfPedido's row. -> a URL | null.
+export function pedidoThumb(r, m) {
+    const kind = pedidoMediaKind(m);
+    if (kind === "video") return (!m.posterSyncing && m.thumbnail_url) || null;
+    if (kind === "youtube") return (!m.posterSyncing && m.thumbnail_url) || getYouTubeThumbnail(m.file_url || "") || null;
+    if (m || !isPedido(r) || !r.link) return null;
+    return getYouTubeThumbnail(String(r.link)) || null;
 }
 
 // What the card says of that file when it cannot go yet ("" = it can); a

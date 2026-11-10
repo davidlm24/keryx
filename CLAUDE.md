@@ -2184,7 +2184,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   kept). Its card says "Anotado por você"
   with an "operador" badge and a gold ring (`pedidoBy`), the same actions,
   and the Equipe sees it as "Anotado pelo operador". **A card is two lines**
-  (owner 2026-10-28, C1 = A): the glyph, "X canta Y", its badges and the
+  (owner 2026-10-28, C1 = A; a video wears its still or YouTube cover at
+  the left, as tall as the two lines, never taller: `pedidoThumb`, owner
+  2026-11-10): the glyph, "X canta Y", its badges and the
   hour; then who noted it and the note, cut with "…" (whole in the
   tooltip), beside the actions as glyphs (`prev`, +, ✓, the trash; the
   names in their tooltips). A card's actions are
