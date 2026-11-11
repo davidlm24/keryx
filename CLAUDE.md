@@ -2866,7 +2866,23 @@ like any slide; on air the screens show only the background (no title,
 phone "Ministração · sem letra"; the editor's [Ministração] chip inserts
 it alone. A song never saved with `[Parte]` lines is split by
 `slidesFromLyrics` on air (`songSlidesFor`), not `generateSlides`. LRCLIB marks and Procurar letra's "com tempo"
-match per line. **"Marcar os tempos com uma letra…"** (MENU_LABELS
+match per line. **"Exportar vídeo com a letra…"** (owner 2026-11-11,
+mockup approved; MENU_LABELS `exportarVideo`: the song editor's Vídeo e
+tempos, the Biblioteca's song right click, Música › Letra no tempo):
+`ExportVideoDialog.jsx` (`useExportVideo`; theme — the one in use by
+default —, Transição Suave | Corte, "O vídeo já tem a letra"; off with
+the reason by `exportBlock` in src/lib/console/lyricVideo.js, tested: the
+browser preview, no ffmpeg, no playback, a YouTube link, no marks, no
+length) builds the song's document as the Prévia does and main
+(`electron/lyricVideo.cjs`, its pure `segments`/`fadePlan`/`ffmpegArgs`
+tested) asks where to save, opens a hidden offscreen 1920×1080 window on
+`/Render` (`RenderPage.jsx`, never an output nor a network screen) that
+draws the background then each slide as a still and has main
+`capturePage` each, then runs the installer's ffmpeg (the YouTube tools'
+folder; SOURCE.txt says so): one looped PNG per segment, xfade 0,4 s or
+concat, the playback's sound, H.264 + AAC 1080p30; progress over
+`keryx:lyricVideo`, Cancelar kills it, the temp folder always goes. Only
+`desktop:dev` confirms the capture and the encode. **"Marcar os tempos com uma letra…"** (MENU_LABELS
 `marcarTempos`) on a video or an audio of the computer (Biblioteca, the
 Mídia's menu and side panel): `SongPickDialog.jsx` (`useMarkTimes`; the
 songs using the file first, `songPick.js`, tested) makes the file the

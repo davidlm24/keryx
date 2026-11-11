@@ -9,6 +9,7 @@ const { createOutputManager, createReloadLimiter } = require("./outputs-manager.
 const { createSettings } = require("./settings.cjs");
 const { outputKeyForUrl, outputForKey } = require("./outputs.cjs");
 const { createSoundEngine, ROUTE: SOUND_ROUTE } = require("./soundEngine.cjs");
+const { createLyricVideo, registerLyricVideo } = require("./lyricVideo.cjs");
 const { registerSoundOut } = require("./soundOut.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
 const { createRendererLog } = require("./rendererLog.cjs");
@@ -935,6 +936,25 @@ app.whenReady().then(async () => {
     // Every sound of this computer plays in one hidden window, the sound
     // engine; the outputs are muted (owner 2026-11-08).
     soundEngine = createSoundEngine({ BrowserWindow, url: appUrl + SOUND_ROUTE, webPreferences, log: logger });
+    // "Exportar vídeo com a letra…" (electron/lyricVideo.cjs): a hidden page
+    // draws the slides, the installer's ffmpeg (the YouTube tools' folder)
+    // joins them with the playback's sound.
+    registerLyricVideo({
+        ipcMain,
+        BrowserWindow,
+        isTrusted: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
+        log: logger,
+        video: createLyricVideo({
+            BrowserWindow,
+            dialog,
+            url: appUrl + "/Render",
+            webPreferences,
+            toolsDir: app.isPackaged ? path.join(process.resourcesPath, "youtube") : path.join(__dirname, "..", "vendor", "youtube"),
+            mediaDir,
+            emit: (job) => broadcast("keryx:lyricVideo", job),
+            log: logger,
+        }),
+    });
     win.once("ready-to-show", () => soundEngine.start());
     if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, settings, network, live, dataDir, importOutcome });
 });

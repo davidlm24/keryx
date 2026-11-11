@@ -43,6 +43,12 @@ ipcRenderer.on("keryx:janela", (_event, msg) => {
         try { listener(msg); } catch (err) { console.error("[keryx] janela listener failed:", err); }
     }
 });
+const videoListeners = new Set();
+ipcRenderer.on("keryx:lyricVideo", (_event, job) => {
+    for (const listener of videoListeners) {
+        try { listener(job); } catch (err) { console.error("[keryx] video listener failed:", err); }
+    }
+});
 const youtubeListeners = new Set();
 ipcRenderer.on("keryx:youtube", (_event, job) => {
     for (const listener of youtubeListeners) {
@@ -223,6 +229,15 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     // Lyrics from the web (LRCLIB + letras.mus.br search), main process.
     lyrics: {
         call: (op, args) => ipcRenderer.invoke("keryx:lyrics", { op, args }),
+    },
+    // Exportar vídeo com a letra (electron/lyricVideo.cjs): the console's
+    // start/cancel/status and the hidden page's doc/frame/drawn.
+    lyricVideo: {
+        call: (op, args) => ipcRenderer.invoke("keryx:lyricVideo", { op, args }),
+        onJob(listener) {
+            videoListeners.add(listener);
+            return () => videoListeners.delete(listener);
+        },
     },
     // YouTube links: may it play here, Baixar para a Mídia (electron/youtube.cjs).
     youtube: {

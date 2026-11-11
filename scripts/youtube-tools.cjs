@@ -51,7 +51,8 @@ const SOURCE_TXT = `ffmpeg.exe: FFmpeg ${TOOLS.ffmpeg.version}, the "essentials"
 licensed under the GNU GPL v3 (ffmpeg-LICENSE.txt). Its source code:
 https://ffmpeg.org/releases/ffmpeg-${TOOLS.ffmpeg.version}.tar.xz and the build's configuration at
 https://www.gyan.dev/ffmpeg/builds/. KERYX runs it as a separate program only to join the
-picture and the sound of a video downloaded with "Baixar para a Mídia".
+picture and the sound of a video downloaded with "Baixar para a Mídia", and to join a song's
+slide pictures and its playback into a video with the lyrics ("Exportar vídeo com a letra").
 
 yt-dlp.exe: yt-dlp ${TOOLS.ytdlp.version} (${TOOLS.ytdlp.url}), public domain (The Unlicense);
 source at https://github.com/yt-dlp/yt-dlp. It updates itself on each computer.

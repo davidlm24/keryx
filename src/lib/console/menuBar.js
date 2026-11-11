@@ -117,6 +117,7 @@ export function buildMenus(ctx) {
         // them on air is Letra automática.
         head("Letra no tempo"),
         { label: "Marcar os tempos da música", icon: "synced", disabled: !ctx.songId, title: ctx.songId ? "Marcar onde cada slide entra, com o vídeo, o playback ou um relógio · a música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("syncSong", ctx.songId) },
+        mi("exportarVideo", { disabled: !ctx.songId, title: ctx.songId ? "Um MP4 com a letra nos tempos marcados e o som do playback · a música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("exportVideo", ctx.songId) }),
         { label: "Letra automática", icon: "music", title: "A letra no ar avança sozinha: pelas marcas ou pelo tempo de cada slide", sub: letra },
         sep,
         mi("temasEFundos", { title: "Configurações › Temas e fundos", onSelect: call("settings", "temas") }),
