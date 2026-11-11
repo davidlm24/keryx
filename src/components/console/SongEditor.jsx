@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { keryx } from "@/api/keryxClient";
 import { useLibrary } from "./useConsoleData";
 import PlaybackPicker, { useMediaFromComputer } from "./PlaybackPicker";
+import { useExportVideo } from "./ExportVideoDialog";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
@@ -100,6 +101,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // Vídeo ou playback… (owner 2026-11-10): the Mídia's videos and audios
     // first (PlaybackPicker), the computer last.
     const { media: libMedia } = useLibrary();
+    // Exportar vídeo com a letra (owner 2026-11-11): the draft as it is now.
+    const exportVideo = useExportVideo({ themeInUse: c.themeId, say: c.say });
     const [picking, setPicking] = useState(false);
     const pickAnchor = useRef(null);
     const lyricsRef = useRef(null);
@@ -562,6 +565,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                 {rowSlides.split}
                 <Panel className="ed-video" title="Vídeo e tempos" style={{ flex: 1, minHeight: 120 }} actions={<>
                     {onSync && <Btn small kind="outline" disabled={!slides.length} onClick={openSync} title="Marcar onde cada slide entra: com o vídeo, o playback ou, sem mídia, um relógio (para os músicos ao vivo)">Marcar os tempos</Btn>}
+                    {(() => { const draft = { ...song, slides, line_starts: lineStarts, duration: parseDuration(durationText) || song.duration }; const why = exportVideo.block(draft); return <Btn small disabled={Boolean(why)} onClick={() => exportVideo.open(draft)} title={why || "Um MP4 com a letra nos tempos marcados e o som do playback"}>Exportar vídeo…</Btn>; })()}
                     <span className="pl-popwrap" ref={pickAnchor}>
                         <Btn small className={picking ? "is-on" : ""} disabled={busy === "audio_url"} onClick={() => setPicking(!picking)} title="Um vídeo ou um playback da Mídia, ou do computador" aria-haspopup="dialog" aria-expanded={picking}>{busy === "audio_url" ? "Enviando…" : media ? "Trocar…" : "Vídeo ou playback…"}</Btn>
                     </span>
@@ -624,6 +628,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                 </Panel>
             </div>
             </div>
+            {exportVideo.dialog}
         </>
     );
 }

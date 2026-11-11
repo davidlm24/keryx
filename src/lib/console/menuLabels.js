@@ -35,6 +35,9 @@ export const MENU_LABELS = {
     // A video or an audio of the Mídia: the song whose lyric times are
     // marked with it (owner 2026-11-10; it asks which song first).
     marcarTempos: { label: "Marcar os tempos com uma letra…", icon: "synced" },
+    // A song as an MP4 with its lyrics and playback (owner 2026-11-11; it asks
+    // the theme and where to save before acting).
+    exportarVideo: { label: "Exportar vídeo com a letra…", icon: "film" },
     // The KERYX package (src/lib/keryxPackage.js): Exportar… asks how (the
     // export dialog); Abrir… asks for the file.
     exportar: { label: "Exportar…", icon: "save" },

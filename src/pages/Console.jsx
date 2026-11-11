@@ -53,6 +53,7 @@ import Rundown, { plannedTimes, SetlistFooter } from "@/components/console/Rundo
 import { useSetlistAutoplay } from "@/components/console/useSetlistAutoplay";
 import { endsByItself, AUTOPLAY_SAY } from "@/lib/console/autoplay";
 import Layers from "@/components/console/Layers";
+import { useExportVideo } from "@/components/console/ExportVideoDialog";
 import PromptDialog from "@/components/console/PromptDialog";
 import ReportDialog, { ReportContext, DIAGNOSTIC_SAVED } from "@/components/console/ReportDialog";
 import BibleSetupDialog from "@/components/console/BibleSetupDialog";
@@ -661,6 +662,8 @@ export default function Console() {
 
     // What changes the list and its rows (useSetlistWrites.js, shared with a
     // Setlist, Painel or Biblioteca in a window of its own).
+    // Exportar vídeo com a letra (Música › Letra no tempo; owner 2026-11-11).
+    const exportVideo = useExportVideo({ themeInUse: c.themeId, say: c.say });
     const { ensureService, setAutoplay, setAutoplayGap, pickServiceFundo, saveOperatorNotes, addStageToSetlist, addMaterial, addSong, writeMessage, addRowToSetlist: addRowAt, saveToCulto } = useSetlistWrites({ say: c.say, serviceId, service, services, items, pickFromLibrary });
 
     // A library row dropped on the Prévia prepares it, on the Programa sends
@@ -1412,6 +1415,7 @@ export default function Console() {
             // As the cloud's popover: Sincronização shows "Termine a entrada no navegador".
             syncSignIn: () => { openSettings("sincronizacao"); signInWithGoogle({ say: c.say, songsHere: data.songs.length, status: currentSyncStatus() }); },
             syncSong: (id) => openSong(id, { sync: true }),
+            exportVideo: (id) => exportVideo.open((data.songs || []).find((s) => s.id === id)),
             follow: (action) => c.callOp("content.follow", { action }).catch(() => {}),
             media: (intent) => openMedia(intent),
             backgrounds: () => pickFromLibrary({ manage: true, title: "Fundos" }),
@@ -1695,6 +1699,7 @@ export default function Console() {
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
+            {exportVideo.dialog}
             <ImportSongsDialog request={importReq} onClose={closeImport} onBusy={(busy) => setImportReq((r) => (r ? { ...r, busy } : r))} say={c.say} />
             {pkg.element}
             <ReportDialog open={Boolean(reporting)} mail={reporting?.subject ? reporting : null} onClose={() => setReporting(false)} say={c.say} />

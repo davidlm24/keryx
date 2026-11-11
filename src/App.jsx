@@ -45,6 +45,7 @@ const CommunicationProjection = lazy(() => import('./pages/CommunicationProjecti
 const PastorView = lazy(() => import('./pages/PastorView'));
 const StreamView = lazy(() => import('./pages/StreamView'));
 const SoundEngine = lazy(() => import('./pages/SoundEngine'));
+const RenderPage = lazy(() => import('./pages/RenderPage'));
 const RemoteView = lazy(() => import('./pages/RemoteView'));
 const NetworkHome = lazy(() => import('@/components/network/NetworkHome'));
 // Only an output on a tablet or a TV loads it (NetworkStatus).
@@ -169,6 +170,9 @@ function App() {
                   of this computer (electron/soundEngine.cjs). Desktop only,
                   never a network screen, never an output. */}
               <Route path="/Som" element={page(SoundEngine, BLACK)} />
+              {/* Exportar vídeo com a letra: the hidden page that draws a song's
+                  slides for ffmpeg (electron/lyricVideo.cjs). Desktop only. */}
+              <Route path="/Render" element={page(RenderPage, BLACK)} />
               {screens}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Rede" element={page(NetworkHome, GROUND, { screens: PREVIEW_SCREENS })} />}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Remote" element={page(RemoteView, GROUND)} />}

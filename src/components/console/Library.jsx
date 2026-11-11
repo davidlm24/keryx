@@ -23,6 +23,7 @@ import { downloadToMedia, useYouTubeJobs } from "@/hooks/useYouTubeJobs";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles, importSummary, pickRepeats } from "@/lib/mediaImport";
 import { useMarkTimes } from "./SongPickDialog";
+import { useExportVideo } from "./ExportVideoDialog";
 import { marksWith } from "@/lib/console/songPick";
 import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
@@ -169,6 +170,8 @@ export default function Library({ c, data, tab, setTab, tabs, onPrepare, onGo, o
     const menu = useContextMenu();
     // "Excluir…" in the menus asks first (ConfirmDialog.jsx).
     const confirm = useConfirm();
+    // A song as an MP4 with its lyrics (owner 2026-11-11).
+    const exportVideo = useExportVideo({ themeInUse: c.themeId, say: c.say });
     // A video or an audio: "Marcar os tempos com uma letra…" (owner 2026-11-10).
     const markTimes = useMarkTimes({ songs: data.songs, openSong: (id) => onEditSong?.(id, { sync: true }), say: c.say });
     const toggleFav = (s) => keryx.entities.Song.update(s.id, { is_favorite: !s.is_favorite }).catch((err) => c.say(err?.message || "Não foi possível."));
@@ -320,6 +323,7 @@ export default function Library({ c, data, tab, setTab, tabs, onPrepare, onGo, o
                                     menuItem("porNaPrevia", { onSelect: () => onPrepare(stageFromSong(s, {}, data.themes)) }),
                                     onAddSong && menuItem("adicionarSetlist", { onSelect: () => onAddSong(s) }),
                                     onEditSong && menuItem("editar", { onSelect: () => onEditSong(s.id) }),
+                                    menuItem("exportarVideo", { title: exportVideo.block(s) || undefined, onSelect: () => exportVideo.open(s) }),
                                     menuItem(s.is_favorite ? "tirarDosFavoritos" : "favoritar", { onSelect: () => toggleFav(s) }),
                                     dupIds?.has(s.id) && onDuplicates && { label: "Ver as repetidas…", icon: "copy", onSelect: onDuplicates },
                                     menuItem("selecionarVarios", { onSelect: () => ms.pickFrom(s.id) }),
@@ -427,6 +431,7 @@ export default function Library({ c, data, tab, setTab, tabs, onPrepare, onGo, o
             </SelBar>
             {mediaKinds && <MediaPeek peek={peek} />}
             {markTimes.dialog}
+            {exportVideo.dialog}
         </>
     );
 }

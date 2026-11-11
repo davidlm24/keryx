@@ -1481,6 +1481,15 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .cfg .cfg-devs-acts .kx-btn { gap: var(--space-1); }
 /* Conectar um aparelho… (mockup board 2): the QR on white, the countdown. */
 .console .dialog.confirm-dialog.pair-dialog { width: min(380px, calc(100% - 32px)); top: 50%; }
+/* Exportar vídeo com a letra (owner 2026-11-11). */
+.console .dialog.confirm-dialog.vidx { width: min(440px, calc(100% - 32px)); top: 50%; }
+.console .vidx-row { display: flex; align-items: center; gap: var(--space-2); }
+.console .vidx-row > span:first-child { width: 72px; flex: none; color: var(--fg-2); font-size: var(--fs-meta); }
+.console .vidx-row select { flex: 1; min-width: 0; }
+.console .vidx-warn { margin: 0; font-size: var(--fs-meta); color: var(--warn); }
+.console .vidx-job { display: flex; flex-direction: column; gap: var(--space-1); }
+.console .vidx-bar { height: 6px; border-radius: 3px; background: var(--bg-3); overflow: hidden; }
+.console .vidx-bar > i { display: block; height: 100%; background: var(--fg-1); }
 /* Marcar os tempos com uma letra… (owner 2026-11-10): the songs, those using the file first. */
 .console .dialog.confirm-dialog.songpick { width: min(420px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); display: flex; flex-direction: column; }
 .console .songpick-list { min-height: 0; max-height: 320px; overflow: auto; }
