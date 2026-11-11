@@ -1567,6 +1567,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .ed-syncstat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-1); }
 .console .ed-syncn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-content); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .ed-syncn.is-on { color: var(--fg-1); }
+.console .ed-unmarked { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 /* Avançar sozinha (Rodada P7): a label column, then the controls. */
 .console .ed-adv { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: var(--control-sm); }
 .console .ed-adv > .k { flex: 0 0 110px; font-size: var(--fs-content); color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2465,6 +2466,9 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-row:hover { background: var(--bg-2); }
 .console .sync .sync-row.is-sel { background: var(--bg-3); }
 .console .sync .sync-row.is-prev { background: var(--prev-bg); }
+.console .sync .sync-lines { display: flex; flex-direction: column; gap: 1px; }
+.console .sync .sync-lines > span:not(:first-of-type) { color: var(--fg-3); }
+.console .sync .sync-lab { font-size: var(--fs-meta); color: var(--fg-2); font-weight: 600; }
 .console .sync .sync-div { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 2px; font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; }
 .console .sync .sync-div::after { content: ""; flex: 1; border-top: 1px solid var(--line-soft); }
 .console .sync .sync-row.is-air { background: var(--live-bg); }

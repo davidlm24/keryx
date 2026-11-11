@@ -610,6 +610,11 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                                 : !media ? "No ar: Iniciar letra automática no player, na introdução."
                                 : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>
                             {linesMoved && <span className="kx-meta kx-warn">A letra mudou de linhas: confira as marcas em Marcar os tempos</span>}
+                            {/* A finer split made slides with no time (owner 2026-11-11): on air they come in at an estimate. */}
+                            {marked > 0 && marked < slides.length && !linesMoved && (
+                                <span className="kx-meta kx-warn ed-unmarked">{slides.length - marked} {slides.length - marked === 1 ? "slide sem tempo marcado · no ar, entra por estimativa" : "slides sem tempo marcado · no ar, entram por estimativa"}
+                                    {onSync && <Btn small onClick={openSync}>Marcar os tempos</Btn>}</span>
+                            )}
                         </>}
                         {advance === "off" && <span className="kx-meta">{marked ? "A letra não avança sozinha; as marcas ficam guardadas." : "A letra não avança sozinha: as setas mudam o slide."}</span>}
                     </div>

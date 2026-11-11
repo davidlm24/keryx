@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides } from "./lyricSync.js";
+import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts } from "./lyricSync.js";
 import { sungLines, slidesFromLyrics } from "../songImport.js";
 import { applyOp, emptyState, followIndex } from "../../../shared/live-state.mjs";
 
@@ -157,4 +157,13 @@ test("one-slide lyrics split on the page, and Distribuir by slide", () => {
     const lyrics = "a\nb\nc\nd\ne";
     assert.deepEqual(slideFirstLines(slidesFromLyrics(lyrics, { lines: 2 })), chunkGroups(5, 2).map((g) => g.first));
     assert.deepEqual(distributeSlides([0, 4, 6], 8, 30), [0, null, null, null, 10, null, 20, null]);
+});
+
+test("one time per slide (2026-11-11): marks fold onto each slide's first line", () => {
+    // Slides start at lines 0, 4 and 6 (8 lines).
+    const firsts = [0, 4, 6];
+    assert.deepEqual(onFirsts([10, 12, 14, 16, null, 22, null, null], firsts, 8), [10, null, null, null, 22, null, null, null], "an inner mark (line 6) moves to its slide's first line");
+    assert.deepEqual(onFirsts([null, null, null, null, null, null, null, null], firsts, 8), Array(8).fill(null), "a slide with no mark stays empty");
+    assert.deepEqual(onFirsts([5, null, null, null, 20, null, 30, 31], firsts, 8), [5, null, null, null, 20, null, 30, null]);
+    assert.deepEqual(startsFromLines(slidesFromLyrics("a\nb\nc\nd\ne\nf\ng\nh", { lines: 4 }), onFirsts([10, 12, 14, 16, 18, 20, 22, 24], [0, 4], 8)), [10, 18], "the slides' starts do not change");
 });

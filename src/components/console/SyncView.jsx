@@ -7,7 +7,7 @@ import SyncMarks from "./SyncMarks";
 import PlaybackPicker, { useMediaFromComputer } from "./PlaybackPicker";
 import { useLibrary } from "./useConsoleData";
 import { isVideoUrl } from "@/lib/console/content";
-import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP } from "@/lib/console/lyricSync";
+import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP } from "@/lib/console/lyricSync";
 import { anchorIndex, anchorMarks, fmtDelta } from "@/lib/console/lrcPick";
 
 const isMark = (v) => Number.isFinite(v);
@@ -73,7 +73,14 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     // here, in 2 or 4 lines, before marking; Aplicar takes the split along.
     const [split, setSplit] = useState(0);
     const groupsNow = split > 0 ? chunkGroups(n, split, groups?.[0]?.label || "") : groups;
-    const [starts, setStarts] = useState(() => Array.from({ length: n }, (_, i) => (isMark(initial[i]) ? initial[i] : null)));
+    // One time per slide (owner 2026-11-11): the marks live on each slide's
+    // first line; marks made on inner lines before fold onto it.
+    const initialMarks = useRef(null);
+    if (initialMarks.current === null) {
+        const raw = Array.from({ length: n }, (_, i) => (isMark(initial[i]) ? initial[i] : null));
+        initialMarks.current = lines && groups?.length ? onFirsts(raw, groups.map((g) => g.first), n) : raw;
+    }
+    const [starts, setStarts] = useState(() => initialMarks.current);
     const [undo, setUndo] = useState([]);
     const [sel, setSel] = useState(() => (lines && groups?.length ? firstUnmarkedSlide(groups.map((g) => g.first), initial, lines.length) : Math.max(0, nextUnmarked(initial))));
     const [rec, setRec] = useState(null); // the slide Espaço marks next while recording
@@ -92,7 +99,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const lastMark = Math.max(0, ...starts.filter(isMark));
     const duration = mediaDur || songDuration || (live ? Math.max(180, Math.ceil(lastMark + 30)) : null);
     const marked = markedCount(starts);
-    const dirty = !sameMarks(starts, Array.from({ length: n }, (_, i) => initial[i] ?? null)) || (media || "") !== (mediaIn || "");
+    const dirty = !sameMarks(starts, initialMarks.current) || (media || "") !== (mediaIn || "");
     // Detached (/Janela), unsaved changes hold the window: closing it asks.
     useUnloadGuard(dirty);
     const playingIdx = indexAt(starts, t);
@@ -159,7 +166,9 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         const at = before.findIndex((v, i) => (isMark(v) ? v !== starts[i] : isMark(starts[i])));
         setStarts(before);
         setUndo((u) => u.slice(0, -1));
-        if (at >= 0) { setSel(at); if (rec !== null) setRec(at); }
+        // The gold back on the slide whose mark changed (its first line).
+        const to = at >= 0 && byLine ? (firsts.filter((f) => f <= at).pop() ?? at) : at;
+        if (to >= 0) { setSel(to); if (rec !== null) setRec(to); }
         setDone(null);
         setFinished(false);
     };
@@ -171,7 +180,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const takeRecording = async (r) => {
         setFind(null);
         if (marked && !sug && !(await ask({ title: "Trocar as marcas?", text: `As ${marked} marcas de agora dão lugar às de "${r.title}". Desfazer volta atrás.`, ok: "Trocar" }))) return;
-        const next = fitMarks(r.marks, n);
+        const next = byLine ? onFirsts(fitMarks(r.marks, n), firsts, n) : fitMarks(r.marks, n);
         change(next);
         setRec(null);
         setSug({ from: [r.title, r.artist].filter(Boolean).join(" — "), missing: next.map((v, i) => (isMark(v) ? -1 : i)).filter((i) => i >= 0) });
@@ -212,6 +221,12 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         if (rec !== null) { const to = after(next, i); if (to < 0) setRec(null); else setRec(to); }
     };
     const unmark = (i) => { change(setMark(starts, i, null)); pointAt(i); };
+    // A slide row's edits act on its first line; ✕ clears the whole slide.
+    const slideRange = (g) => Array.from({ length: g.end - g.first }, (_, k) => g.first + k);
+    const clearSlide = (g) => { change(starts.map((v, i) => (i >= g.first && i < g.end ? null : v))); pointAt(g.first); };
+    const setSlide = (g, v) => change(setMark(starts.map((x, i) => (i > g.first && i < g.end ? null : x)), g.first, v));
+    // Lyrics that are one slide, split here: the marks fold onto the new slides.
+    const splitBy = (k) => { setSplit(k); setRec(null); setStarts((s) => onFirsts(s, chunkGroups(n, k).map((g) => g.first), n)); };
     // The video or playback chosen here (a Mídia row, or a file the
     // computer brings into the Mídia); the marks stay, to check against it.
     const chooseMedia = (row) => { setPicking(false); if (row?.file_url && row.file_url !== media) { pause(); setMedia(row.file_url); setMediaDur(null); setT(0); } };
@@ -289,13 +304,16 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const lyric = byLine
         ? (slideNow >= 0 ? slides.slice(slideOf[slideNow].first, slideOf[slideNow].end).map((l) => l.text).join("\n") : "")
         : playingIdx >= 0 ? slides[playingIdx]?.text : "";
-    const unit = byLine ? "linha" : "slide";
-    const firstOfSlide = new Map(slideOf.map((g, k) => [g.first, k]));
     const slideStartLines = new Set(slideOf.map((g) => { for (let i = g.first; i < g.end; i++) if (isMark(starts[i])) return i; return -1; }));
     const sourceWord = live ? "Ao vivo · relógio, sem mídia" : video ? "Vídeo · com a letra como sai na tela" : "Playback";
     const anchor = sug ? anchorIndex(starts) : -1;
     // A slide the recording did not have, still unmarked: said under the list.
-    const missing = (sug || done)?.missing?.filter((i) => !isMark(starts[i])) || [];
+    const missing = !(sug || done) ? [] : byLine ? slideOf.map((g, k) => (isMark(g.start) ? -1 : k)).filter((k) => k >= 0) : (sug || done).missing.filter((i) => !isMark(starts[i]));
+    // The rows: one per slide (its lines, one time) — slide by slide on the old page.
+    const rows = byLine
+        ? slideOf.map((g, k) => ({ k, i: g.first, g, text: slideRange(g).map((i) => slides[i]?.text || "").join("\n"), label: g.label, value: g.start }))
+        : slides.map((s, i) => ({ k: i, i, g: null, text: s.text, label: s.label, value: starts[i] }));
+    const rowText = (k) => rows[k]?.text || "";
     const openFind = () => { setRec(null); setFind({ auto: true }); };
 
     return (
@@ -303,7 +321,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
             <WinBar title="Marcar os tempos" sub={`${title || "Música"} · ${sug ? `${marked} marcas da internet` : `${byLine ? slidesMarked : marked}/${byLine ? slideOf.length : n} ${byLine ? "slides marcados" : "marcados"}${dirty || split ? " · não aplicado" : ""}`}`}
                 actions={<>
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
-                    <Btn small kind="brand" disabled={!dirty || Boolean(sug)} onClick={apply} title={sug ? `Marque a 1ª ${unit} com Espaço, ou Pular` : "Leva as marcas (e o vídeo ou playback escolhido) para o Editor de música; o Salvar de lá grava"}>Aplicar</Btn>
+                    <Btn small kind="brand" disabled={!dirty || Boolean(sug)} onClick={apply} title={sug ? "Marque o 1º slide com Espaço, ou Pular" : "Leva as marcas (e o vídeo ou playback escolhido) para o Editor de música; o Salvar de lá grava"}>Aplicar</Btn>
                 </>} />
             <div className="win-body sync">
                 <div className="col center">
@@ -325,7 +343,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                             <div className="sync-note is-ask" role="status">
                                 <span className="sync-step" aria-hidden="true">1</span>
                                 <span className="sync-note-t">
-                                    <b>{playing ? <>Aperte <kbd>Espaço</kbd> quando começar a {unit} {anchor + 1}</> : <>Toque o playback e aperte <kbd>Espaço</kbd> quando começar a {unit} {anchor + 1}</>}</b>
+                                    <b>{playing ? <>Aperte <kbd>Espaço</kbd> quando começar o slide {byLine ? slideAt(anchor) + 1 : anchor + 1}</> : <>Toque o playback e aperte <kbd>Espaço</kbd> quando começar o slide {byLine ? slideAt(anchor) + 1 : anchor + 1}</>}</b>
                                     <span>As {marked} marcas vieram de "{sug.from}". Marcando o {anchor + 1}º, todas andam juntas para o seu playback.</span>
                                 </span>
                                 <Btn small onClick={() => setFind({ auto: false })}>Trocar a gravação…</Btn>
@@ -338,8 +356,8 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                     <b>A letra é um slide só ({n} linhas)</b>
                                     <span>Divida antes de marcar: aí o Espaço marca o começo de cada slide. A divisão vai junto no Aplicar.</span>
                                 </span>
-                                <Btn small onClick={() => { setSplit(2); setRec(null); }}>2 linhas</Btn>
-                                <Btn small onClick={() => { setSplit(4); setRec(null); }}>4 linhas</Btn>
+                                <Btn small onClick={() => splitBy(2)}>2 linhas</Btn>
+                                <Btn small onClick={() => splitBy(4)}>4 linhas</Btn>
                             </div>
                         )}
                         {split > 0 && (
@@ -364,7 +382,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 <Icon name="check" className="sync-ok" />
                                 <span className="sync-note-t">
                                     <b>As {marked} marcas andaram {fmtDelta(done.delta)} para o seu playback</b>
-                                    <span>Toque e confira. Uma {unit} fora do lugar: − / +, Aqui ou arraste a marca; só ela muda.</span>
+                                    <span>Toque e confira. Um slide fora do lugar: − / +, Aqui ou arraste a marca; só ele muda.</span>
                                 </span>
                                 <Btn small onClick={undoAnchor}>Desfazer</Btn>
                             </div>
@@ -404,7 +422,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                             onPointerDown={(e) => { if (e.button === 0 && duration) seek(timeAtX(e.clientX)); }}>
                             <i className="sync-played" style={{ width: pct(t) }} />
                             {starts.map((v, i) => (isMark(v) ? (
-                                <span key={i} className={`sync-mk ${byLine && !slideStartLines.has(i) ? "is-line" : ""} ${i === playingIdx && !sug ? "is-air" : ""} ${i === sel ? "is-sel" : ""} ${sug ? "is-sug" : ""}`} style={{ left: pct(v) }} title={`${byLine ? "Linha" : "Slide"} ${i + 1} · ${fmtTime(v)} · arraste para ajustar`}
+                                <span key={i} className={`sync-mk ${byLine && !slideStartLines.has(i) ? "is-line" : ""} ${i === playingIdx && !sug ? "is-air" : ""} ${i === sel ? "is-sel" : ""} ${sug ? "is-sug" : ""}`} style={{ left: pct(v) }} title={`Slide ${byLine ? slideAt(i) + 1 : i + 1} · ${fmtTime(v)} · arraste para ajustar`}
                                     onPointerDown={dragMarker(i)} onPointerMove={moveMarker} onPointerUp={dropMarker}>{byLine ? (slideStartLines.has(i) ? slideOf.findIndex((g) => i >= g.first && i < g.end) + 1 : "") : i + 1}</span>
                             ) : null))}
                             <b className="sync-head" style={{ left: pct(t) }} />
@@ -416,29 +434,33 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                 </div>
                 {col.split}
                 <div className="col" style={col.style}>
-                    <Panel title={<>{byLine ? "Linhas" : "Slides"} <span className="kx-count">· {n}{byLine ? ` · ${slideOf.length} slides` : ""}</span></>} bodyStyle={{ overflow: "auto" }}>
+                    <Panel title={<>Slides <span className="kx-count">· {rows.length}</span></>} bodyStyle={{ overflow: "auto" }}>
                         {!n && <Empty icon="list" title="Nenhum slide">Escreva a letra no editor primeiro.</Empty>}
                         <div className="sync-list">
-                            {slides.map((s, i) => (
-                                <React.Fragment key={i}>
-                                {byLine && firstOfSlide.has(i) && (() => { const g = slideOf[firstOfSlide.get(i)]; return <div className="sync-div" aria-hidden="true">Slide {firstOfSlide.get(i) + 1}{g.label ? ` · ${g.label}` : ""}{isMark(g.start) ? ` · ${fmtTime(g.start).slice(0, -3)}` : ""}</div>; })()}
-                                <div role="button" tabIndex={-1} className={`sync-row ${i === playingIdx && !sug ? "is-air" : ""} ${rec === i || anchor === i ? "is-prev" : ""} ${i === sel ? "is-sel" : ""} ${sug ? "is-sug" : ""}`}
-                                    onClick={() => { pointAt(i); if (isMark(starts[i])) seek(starts[i]); }} title={s.text}>
-                                    <span className="n">{i + 1}</span>
-                                    <span className="sync-txt">{!byLine && s.label && <b>[{s.label}] </b>}{firstLine(s.text)}</span>
-                                    <TimeField value={starts[i]} sug={Boolean(sug)} onCommit={(v) => change(setMark(starts, i, v))} />
-                                    <span className="sync-acts">
-                                        <IconBtn small name="minus" title={`−${String(STEP).replace(".", ",")} s`} disabled={!isMark(starts[i])} onClick={(e) => { e.stopPropagation(); change(nudge(starts, i, -STEP)); }} />
-                                        <IconBtn small name="plus" title={`+${String(STEP).replace(".", ",")} s`} disabled={!isMark(starts[i])} onClick={(e) => { e.stopPropagation(); change(nudge(starts, i, STEP)); }} />
-                                        <Btn small onClick={(e) => { e.stopPropagation(); markHere(i); }} title={`Marcar esta ${unit} no tempo de agora`}>Aqui</Btn>
-                                        <IconBtn small name="x" title="Tirar a marca · o dourado volta para cá" disabled={!isMark(starts[i])} onClick={(e) => { e.stopPropagation(); unmark(i); }} />
-                                    </span>
-                                </div>
-                                </React.Fragment>
-                            ))}
+                            {rows.map(({ k, i, g, text, label, value }) => {
+                                const inside = (x) => (g ? x !== null && x >= g.first && x < g.end : x === i);
+                                const holder = g ? slideRange(g).find((x) => isMark(starts[x])) ?? g.first : i;
+                                return (
+                                    <div key={k} role="button" tabIndex={-1} className={`sync-row ${(g ? slideNow === k : i === playingIdx) && !sug ? "is-air" : ""} ${inside(rec) || inside(anchor) ? "is-prev" : ""} ${inside(sel) ? "is-sel" : ""} ${sug ? "is-sug" : ""}`}
+                                        onClick={() => { pointAt(i); if (isMark(value)) seek(value); }} title={text}>
+                                        <span className="n">{k + 1}</span>
+                                        <span className="sync-txt sync-lines">
+                                            {label && <b className="sync-lab">[{label}]</b>}
+                                            {String(text).split("\n").map((l, x) => <span key={x}>{l}</span>)}
+                                        </span>
+                                        <TimeField value={value} sug={Boolean(sug)} onCommit={(v) => (g ? (v === null ? clearSlide(g) : setSlide(g, v)) : change(setMark(starts, i, v)))} />
+                                        <span className="sync-acts">
+                                            <IconBtn small name="minus" title={`−${String(STEP).replace(".", ",")} s`} disabled={!isMark(value)} onClick={(e) => { e.stopPropagation(); change(nudge(starts, holder, -STEP)); }} />
+                                            <IconBtn small name="plus" title={`+${String(STEP).replace(".", ",")} s`} disabled={!isMark(value)} onClick={(e) => { e.stopPropagation(); change(nudge(starts, holder, STEP)); }} />
+                                            <Btn small onClick={(e) => { e.stopPropagation(); if (g) { setSlide(g, now()); setSel(i); if (rec !== null) { const to = nextSlideStart(firsts, i); setRec(to < 0 ? null : to); } } else markHere(i); }} title="Marcar este slide no tempo de agora">Aqui</Btn>
+                                            <IconBtn small name="x" title="Tirar a marca · o dourado volta para cá" disabled={!isMark(value)} onClick={(e) => { e.stopPropagation(); if (g) clearSlide(g); else unmark(i); }} />
+                                        </span>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        {missing.length > 0 && <div className="listhead"><span className="kx-meta">{missing.length === 1 ? `${missing[0] + 1} · "${firstLine(slides[missing[0]]?.text)}" não está nessa gravação: marque com Aqui.` : `${missing.map((i) => i + 1).join(", ")} não estão nessa gravação: marque com Aqui.`}</span></div>}
-                        <div className="listhead"><span className="kx-meta">{byLine ? "Verde: a linha tocando agora · dourado: onde o Espaço marca, o começo do próximo slide (um clique numa linha, o ✕ ou o Backspace o trazem para ela) · clique numa linha para ir ao tempo dela." : "Verde: o slide tocando agora · dourado: o que Espaço marca · clique numa linha para ir ao tempo dela."}</span></div>
+                        {missing.length > 0 && <div className="listhead"><span className="kx-meta">{missing.length === 1 ? `${missing[0] + 1} · "${firstLine(byLine ? rowText(missing[0]) : slides[missing[0]]?.text)}" não está nessa gravação: marque com Aqui.` : `${missing.map((i) => i + 1).join(", ")} não estão nessa gravação: marque com Aqui.`}</span></div>}
+                        <div className="listhead"><span className="kx-meta">Verde: o slide tocando agora · dourado: o que o Espaço marca · um clique, o ✕ ou o Backspace trazem o dourado para o slide · clique num slide para ir ao tempo dele.</span></div>
                     </Panel>
                 </div>
             </div>
