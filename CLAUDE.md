@@ -2846,7 +2846,13 @@ Backspace bring the gold to a line; lyrics that are one slide get "A letra
 carries `split` and the editor's pickSplit rewrites the text the same
 way) — splitting while listening was weighed and dropped (two keys a line,
 errors become wrong splits); the last slide pauses and says "Todos os
-slides marcados"; Distribuir spreads the slides (`distributeSlides`); the
+slides marcados"; **several marks move together** (owner 2026-11-11):
+Ctrl/Shift + click on rows or markers, or a row's right click "Selecionar
+daqui até o fim" / "Selecionar todos", selects slides (the blue of
+selecionar vários; Esc clears it first); dragging a marker of one of them
+or − / + on one moves them all by the same amount, never out of order
+(`shiftMarks` in lyricSync.js, tested: stops a tenth before the nearest
+mark not moved), a tip saying "+2,4 s · 6 slides", one undo step; Distribuir spreads the slides (`distributeSlides`); the
 counters count slides; a finer split that leaves slides with no time
 says "N slides sem tempo marcado · no ar, entram por estimativa" in the
 editor with Marcar os tempos (a per-line mode was weighed and dropped); its header has "Vídeo ou playback…" (PlaybackPicker; Aplicar

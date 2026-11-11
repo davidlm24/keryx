@@ -6,8 +6,9 @@ import { useWinCol } from "./winLayout";
 import SyncMarks from "./SyncMarks";
 import PlaybackPicker, { useMediaFromComputer } from "./PlaybackPicker";
 import { useLibrary } from "./useConsoleData";
+import { useContextMenu } from "./ContextMenu";
 import { isVideoUrl } from "@/lib/console/content";
-import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP } from "@/lib/console/lyricSync";
+import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP } from "@/lib/console/lyricSync";
 import { anchorIndex, anchorMarks, fmtDelta } from "@/lib/console/lrcPick";
 
 const isMark = (v) => Number.isFinite(v);
@@ -69,6 +70,9 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const { media: libMedia } = useLibrary();
     const mediaFromComputer = useMediaFromComputer(libMedia, ask, say);
     const [finished, setFinished] = useState(false);
+    const [picked, setPicked] = useState(() => new Set()); // the slides selected (row indexes)
+    const rangeFrom = useRef(null);
+    const menu = useContextMenu();
     // Lyrics that are one slide (owner 2026-11-11, option 1): split them
     // here, in 2 or 4 lines, before marking; Aplicar takes the split along.
     const [split, setSplit] = useState(0);
@@ -250,6 +254,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     if (escRef) escRef.current = (mode) => {
         if (mode === "esc" && picking) setPicking(false);
         else if (mode === "esc" && find) setFind(null);
+        else if (mode === "esc" && picked.size) setPicked(new Set());
         else if (mode === "esc" && rec !== null) stopRecording();
         else leave(mode === "all");
     };
@@ -286,18 +291,31 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         return Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * duration;
     };
     const drag = useRef(null);
+    const [dragTip, setDragTip] = useState(null); // { text, left } while several move
     const dragMarker = (i) => (e) => {
         e.stopPropagation();
         e.preventDefault();
+        // Ctrl / Shift on a marker selects its slide, as on its row.
+        const k = rowOfLine(i);
+        if ((e.ctrlKey || e.metaKey || e.shiftKey) && k >= 0) { pickRow(k, e); return; }
         e.currentTarget.setPointerCapture?.(e.pointerId);
-        drag.current = { i, base: starts };
+        const group = k >= 0 && picked.has(k) && picked.size > 1 ? pickedLines() : null;
+        drag.current = group ? { group, base: starts, from: timeAtX(e.clientX), i } : { i, base: starts };
         setUndo((u) => [...u.slice(-49), starts]);
         setSug(null);
         setDone(null);
         setSel(i);
     };
-    const moveMarker = (e) => { const d = drag.current; if (d) setStarts(setMark(d.base, d.i, timeAtX(e.clientX))); };
-    const dropMarker = () => { drag.current = null; };
+    const moveMarker = (e) => {
+        const d = drag.current;
+        if (!d) return;
+        if (!d.group) { setStarts(setMark(d.base, d.i, timeAtX(e.clientX))); return; }
+        const next = shiftMarks(d.base, d.group, timeAtX(e.clientX) - d.from);
+        setStarts(next);
+        const moved = isMark(next[d.i]) && isMark(d.base[d.i]) ? next[d.i] - d.base[d.i] : 0;
+        setDragTip({ text: `${moved >= 0 ? "+" : "−"}${Math.abs(moved).toFixed(1).replace(".", ",")} s · ${d.group.length} slides`, left: pct(next[d.i]) });
+    };
+    const dropMarker = () => { drag.current = null; setDragTip(null); };
     const pct = (x) => (duration ? `${Math.min(100, Math.max(0, (x / duration) * 100))}%` : "0%");
     const minutes = duration ? Array.from({ length: Math.floor(duration / 60) + 1 }, (_, m) => m * 60) : [];
 
@@ -314,6 +332,33 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         ? slideOf.map((g, k) => ({ k, i: g.first, g, text: slideRange(g).map((i) => slides[i]?.text || "").join("\n"), label: g.label, value: g.start }))
         : slides.map((s, i) => ({ k: i, i, g: null, text: s.text, label: s.label, value: starts[i] }));
     const rowText = (k) => rows[k]?.text || "";
+    // Several slides at once (owner 2026-11-11): Ctrl adds one, Shift a
+    // range, the right click "daqui até o fim"; a marker of one of them
+    // dragged, or − / + on one, moves them all by the same amount (shiftMarks).
+    const rowOfLine = (i) => rows.findIndex((r) => (r.g ? i >= r.g.first && i < r.g.end : r.i === i));
+    const holderOf = (r) => (r.g ? slideRange(r.g).find((x) => isMark(starts[x])) ?? r.g.first : r.i);
+    const pickedLines = () => [...picked].map((k) => rows[k]).filter(Boolean).map(holderOf);
+    const pickRow = (k, e) => {
+        setPicked((p) => {
+            const next = new Set(p);
+            if (e.shiftKey && rangeFrom.current !== null) {
+                const [a, b] = [Math.min(rangeFrom.current, k), Math.max(rangeFrom.current, k)];
+                for (let x = a; x <= b; x++) next.add(x);
+            } else if (next.has(k)) next.delete(k); else next.add(k);
+            return next;
+        });
+        if (!e.shiftKey) rangeFrom.current = k;
+    };
+    const rowMenu = (e, k, g, i) => {
+        e.preventDefault();
+        menu(e, { title: `Slide ${k + 1}`, items: [
+            { label: "Selecionar daqui até o fim", icon: "listChecks", onSelect: () => { setPicked(new Set(rows.slice(k).map((r) => r.k))); rangeFrom.current = k; } },
+            { label: "Selecionar todos", icon: "listChecks", onSelect: () => setPicked(new Set(rows.map((r) => r.k))) },
+            picked.size > 0 && { label: "Limpar a seleção", icon: "x", onSelect: () => setPicked(new Set()) },
+            "sep",
+            { label: "Tirar a marca", icon: "x", disabled: !isMark(rows[k]?.value), onSelect: () => (g ? clearSlide(g) : unmark(i)) },
+        ].filter(Boolean) });
+    };
     const openFind = () => { setRec(null); setFind({ auto: true }); };
 
     return (
@@ -422,10 +467,11 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                             onPointerDown={(e) => { if (e.button === 0 && duration) seek(timeAtX(e.clientX)); }}>
                             <i className="sync-played" style={{ width: pct(t) }} />
                             {starts.map((v, i) => (isMark(v) ? (
-                                <span key={i} className={`sync-mk ${byLine && !slideStartLines.has(i) ? "is-line" : ""} ${i === playingIdx && !sug ? "is-air" : ""} ${i === sel ? "is-sel" : ""} ${sug ? "is-sug" : ""}`} style={{ left: pct(v) }} title={`Slide ${byLine ? slideAt(i) + 1 : i + 1} · ${fmtTime(v)} · arraste para ajustar`}
+                                <span key={i} className={`sync-mk ${byLine && !slideStartLines.has(i) ? "is-line" : ""} ${i === playingIdx && !sug ? "is-air" : ""} ${i === sel ? "is-sel" : ""} ${picked.has(rowOfLine(i)) ? "is-marked" : ""} ${sug ? "is-sug" : ""}`} style={{ left: pct(v) }} title={`Slide ${byLine ? slideAt(i) + 1 : i + 1} · ${fmtTime(v)} · arraste para ajustar · Ctrl ou Shift seleciona vários`}
                                     onPointerDown={dragMarker(i)} onPointerMove={moveMarker} onPointerUp={dropMarker}>{byLine ? (slideStartLines.has(i) ? slideOf.findIndex((g) => i >= g.first && i < g.end) + 1 : "") : i + 1}</span>
                             ) : null))}
                             <b className="sync-head" style={{ left: pct(t) }} />
+                            {dragTip && <span className="sync-tip" style={{ left: dragTip.left }} role="status">{dragTip.text}</span>}
                         </div>
                         <div className="sync-scale">{minutes.map((m) => <span key={m} style={{ left: pct(m) }}>{fmtTime(m).slice(0, -3)}</span>)}</div>
                         {sug && <span className="kx-meta">Tracejadas: as marcas da internet, ainda nos tempos da gravação original.</span>}
@@ -441,8 +487,9 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 const inside = (x) => (g ? x !== null && x >= g.first && x < g.end : x === i);
                                 const holder = g ? slideRange(g).find((x) => isMark(starts[x])) ?? g.first : i;
                                 return (
-                                    <div key={k} role="button" tabIndex={-1} className={`sync-row ${(g ? slideNow === k : i === playingIdx) && !sug ? "is-air" : ""} ${inside(rec) || inside(anchor) ? "is-prev" : ""} ${inside(sel) ? "is-sel" : ""} ${sug ? "is-sug" : ""}`}
-                                        onClick={() => { pointAt(i); if (isMark(value)) seek(value); }} title={text}>
+                                    <div key={k} role="button" tabIndex={-1} className={`sync-row ${(g ? slideNow === k : i === playingIdx) && !sug ? "is-air" : ""} ${inside(rec) || inside(anchor) ? "is-prev" : ""} ${inside(sel) ? "is-sel" : ""} ${picked.has(k) ? "is-marked" : ""} ${sug ? "is-sug" : ""}`}
+                                        onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) { pickRow(k, e); return; } if (picked.size) setPicked(new Set()); pointAt(i); if (isMark(value)) seek(value); }}
+                                        onContextMenu={(e) => rowMenu(e, k, g, i)} title={text}>
                                         <span className="n">{k + 1}</span>
                                         <span className="sync-txt sync-lines">
                                             {label && <b className="sync-lab">[{label}]</b>}
@@ -450,8 +497,8 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                         </span>
                                         <TimeField value={value} sug={Boolean(sug)} onCommit={(v) => (g ? (v === null ? clearSlide(g) : setSlide(g, v)) : change(setMark(starts, i, v)))} />
                                         <span className="sync-acts">
-                                            <IconBtn small name="minus" title={`−${String(STEP).replace(".", ",")} s`} disabled={!isMark(value)} onClick={(e) => { e.stopPropagation(); change(nudge(starts, holder, -STEP)); }} />
-                                            <IconBtn small name="plus" title={`+${String(STEP).replace(".", ",")} s`} disabled={!isMark(value)} onClick={(e) => { e.stopPropagation(); change(nudge(starts, holder, STEP)); }} />
+                                            <IconBtn small name="minus" title={`−${String(STEP).replace(".", ",")} s`} disabled={!isMark(value)} onClick={(e) => { e.stopPropagation(); change(picked.has(k) && picked.size > 1 ? shiftMarks(starts, pickedLines(), -STEP) : nudge(starts, holder, -STEP)); }} />
+                                            <IconBtn small name="plus" title={`+${String(STEP).replace(".", ",")} s`} disabled={!isMark(value)} onClick={(e) => { e.stopPropagation(); change(picked.has(k) && picked.size > 1 ? shiftMarks(starts, pickedLines(), STEP) : nudge(starts, holder, STEP)); }} />
                                             <Btn small onClick={(e) => { e.stopPropagation(); if (g) { setSlide(g, now()); setSel(i); if (rec !== null) { const to = nextSlideStart(firsts, i); setRec(to < 0 ? null : to); } } else markHere(i); }} title="Marcar este slide no tempo de agora">Aqui</Btn>
                                             <IconBtn small name="x" title="Tirar a marca · o dourado volta para cá" disabled={!isMark(value)} onClick={(e) => { e.stopPropagation(); if (g) clearSlide(g); else unmark(i); }} />
                                         </span>
@@ -459,6 +506,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 );
                             })}
                         </div>
+                        {picked.size > 0 && <div className="listhead sync-picked" role="status"><span className="kx-meta">{picked.size} {picked.size === 1 ? "selecionado" : "selecionados"} · arraste uma marca deles ou use − / +: todos andam juntos · Esc limpa</span></div>}
                         {missing.length > 0 && <div className="listhead"><span className="kx-meta">{missing.length === 1 ? `${missing[0] + 1} · "${firstLine(byLine ? rowText(missing[0]) : slides[missing[0]]?.text)}" não está nessa gravação: marque com Aqui.` : `${missing.map((i) => i + 1).join(", ")} não estão nessa gravação: marque com Aqui.`}</span></div>}
                         <div className="listhead"><span className="kx-meta">Verde: o slide tocando agora · dourado: o que o Espaço marca · um clique, o ✕ ou o Backspace trazem o dourado para o slide · clique num slide para ir ao tempo dele.</span></div>
                     </Panel>
