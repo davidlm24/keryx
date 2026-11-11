@@ -2825,7 +2825,18 @@ clock or Por tempo it re-syncs `follow.offset` from the new slide; the player's
 chip (`FollowChip`; its words `followLabel`/`followAction` in
 `src/lib/console/followWords.js`, kept apart because player.js rides in
 every output's chunk and the phone has an output's budget) pauses/resumes
-on purpose. The Biblioteca says "com tempos". **Marks are by LINE** (owner
+on purpose. **The introduction is only the background** (owner 2026-11-11,
+option 1 of 3: not the first slide, not the title): while a follow runs from
+slide 1 and the source has not reached its first start, the content carries
+`intro: true` (`introAt` in live-state.mjs, tested; set by content.show and
+Iniciar, cleared by the follower's goTo at the first mark, any move of the
+slide — → shows slide 1 at its mark, ← does nothing —, the media stopping
+and a restart; `followIndex` -1 = the introduction, and the follower sends
+`content.goTo { index: 0, auto, intro }` when the player seeks back);
+`currentSlide` is null then (the screens draw the silent slide, the stream
+nothing), `nextSlide` is slide 1, the Palco says "Introdução", Slides and No
+ar mark no card on air. The exported video does the same.
+The Biblioteca says "com tempos". **Marks are by LINE** (owner
 2026-11-10, Line by line = A): `Song.line_starts` keeps one time per sung
 line (`sungLines` in songImport.js: no [Label], no chords-only row); a
 slide comes in at its first marked line (`startsFromLines` in
