@@ -24,9 +24,9 @@
     },
     "playback_mode": {
       "type": "string",
-      "enum": ["", "sound"],
+      "enum": ["", "sound", "video"],
       "default": "",
-      "description": "Quando audio_url \u00e9 um v\u00eddeo: vazio = vai \u00e0s telas de v\u00eddeo junto com a letra; sound = S\u00f3 o som do v\u00eddeo (as telas mostram a letra, o som do v\u00eddeo toca no canal de \u00e1udio; src/lib/console/stage.js stageFromSong)"
+      "description": "Quando audio_url \u00e9 um v\u00eddeo: vazio = s\u00f3 o som quando a letra segue as marcas, sen\u00e3o vai \u00e0s telas de v\u00eddeo junto com a letra; sound = S\u00f3 o som do v\u00eddeo (as telas mostram a letra, o som do v\u00eddeo toca no canal de \u00e1udio); video = o v\u00eddeo nas telas mesmo com marcas (src/lib/console/videoSound.js songMedia)"
     },
     "background_image": {
       "type": "string",

@@ -2893,7 +2893,17 @@ Mídia row** (owner 2026-11-10): the editor's "Vídeo ou playback…" opens
 `pickRows` of pedidos.js; a YouTube link listed but not chosen: it does
 not play hidden) and "Do computador…" at its end, which brings the file
 into the Mídia first (`pickRepeats`, `importMediaFiles`; Pular uses the
-row already there); `isVideoUrl` knows .webm/.mov/.m4v/.mkv. **Avançar sozinha** (owner
+row already there); `isVideoUrl` knows .webm/.mov/.m4v/.mkv. **Swapping it
+keeps the marks** (owner 2026-11-12: mark against the sung version, then
+swap in the final playback; the toast leads to Marcar os tempos). **A song
+that follows its marks plays its video as sound only by itself** (owner
+2026-11-12, mockup "Editar o slide e só o som com marcas", V1–V4):
+`songSoundWhy` in videoSound.js (tested) — `Song.playback_mode` "sound" (the
+switch), "video" (the clip on the screens even with marks) or "" (sound
+only while `syncedToMarks`: Pelas marcas with a time marked); the editor's
+one switch "Só o som do vídeo" shows it, "Ligado sozinho: a letra tem
+tempos marcados", and writes "" while it says what the song does by itself
+(`soundModeValue`). YouTube never plays hidden. **Avançar sozinha** (owner
 2026-10-22, Rodada P7 = A/A): the Editor de música's "Avançar sozinha: Não
 | Pelas marcas | Por tempo" is `Song.follow_mode` (off | marks | time; ""
 = by the marks when there are any, as before; `followModeOf`). **Por
