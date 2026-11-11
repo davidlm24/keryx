@@ -2850,7 +2850,16 @@ slides marcados"; Distribuir spreads the slides (`distributeSlides`); the
 counters count slides; a finer split that leaves slides with no time
 says "N slides sem tempo marcado · no ar, entram por estimativa" in the
 editor with Marcar os tempos (a per-line mode was weighed and dropped); its header has "Vídeo ou playback…" (PlaybackPicker; Aplicar
-carries the file chosen). LRCLIB marks and Procurar letra's "com tempo"
+carries the file chosen). **A part with no lyrics** (owner 2026-11-11, "um momento de
+ministração", A): `[Ministração]`, `[Instrumental]`, `[Solo]`,
+`[Interlúdio]` or `[Introdução]` alone between blank lines is a slide with
+no text (`isNoLyrics` in songImport.js, tested; the stanzas after it carry
+no label of its; any other name alone still names what follows), marked
+like any slide; on air the screens show only the background (no title,
+`silent` in ScreenRenderer), the Palco the part's name, the cards and the
+phone "Ministração · sem letra"; the editor's [Ministração] chip inserts
+it alone. A song never saved with `[Parte]` lines is split by
+`slidesFromLyrics` on air (`songSlidesFor`), not `generateSlides`. LRCLIB marks and Procurar letra's "com tempo"
 match per line. **"Marcar os tempos com uma letra…"** (MENU_LABELS
 `marcarTempos`) on a video or an audio of the computer (Biblioteca, the
 Mídia's menu and side panel): `SongPickDialog.jsx` (`useMarkTimes`; the

@@ -414,8 +414,10 @@ function useFit(on, lines, size, nudge, deps) {
 function Content({ content, showTitle = true, still = false }) {
     const style = slideStyle(content);
     // The item's own choice (Camadas) wins over the church's (showTitle).
-    const titled = style.title === "hide" ? false : style.title === "show" ? true : showTitle;
     const slide = currentSlide(content) || { text: "" };
+    // A part with no lyrics (Ministração, a solo): only the background, no title.
+    const silent = content.kind === "lyrics" && !slide.text && !slide.image_url;
+    const titled = silent ? false : style.title === "hide" ? false : style.title === "show" ? true : showTitle;
     // A number in cqw (Rodada HF2); a preset's name reads as its number.
     const size = sizeCqw(style.font_size);
     const align = style.text_align || "center";

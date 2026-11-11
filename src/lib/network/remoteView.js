@@ -148,7 +148,7 @@ export function presentRows(content) {
     return slides.map((s, i) => ({
         i,
         label: [String(s.label || "").trim(), String(i + 1)].filter(Boolean).join(" · "),
-        text: slideText(s) || `Slide ${i + 1}`,
+        text: slideText(s) || (s.label ? `${s.label} · sem letra` : `Slide ${i + 1}`),
         state: i === at ? "air" : i === at + 1 ? "next" : i < at ? "past" : "",
     }));
 }

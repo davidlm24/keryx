@@ -151,6 +151,15 @@ export function SlideText({ slide, stopped = false }) {
             </span>
         );
     }
+    // A part with no lyrics (2026-11-11): its name and "sem letra".
+    if (!slide.text && label) {
+        return (
+            <span className="kx-slide-body is-silent">
+                <span className="kx-slide-lab">{label}{stop && " · "}{stop}</span>
+                <span className="kx-ln kx-ln-silent">sem letra</span>
+            </span>
+        );
+    }
     return (
         <span className="kx-slide-body">
             {(label || stop) && <span className="kx-slide-lab">{label}{label && stop && " · "}{stop}</span>}

@@ -78,7 +78,7 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
             {song.musician_notes && show.notes && <div className="ns-notes">{song.musician_notes}</div>}
             {slideNote && show.notes && <div className="ns-notes">{slideNote}</div>}
             <main className="ns-main">
-                <div className="ns-cur">{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (current.text || "")}{answer.length > 0 && <span className="ns-answer">{answer.map((l) => <span key={l} className={l.startsWith("✓") || l.startsWith("Resposta") ? "is-right" : ""}>{l}</span>)}</span>}</div>
+                <div className="ns-cur">{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (current.text || (current.label ? <span className="ns-part">{current.label}</span> : ""))}{answer.length > 0 && <span className="ns-answer">{answer.map((l) => <span key={l} className={l.startsWith("✓") || l.startsWith("Resposta") ? "is-right" : ""}>{l}</span>)}</span>}</div>
                 {chorded && !embed && (
                     <aside className="ns-trans" aria-label="Transposição">
                         <Transpose value={transpose} onChange={setTranspose} />
@@ -97,7 +97,7 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
             {next && show.next && (
                 <div className="ns-next">
                     <span className="net-section">Próximo</span>
-                    <p>{next.text || ""}</p>
+                    <p>{next.text || next.label || ""}</p>
                 </div>
             )}
             {slides.length > 1 && (

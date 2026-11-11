@@ -11,6 +11,12 @@ import { songKey } from "../../shared/syncDuplicates.mjs";
 export const isChordPro = (raw) => /\{(title|t|artist|c|soc|eoc|sov|eov|comment|start_of_chorus|end_of_chorus|start_of_verse|end_of_verse)(:|\})\s*/i.test(raw);
 
 const CHORUS_RE = /refr[ãa]o|coro|chorus/i;
+// A part with no lyrics (owner 2026-11-11: "um momento de ministração"): its
+// name alone between blank lines is a slide with no text — the screens show
+// only the background, the Palco the part's name — that is marked like any
+// slide. Any other name alone keeps naming the stanzas after it.
+export const NO_LYRICS_RE = /^(ministra[çc][ãa]o|instrumental|solo|interl[úu]dio|introdu[çc][ãa]o)(\s+\d+)?$/i;
+export const isNoLyrics = (label) => NO_LYRICS_RE.test(String(label || "").trim());
 
 // -> [{ section, text }]
 export function parseChordPro(raw) {
@@ -307,7 +313,12 @@ export function slidesFromLyrics(lyrics, { lines = 0, chorded = false } = {}) {
         const m = /^\s*\[(.+?)\]\s*$/.exec(rows[0]);
         if (m && !hasInlineChords(rows[0])) { label = m[1].trim(); rows = rows.slice(1); }
         const pairs = rows.map((raw) => ({ raw, text: stripLine(raw).replace(/\s+$/, "") })).filter((p) => p.text.trim());
-        if (!pairs.length) return;
+        if (!pairs.length) {
+            // A part with no lyrics alone: its own empty slide; the stanzas
+            // after it carry no label of its.
+            if (m && isNoLyrics(label)) { out.push({ text: "", label, ...(chorded ? { chorded: "" } : {}) }); label = ""; }
+            return;
+        }
         const chunks = [];
         if (lines > 0) for (let i = 0; i < pairs.length; i += lines) chunks.push(pairs.slice(i, i + lines));
         else chunks.push(pairs);
@@ -348,6 +359,10 @@ export function songSlidesFor(song) {
     if (song.slides?.length) base = withChordedTwins(song);
     else if (linesLimit(song.lines_per_slide)) base = slidesFromLyrics(song.lyrics || "", { lines: linesLimit(song.lines_per_slide), chorded: true });
     else if (hasInlineChords(song.lyrics || "")) base = slidesFromLyrics(song.lyrics || "", { chorded: true });
+    // A song never saved in the editor with [Parte] lines: the editor's own
+    // split (labels, a part with no lyrics), not generateSlides, which showed
+    // "[Refrão]" as a line (2026-11-11).
+    else if (/^\s*\[[^\]]+\]\s*$/m.test(song.lyrics || "")) base = slidesFromLyrics(song.lyrics || "");
     else base = generateSlides(song.lyrics || "");
     const texts = base.map((s) => String(s.chorded ?? s.text ?? ""));
     const chordedSlides = texts.some((t) => hasInlineChords(t)) ? texts : null;
