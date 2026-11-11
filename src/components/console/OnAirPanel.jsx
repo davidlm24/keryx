@@ -1,10 +1,11 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Empty, SrState } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import useKeepInView from "./useKeepInView";
 import { SlideText } from "./SlidesPanel";
 import { stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { menuItem } from "@/lib/console/menuLabels";
+import SlideEditPop, { songOnAir } from "./SlideEditPop";
 
 // The No ar module (owner 2026-10-14, the strip under Holyrics' console):
 // the slides of what is on air, whatever the Slides column holds, so the
@@ -14,7 +15,7 @@ import { menuItem } from "@/lib/console/menuLabels";
 // on air: otherwise the dock folds it away (fitDock's gone, dock.js).
 // A click prepares that slide (the Prévia), a double click puts it on air,
 // as everywhere; ←/→ move it.
-export default function OnAirPanel({ c }) {
+export default function OnAirPanel({ c, onSongSaved, onOpenSong }) {
     const menu = useContextMenu();
     const { cur, prev } = c;
     const air = cur?.content;
@@ -24,6 +25,11 @@ export default function OnAirPanel({ c }) {
     // A slide of this item waiting in the Prévia.
     const prevIndex = air && prev && (prev.airSlide || prev.id === airId) ? prev.index : -1;
     const listRef = useRef(null);
+    // "Editar este slide…" (2026-11-12) on the song on air.
+    const songId = songOnAir(air);
+    const [editing, setEditing] = useState(null);
+    useEffect(() => { setEditing(null); }, [songId]);
+    const editAt = (i, el) => { if (songId && onSongSaved) setEditing({ songId, index: i, anchor: el }); };
 
     // The card on air and its neighbours stay in view, across or down
     // (0.2.18, useKeepInView): the strip moves at the next-to-last card.
@@ -40,16 +46,19 @@ export default function OnAirPanel({ c }) {
                     const cls = [i === index && "is-air", i === index + 1 && i !== prevIndex && "is-next", i === prevIndex && "is-prev"].filter(Boolean).join(" ");
                     return (
                         <button type="button" key={i} className={`onair-card kx-t ${cls}`} aria-current={i === index ? "true" : undefined} onClick={() => pick(i)} onDoubleClick={() => go(i)}
-                            onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
+                            onKeyDown={(e) => { if (e.key === "F2" && songId && onSongSaved) { e.preventDefault(); editAt(i, e.currentTarget); } }}
+                            onContextMenu={(e) => { const el = e.currentTarget; menu(e, { title: `Slide ${i + 1}`, items: [
+                                ...(songId && onSongSaved ? [menuItem("editarSlide", { disabled: !String(sl.text || "").trim(), onSelect: () => editAt(i, el) })] : []),
                                 menuItem("porNaPrevia", { disabled: i === index, onSelect: () => pick(i) }),
                                 menuItem("enviarAoAr", { air: true, onSelect: () => go(i) }),
-                            ] })} title={`${i === index ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || sl.label || ""}`}>
+                            ] }); }} title={`${i === index ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || sl.label || ""}`}>
                             <span className="kx-slide-n">{i + 1}</span><SrState cls={cls} />
                             <SlideText slide={sl} />
                         </button>
                     );
                 })}
             </div>
+            {editing && <SlideEditPop c={c} edit={editing} onClose={() => setEditing(null)} onSongSaved={onSongSaved} onOpenSong={onOpenSong} />}
         </div>
     );
 }

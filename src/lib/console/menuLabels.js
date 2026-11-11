@@ -55,6 +55,9 @@ export const MENU_LABELS = {
     relatar: { label: "Relatar um problema…", icon: "help" },
     // Rows and slides
     porNaPrevia: { label: "Pôr na prévia", icon: "prev" },
+    // A song's slide edited in a box beside it (owner 2026-11-12): the
+    // Slides column and No ar; F2 opens it on the slide focused.
+    editarSlide: { label: "Editar este slide…", icon: "edit", key: "rename" },
     // Starts the selection with that row marked (owner 2026-10-28, I3 = A:
     // the header's button shows only once a selection is on).
     selecionarVarios: { label: "Selecionar vários", icon: "listChecks" },

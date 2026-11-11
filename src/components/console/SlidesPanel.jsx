@@ -8,6 +8,7 @@ import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { lyricsOnAir } from "@/lib/console/dock";
 import { menuItem } from "@/lib/console/menuLabels";
 import { columnSource } from "@/lib/console/lastOnAir";
+import SlideEditPop, { songOfStage, songOnAir } from "./SlideEditPop";
 
 // The item in hand (owner 2026-10-14, as in Holyrics): the Prévia's slides
 // whenever it holds an item, even one of a single slide; with nothing
@@ -27,7 +28,7 @@ import { columnSource } from "@/lib/console/lastOnAir";
 // sends it, and the footer's arrows move the "parou aqui".
 export const handIsPrev = (prev) => Boolean(prev && !prev.theme && prev.slides.length);
 
-export default function SlidesPanel({ c, onGo, airTabs = false }) {
+export default function SlidesPanel({ c, onGo, airTabs = false, onSongSaved, onOpenSong }) {
     const menu = useContextMenu();
     const { cur, prev } = c;
     const air = cur?.content;
@@ -49,6 +50,12 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
     // The Prévia holds the item that is on air (another slide of it): mark both.
     const airIndex = hand && air && (prev.airSlide || prev.id === airId) ? air.index : -1;
     const listRef = useRef(null);
+    // "Editar este slide…" (2026-11-12): the song these slides are of, and the
+    // box open on one of them ({ songId, index, anchor }).
+    const songId = hand ? songOfStage(prev) : gone ? songOfStage(c.last) : songOnAir(air);
+    const [editing, setEditing] = useState(null);
+    useEffect(() => { setEditing(null); }, [songId]);
+    const editAt = (i, el) => { if (songId && onSongSaved) setEditing({ songId, index: i, anchor: el }); };
 
     // The slide in hand (or on air) and its neighbours stay in view: the
     // column moves at the next-to-last card (0.2.18, useKeepInView).
@@ -94,16 +101,19 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
                     const onAir = cls.includes(airWord);
                     return (
                         <button type="button" key={i} className={`kx-slide kx-t ${cls}`} aria-current={onAir ? "true" : undefined} onClick={() => pick(i)} onDoubleClick={() => go(i)}
-                            onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
+                            onKeyDown={(e) => { if (e.key === "F2" && songId && onSongSaved) { e.preventDefault(); editAt(i, e.currentTarget); } }}
+                            onContextMenu={(e) => { const el = e.currentTarget; menu(e, { title: `Slide ${i + 1}`, items: [
+                                ...(songId && onSongSaved ? [menuItem("editarSlide", { disabled: !String(sl.text || "").trim(), onSelect: () => editAt(i, el) })] : []),
                                 menuItem("porNaPrevia", { disabled: !hand && !gone && i === index, onSelect: () => pick(i) }),
                                 menuItem("enviarAoAr", { air: true, onSelect: () => go(i) }),
-                            ] })} title={`${onAir ? "No ar" : `${gone && i === index ? "Parou aqui · " : ""}Pôr na prévia · 2 cliques enviam`}\n\n${sl.text || sl.label || ""}`}>
+                            ] }); }} title={`${onAir ? "No ar" : `${gone && i === index ? "Parou aqui · " : ""}Pôr na prévia · 2 cliques enviam`}\n\n${sl.text || sl.label || ""}`}>
                             <span className="kx-slide-n">{i + 1}</span><SrState cls={cls} />
                             <SlideText slide={sl} stopped={gone && i === index} />
                         </button>
                     );
                 })}
             </div>
+            {editing && <SlideEditPop c={c} edit={editing} onClose={() => setEditing(null)} onSongSaved={onSongSaved} onOpenSong={onOpenSong} />}
             {/* The footer's arrows always move what is on air (←/→). Under the
                 Prévia's slides they say so — "No ar", the air's own n/m — apart
                 from the column's "prévia n/m", and go away with nothing on air

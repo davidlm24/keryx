@@ -10,12 +10,13 @@ import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
 import { soundModeFor, songSoundWhy, soundModeValue } from "@/lib/console/videoSound";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
-import { parseChords, slidesFromLyrics, reflowLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
+import { parseChords, slidesFromLyrics, reflowLyrics, linesLimit, parseDuration, formatDuration } from "@/lib/songImport";
 import { fitMarks, startsFromLines, linesFromStarts, slideFirstLines, lineCount, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength } from "@/lib/console/lyricSync";
 import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeInline, transposeChords, transposeChord } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
+import { timedSlides, slidesToSave } from "@/lib/console/slideEdit";
 import { styleMetrics } from "@/lib/console/fontMetrics";
 import { sizeCqw } from "@/lib/textSize";
 import { STEP_OPTIONS, songStep, stepValue } from "@/lib/console/songSize";
@@ -144,11 +145,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const starts = useMemo(() => startsFromLines(baseSlides, lineStarts), [baseSlides, lineStarts]);
     const slides = useMemo(() => {
         if (!song) return [];
-        const base = baseSlides;
-        if (song.follow_mode === "time") {
-            return base.map(({ start: _start, duration: _duration, ...rest }, i) => ({ ...rest, ...(Number.isFinite(starts[i]) ? { start: starts[i] } : {}), ...(secs[i] > 0 ? { duration: secs[i] } : {}) }));
-        }
-        return withTimings(base.map(({ start: _start, ...rest }) => rest), starts, mediaRef.current?.duration || song.duration || null);
+        // The same as "Editar este slide…" in the console (slideEdit.js).
+        return timedSlides(baseSlides, starts, { followMode: song.follow_mode, secs, total: mediaRef.current?.duration || song.duration || null });
     }, [song, baseSlides, starts, secs]);
 
     // 2/4 linhas / Outro rewrite the lyrics as the slides read (owner
@@ -379,7 +377,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             // Each slide keeps its chorded twin (the lyrics' [G] chords) for
             // the screens that show chords; before, saving lost them.
             line_starts: linesMarkedOf(lineStarts, slides),
-            slides: slides.map(({ text, chorded, duration, is_chorus, start, label }) => ({ text, ...(chorded && chorded !== text && hasInlineChords(chorded) ? { chorded } : {}), ...(label ? { label } : {}), ...(is_chorus ? { is_chorus } : {}), ...(Number.isFinite(start) ? { start } : {}), ...(Number.isFinite(duration) ? { duration } : {}) })),
+            slides: slidesToSave(slides),
         };
         for (const k of ["id", "created_date", "updated_date", "created_by_id"]) delete data[k];
         try {

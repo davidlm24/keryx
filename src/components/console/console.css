@@ -1615,6 +1615,21 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .pl-pop { position: absolute; right: 0; top: 26px; width: 280px; max-height: 320px; overflow: auto; z-index: var(--z-dialog); }
 /* Placed by usePlaced (the Culto panel clips what hangs out of it). */
 .console .pl-pop.is-placed { position: fixed; right: auto; top: auto; z-index: var(--z-menu); }
+/* "Editar este slide…" (2026-11-12): the slide's lines in a box beside it. */
+.console .sedit { width: 360px; max-height: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); }
+.console .sedit-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+.console .sedit-t { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); white-space: nowrap; }
+.console .sedit-s { font-size: var(--fs-ui); color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.console .sedit-ta { width: 100%; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: var(--fs-ui); line-height: 18px; white-space: pre; overflow: auto; background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--brand); }
+.console .sedit-note { margin: 0; display: flex; align-items: center; gap: 6px; font-size: var(--fs-ui); color: var(--fg-2); line-height: 1.4; }
+.console .sedit-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--air); }
+.console .sedit-dot.is-locked { background: var(--rh); }
+.console .sedit-err { margin: 0; font-size: var(--fs-ui); color: var(--warn-fg); line-height: 1.4; }
+.console .sedit-f { display: flex; align-items: center; gap: var(--space-2); }
+.console .sedit-sp { flex: 1; }
+.console .sedit-link { margin-right: auto; padding: 0; border: 0; background: none; font: inherit; font-size: var(--fs-ui); color: var(--brand-hover); cursor: pointer; }
+.console .sedit-link:hover { text-decoration: underline; }
+.console .sedit-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 2px; }
 /* The song editor's "Vídeo ou playback…": the Mídia's videos and audios, the computer last (owner 2026-11-10). */
 .console .ed-mpick { width: 320px; max-height: 380px; display: flex; flex-direction: column; overflow: hidden; padding: var(--space-1); }
 .console .ed-mpick-h { display: flex; flex-direction: column; gap: var(--space-1); padding-bottom: var(--space-1); }
