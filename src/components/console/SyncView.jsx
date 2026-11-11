@@ -446,7 +446,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                         <span className="n">{k + 1}</span>
                                         <span className="sync-txt sync-lines">
                                             {label && <b className="sync-lab">[{label}]</b>}
-                                            {String(text).split("\n").map((l, x) => <span key={x}>{l}</span>)}
+                                            {text ? String(text).split("\n").map((l, x) => <span key={x}>{l}</span>) : <span className="sync-silent">sem letra</span>}
                                         </span>
                                         <TimeField value={value} sug={Boolean(sug)} onCommit={(v) => (g ? (v === null ? clearSlide(g) : setSlide(g, v)) : change(setMark(starts, i, v)))} />
                                         <span className="sync-acts">

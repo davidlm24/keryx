@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit, reflowLyrics, sniffSongFile, decodeSongBytes, splitRepeated, importSummary, readSongFile, importPlan, importedItems, importRowMeta, importRowSize, importSource, importCounts } from "./songImport.js";
+import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit, reflowLyrics, sungLines, isNoLyrics, sniffSongFile, decodeSongBytes, splitRepeated, importSummary, readSongFile, importPlan, importedItems, importRowMeta, importRowSize, importSource, importCounts } from "./songImport.js";
 
 test("ChordPro: directives give title/artist, sections and no inline chords", () => {
     const raw = "{title: Algo Novo}\n{artist: Kemuel}\n{sov 1}\n[G]Vem me visitar [D]hoje aqui\n{eov}\n{soc}\nEspírito, [C]vem\n{eoc}";
@@ -253,4 +253,29 @@ test("reflowLyrics: 2/4 linhas rewrite the text as the slides read (back 2026-11
     const s2 = slidesFromLyrics(done, { lines: 2 }).map((s) => [s.text, s.label]);
     assert.deepEqual(s2, s1, "same slides before and after the rewrite");
     assert.equal(reflowLyrics("[G] [D]\num\n[C]dois\ntrês", 2), "[G] [D]\num\n[C]dois\n\ntrês", "a chords-only row rides with the row under it");
+});
+
+test("a part with no lyrics alone is a slide with no text (2026-11-11, ministração)", () => {
+    const lyrics = "[Refrão]\nEu vou viver\nEm minha vida\n\n[Ministração]\n\n[Refrão]\nEu vou viver\n\nOutra estrofe";
+    const slides = slidesFromLyrics(lyrics, { chorded: true });
+    assert.deepEqual(slides.map((s) => [s.text, s.label]), [["Eu vou viver\nEm minha vida", "Refrão"], ["", "Ministração"], ["Eu vou viver", "Refrão"], ["Outra estrofe", "Refrão"]]);
+    assert.equal(slides[1].chorded, "");
+    // The stanza after it carries no label of its.
+    assert.deepEqual(slidesFromLyrics("[Instrumental]\n\nletra").map((s) => [s.text, s.label]), [["", "Instrumental"], ["letra", ""]]);
+    // Any other name alone keeps naming what follows, as before.
+    assert.deepEqual(slidesFromLyrics("[Verso]\n\nletra").map((s) => [s.text, s.label]), [["letra", "Verso"]]);
+    // A no-lyrics name WITH lines is an ordinary part.
+    assert.deepEqual(slidesFromLyrics("[Solo]\numa linha").map((s) => [s.text, s.label]), [["uma linha", "Solo"]]);
+    for (const l of ["Ministração", "ministracao", "Instrumental 2", "Solo", "Interlúdio", "Introdução"]) assert.equal(isNoLyrics(l), true, l);
+    for (const l of ["Refrão", "Verso", "Final", "Ponte", ""]) assert.equal(isNoLyrics(l), false, l);
+    // It is one line for the marks, so it can be marked like any slide.
+    assert.deepEqual(sungLines(lyrics).map((l) => l.text), ["Eu vou viver", "Em minha vida", "", "Eu vou viver", "Outra estrofe"]);
+    // 2/4 linhas keep it alone.
+    assert.deepEqual(slidesFromLyrics(reflowLyrics(lyrics, 1), { lines: 1 }).map((s) => s.text), ["Eu vou viver", "Em minha vida", "", "Eu vou viver", "Outra estrofe"]);
+});
+
+test("songSlidesFor: a song never saved with [Parte] lines reads them (no \"[Refrão]\" on screen)", () => {
+    const { slides } = songSlidesFor({ lyrics: "[Refrão]\num\ndois\n\n[Ministração]\n\n[Refrão]\ntrês" });
+    assert.deepEqual(slides.map((s) => [s.text, s.label]), [["um\ndois", "Refrão"], ["", "Ministração"], ["três", "Refrão"]]);
+    assert.deepEqual(songSlidesFor({ lyrics: "um\ndois\n\ntrês" }).slides.map((s) => s.text), ["um\ndois", "três"], "plain lyrics as before");
 });

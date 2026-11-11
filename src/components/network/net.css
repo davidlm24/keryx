@@ -162,3 +162,5 @@ html.ks-net .ks-stage > .ks-alert-layer { position: absolute; }
    Aviso rápido still shows over it: .ks-alert-layer). */
 .net-tap { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; width: 100%; height: 100%; border: 0; background: #000; color: #fff; font-family: "Geist", system-ui, sans-serif; cursor: pointer; }
 .net-tap b { font-size: max(18px, 3.2vmin); font-weight: 600; letter-spacing: .01em; opacity: .9; }
+
+.ns-part { opacity: .75; font-style: italic; }

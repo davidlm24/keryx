@@ -2467,6 +2467,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-row.is-sel { background: var(--bg-3); }
 .console .sync .sync-row.is-prev { background: var(--prev-bg); }
 .console .sync .sync-lines { display: flex; flex-direction: column; gap: 1px; }
+.console .sync .sync-silent, .console .kx-ln-silent { color: var(--fg-3); font-style: italic; }
 .console .sync .sync-lines > span:not(:first-of-type) { color: var(--fg-3); }
 .console .sync .sync-lab { font-size: var(--fs-meta); color: var(--fg-2); font-weight: 600; }
 .console .sync .sync-div { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 2px; font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; }

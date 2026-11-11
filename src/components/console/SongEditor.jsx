@@ -207,12 +207,14 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         try { return applyWithFundo(emptyState(t), "content.show", c.stamp("content.show", { ...songContent({ ...song, slides }, {}, themes), kind: "lyrics" }), t); } catch { return null; }
     }, [song, slides, themes, c.stamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const addMarker = (label) => {
+    // A part with no lyrics (Ministração) goes alone between blank lines:
+    // it is a slide of its own (songImport.js isNoLyrics).
+    const addMarker = (label, alone = false) => {
         const el = lyricsRef.current;
         const text = song.lyrics || "";
         const at = el ? el.selectionStart : text.length;
         const before = text.slice(0, at).replace(/\s*$/, "");
-        const insert = `${before ? "\n\n" : ""}[${label}]\n`;
+        const insert = `${before ? "\n\n" : ""}[${label}]\n${alone ? "\n" : ""}`;
         setLyrics(before + insert + text.slice(at).replace(/^\s*/, ""));
         setTimeout(() => { if (el) { const p = (before + insert).length; el.focus(); el.setSelectionRange(p, p); } }, 0);
     };
@@ -508,6 +510,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         <Btn small kind="outline" onClick={() => addMarker("Refrão")}>[Refrão]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Ponte")}>[Ponte]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Instrumental")}>[Instrumental]</Btn>
+                        <Btn small kind="outline" onClick={() => addMarker("Ministração", true)} title="Um slide sem letra: as telas mostram só o fundo (uma ministração, um solo)">[Ministração]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Final")}>[Final]</Btn>
                         <Btn small onClick={splitHere} title="Uma linha vazia no cursor: a estrofe vira dois slides">Dividir aqui</Btn>
                         <Btn small onClick={() => duplicateStanza()} title="Repete a estrofe onde está o cursor, logo abaixo">Duplicar estrofe</Btn>
