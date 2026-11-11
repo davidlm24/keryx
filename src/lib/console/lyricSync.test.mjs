@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts } from "./lyricSync.js";
+import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks } from "./lyricSync.js";
 import { sungLines, slidesFromLyrics } from "../songImport.js";
 import { applyOp, emptyState, followIndex } from "../../../shared/live-state.mjs";
 
@@ -166,4 +166,15 @@ test("one time per slide (2026-11-11): marks fold onto each slide's first line",
     assert.deepEqual(onFirsts([null, null, null, null, null, null, null, null], firsts, 8), Array(8).fill(null), "a slide with no mark stays empty");
     assert.deepEqual(onFirsts([5, null, null, null, 20, null, 30, 31], firsts, 8), [5, null, null, null, 20, null, 30, null]);
     assert.deepEqual(startsFromLines(slidesFromLyrics("a\nb\nc\nd\ne\nf\ng\nh", { lines: 4 }), onFirsts([10, 12, 14, 16, 18, 20, 22, 24], [0, 4], 8)), [10, 18], "the slides' starts do not change");
+});
+
+test("several marks move together, never out of order (2026-11-11)", () => {
+    const starts = [10, 20, 30, 40, 50];
+    assert.deepEqual(shiftMarks(starts, [2, 3, 4], 2.4), [10, 20, 32.4, 42.4, 52.4], "from slide 3 to the end, +2,4 s");
+    assert.deepEqual(shiftMarks(starts, [1, 2], 15), [10, 29.9, 39.9, 40, 50], "stops a tenth before the next mark not moved");
+    assert.deepEqual(shiftMarks(starts, [1, 2], -15), [10, 10.1, 20.1, 40, 50], "back: stops a tenth after the one before");
+    assert.deepEqual(shiftMarks(starts, [0, 1], -30), [0, 10, 30, 40, 50], "never below 0");
+    assert.deepEqual(shiftMarks([null, 20, 30], [0, 1], 5), [null, 25, 30 + 0], "an unmarked line is not moved");
+    assert.deepEqual(shiftMarks(starts, [], 5), starts);
+    assert.deepEqual(shiftMarks([10, 10.1, 30], [1], -1), [10, 10.1, 30], "no room: unchanged");
 });

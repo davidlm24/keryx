@@ -177,6 +177,30 @@ export function onFirsts(lineStarts, firsts, count) {
     return out;
 }
 
+// Several marks moved together (owner 2026-11-11: "arrastar múltiplas
+// marcações"): the marks of `lines` move by `delta` seconds, as far as the
+// nearest mark not moved allows (a tenth of a second apart, never below 0),
+// so the order never changes. -> the new marks (the same array when nothing
+// can move that way).
+export function shiftMarks(starts, lines, delta) {
+    const out = (starts || []).slice();
+    const set = new Set((lines || []).filter((i) => isMark(out[i])));
+    if (!set.size || !delta) return out;
+    let d = delta;
+    for (const i of set) {
+        const v = out[i];
+        if (delta > 0) {
+            for (let k = i + 1; k < out.length; k++) if (isMark(out[k]) && !set.has(k)) { d = Math.min(d, out[k] - STEP - v); break; }
+        } else {
+            d = Math.max(d, -v);
+            for (let k = i - 1; k >= 0; k--) if (isMark(out[k]) && !set.has(k)) { d = Math.max(d, out[k] + STEP - v); break; }
+        }
+    }
+    if (Math.sign(d) !== Math.sign(delta)) return out;
+    for (const i of set) out[i] = snap(out[i] + d);
+    return out;
+}
+
 // The line Espaço marks next (the gold one) after line `i` was marked: the
 // next line with no mark, never past a gap the operator left; -1 = all
 // marked from there on.
