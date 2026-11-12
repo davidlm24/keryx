@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { transposeChords, transposeChord } from "@/utils/chordTranspose";
 import ChordedLines, { chordedOf, Transpose } from "./ChordedLines";
 import { stageLines } from "@/lib/activity";
+import { useBoxFit } from "@/hooks/useBoxFit";
 import "@/components/network/net.css";
 
 const two = (n) => String(n).padStart(2, "0");
@@ -28,6 +29,11 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
     // A new song starts untransposed.
     const songKey = content?.startedAt ?? null;
     useEffect(() => { setTranspose(0); }, [songKey]);
+
+    // The lyrics always fit (owner 2026-11-12): measured again per slide.
+    const curRef = useRef(null);
+    const fitKey = content ? `${content.startedAt}:${content.index || 0}:${Boolean(content.intro)}:${transpose}:${scale}:${show.chords}:${content.slides?.[content.index || 0]?.text || ""}` : "";
+    useBoxFit(curRef, fitKey, Boolean(content) && content.kind !== "presentation");
 
     const cls = `net net-stage ${embed ? "net-embed" : ""}`;
     if (!content) {
@@ -64,23 +70,17 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
     return (
         <div className={cls} style={style}>
             {isImage(song.background_image) && <div className="ns-bg" style={{ backgroundImage: `url(${song.background_image})` }} />}
-            <header className="ns-h">
-                <div className="ns-title">
-                    <b>{song.title || "Música"}</b>
-                    {song.artist && <span>{song.artist}</span>}
-                </div>
-                <div className="ns-chips">
-                    {show.labels && current.label && <div className="ns-chip"><small>Parte</small><b>{current.label}</b></div>}
-                    {song.song_key && <div className="ns-chip"><small>Tom</small><b>{transposeChord(song.song_key, transpose)}</b></div>}
-                    {song.bpm && <div className="ns-chip"><small>BPM</small><b>{song.bpm}</b></div>}
-                    {show.clock && <div className="ns-chip"><small>Na música</small><b>{mmss(elapsed)}</b></div>}
-                    {show.clock && <div className="ns-chip is-clock"><small>Hora</small><b>{hhmm(now)}</b></div>}
-                </div>
-            </header>
+            <StageStrip title={song.title || "Música"} sub={song.artist}>
+                {show.labels && current.label && <Kv k="Parte" v={current.label} />}
+                {song.song_key && <Kv k="Tom" v={transposeChord(song.song_key, transpose)} />}
+                {song.bpm && <Kv k="BPM" v={song.bpm} />}
+                {show.clock && <Kv k="Na música" v={mmss(elapsed)} />}
+                {show.clock && <Kv k="Hora" v={hhmm(now)} clock />}
+            </StageStrip>
             {song.musician_notes && show.notes && <div className="ns-notes">{song.musician_notes}</div>}
             {slideNote && show.notes && <div className="ns-notes">{slideNote}</div>}
             <main className="ns-main">
-                <div className="ns-cur">{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (current.text || (current.label ? <span className="ns-part">{current.label}</span> : ""))}{answer.length > 0 && <span className="ns-answer">{answer.map((l) => <span key={l} className={l.startsWith("✓") || l.startsWith("Resposta") ? "is-right" : ""}>{l}</span>)}</span>}</div>
+                <div className="ns-cur" ref={curRef}><div className="ns-cur-in">{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (current.text || (current.label ? <span className="ns-part">{current.label}</span> : ""))}{answer.length > 0 && <span className="ns-answer">{answer.map((l) => <span key={l} className={l.startsWith("✓") || l.startsWith("Resposta") ? "is-right" : ""}>{l}</span>)}</span>}</div></div>
                 {chorded && !embed && (
                     <aside className="ns-trans" aria-label="Transposição">
                         <Transpose value={transpose} onChange={setTranspose} />
@@ -96,19 +96,43 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
                     </aside>
                 )}
             </main>
-            {next && show.next && (
-                <div className="ns-next">
-                    <span className="net-section">Próximo</span>
-                    <p>{next.text || next.label || ""}</p>
-                </div>
-            )}
-            {slides.length > 1 && (
-                <div className="ns-dots" aria-label={`Slide ${index + 1} de ${slides.length}`}>
-                    {slides.map((_, i) => <i key={i} className={i === index ? "is-on" : i < index ? "is-done" : ""} />)}
-                </div>
-            )}
+            <StageBar label="Próximo" text={next && show.next ? oneLine(next.text || next.label || "") : ""} count={slides.length} index={index} of="Slide" />
             {children}
         </div>
+    );
+}
+
+// The next slide's lines as one line ("…" when longer than the bar).
+const oneLine = (t) => String(t || "").split("\n").map((l) => l.trim()).filter(Boolean).join(" / ");
+
+// The strip fixed to the top, edge to edge (owner 2026-11-12, mockup "Palco
+// compacto", P1 = A): the title and its subtitle on the left, the values as
+// "RÓTULO valor" on the right, the clock last and a little bigger.
+function StageStrip({ title, sub, children }) {
+    return (
+        <header className="ns-h">
+            <div className="ns-title"><b>{title}</b>{sub && <span>{sub}</span>}</div>
+            <div className="ns-chips">{children}</div>
+        </header>
+    );
+}
+const Kv = ({ k, v, clock = false }) => <div className={`ns-chip ${clock ? "is-clock" : ""}`}><small>{k}</small><b>{v}</b></div>;
+
+// The bar fixed to the bottom, edge to edge (P2 = A: one line, big enough to
+// read from the stage; P3 = A: the slides' dots on its right). Drawn while it
+// has something to say, so the lyrics keep their room on a one-slide item.
+function StageBar({ label, text, count, index, of }) {
+    if (!text && count < 2) return null;
+    return (
+        <footer className="ns-next">
+            {text && <span className="net-section">{label}</span>}
+            <p>{text}</p>
+            {count > 1 && (
+                <div className="ns-dots" aria-label={`${of} ${index + 1} de ${count}`}>
+                    {Array.from({ length: count }, (_, i) => <i key={i} className={i === index ? "is-on" : i < index ? "is-done" : ""} />)}
+                </div>
+            )}
+        </footer>
     );
 }
 
@@ -123,17 +147,11 @@ function PresentationStage({ content, now, nowMs, show, cls, style, children }) 
     const elapsed = Math.max(0, Math.floor((nowMs - content.startedAt) / 1000));
     return (
         <div className={cls} style={style}>
-            <header className="ns-h">
-                <div className="ns-title">
-                    <b>{content.title || "Apresentação"}</b>
-                    <span>Apresentação</span>
-                </div>
-                <div className="ns-chips">
-                    <div className="ns-chip"><small>Página</small><b>{index + 1}/{slides.length}</b></div>
-                    {show.clock && <div className="ns-chip"><small>No ar</small><b>{mmss(elapsed)}</b></div>}
-                    {show.clock && <div className="ns-chip is-clock"><small>Hora</small><b>{hhmm(now)}</b></div>}
-                </div>
-            </header>
+            <StageStrip title={content.title || "Apresentação"} sub="Apresentação">
+                <Kv k="Página" v={`${index + 1}/${slides.length}`} />
+                {show.clock && <Kv k="No ar" v={mmss(elapsed)} />}
+                {show.clock && <Kv k="Hora" v={hhmm(now)} clock />}
+            </StageStrip>
             <main className={`ns-pres ${next && show.next ? "" : "is-alone"}`}>
                 <figure className="ns-page is-cur">
                     {isImage(current.image_url) && <img src={current.image_url} alt={current.label || ""} />}
@@ -145,11 +163,7 @@ function PresentationStage({ content, now, nowMs, show, cls, style, children }) 
                     </figure>
                 )}
             </main>
-            {slides.length > 1 && (
-                <div className="ns-dots" aria-label={`Página ${index + 1} de ${slides.length}`}>
-                    {slides.map((_, i) => <i key={i} className={i === index ? "is-on" : i < index ? "is-done" : ""} />)}
-                </div>
-            )}
+            <StageBar text="" count={slides.length} index={index} of="Página" />
             {children}
         </div>
     );

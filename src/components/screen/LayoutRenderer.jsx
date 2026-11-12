@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenRenderer from "./ScreenRenderer";
 import { useLiveNow } from "@/hooks/useLiveState";
 import AlertBar from "./AlertBar";
@@ -7,6 +7,7 @@ import { transposeChords } from "@/utils/chordTranspose";
 import { typeLabel } from "@/lib/console/setlist";
 import { FONT_MAP, typography } from "@/lib/deviceStyles";
 import { fontStack } from "@/lib/fonts";
+import { useBoxFit } from "@/hooks/useBoxFit";
 import { layoutContext, elementState, elementText, elementItems, elementHasContent, layoutHasTimer, slidePage, TEXT_TYPES, typeOf } from "@/lib/layouts";
 import "@/components/network/net.css";
 import "./layout.css";
@@ -98,20 +99,27 @@ function Element({ el, ctx, state, ghost, logoUrl, embed, motion, transpose, set
     );
 }
 
+// "Letra atual": the slide on air, shrunk until it fits its box whole
+// (owner 2026-11-12: a long slide was cut at the bottom; useBoxFit).
+function CurrentBody({ el, ctx, song, embed, transpose, setTranspose }) {
+    const chorded = el.props.chords ? chordedOf(song, ctx.index, ctx.current.text) : null;
+    const ref = useRef(null);
+    useBoxFit(ref, `${ctx.current.text || ""}:${ctx.index}:${Boolean(chorded)}:${transpose}:${el.size}:${el.w}:${el.h}:${el.font}`);
+    return (
+        <>
+            <div className="kl-v" ref={ref}>{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (ctx.current.text || "")}</div>
+            {chorded && !embed && <aside className="kl-trans ns-trans" aria-label="Transposição"><Transpose value={transpose} onChange={setTranspose} /></aside>}
+        </>
+    );
+}
+
 function Body({ el, ctx, logoUrl, embed, motion, transpose, setTranspose, screen, audio }) {
     const song = ctx.song || {};
     switch (el.type) {
         case "screen":
             return <ScreenRenderer fill state={screen} now={ctx.now} logoUrl={logoUrl} preview={embed} motion={embed && motion} audio={audio && !embed} />;
-        case "current": {
-            const chorded = el.props.chords ? chordedOf(song, ctx.index, ctx.current.text) : null;
-            return (
-                <>
-                    <div className="kl-v">{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (ctx.current.text || "")}</div>
-                    {chorded && !embed && <aside className="kl-trans ns-trans" aria-label="Transposição"><Transpose value={transpose} onChange={setTranspose} /></aside>}
-                </>
-            );
-        }
+        case "current":
+            return <CurrentBody el={el} ctx={ctx} song={song} embed={embed} transpose={transpose} setTranspose={setTranspose} />;
         case "chords":
             return (
                 <>

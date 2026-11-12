@@ -46,24 +46,32 @@
 .net-home-f { text-align: center; color: var(--fg-3); font-size: 13px; line-height: 18px; }
 
 /* ---- Palco (stage monitor): read from a few metres, every size in cqmin ---- */
-.net-stage { display: flex; flex-direction: column; gap: 2cqmin; padding: 3cqmin 3.5cqmin; }
+/* The Palco is a strip fixed to the top, the lyrics, a bar fixed to the
+   bottom (owner 2026-11-12, mockup "Palco compacto", P1/P2/P3 = A): the
+   strip and the bar run edge to edge and take the least height, the lyrics
+   the rest, shrinking to fit it whole (useBoxFit's --fit). */
+.net-stage { display: flex; flex-direction: column; gap: 0; padding: 0; }
 .net-stage .ns-bg { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; }
 .net-stage .ns-bg::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg-0) 72%, transparent); }
 .net-stage > :not(.ns-bg) { position: relative; z-index: 1; }
-.ns-h { display: flex; align-items: flex-start; gap: 2cqmin; flex: none; }
-.ns-title { flex: 1; min-width: 0; }
-.ns-title b { display: block; font-size: 4.2cqmin; line-height: 1.15; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ns-title span { display: block; margin-top: .6cqmin; font-size: 2.4cqmin; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ns-chips { display: flex; gap: 1.2cqmin; flex: none; }
-.ns-chip { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .3cqmin; padding: 1cqmin 1.8cqmin; border-radius: 1.4cqmin; background: color-mix(in srgb, var(--bg-1) 85%, transparent); box-shadow: inset 0 0 0 1px var(--line); min-width: 9cqmin; }
+.ns-h { flex: none; display: flex; align-items: center; gap: 2.4cqmin; min-height: 7cqmin; padding: .8cqmin 3cqmin; background: color-mix(in srgb, var(--bg-1) 88%, transparent); border-bottom: 1px solid var(--line-soft); }
+.ns-title { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 1.4cqmin; white-space: nowrap; overflow: hidden; }
+.ns-title b { flex: 0 1 auto; min-width: 0; font-size: 3.2cqmin; line-height: 1.2; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.ns-title span { flex: 0 1 auto; min-width: 0; font-size: 2.3cqmin; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; }
+.ns-chips { display: flex; align-items: baseline; gap: 2.4cqmin; flex: none; }
+.ns-chip { display: flex; align-items: baseline; gap: .8cqmin; white-space: nowrap; }
 .ns-chip small { font-size: 1.5cqmin; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3); font-weight: 600; }
-.ns-chip b { font-size: 3.4cqmin; line-height: 1.1; font-weight: 600; }
-.ns-chip.is-clock b { font-size: 4.2cqmin; }
-.ns-notes { flex: none; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: var(--warn-tint); box-shadow: inset 3px 0 0 var(--warn); font-size: 2.4cqmin; line-height: 1.35; color: var(--fg-1); }
-.ns-main { flex: 1; min-height: 0; display: flex; gap: 2.5cqmin; }
-.ns-cur { flex: 1; min-width: 0; display: grid; place-items: center; text-align: center; font-size: calc(7.4cqmin * var(--kp-text, 1)); line-height: 1.2; font-weight: 700; white-space: pre-line; text-shadow: 0 .4cqmin 2cqmin #000000b3; overflow: hidden; }
+.ns-chip b { font-size: 3cqmin; line-height: 1.2; font-weight: 600; }
+.ns-chip.is-clock { padding-left: 2.4cqmin; border-left: 1px solid var(--line-soft); }
+.ns-chip.is-clock b { font-size: 3.6cqmin; }
+.ns-notes { flex: none; margin: 1.2cqmin 3cqmin 0; padding: .9cqmin 1.6cqmin; border-radius: 1cqmin; background: var(--warn-tint); box-shadow: inset 3px 0 0 var(--warn); font-size: 2.2cqmin; line-height: 1.35; color: var(--fg-1); }
+.ns-main { flex: 1; min-height: 0; display: flex; gap: 2.5cqmin; padding: 1.6cqmin 3.5cqmin; }
+/* safe center: what does not fit overflows downwards, where the fit
+   measures it (never above the box, out of reach). */
+.ns-cur { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: safe center; align-items: safe center; text-align: center; font-size: calc(7.4cqmin * var(--kp-text, 1) * var(--fit, 1)); line-height: 1.2; font-weight: 700; white-space: pre-line; text-shadow: 0 .4cqmin 2cqmin #000000b3; overflow: hidden; }
+.ns-cur-in { display: grid; justify-items: center; max-width: 100%; }
 /* An Escola bíblica question's options under it, the right one marked (StageScreen). */
-.ns-cur:has(> .ns-answer) { align-content: center; gap: 4cqmin; }
+.ns-cur-in:has(> .ns-answer) { gap: 4cqmin; }
 .ns-answer { display: flex; flex-wrap: wrap; justify-content: center; gap: .4em 1.2em; font-size: .5em; font-weight: 500; color: var(--fg-2); }
 .ns-answer .is-right { color: var(--ok-fg); font-weight: 700; }
 /* Inline chords: each syllable with its chord riding above it; wrapping
@@ -84,15 +92,16 @@
 .ns-chords-h button:active { background: var(--bg-3); }
 .ns-chords-h output { min-width: 6cqmin; text-align: center; font-size: 2cqmin; color: var(--fg-2); }
 .ns-chords pre { flex: 1; min-height: 0; overflow: auto; margin: 0; font: 500 calc(2.2cqmin * var(--kp-text, 1))/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; color: var(--fg-1); }
-.ns-next { flex: none; display: flex; align-items: baseline; gap: 2cqmin; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: color-mix(in srgb, var(--bg-1) 85%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
-.ns-next p { margin: 0; flex: 1; min-width: 0; font-size: calc(3cqmin * var(--kp-text, 1)); line-height: 1.3; color: var(--fg-2); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ns-next { flex: none; display: flex; align-items: center; gap: 2cqmin; min-height: 7cqmin; padding: 1cqmin 3cqmin; background: color-mix(in srgb, var(--bg-1) 88%, transparent); border-top: 1px solid var(--line-soft); }
+/* Big enough to read from the stage (P2 = A), one line, "…" past the bar. */
+.ns-next p { margin: 0; flex: 1; min-width: 0; font-size: calc(4.2cqmin * var(--kp-text, 1)); line-height: 1.25; font-weight: 600; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A presentation (Rodada F3): the page on air, and the next one smaller beside it */
-.ns-pres { flex: 1; min-height: 0; display: grid; grid-template-columns: 2fr 1fr; gap: 2.5cqmin; align-items: center; }
+.ns-pres { flex: 1; min-height: 0; padding: 1.6cqmin 3.5cqmin; display: grid; grid-template-columns: 2fr 1fr; gap: 2.5cqmin; align-items: center; }
 .ns-pres.is-alone { grid-template-columns: 1fr; }
 .ns-page { margin: 0; min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 1.2cqmin; }
 .ns-page img { display: block; width: 100%; min-height: 0; max-height: 100%; object-fit: contain; border-radius: 1cqmin; background: #000; box-shadow: inset 0 0 0 1px var(--line); }
 .ns-page.is-next img { opacity: .85; }
-.ns-dots { flex: none; display: flex; justify-content: center; gap: .8cqmin; }
+.ns-dots { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: .8cqmin; max-width: 40%; flex-wrap: wrap; }
 .ns-dots i { height: 1cqmin; min-height: 5px; width: 1cqmin; min-width: 5px; border-radius: 999px; background: var(--line-strong); }
 .ns-dots i.is-on { width: 5cqmin; background: var(--air); }
 .ns-dots i.is-done { background: var(--fg-3); }
@@ -103,7 +112,8 @@
 @container net (orientation: portrait) {
     .ns-main { flex-direction: column; }
     .ns-chords { flex: 0 1 34%; }
-    .ns-chips { flex-wrap: wrap; justify-content: flex-end; max-width: 50%; }
+    .ns-h { flex-wrap: wrap; }
+    .ns-chips { flex-wrap: wrap; }
 }
 
 /* ---- Tela do pastor: what the congregation sees, the time, what comes next ---- */
