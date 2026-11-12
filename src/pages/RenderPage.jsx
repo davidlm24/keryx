@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import { frameState } from "@/lib/console/lyricVideo";
 
 /**
  * "Exportar vídeo com a letra…" (owner 2026-11-11): the hidden, offscreen
@@ -49,8 +50,9 @@ export default function RenderPage() {
         return () => { alive = false; };
     }, []);
     if (!doc) return <div style={{ position: "fixed", inset: 0, background: "#000" }} />;
-    // The background alone (before the first mark), else the slide.
-    const state = at === "bg" ? { ...doc, content: null } : { ...doc, content: { ...doc.content, index: at } };
+    // The introduction (the Fundo, or the title when the song begins "Com
+    // título"), else the slide, its intro flag dropped (frameState).
+    const state = frameState(doc, at);
     return (
         <div style={{ position: "fixed", inset: 0, background: "#000" }}>
             <ScreenRenderer state={state} preview fill />
