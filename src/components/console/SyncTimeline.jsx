@@ -91,7 +91,10 @@ export default function SyncTimeline({ duration, t, from, span, laneRef, markers
         const on = (e) => {
             const r = laneRef.current?.getBoundingClientRect();
             const frac = r ? Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) : 0.5;
+            // The timeline's own wheel: never the console's zoom (Ctrl + wheel,
+            // Console.jsx) nor the page's scroll.
             e.preventDefault();
+            e.stopPropagation();
             wheelRef.current?.({ zoom: e.ctrlKey || e.metaKey, delta: Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY, at: timeOf(frac, from, span) });
         };
         el.addEventListener("wheel", on, { passive: false });
