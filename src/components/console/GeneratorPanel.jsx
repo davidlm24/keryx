@@ -1,12 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Btn, IconBtn } from "./kx";
+import { Btn, IconBtn, Seg } from "./kx";
 import { Switch } from "./settings/parts";
-import { GENERATORS, PARAM_LABELS, generatorOf, presetsOf, presetArgs, startArgs, matchingPreset, generatorArgs, normalizeGenerator } from "@/lib/generators";
+import { GENERATORS, PARAM_LABELS, generatorOf, presetsOf, presetArgs, startArgs, matchingPreset, generatorArgs, normalizeGenerator, presetSwatch, secondColors } from "@/lib/generators";
 import { GENERATOR_PARAMS, MAX_COLORS } from "@shared/generators.mjs";
 
+// Degradê pela tela: where the first colours turn into the second.
+// Short words (the panel's column is narrow), the whole one in the tooltip.
+const BLEND_OPTIONS = [["h", "Horiz.", { title: "Horizontal: da esquerda para a direita" }], ["v", "Vert.", { title: "Vertical: de cima para baixo" }], ["d", "Diag.", { title: "Diagonal" }], ["move", "Mover", { title: "Em movimento: duas manchas que se movem devagar" }]];
+
 // Camadas › Fundo › Gerado (src/lib/generators.js): the generators as
-// tiles, and for the one on air its presets, sliders and colours. Every
+// tiles, and for the one on air its presets (round dots, as colourways),
+// sliders, colours (one to five) and the degradê pela tela (a second set
+// of colours and its direction). Every
 // change is a background.set on the live state, at most ten a second while
 // a slider moves (the outputs follow each one; the console's monitors show
 // the rest). Rows of the parent's .frm grid (a `k` label, then the control).
@@ -46,14 +52,29 @@ export default function GeneratorPanel({ background, disabled, op }) {
         }, SEND_MS);
     };
     const set = (k, v) => send(normalizeGenerator({ ...draft, [k]: v }));
-    const setColor = (i, v) => send(normalizeGenerator({ ...draft, colors: draft.colors.map((c, k) => (k === i ? v : c)) }));
+    const setList = (key, list) => send(normalizeGenerator({ ...draft, [key]: list }));
     const preset = matchingPreset(draft);
+    const presets = presetsOf(g.id);
+    const colorRow = (key, list, what) => (
+        <span className="lyr-colors">
+            {list.map((c, i) => (
+                <span key={i} className="lyr-color">
+                    <input type="color" className="ed-color" disabled={disabled} value={c} onChange={(e) => setList(key, list.map((x, k) => (k === i ? e.target.value : x)))} aria-label={`${what} ${i + 1} do fundo gerado`} title={c} />
+                    {list.length > 1 && <IconBtn name="x" small title="Tirar esta cor" disabled={disabled} onClick={() => setList(key, list.filter((_, k) => k !== i))} />}
+                </span>
+            ))}
+            {list.length < MAX_COLORS && <Btn small disabled={disabled} onClick={() => setList(key, [...list, list[list.length - 1] || "#ffffff"])}><Icon name="plus" />Cor</Btn>}
+        </span>
+    );
     return (
         <>
-            <span className="k">Presets</span>
-            <div className="lyr-presets">
-                {presetsOf(g.id).map((p) => <button type="button" key={p.id} disabled={disabled} className={`kx-t lyr-preset ${preset?.id === p.id ? "is-on" : ""}`} aria-pressed={preset?.id === p.id} onClick={() => op("background.set", { ...background, ...presetArgs(p) })}><i style={{ background: `linear-gradient(135deg, ${p.gen.colors.join(", ")})` }} />{p.name}</button>)}
-            </div>
+            <span className="k">Cores prontas</span>
+            <span className="lyr-dotrow">
+                <span className="lyr-dots" role="group" aria-label="Cores prontas">
+                    {presets.map((p) => <button type="button" key={p.id} disabled={disabled} className={`lyr-dot ${preset?.id === p.id ? "is-on" : ""}`} aria-pressed={preset?.id === p.id} title={p.name} aria-label={p.name} style={{ background: presetSwatch(p.gen) }} onClick={() => op("background.set", { ...background, ...presetArgs(p) })} />)}
+                </span>
+                <span className="kx-meta">{preset ? preset.name : "Personalizado"}</span>
+            </span>
             {PARAM_LABELS.filter(([k]) => g.params.includes(k)).map(([k, label, step]) => (
                 <React.Fragment key={k}>
                     <span className="k">{label}</span>
@@ -64,15 +85,18 @@ export default function GeneratorPanel({ background, disabled, op }) {
                 </React.Fragment>
             ))}
             <span className="k">Cores</span>
-            <span className="lyr-colors">
-                {draft.colors.map((c, i) => (
-                    <span key={i} className="lyr-color">
-                        <input type="color" className="ed-color" disabled={disabled} value={c} onChange={(e) => setColor(i, e.target.value)} aria-label={`Cor ${i + 1} do fundo gerado`} title={c} />
-                        {draft.colors.length > 1 && <IconBtn name="x" small title="Tirar esta cor" disabled={disabled} onClick={() => send(normalizeGenerator({ ...draft, colors: draft.colors.filter((_, k) => k !== i) }))} />}
-                    </span>
-                ))}
-                {draft.colors.length < MAX_COLORS && <Btn small disabled={disabled} onClick={() => send(normalizeGenerator({ ...draft, colors: [...draft.colors, "#ffffff"] }))}><Icon name="plus" />Cor</Btn>}
+            {colorRow("colors", draft.colors, "Cor")}
+            <span className="k">Degradê</span>
+            <span className="lyr-slider">
+                <Switch on={Boolean(draft.colors2)} disabled={disabled} onChange={(on) => send(normalizeGenerator({ ...draft, colors2: on ? secondColors(draft.colors) : [] }))} label="Degradê pela tela" />
+                <span className="kx-meta">{draft.colors2 ? "ligado" : "desligado"}</span>
             </span>
+            {draft.colors2 && <>
+                <span className="k">Segundas cores</span>
+                {colorRow("colors2", draft.colors2, "Segunda cor")}
+                <span className="k">Direção</span>
+                <Seg small label="Direção do degradê" value={draft.blend} options={BLEND_OPTIONS} onChange={(v) => send(normalizeGenerator({ ...draft, blend: v }))} />
+            </>}
             <span className="k">Áudio-reativo</span>
             <span className="lyr-slider">
                 <Switch on={draft.audio} disabled={disabled} onChange={(on) => send(normalizeGenerator({ ...draft, audio: on }))} label="Seguir o som que sai do computador" />
