@@ -1573,9 +1573,14 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .ed-media video { width: 100%; aspect-ratio: 16 / 9; background: var(--screen-bg); border-radius: var(--radius-control); }
 .console .ed-media audio { width: 100%; }
 /* What the marks do (Rodada D4: they are made in Sincronizar). */
-.console .ed-syncstat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-1); }
+/* Beside the media while there is room (200 px), under it in a narrow
+   column; its lines never squeeze into each other (the body scrolls). */
+.console .ed-syncstat { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-1); }
+.console .ed-syncstat > * { flex-shrink: 0; }
 .console .ed-syncn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-content); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .ed-syncn.is-on { color: var(--fg-1); }
+/* "Só o som do vídeo" on by itself: the lyrics follow the marks (2026-11-12). */
+.console .ed-soundwhy { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-ui); color: var(--brand-hover); }
 .console .ed-unmarked { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 /* Avançar sozinha (Rodada P7): a label column, then the controls. */
 .console .ed-adv { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: var(--control-sm); }

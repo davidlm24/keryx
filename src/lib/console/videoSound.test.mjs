@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../../shared/live-state.mjs";
-import { soundModeFor, songMedia, soundStays, undoSoundStays } from "./videoSound.js";
+import { soundModeFor, songMedia, songSoundWhy, soundModeValue, syncedToMarks, soundStays, undoSoundStays } from "./videoSound.js";
 
 const T = 1_000_000;
 const VIDEO = "http://127.0.0.1:7700/media/louvor.mp4";
@@ -26,6 +26,39 @@ test("a song's video goes to the video channel, or as its playback with Só o so
     assert.deepEqual(songMedia({ audio_url: "x.mp3", playback_mode: "sound" }), { video: null, playback: "x.mp3" });
     assert.deepEqual(songMedia({ audio_url: "" }), { video: null, playback: null });
     assert.deepEqual(songMedia({}), { video: null, playback: null });
+});
+
+test("a song that follows its marks plays its video as sound only by itself (2026-11-12)", () => {
+    const marked = { audio_url: VIDEO, slides: [{ text: "um", start: 4 }, { text: "dois" }] };
+    assert.deepEqual(songMedia(marked), { video: null, playback: VIDEO, playbackKind: "video" });
+    assert.equal(songSoundWhy(marked), "marks");
+    // Marks by line count too (a song saved before its slides carried them).
+    assert.equal(syncedToMarks({ audio_url: VIDEO, slides: [{ text: "um" }], line_starts: [null, 3], follow_mode: "marks" }), true);
+    // "video": the clip on the screens anyway.
+    assert.deepEqual(songMedia({ ...marked, playback_mode: "video" }), { video: VIDEO, playback: null });
+    // The switch chosen wins and says so.
+    assert.equal(songSoundWhy({ ...marked, playback_mode: "sound" }), "switch");
+    // Avançar sozinha off, or by time: the marks are not followed.
+    assert.deepEqual(songMedia({ ...marked, follow_mode: "off" }), { video: VIDEO, playback: null });
+    assert.deepEqual(songMedia({ ...marked, follow_mode: "time" }), { video: VIDEO, playback: null });
+    // "Pelas marcas" with nothing marked yet: the video still shows.
+    assert.equal(songSoundWhy({ audio_url: VIDEO, follow_mode: "marks", slides: [{ text: "um" }] }), null);
+    // YouTube never plays hidden, marks or not.
+    assert.equal(songSoundWhy({ ...marked, audio_url: YT }), null);
+    // A playback is a playback.
+    assert.equal(songSoundWhy({ ...marked, audio_url: "x.mp3" }), null);
+    // The editor's draft slides decide while editing.
+    assert.equal(songSoundWhy({ audio_url: VIDEO, slides: [] }, [{ start: 2 }]), "marks");
+});
+
+test("the switch writes \"\" while it says what the song does by itself", () => {
+    const marked = { audio_url: VIDEO, slides: [{ text: "um", start: 4 }] };
+    const clip = { audio_url: VIDEO, slides: [{ text: "um" }] };
+    assert.equal(soundModeValue(marked, true), "");
+    assert.equal(soundModeValue(marked, false), "video");
+    assert.equal(soundModeValue(clip, true), "sound");
+    assert.equal(soundModeValue(clip, false), "");
+    assert.equal(soundModeValue({ ...marked, playback_mode: "video" }, true), "");
 });
 
 test("the playback of a video plays on the audio channel, off the screens", () => {

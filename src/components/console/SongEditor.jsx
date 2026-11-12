@@ -8,7 +8,7 @@ import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard 
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
-import { soundModeFor } from "@/lib/console/videoSound";
+import { soundModeFor, songSoundWhy, soundModeValue } from "@/lib/console/videoSound";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { parseChords, slidesFromLyrics, reflowLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { fitMarks, startsFromLines, linesFromStarts, slideFirstLines, lineCount, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength } from "@/lib/console/lyricSync";
@@ -106,6 +106,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const [picking, setPicking] = useState(false);
     const pickAnchor = useRef(null);
     const lyricsRef = useRef(null);
+    // The latest openSync, for a toast made before the media changed.
+    const openSyncRef = useRef(null);
 
     useEffect(() => {
         let alive = true;
@@ -311,12 +313,14 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // The song's video or playback is a Mídia row (owner 2026-11-10): one
     // chosen there, or a file from the computer that enters the Mídia first
     // (a repeat asks "Já está na Mídia"; Pular uses the one already there).
-    // The marks are by the old media's time, so they are cleared.
+    // The marks stay (owner 2026-11-12: mark against the sung version, then
+    // swap in the final playback); the toast leads to Marcar os tempos to
+    // check them against the new file.
     const chooseMedia = (row) => {
         setPicking(false);
         if (!row?.file_url || row.file_url === song.audio_url) return;
         set({ audio_url: row.file_url });
-        setLineStarts([]);
+        if (lineStarts.some((x) => Number.isFinite(x))) c.say("Trocado · as marcas ficam: confira com o novo arquivo", { label: "Marcar os tempos", run: () => openSyncRef.current?.() });
     };
     const mediaFromComputer = useMediaFromComputer(libMedia, ask, c.say);
     const fromComputer = async (file) => {
@@ -358,6 +362,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             setDirty(true);
         },
     });
+    openSyncRef.current = openSync;
 
     const save = useCallback(async () => {
         if (!song.title.trim()) { c.say("Dê um título à música."); return; }
@@ -425,8 +430,13 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // "Só o som do vídeo" (videoSound.js): the switch for a video file, a
     // hint for a YouTube link (it never plays hidden).
     const soundMode = soundModeFor(media);
-    const soundOnly = soundMode === "switch" && song.playback_mode === "sound";
     const marked = starts.filter((x) => Number.isFinite(x)).length;
+    // Only the sound, by the switch or by itself when the lyrics follow the
+    // marks (owner 2026-11-12); the draft's marks count, so marking flips it.
+    const draftSlides = starts.map((start) => ({ start }));
+    const draftSong = { ...song, line_starts: lineStarts };
+    const soundWhy = soundMode === "switch" ? songSoundWhy(draftSong, draftSlides) : null;
+    const soundOnly = Boolean(soundWhy);
     const linesTotal = lineCount(slides);
     const linesMarked = fitMarks(lineStarts, linesTotal).filter((x) => Number.isFinite(x)).length;
     // The lyrics changed their line count since the marks: they may be off.
@@ -571,7 +581,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     </span>
                     {picking && <PlaybackPicker anchorRef={pickAnchor} media={libMedia} current={media} onPick={chooseMedia} onClose={() => setPicking(false)} onComputer={() => { setPicking(false); fileRef.current?.click(); }} />}
                     {media && <Btn small onClick={() => set({ audio_url: "" })} title="As marcas ficam: sem mídia, a letra segue o relógio ao vivo">Remover</Btn>}
-                </>} bodyStyle={{ display: "flex", flexDirection: media ? "row" : "column", gap: "var(--space-2)", padding: "0 var(--space-2) var(--space-2)", overflow: "auto" }}>
+                </>} bodyStyle={{ display: "flex", flexDirection: media ? "row" : "column", flexWrap: media ? "wrap" : "nowrap", alignContent: "flex-start", gap: "var(--space-2)", padding: "0 var(--space-2) var(--space-2)", overflow: "auto" }}>
                     <input ref={fileRef} type="file" accept="video/*,audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; fromComputer(f); }} />
                     {!media && <Empty icon="film" title="Sem vídeo nem playback">Um vídeo vai para as telas de vídeo junto com a letra; um playback toca no canal de áudio. Sem mídia, a letra pode seguir a banda: pelas marcas (Marcar os tempos) ou por tempo, e no ar o Iniciar do player começa.</Empty>}
                     {media && (
@@ -585,10 +595,11 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         {soundMode === "switch" && <>
                             <div className="ed-adv">
                                 <span className="k">Nas telas</span>
-                                <button type="button" role="switch" aria-checked={soundOnly} aria-label="Só o som do vídeo" className={`sw2 kx-switch kx-t ${soundOnly ? "is-on" : ""}`} onClick={() => set({ playback_mode: soundOnly ? "" : "sound" })} />
+                                <button type="button" role="switch" aria-checked={soundOnly} aria-label="Só o som do vídeo" className={`sw2 kx-switch kx-t ${soundOnly ? "is-on" : ""}`} onClick={() => set({ playback_mode: soundModeValue(draftSong, !soundOnly, draftSlides) })} />
                                 <span>Só o som do vídeo</span>
                             </div>
-                            <span className="kx-meta">{soundOnly ? "As telas mostram a letra; o som do vídeo toca por baixo, no canal de áudio." : "O vídeo vai às telas de vídeo junto com a letra."}</span>
+                            {soundWhy === "marks" && <span className="ed-soundwhy"><Icon name="clock" size={14} />Ligado sozinho: a letra tem tempos marcados</span>}
+                            <span className="kx-meta">{soundOnly ? `As telas mostram a letra; o som do vídeo toca por baixo.${soundWhy === "marks" ? " Desligue para mostrar o vídeo mesmo assim." : ""}` : "O vídeo vai às telas de vídeo junto com a letra."}</span>
                         </>}
                         {soundMode === "youtube" && <span className="kx-meta">Um link do YouTube não toca escondido: para mostrar a letra com o som dele, use Baixar para a Mídia e escolha aqui o arquivo baixado.</span>}
                         <div className="ed-adv">
