@@ -1,17 +1,17 @@
 /* KERYX — generated from tokens.json by scripts/ds-tokens.cjs (npm run ds:tokens). Never edit by hand. */
 :root, [data-theme="dark"] {
   --bg-0: #0d0d0c;
-  --bg-1: #171715;
-  --bg-2: #20201d;
-  --bg-3: #2a2925;
-  --bg-4: #2f2e2a;
-  --line: #35342f;
-  --line-strong: #4a4840;
-  --line-overlay: #2c2b27;
-  --line-soft: #35342f99;
-  --fg-1: #f4f1ea;
-  --fg-2: #bbb6ac;
-  --fg-3: #9b958a;
+  --bg-1: #171716;
+  --bg-2: #20201e;
+  --bg-3: #292927;
+  --bg-4: #2e2e2c;
+  --line: #343431;
+  --line-strong: #494844;
+  --line-overlay: #2b2b29;
+  --line-soft: #34343199;
+  --fg-1: #f3f1ee;
+  --fg-2: #b9b6b1;
+  --fg-3: #989590;
   --air: #30a46c;
   --air-fg: #4fd08a;
   --air-fill: #cf343a;
@@ -75,8 +75,8 @@
   --stage-label: rgba(0, 0, 0, .5);
   --stage-now: rgba(0, 0, 0, .55);
   --screen-fg: #ffffff;
-  --shadow-popover: 0 0 0 1px #2c2b27, 0 8px 24px #00000080;
-  --dialog: 0 0 0 1px #2c2b27, 0 10px 28px #00000066;
+  --shadow-popover: 0 0 0 1px #2b2b29, 0 8px 24px #00000080;
+  --dialog: 0 0 0 1px #2b2b29, 0 10px 28px #00000066;
   --shadow-window: 0 0 0 1px color-mix(in srgb, var(--line) 40%, transparent), 0 24px 64px #000000b3, 0 2px 8px #00000080;
   --live-ring: inset 0 0 0 1px color-mix(in srgb, var(--air) 75%, transparent);
   --prev-ring: inset 0 0 0 1px color-mix(in srgb, var(--prev) 75%, transparent);
