@@ -100,3 +100,17 @@ test("clampShift: the nudge moves the text, never out of the safe area", () => {
     assert.equal(clampShift(40, 40, 420, 50, 400), 0);
     assert.equal(clampShift("x", 100, 300, 50, 400), 0);
 });
+
+import { boxHolds } from "../screenFit.js";
+
+test("boxHolds: the glyphs standing past their lines are not overflow; a line more is (owner 2026-11-12)", () => {
+    // Measured on the Palco at 1024 x 768: one line at 92 px overflowed its box by 5 px with room to spare.
+    assert.equal(boxHolds({ scrollH: 226, clientH: 221, scrollW: 963, clientW: 963, fontPx: 92 }), true);
+    assert.equal(boxHolds({ scrollH: 71, clientH: 68, scrollW: 500, clientW: 500, fontPx: 57 }), true);
+    // A whole line more does not fit.
+    assert.equal(boxHolds({ scrollH: 650 + 110, clientH: 650, scrollW: 900, clientW: 900, fontPx: 92 }), false);
+    // The width keeps 1 px: a chord line never wraps.
+    assert.equal(boxHolds({ scrollH: 100, clientH: 100, scrollW: 905, clientW: 900, fontPx: 92 }), false);
+    // A tiny font (a Multiview tile) keeps the 1 px floor.
+    assert.equal(boxHolds({ scrollH: 12, clientH: 10, scrollW: 50, clientW: 50, fontPx: 4 }), false);
+});
