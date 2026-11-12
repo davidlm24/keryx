@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../../shared/live-state.mjs";
-import { endDue, endLayer, endArgs } from "./songEnd.js";
+import { endDue, endLayer, endArgs, endLength, endBefore } from "./songEnd.js";
 import { songEnd, songContent, withManualIntro, END_FADE } from "./content.js";
 
 const T0 = 1_000_000;
@@ -55,4 +55,40 @@ test("songContent: the end, the follow's length and the beginning", () => {
     assert.equal(withManualIntro("media.show", op[1], "title"), op[1]);
     assert.equal(withManualIntro(op[0], { ...op[1], ref: {} }, "title").introMode, undefined, "only a song");
     assert.equal(withManualIntro(op[0], c, "title"), c, "a synced song keeps its own");
+});
+
+test("endLength: the player's bar ends at the Fim of the song playing (owner 2026-11-12)", () => {
+    const live = run([lyrics(), ["audio.show", { url: URL, title: "pb" }]]);
+    assert.equal(endLength(live, live.audio), 30);
+    assert.equal(endLength(live, { url: "keryx-media://outro.mp3" }), null, "another file: its own length");
+    assert.equal(endLength(run([lyrics({ ends: undefined })]), live.audio), null, "no Fim");
+    assert.equal(endLength(null, live.audio), null);
+});
+
+test("songContent carries the Fim the console forwards on save and on Desfazer (owner 2026-11-12)", () => {
+    const song = { title: "Hino", audio_url: URL, lyrics: "um\n\ndois", slides: [{ text: "um", start: 5 }, { text: "dois", start: 12 }], end_at: "42.5", end_fade: 2 };
+    const c = songContent(song, {}, []);
+    assert.deepEqual(c.ends, { url: URL, at: 42.5, fade: 2 }, "a text end_at from the store reads as its number");
+});
+
+test("endBefore: the watcher arms only while the song is before its Fim (owner 2026-11-12)", () => {
+    const live = run([lyrics(), ["audio.show", { url: URL, title: "pb" }]]);
+    assert.equal(endBefore(live, T0 + 10 * S), true, "10 s in, the Fim at 30");
+    assert.equal(endBefore(live, T0 + 31 * S), false, "past it");
+    // Put back past the Fim (Desfazer of that end): never before it, so the watcher never arms.
+    const late = run([lyrics(), ["audio.show", { url: URL, title: "pb", position: 31 }]]);
+    assert.equal(endBefore(late, T0), false);
+    assert.equal(endDue(late, T0), true, "due, but the watcher needs the crossing");
+    assert.equal(endBefore(run([lyrics()]), T0), false, "nothing playing");
+});
+
+test("endGain: full before the Fim, down over the fade, silent after (owner 2026-11-12)", async () => {
+    const { endGain } = await import("./songEnd.js");
+    assert.equal(endGain(10, 30, 4), 1);
+    assert.equal(endGain(30, 30, 4), 1);
+    assert.equal(endGain(32, 30, 4), 0.5);
+    assert.equal(endGain(34, 30, 4), 0);
+    assert.equal(endGain(40, 30, 4), 0);
+    assert.equal(endGain(30, 30, 0), 0, "no fade: silent at the Fim");
+    assert.equal(endGain(29.99, 30, 0), 1);
 });

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Seg, NumBox, WinBar, useUnloadGuard, Empty } from "./kx";
 import SyncTimeline from "./SyncTimeline";
-import { DEFAULT_SPAN, spanOf, clampFrom, fracOf, timeOf, followView, zoomTo, stepAfter, spanWord } from "@/lib/console/timelineView";
+import { DEFAULT_SPAN, SPANS, spanOf, clampFrom, fracOf, timeOf, followView, zoomTo, stepAfter, spanWord } from "@/lib/console/timelineView";
+import { endGain } from "@/lib/console/songEnd";
 import { useConfirm } from "./ConfirmDialog";
 import { useWinCol } from "./winLayout";
 import SyncMarks from "./SyncMarks";
@@ -10,7 +11,7 @@ import PlaybackPicker, { useMediaFromComputer } from "./PlaybackPicker";
 import { useLibrary } from "./useConsoleData";
 import { useContextMenu } from "./ContextMenu";
 import { isVideoUrl } from "@/lib/console/content";
-import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, clampEnd, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP } from "@/lib/console/lyricSync";
+import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, clampEnd, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP, END_STEP } from "@/lib/console/lyricSync";
 import { anchorIndex, anchorMarks, fmtDelta } from "@/lib/console/lrcPick";
 
 const isMark = (v) => Number.isFinite(v);
@@ -166,17 +167,57 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         let raf = 0;
         const step = () => { setT(now()); raf = requestAnimationFrame(step); };
         raf = requestAnimationFrame(step);
-        return () => cancelAnimationFrame(raf);
-    }, [playing, now]);
+        // The media's own timeupdate too: a window the system holds in the
+        // background stops requestAnimationFrame, and the Fim's fade and stop
+        // (below) must still happen there.
+        const el = live ? null : mediaRef.current;
+        const tick = () => setT(now());
+        el?.addEventListener("timeupdate", tick);
+        return () => { cancelAnimationFrame(raf); el?.removeEventListener("timeupdate", tick); };
+    }, [playing, now, live]);
     // Leaving the page stops the sound.
     useEffect(() => () => mediaRef.current?.pause(), []);
+    // The preview ends at the Fim with its fade (owner 2026-11-12: "nas
+    // marcações também deve respeitar o fim marcado e terminar com o fade"),
+    // as the console does on air: only once it CROSSES the Fim (seen before
+    // it), so playing from past the Fim to move it still works; never while
+    // recording marks or while Espaço is about to mark the Fim.
+    const endArmed = useRef(false);
+    useEffect(() => {
+        const el = mediaRef.current;
+        if (live || !el) return;
+        const watching = playing && isMark(end) && rec === null && !endRec;
+        if (!watching || t < end) {
+            endArmed.current = watching && t < end;
+            if (el.volume !== 1) el.volume = 1;
+            return;
+        }
+        if (!endArmed.current) return;
+        el.volume = Math.max(0, Math.min(1, endGain(t, end, endFade)));
+        if (t >= end + endFade) {
+            endArmed.current = false;
+            el.pause();
+            el.volume = 1;
+            seek(end);
+        }
+    }, [t, playing, end, endFade, live, rec, endRec]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Every change of the marks can be undone (Backspace, Desfazer). Any
     // change ends the dashed marks (they are ordinary now) and the tap's note.
-    const snapshot = () => setUndo((u) => [...u.slice(-49), { starts, end }]);
+    const snapshot = () => setUndo((u) => [...u.slice(-49), { starts, end, endFade }]);
     const change = (next) => { snapshot(); setStarts(next); setSug(null); setDone(null); setFinished(false); };
     // The Fim moves (undoable, as a mark): after the last slide, inside the file.
     const changeEnd = (v) => { snapshot(); setEnd(v === null ? null : clampEnd(starts, v, duration)); setEndRec(false); };
+    // The Fim's fine tuning: 0,1 s; Shift 1 s; Alt 0,01 s (the buttons and the flag's ← →).
+    const endStep = (e) => (e?.shiftKey ? 1 : e?.altKey ? END_STEP : STEP);
+    const onEndKey = (e) => {
+        if (!isMark(end) || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        changeEnd(end + (e.key === "ArrowRight" ? 1 : -1) * endStep(e));
+    };
+    // Ouvir o fim: the 4 s before it, then the fade, stopping by itself.
+    const hearEnd = () => { if (!isMark(end)) return; seek(Math.max(0, end - 4)); play(); };
     // Backspace / Desfazer: the marks before, and the gold row back on the
     // first one that changed (so Espaço marks it again).
     const undoLast = () => {
@@ -186,6 +227,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         const at = before.findIndex((v, i) => (isMark(v) ? v !== starts[i] : isMark(starts[i])));
         setStarts(before);
         setEnd(entry.end);
+        if (entry.endFade !== undefined) setEndFade(entry.endFade);
         setUndo((u) => u.slice(0, -1));
         // The gold back on the slide whose mark changed (its first line).
         const to = at >= 0 && byLine ? (firsts.filter((f) => f <= at).pop() ?? at) : at;
@@ -288,6 +330,8 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     keysRef.current = (e) => {
         if (!active || e.ctrlKey || e.metaKey || e.altKey) return;
         if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName) || e.target?.isContentEditable) return;
+        // The Fim's flag, focused, nudges itself with ← → (onEndKey).
+        if (e.target?.closest?.(".sync-mk.is-end") && (e.key === "ArrowLeft" || e.key === "ArrowRight")) return;
         if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
         const k = e.key;
         let done = true;
@@ -544,7 +588,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                             <span className="kx-time sync-clock">{fmtTime(t)}<small> / {duration ? fmtTime(duration).slice(0, -3) : "--:--"}</small></span>
                             <span className="kx-spacer" />
                             {duration > 0 && <>
-                                <IconBtn name="minus" title="Aproximar: menos segundos na tela · Ctrl + roda do mouse" disabled={span <= 10} onClick={() => zoom(-1)} />
+                                <IconBtn name="minus" title="Aproximar: menos segundos na tela · Ctrl + roda do mouse" disabled={span <= SPANS[0]} onClick={() => zoom(-1)} />
                                 <span className="sync-span" title="Quanto da música está na tela">{spanWord(spanStep, duration)}</span>
                                 <IconBtn name="plus" title="Afastar: mais segundos na tela · Ctrl + roda do mouse" disabled={span >= duration} onClick={() => zoom(1)} />
                                 <Btn small on={span >= duration} disabled={span >= duration} onClick={() => { setSpanStep(Infinity); setFrom(0); }} title="Ver a música inteira na linha do tempo">Música inteira</Btn>
@@ -560,7 +604,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 onPointerDown: dragMarker(i), onPointerMove: moveMarker, onPointerUp: dropMarker,
                             }] : []))}
                             overviewMarks={starts.filter(isMark)}
-                            end={live ? null : end} endFade={endFade} onEndDown={dragEnd} onEndMove={moveEnd} onEndUp={dropEnd}
+                            end={live ? null : end} endFade={endFade} onEndDown={dragEnd} onEndMove={moveEnd} onEndUp={dropEnd} onEndKey={onEndKey}
                             onSeekStart={seekFromRuler} onSeekMove={seekFromRuler} onSeekEnd={() => {}}
                             onLaneClick={seekFromRuler} onCenter={(at) => { viewFollows.current = false; setFrom(clampFrom(at - span / 2, span, duration)); }} onWheel={onWheel} />
                         {sug && <span className="kx-meta">Tracejadas: as marcas da internet, ainda nos tempos da gravação original.</span>}
@@ -610,9 +654,10 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                     <span className="sync-txt">Fim da música</span>
                                     <TimeField value={end} onCommit={(v) => changeEnd(v)} />
                                     <span className="sync-acts">
-                                        <IconBtn small name="minus" title={`−${String(STEP).replace(".", ",")} s`} disabled={!isMark(end)} onClick={() => changeEnd(end - STEP)} />
-                                        <IconBtn small name="plus" title={`+${String(STEP).replace(".", ",")} s`} disabled={!isMark(end)} onClick={() => changeEnd(end + STEP)} />
+                                        <IconBtn small name="minus" title="−0,1 s · Shift 1 s · Alt 0,01 s" disabled={!isMark(end)} onClick={(e) => changeEnd(end - endStep(e))} />
+                                        <IconBtn small name="plus" title="+0,1 s · Shift 1 s · Alt 0,01 s" disabled={!isMark(end)} onClick={(e) => changeEnd(end + endStep(e))} />
                                         <Btn small onClick={() => changeEnd(now())} title="O fim no tempo de agora">Aqui</Btn>
+                                        <Btn small disabled={!isMark(end)} onClick={hearEnd} title="Tocar os 4 s antes do fim e o fade, que para sozinho no fim"><Icon name="play" size={12} />Ouvir o fim</Btn>
                                         <IconBtn small name="x" title="Tirar o fim · a música toca até o arquivo acabar" disabled={!isMark(end)} onClick={() => changeEnd(null)} />
                                     </span>
                                 </div>
@@ -620,7 +665,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                     <div className="sync-row sync-end is-set">
                                         <span className="n" />
                                         <span className="sync-txt">Fade out</span>
-                                        <NumBox label="Segundos do fade" value={endFade} min={0} max={10} step={0.5} unit="s" onChange={(v) => setEndFade(v)} />
+                                        <NumBox label="Segundos do fade" value={endFade} min={0} max={10} step={0.1} unit="s" onChange={(v) => { snapshot(); setEndFade(Math.round(v * 10) / 10); }} />
                                     </div>
                                 )}
                                 {!isMark(end) && <span className="kx-meta sync-endnote">Sem fim marcado, a música toca até o arquivo acabar.</span>}

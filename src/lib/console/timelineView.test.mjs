@@ -27,7 +27,8 @@ test("zoom keeps the anchor where it is; steps up to the whole song", () => {
     assert.equal(stepAfter(30, -1, 250), 20);
     assert.equal(stepAfter(30, 1, 250), 60);
     assert.equal(stepAfter(120, 1, 250), Infinity);
-    assert.equal(stepAfter(10, -1, 250), 10, "the closest stays");
+    assert.equal(stepAfter(10, -1, 250), 5, "5 s on screen: the Fim tuned by ear (2026-11-12)");
+    assert.equal(stepAfter(5, -1, 250), 5, "the closest stays");
     assert.equal(stepAfter(30, 1, 50), Infinity, "past the song: the whole of it");
     assert.equal(spanWord(30, 250), "30 s");
     assert.equal(spanWord(120, 250), "2 min");

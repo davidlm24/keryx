@@ -2955,15 +2955,28 @@ first → (`introOn` in live-state.mjs). **The song's Fim** (owner
 length is end + fade); the console watches the media playing that url
 (`endDue` in songEnd.js, tested; an effect in useConsole, once per
 `content.startedAt`, whether the letra automática runs or not) and ends it
-through its own Esc with `{ ended: true, soundFade }`: `clear` fades the
+when the media **crosses** the mark (seen before it, `endBefore`; so a song
+put back at or past the Fim — the Desfazer of that end, a seek past it —
+plays on) through its own Esc with `{ ended: true, soundFade }`: `clear` fades the
 sound over the song's fade, marks `live.ended` (so the Autoplay goes on),
 the papel de parede comes in, the toast "A música terminou no fim marcado"
-has Desfazer. The exported video stops at end + fade, fading to black
+has Desfazer. **Every path keeps `ends`** (owner 2026-11-12, "o termina aqui
+não é respeitado"): `songSaved` forwards it in its `content.update` (a Fim
+marked, moved or taken off while the song is on air), and `restoreArgs`
+carries `ends`/`introMode` (Desfazer, Voltar ao anterior, the item after
+Esc). **The player's bar ends at the Fim** (`endLength`: the total, the
+remaining time, the seek and the ticks stop at the mark, within the file). The exported video stops at end + fade, fading to black
 (`ffmpegArgs` `end`). **Marcar os tempos' timeline** (T1–T4,
 `SyncTimeline.jsx`): an overview of the whole song, a ruler that only moves
 the time, a lane that only holds the marks (flags; one moves after a 4 px
 drag, a click goes to its time) and the Fim's red flag with its fade band,
-over the sound's wave (`waveform.js`, decoded once per file); 30 s on
+over the sound's wave (`waveform.js`, decoded once per file); **the Fim
+tuned by ear** (owner 2026-11-12): to 0,01 s (`END_STEP`, `clampEnd`), its −
+/ + 0,1 s · Shift 1 s · Alt 0,01 s, its flag focusable with ← → the same
+steps and its label with the hundredths, **Ouvir o fim** (the 4 s before
+it), the Fade out by 0,1 s and undoable, a 5 s zoom; and **the page's
+preview ends at the Fim with its fade** (`endGain` in songEnd.js; once it
+crosses the Fim, never while recording); 30 s on
 screen, turning its page while it plays, the wheel slides and Ctrl + the
 wheel zooms (`timelineView.js`, tested); the Intro row on top of the
 slides, the Fim and Fade out rows under them; Espaço after the last slide

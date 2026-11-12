@@ -8,6 +8,7 @@ import { levelsNow, useReportedDuration, useMeterFeed } from "./meterStore";
 import { useFramePreview } from "./useFramePreview";
 import { slideNameAt, tipLeft, tipPicture, FRAME_W, FRAME_H } from "@/lib/console/seekPreview";
 import { followLabel, followAction } from "@/lib/console/followWords";
+import { endLength } from "@/lib/console/songEnd";
 import { followStart } from "@/lib/console/lyricSync";
 
 const HOT = 0.95; // about -3 dBFS
@@ -237,7 +238,11 @@ export default function PlayerBar({ c, picked, setPicked, projectorOpen }) {
     const item = media || (clockOnly ? { title: cur.content.title, kind: "clock", playback: follow.clock } : null);
     const reported = useReportedDuration(layer, media?.url);
     // A song's playback or video the file has not told its length yet: the song's.
-    const duration = clockOnly ? clockLength(cur.content.slides, follow) : media?.duration || reported || (followsItem(follow, media) ? follow.length || null : null);
+    const fileLength = clockOnly ? clockLength(cur.content.slides, follow) : media?.duration || reported || (followsItem(follow, media) ? follow.length || null : null);
+    // The song's Fim is its end on the bar (owner 2026-11-12): the total, the
+    // remaining time, the seek and the marks stop there (within the file).
+    const fim = clockOnly ? null : endLength(cur, media);
+    const duration = fim ? (fileLength ? Math.min(fim, fileLength) : fim) : fileLength;
     const pb = item?.playback;
     // The position counts on the player's own clock, only while it plays:
     // its tick re-renders the player, not the console.

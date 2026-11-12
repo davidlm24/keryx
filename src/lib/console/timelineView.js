@@ -5,7 +5,7 @@
 import { fmtTime } from "./lyricSync.js";
 
 // The zoom's steps, in seconds on screen; Infinity = the whole song.
-export const SPANS = [10, 20, 30, 60, 120, Infinity];
+export const SPANS = [5, 10, 20, 30, 60, 120, Infinity];
 export const DEFAULT_SPAN = 30;
 
 // The seconds on screen for a step: never more than the song.

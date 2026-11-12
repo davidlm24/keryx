@@ -5,6 +5,8 @@
 // for a slide with no mark. Pure: the page (SyncView.jsx) keeps the media.
 
 export const STEP = 0.1;
+// The Fim's own step: a hundredth (Alt on its − / +, the flag's Alt + ← →).
+export const END_STEP = 0.01;
 export const SEEK_SECONDS = 2;
 export const SPEEDS = [0.5, 0.75, 1];
 
@@ -295,11 +297,12 @@ export function withFollowStarts(slides, follow) {
 }
 
 // The song's Fim (owner 2026-11-12): after the last mark (a tenth past it),
-// never past the file, to a tenth of a second. null clears it.
+// never past the file, to a hundredth of a second (finer than the marks: the
+// owner tunes it by ear, "mais fine tuned"). null clears it.
 export function clampEnd(starts, t, length = null) {
     if (t === null || t === undefined || !Number.isFinite(Number(t))) return null;
     const last = Math.max(0, ...(starts || []).filter(isMark));
     const lo = (starts || []).some(isMark) ? last + STEP : 0;
     const hi = Number.isFinite(length) && length > lo ? length : Infinity;
-    return snap(Math.min(hi, Math.max(lo, Number(t))));
+    return snap(Math.min(hi, Math.max(lo, Number(t))), END_STEP);
 }

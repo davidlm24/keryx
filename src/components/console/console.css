@@ -2554,6 +2554,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 /* The Fim (2026-11-12): a red flag with its time. */
 .console .sync .sync-mk.is-end { background: var(--danger); font-size: var(--fs-meta); }
 .console .sync .sync-mk.is-end > .sync-mk-n { background: var(--danger); color: var(--fg-1); font-weight: 700; }
+/* The Fim's flag takes the keyboard (← → nudge it): its ring when focused. */
+.console .sync .sync-mk.is-end:focus-visible { outline: 2px solid var(--fg-1); outline-offset: 2px; }
 .console .sync .sync-head { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--air); pointer-events: none; z-index: var(--z-mark); }
 .console .sync .sync-span { min-width: 44px; text-align: center; font-size: var(--fs-ui); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 /* The rows of the song's beginning and end (2026-11-12, I1 and F1). */

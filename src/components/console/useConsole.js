@@ -14,7 +14,7 @@ import { styleMetrics } from "@/lib/console/fontMetrics";
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { withManualIntro } from "@/lib/console/content";
-import { endDue, endArgs, END_SAY } from "@/lib/console/songEnd";
+import { endDue, endArgs, END_SAY, endBefore } from "@/lib/console/songEnd";
 import { soundStays, undoSoundStays } from "@/lib/console/videoSound";
 import { withTransitions } from "@/lib/console/transitions";
 import { churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
@@ -462,8 +462,10 @@ export function useConsole() {
     }, [live, callOp, say, undoEnd, keepLast]);
 
     // The song's Fim (owner 2026-11-12): while its media plays, the console
-    // ends it at the mark, once per song sent (content.startedAt) — whether
-    // the letra automática runs or not, locked or not (an end works locked).
+    // ends it when it CROSSES the mark (seen before it, then at or past it),
+    // once per song sent (content.startedAt) — whether the letra automática
+    // runs or not, locked or not (an end works locked). Put back at or past
+    // the Fim (Desfazer of that end, a seek past it), the song plays on.
     const ends = live?.content?.ends;
     const endKey = ends ? live.content.startedAt : null;
     const endRef = useRef(end);
@@ -471,8 +473,12 @@ export function useConsole() {
     useEffect(() => {
         if (!endKey) return undefined;
         let done = false;
+        let armed = false;
         const tick = () => {
-            if (done || !endDue(liveRef.current, keryx.live.now())) return;
+            if (done) return;
+            const at = keryx.live.now();
+            if (endBefore(liveRef.current, at)) { armed = true; return; }
+            if (!armed || !endDue(liveRef.current, at)) return;
             done = true;
             endRef.current({ ended: true });
         };

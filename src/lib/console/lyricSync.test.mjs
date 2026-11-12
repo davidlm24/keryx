@@ -196,8 +196,9 @@ test("spliceMarks: an edited slide moves no other slide's marks (2026-11-12)", (
     assert.deepEqual(spliceMarks([1, null, "x"], 0, 1, 1), [1, null, null]);
 });
 
-test("clampEnd: after the last mark, inside the file, to a tenth (2026-11-12)", () => {
-    assert.equal(clampEnd([1, 20, null], 222.23), 222.2);
+test("clampEnd: after the last mark, inside the file, to a hundredth (2026-11-12)", () => {
+    assert.equal(clampEnd([1, 20, null], 222.234), 222.23);
+    assert.equal(clampEnd([1, 20, null], 222.2), 222.2);
     assert.equal(clampEnd([1, 20], 10), 20.1, "never before the last slide");
     assert.equal(clampEnd([1, 20], 300, 250), 250, "never past the file");
     assert.equal(clampEnd([], 5), 5);

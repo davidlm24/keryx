@@ -99,3 +99,16 @@ test("Desfazer after Esc also puts back the Fundo the item was over (Esc put the
     assert.equal(back.background.value, "aurora");
     assert.equal(back.content.title, "Canto");
 });
+
+test("a song put back keeps its Fim and its beginning (owner 2026-11-12)", () => {
+    const ends = { url: "keryx-media://pb.mp3", at: 30, fade: 3 };
+    const on = applyOp(emptyState(T), "content.show", { kind: "lyrics", title: "Canto", slides: [{ text: "um" }], ends, introMode: "title" }, T);
+    const entry = { layer: "content", data: on.content };
+    const [op, args] = restoreArgs(entry);
+    assert.equal(op, "content.show");
+    assert.deepEqual(args.ends, ends);
+    assert.equal(args.introMode, "title");
+    // Desfazer after Esc: the Fim is back on air.
+    const after = run(applyOp(on, "clear", {}, T + 2), undoEndOps(on));
+    assert.deepEqual(after.content.ends, ends);
+});

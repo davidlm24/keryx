@@ -77,7 +77,7 @@ function WaveCanvas({ wave, from, span, t }) {
     return <canvas ref={ref} className="sync-wave" aria-hidden="true" />;
 }
 
-export default function SyncTimeline({ duration, t, from, span, laneRef, markers = [], end = null, endFade = 3, onEndDown, onEndMove, onEndUp, tip = null, media = "", overviewMarks = [], onSeekStart, onSeekMove, onSeekEnd, onLaneClick, onCenter, onWheel }) {
+export default function SyncTimeline({ duration, t, from, span, laneRef, markers = [], end = null, endFade = 3, onEndDown, onEndMove, onEndUp, onEndKey = null, tip = null, media = "", overviewMarks = [], onSeekStart, onSeekMove, onSeekEnd, onLaneClick, onCenter, onWheel }) {
     const wave = useWaveform(media || "");
     const pct = (x) => `${fracOf(x, from, span) * 100}%`;
     const whole = (x) => `${duration ? Math.min(100, Math.max(0, (x / duration) * 100)) : 0}%`;
@@ -138,8 +138,9 @@ export default function SyncTimeline({ duration, t, from, span, laneRef, markers
                             onPointerDown={m.onPointerDown} onPointerMove={m.onPointerMove} onPointerUp={m.onPointerUp} onPointerCancel={m.onPointerUp}>{m.label !== "" && m.label != null && <span className="sync-mk-n">{m.label}</span>}</span>
                     ))}
                     {Number.isFinite(end) && (
-                        <span className="sync-mk is-end" style={{ left: pct(end) }} title={`Fim da música · ${fmtTime(end)} · o som desce em ${String(endFade).replace(".", ",")} s · arraste para ajustar`}
-                            onPointerDown={onEndDown} onPointerMove={onEndMove} onPointerUp={onEndUp} onPointerCancel={onEndUp}><span className="sync-mk-n">Fim · {fmtTime(end).slice(0, -3)}</span></span>
+                        <span className="sync-mk is-end" style={{ left: pct(end) }} title={`Fim da música · ${fmtTime(end)} · o som desce em ${String(endFade).replace(".", ",")} s · arraste, ou ← → (Shift 1 s, Alt 0,01 s)`}
+                            role="slider" tabIndex={0} aria-label="Fim da música" aria-valuenow={end} aria-valuetext={fmtTime(end)} aria-valuemin={0} aria-valuemax={duration || undefined} onKeyDown={onEndKey || undefined}
+                            onPointerDown={onEndDown} onPointerMove={onEndMove} onPointerUp={onEndUp} onPointerCancel={onEndUp}><span className="sync-mk-n">Fim · {fmtTime(end).replace(".", ",")}</span></span>
                     )}
                     {tip && <span className="sync-tip" style={{ left: tip.left }} role="status">{tip.text}</span>}
                 </div>
