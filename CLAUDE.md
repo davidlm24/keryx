@@ -2628,7 +2628,7 @@ de 2026-10-12 dos layouts avulsos): o desenho mora em **`OutputPref.design`**
 layoutRows)` em `src/lib/outputPrefs.js` (testado) resolve: o design da
 tela; senão o antigo `layout_id` (migração preguiçosa, nada é gravado — a
 primeira salvada no Editor grava o design e zera o layout_id); senão null =
-a página padrão (PastorScreen / renderer puro). **O Palco é um desenho só**
+a página padrão (o renderer puro). **O Palco e o Pastor são um desenho só**
 (owner 2026-11-12, mockup "Editor de telas · Palco", E1–E4, A–C; o
 StageScreen morreu): sem design próprio ele desenha `factory:palco` vestido
 pelas chaves de Ajustes › Conteúdo (`pageDesign`: a parte desligada fica
@@ -2647,8 +2647,20 @@ both | text | page, `oneLine`) e os pontos. `part` é o nome da parte
 num PDF). **O Aviso rápido encosta na faixa** do seu lado (`alertDock`:
 acima da faixa de baixo, abaixo da de cima; os elementos vizinhos abrem
 espaço com `--ka-h`), a pílula fica no meio. Um design salvo do Palco antigo
-(ids `f_`, sem Faixa: `fromOldPalco`) fica como está e o Editor diz "Este
-desenho é anterior ao Palco novo" com Voltar ao padrão. O catálogo
+(ids `f_`, sem Faixa: `fromOldDesign`) fica como está e o Editor diz "Este
+desenho é anterior ao Palco novo" com Voltar ao padrão. **O Pastor também**
+(owner 2026-11-12, mockup "Telas · fase 2", P = A; o PastorScreen morreu):
+`factory:pastor` é uma faixa (igreja, data, Culto há, hora), o que está no
+ar e há quanto tempo, o Monitor da projeção 16:9 (seus `props.chords` /
+`labels` = a Cifra e o Nome da parte do Pastor) e os Próximos em lista;
+`PASTOR_PARTS` liga Relógio e Próximos itens ("Não" esconde, senão é a
+contagem); `PAGE_PARTS` (layoutEditor.js) diz ao Editor as partes e os nomes
+das chaves de cada tela. **No canvas do Editor só o que aparece no estado
+escolhido pega o clique** (owner 2026-11-12, E = A: `le-hit.is-asleep`); o
+resto fica mais apagado e se escolhe pela lista ou trocando Mostrar com;
+o escolhido na lista mantém as alças. **Numa tela pequena** (os cards de
+Telas e saídas, o Multiview, um tablet estreito: `.kl` abaixo de 520 px) as
+fichas `inline` mostram só o valor (M = A). O catálogo
 "Layouts das telas", o select de Layout, "Usar em…", "Ver como", `?for=` e
 o `?layout=` da rede **morreram**; as linhas ScreenLayout são agora **os
 modelos da igreja** (owner 2026-10-22, Rodada P, P8-3): "Salvar como
@@ -2687,7 +2699,7 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala
     no Palco/Pastor), e os ajustes visuais moram na mesma janela
     (`settings/ajustes/OutputAjustes.jsx`; a coluna é `.nv-scroll.cfg`, então
-    os blocos têm o estilo das Configurações). **Os Ajustes são cinco
+    os blocos têm o estilo das Configurações). **Os Ajustes são quatro
     blocos `CfgGroup`** (Rodada H2, owner 2026-10-19; ids `editor.<bloco>`,
     um arquivo cada em `settings/ajustes/`, o resumo de uma linha de cada
     um em `src/lib/console/ajustesSummaries.js`, testado): **Destino**
@@ -2699,10 +2711,11 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     quando a regra é Personalizado —, "Sem item da lista", Cifra e Nome da
     parte da letra; no Palco e no Pastor, as partes do desenho),
     **Aparência** (Escala, Margens, Tema, o Aviso rápido dobrado com seu
-    resumo, a faixa da Transmissão), **Comportamento** (fechado: as três
-    linhas "já faz sozinho") e **Diagnóstico** (fechado, só leitura: Estado,
-    Na rede, Ajustes, Mostrando agora; Identificar e Testar ficam para a
-    frente G9). A Transmissão não tem Conteúdo nem Comportamento. O primeiro
+    resumo, a faixa da Transmissão; a linha Tema só onde há o que
+    escolher) e **Diagnóstico** (fechado, só leitura: Estado, Na rede,
+    Ajustes, Mostrando agora e "Já faz sozinho", a linha que sobrou do
+    antigo Comportamento — owner 2026-11-12, A = A; Identificar e Testar
+    ficam para a frente G9). A Transmissão não tem Conteúdo. O primeiro
     `input.fg-input` do `.cfg-outprefs` é o Nome (Destino vem primeiro: o
     smoke lê assim; o corpo de uma dobra fica montado, só escondido). O
     raro dentro de um bloco é `CfgDisc` (settings/parts.jsx: uma linha com

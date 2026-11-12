@@ -13,15 +13,15 @@ import { mainLayer, emptyState } from "@shared/live-state.mjs";
 import {
     ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
     normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, FACTORY_LAYOUTS, seedLayoutId,
-    layoutContext, elementState, whenLabel, ghostReason, NEXT_SHOWS, PALCO_PARTS,
+    layoutContext, elementState, whenLabel, ghostReason, NEXT_SHOWS,
 } from "@/lib/layouts";
 import {
     ELEMENT_HINTS, elementBar, barToElement, ALIGN_ACTIONS, alignElements, distributeElements, moveElements, gridRect, cleanGrid, GRID_STEPS,
-    churchModels, modelFields, modelNameTaken, categoryLabel, fromOldPalco, resetWords, switchReason,
+    churchModels, modelFields, modelNameTaken, categoryLabel, fromOldDesign, drawsItself, resetWords, switchReason,
 } from "@/lib/layoutEditor";
 import { clickSelection, EMPTY_SELECTION } from "@/lib/console/multiSelect";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
-import { PREF_OUTPUTS, outputLook, normalizePref, screenDesign, pageDesign, stageOptions, prefState, prefVars, ruleOf, noticeOnly, alertOf, churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, outputLook, normalizePref, screenDesign, pageDesign, stageOptions, pastorOptions, prefState, prefVars, ruleOf, noticeOnly, alertOf, churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
 import { usePrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, sampleNotice, sampleAlert, sampleTimer, SAMPLE_ITEMS } from "../console/settings/sample";
@@ -165,9 +165,9 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     }, [path, isStream, resetHistory]);
 
     const dirty = useMemo(() => !sameJson(designFields(draft), designFields(saved)), [draft, saved]);
-    // The Palco's default drawing follows its switches (Ajustes › Conteúdo)
-    // while it is not its own and nothing was changed here.
-    const switches = path === "/StageView" ? JSON.stringify(stageOptions(pref)) : "";
+    // The Palco's and the Pastor's default drawing follows its switches
+    // (Ajustes › Conteúdo) while it is not its own and nothing was changed here.
+    const switches = path === "/StageView" ? JSON.stringify(stageOptions(pref)) : path === "/PastorView" ? JSON.stringify(pastorOptions(pref)) : "";
     useEffect(() => {
         if (!loaded.current || own || dirty || !switches) return;
         const seed = seedFor(path, pref);
@@ -389,7 +389,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const elCtx = layoutContext({ live, now: keryx.live.now(), upcoming: SAMPLE_ITEMS, hasService: true, church });
     const stateOf = (el) => elementState(el, elCtx, { logoUrl: church.logo, elements: draft?.elements || [] });
     // A part of the Palco's default drawing switched off in its Ajustes says so.
-    const reasonOf = (el, st) => (path === "/StageView" && switchReason(el, PALCO_PARTS, own)) || ghostReason(el, st);
+    const reasonOf = (el, st) => switchReason(el, path, own) || ghostReason(el, st);
     const selState = selected ? stateOf(selected) : "shown";
 
     const upload = async (file, apply) => {
@@ -681,8 +681,11 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                                 </div>
                                 <div className={`le-over ${grid.on ? "has-grid" : ""}`} style={grid.on ? { "--le-grid": `${grid.step}%` } : undefined} onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
                                     {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}
+                                    {/* Only what shows in the state chosen (Mostrar com) takes the click (owner
+                                        2026-11-12, E = A): the rest stays faint, picked from the list or
+                                        by showing its state; one picked in the list keeps its handles. */}
                                     {draft.elements.map((el) => (
-                                        <div key={el.id} className={`le-hit ${marked.includes(el.id) ? "is-sel" : ""}`} style={{ left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%` }}
+                                        <div key={el.id} className={`le-hit ${marked.includes(el.id) ? "is-sel" : ""} ${!marked.includes(el.id) && stateOf(el) !== "shown" ? "is-asleep" : ""}`} style={{ left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%` }}
                                             title={[typeOf(el.type)?.name, reasonOf(el, stateOf(el))].filter(Boolean).join(" · ")} onPointerDown={(e) => startDrag(e, el)} onDoubleClick={() => setSel(el.id)}>
                                             {!many && sel === el.id && HANDLES.map((h) => <i key={h} className={`le-h ${h}`} onPointerDown={(e) => startDrag(e, el, h)} />)}
                                         </div>
@@ -691,13 +694,11 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                             </div>
                         </div>
                     )}
-                    {draft && !isStream && (path === "/StageView" || path === "/PastorView") && (
-                        <div className={`listhead nv-note le-one ${fromOldPalco(path, own ? saved : null) ? "is-old" : ""}`}>
-                            {fromOldPalco(path, own ? saved : null)
-                                ? <><span className="kx-meta"><b>Este desenho é anterior ao Palco novo.</b> Volte ao padrão para usar a faixa e o Próximo embaixo.</span><Btn small onClick={resetToPage}>Voltar ao padrão</Btn></>
-                                : path === "/PastorView" && !own
-                                    ? <span className="kx-meta">A tela do Pastor ainda se desenha sozinha; este desenho só vale depois de salvo.</span>
-                                    : !own && <span className="kx-meta">Este é o desenho padrão do Palco: o mesmo da tela. As partes ligam em Ajustes › Conteúdo; mudou algo aqui, Salvar grava um desenho próprio e as chaves dão lugar ao olho de cada parte.</span>}
+                    {draft && !isStream && drawsItself(path) && (fromOldDesign(path, own ? saved : null) || !own) && (
+                        <div className={`listhead nv-note le-one ${fromOldDesign(path, own ? saved : null) ? "is-old" : ""}`}>
+                            {fromOldDesign(path, own ? saved : null)
+                                ? <><span className="kx-meta"><b>Este desenho é anterior ao {path === "/PastorView" ? "Pastor" : "Palco"} novo.</b> Volte ao padrão para usar a faixa {path === "/PastorView" ? "e a lista do Próximo" : "e o Próximo embaixo"}.</span><Btn small onClick={resetToPage}>Voltar ao padrão</Btn></>
+                                : <span className="kx-meta">Este é o desenho padrão {path === "/PastorView" ? "do Pastor" : "do Palco"}: o mesmo da tela. As partes ligam em Ajustes › Conteúdo; mudou algo aqui, Salvar grava um desenho próprio e as chaves dão lugar ao olho de cada parte.</span>}
                         </div>
                     )}
                     {draft && !isStream && (
@@ -708,7 +709,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                                     ? <><b>{typeOf(selected.type)?.name}</b> está {reasonOf(selected, selState).replace(/^E/, "e").replace(/^D/, "d")}</>
                                     : <><b>{typeOf(selected.type)?.name}</b> aparece agora ({(whenLabel(selected.when) || "Sempre").toLowerCase()}).</>}
                             </span>
-                            <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã e a grade, Ctrl ou Shift + clique marca vários, Delete tira o elemento, Ctrl+Z desfaz. Esmaecido = não aparece neste estado: tracejado pela regra Aparece ou por falta do que mostrar, pontilhado pelo olho; Mostrar com troca o estado.{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
+                            <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã e a grade, Ctrl ou Shift + clique marca vários, Delete tira o elemento, Ctrl+Z desfaz. Esmaecido = não aparece neste estado: tracejado pela regra Aparece ou por falta do que mostrar, pontilhado pelo olho; ele não pega o clique na tela (escolha-o na lista, ou troque o estado em Mostrar com).{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
                         </div>
                     )}
                 </Panel>

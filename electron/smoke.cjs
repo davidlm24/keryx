@@ -1221,7 +1221,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".mx-tile[data-page='/LyricProjection'] .mx-pick");
         await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
         await click(".console .ctx-menu button", "Pastor");
-        result.mvPicked = await waitFor(() => js(`(() => { const t = document.querySelectorAll(".mx-tile")[1]; return Boolean(t) && t.dataset.page === "/PastorView" && Boolean(t.querySelector(".net-pastor")); })()`));
+        result.mvPicked = await waitFor(() => js(`(() => { const t = document.querySelectorAll(".mx-tile")[1]; return Boolean(t) && t.dataset.page === "/PastorView" && Boolean(t.querySelector(".kl [data-el=pastor_monitor]")); })()`));
         await click(".mx-toggle");
         result.mvOff = await waitFor(() => js("!document.querySelector('.mx-grid') && Boolean(document.querySelector('.kx-mon.prog .ks'))"));
 
@@ -2237,7 +2237,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // the others (the real /PastorView still turns with a tablet).
         result.pastorPrev = await waitFor(() => js(`(() => {
             const c = ${cardOf("Pastor")};
-            const p = c && c.querySelector(".cfg-prev .np-list") && c.querySelector(".np-list").closest(".cfg-prev");
+            const p = c && c.querySelector(".cfg-prev .kl-list") && c.querySelector(".kl-list").closest(".cfg-prev");
             if (!p) return false;
             const r = p.getBoundingClientRect();
             return r.height > 0 && Math.abs(r.width / r.height - 16 / 9) < 0.05;

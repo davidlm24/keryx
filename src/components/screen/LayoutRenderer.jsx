@@ -177,8 +177,12 @@ function Body({ el, ctx, logoUrl, embed, motion, transpose, setTranspose, screen
                 </div>
             );
         }
-        case "monitor":
-            return <div className="kl-mon"><ScreenRenderer state={ctx.live} now={ctx.now} logoUrl={logoUrl} preview audio={false} /></div>;
+        case "monitor": {
+            // The congregation's screen, plus the chords and part names when
+            // the element asks (the Pastor's Cifra / Nome da parte).
+            const live = ctx.live?.content && (el.props.chords || el.props.labels) ? { ...ctx.live, content: { ...ctx.live.content, show: { chords: Boolean(el.props.chords), labels: Boolean(el.props.labels) } } } : ctx.live;
+            return <div className="kl-mon"><ScreenRenderer state={live} now={ctx.now} logoUrl={logoUrl} preview audio={false} /></div>;
+        }
         case "progress":
             return (
                 <div className="kl-dots" aria-label={`Slide ${ctx.index + 1} de ${ctx.slides.length}`}>

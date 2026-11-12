@@ -7,7 +7,6 @@ import useOutputPrefSave from "./useOutputPrefSave";
 import DestinoBlock from "./DestinoBlock";
 import ConteudoBlock from "./ConteudoBlock";
 import AparenciaBlock from "./AparenciaBlock";
-import ComportamentoBlock from "./ComportamentoBlock";
 import DiagnosticoBlock from "./DiagnosticoBlock";
 
 // What "Restaurar padrão" writes: the settings, never the drawing (design,
@@ -19,7 +18,7 @@ const DEFAULTS = { content: "", hidden_kinds: [], content_rule: null, text_scale
 // One output's own settings (OutputPref, src/lib/outputPrefs.js), in the
 // Editor da tela's Ajustes half, as five blocks that open and close with a
 // one-line summary each (Rodada H2, owner 2026-10-19): Destino, Conteúdo
-// (O que esta tela recebe), Aparência, Comportamento and Diagnóstico; the
+// (O que esta tela recebe), Aparência and Diagnóstico (Comportamento, only sentences, became a line of Diagnóstico: owner 2026-11-12, A = A); the
 // rare rows inside them folded (owner 2026-10-27, T2–T4). Each
 // change is saved at once; the output (and any network screen showing the
 // same page) follows it live. `alertSample`/`onAlertSample(on, fresh)` show an
@@ -55,7 +54,6 @@ export default function OutputAjustes({ output, row, themes = [], c, alertSample
             <DestinoBlock ctx={ctx} />
             {!ctx.isStream && <ConteudoBlock ctx={ctx} />}
             <AparenciaBlock ctx={ctx} />
-            {!ctx.isStream && <ComportamentoBlock />}
             <DiagnosticoBlock ctx={ctx} />
             <div className="frm cfg-outprefs-form cfg-outprefs-tail">
                 <FormRow k="">

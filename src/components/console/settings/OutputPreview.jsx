@@ -1,10 +1,9 @@
 import React, { useMemo, useRef } from "react";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import PastorScreen from "@/components/network/PastorScreen";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import StreamBand from "@/components/network/StreamBand";
 import { mainLayer } from "@shared/live-state.mjs";
-import { PREF_OUTPUTS, prefState, prefVars, pastorOptions, streamOptions, ruleOf, noticeOnly, pageDesign } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, prefState, prefVars, streamOptions, ruleOf, noticeOnly, pageDesign } from "@/lib/outputPrefs";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { layoutCountsTime } from "@/lib/layouts";
@@ -16,7 +15,7 @@ import { layoutCountsTime } from "@/lib/layouts";
 // network screens' rows (owner 2026-10-13). Moved here from OutputPrefCard in
 // Rodada H2.
 export default function OutputPreview({ path, pref, design: own, themes = [], live, church }) {
-    // The Palco with no design of its own draws its factory one (one drawing, owner 2026-11-12).
+    // The Palco and the Pastor with no design of their own draw their factory one (one drawing, owner 2026-11-12).
     const design = own || (!pref.content ? pageDesign(path, pref) : null);
     const renderer = PREF_OUTPUTS.includes(path);
     const isStream = path === "/StreamView";
@@ -35,11 +34,9 @@ export default function OutputPreview({ path, pref, design: own, themes = [], li
     const base = liveOn || sample;
     // A screen that receives only avisos gets an example one when none is on air.
     const prevLive = noticeOnly(ruleOf(pref, path)) && !base.communication ? notice : base;
-    const pastor = pastorOptions(pref);
     const streamSample = { key: "x", text: "Grande é o Senhor\ne mui digno de louvor", ref: "Salmos 48:1 · NVI" };
     const rendererState = renderer ? prefState(path, prevLive, pref, themes.find((t) => t.id === pref.themeId) || null) : null;
     if (isStream) return <div className="cfg-prev cfg-prev-stream"><div className="cfg-prev-fill" style={{ containerType: "size" }}><StreamBand caption={streamSample} opts={streamOptions(pref)} scale={pref.scale} /></div></div>;
     if (design) return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><LayoutRenderer layout={design} live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} screenState={renderer ? rendererState : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed /></div></div>;
-    if (isPastor && !pref.content) return <div className="cfg-prev"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>;
     return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={rendererState} preview audio={false} /></div></div>;
 }
