@@ -628,7 +628,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         </>}
                         {advance === "marks" && <>
                             <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} slides marcados</span>
-                            {media && Number.isFinite(song.end_at) && <span className="ed-endline"><Icon name="arrow-right" size={14} />Termina em {mmss(song.end_at)} · fade {String(song.end_fade ?? 3).replace(".", ",")} s</span>}
+                            {media && Number(song.end_at) > 0 && <span className="ed-endline"><Icon name="arrow-right" size={14} />Termina em {mmss(Number(song.end_at))} · fade {String(song.end_fade ?? 3).replace(".", ",")} s</span>}
                             <span className="kx-meta">{!marked ? "Sem marcas: use Marcar os tempos"
                                 : !media ? "No ar: Iniciar letra automática no player, na introdução."
                                 : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>

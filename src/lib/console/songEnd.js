@@ -28,6 +28,27 @@ export function endDue(live, now) {
     return livePosition(p, now) >= ends.at;
 }
 
+// Whether the song's media is still before its Fim now (paused or not):
+// the watcher ends the song only when it CROSSES the mark, so a song put
+// back at or past it (Desfazer of that very end, a seek past the Fim)
+// plays on, and seeking back before it arms the end again.
+export function endBefore(live, now) {
+    const ends = live?.content?.ends;
+    const layer = endLayer(live);
+    if (!ends || !layer) return false;
+    return livePosition(live[layer].playback, now) < ends.at;
+}
+
+// The song's length on the player's bar (owner 2026-11-12: "o player deve
+// respeitar essa marcação como final da música"): the Fim's mark when
+// `item` is the song's media, else null. The bar reaches its end where the
+// watcher ends the song; the fade is the exit after it.
+export function endLength(live, item) {
+    const ends = live?.content?.ends;
+    const at = Number(ends?.at);
+    return ends?.url && item?.url === ends.url && at > 0 ? at : null;
+}
+
 // The clear that ends it: the sound's own fade (ms).
 export const endArgs = (live) => ({ ended: true, soundFade: Math.round((live?.content?.ends?.fade ?? 3) * 1000) });
 

@@ -2955,10 +2955,17 @@ first → (`introOn` in live-state.mjs). **The song's Fim** (owner
 length is end + fade); the console watches the media playing that url
 (`endDue` in songEnd.js, tested; an effect in useConsole, once per
 `content.startedAt`, whether the letra automática runs or not) and ends it
-through its own Esc with `{ ended: true, soundFade }`: `clear` fades the
+when the media **crosses** the mark (seen before it, `endBefore`; so a song
+put back at or past the Fim — the Desfazer of that end, a seek past it —
+plays on) through its own Esc with `{ ended: true, soundFade }`: `clear` fades the
 sound over the song's fade, marks `live.ended` (so the Autoplay goes on),
 the papel de parede comes in, the toast "A música terminou no fim marcado"
-has Desfazer. The exported video stops at end + fade, fading to black
+has Desfazer. **Every path keeps `ends`** (owner 2026-11-12, "o termina aqui
+não é respeitado"): `songSaved` forwards it in its `content.update` (a Fim
+marked, moved or taken off while the song is on air), and `restoreArgs`
+carries `ends`/`introMode` (Desfazer, Voltar ao anterior, the item after
+Esc). **The player's bar ends at the Fim** (`endLength`: the total, the
+remaining time, the seek and the ticks stop at the mark, within the file). The exported video stops at end + fade, fading to black
 (`ffmpegArgs` `end`). **Marcar os tempos' timeline** (T1–T4,
 `SyncTimeline.jsx`): an overview of the whole song, a ruler that only moves
 the time, a lane that only holds the marks (flags; one moves after a 4 px

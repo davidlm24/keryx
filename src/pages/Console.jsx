@@ -588,7 +588,9 @@ export default function Console() {
         if (on?.kind !== "lyrics" || on.ref?.songId !== row.id) return;
         if (c.locked) { c.say("Telas travadas · a música no ar muda quando for enviada de novo."); return; }
         const s = stageFromSong(row, on.ref, data.themes);
-        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage, follow: s.args.follow ?? null }); } catch { /* callOp said why */ }
+        // Its Fim too (owner 2026-11-12): marked, moved or taken off while the
+        // song is on air, the watcher (songEnd.js) follows at once.
+        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage, follow: s.args.follow ?? null, ends: s.args.ends ?? null }); } catch { /* callOp said why */ }
     }, [c, data.themes]);
 
     const prepareItem = useCallback(async (item, index) => {
