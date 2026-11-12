@@ -34,3 +34,26 @@ test("the video lasts up to the song's Fim and fade (2026-11-12)", async () => {
     assert.equal(videoEnd({ end_at: null }), null);
     assert.equal(videoLength({ duration: 250, end_at: null }), 250);
 });
+
+test("frameState: the slides drop the intro flag the reducer stamped; bg follows introMode (owner 2026-11-12)", async () => {
+    const { frameState } = await import("./lyricVideo.js");
+    const { songContent } = await import("./content.js");
+    const { applyOp, emptyState, currentSlide } = await import("../../../shared/live-state.mjs");
+    const marked = { title: "Hino", artist: "Coral", audio_url: "http://127.0.0.1:7700/media/p.mp3", duration: 210, lyrics: "Primeira linha\n\nSegunda linha", slides: [{ text: "Primeira linha", start: 8 }, { text: "Segunda linha", start: 20 }] };
+    const doc = applyOp(emptyState(1000), "content.show", songContent(marked, {}, []), 1000);
+    // The bug's shape: the reducer stamps the introduction on a marked song.
+    assert.equal(doc.content.intro, true);
+    assert.equal(currentSlide(doc.content), null);
+    // Every slide frame draws its text.
+    for (const i of [0, 1]) {
+        const s = frameState(doc, i);
+        assert.equal(currentSlide(s.content)?.text, marked.slides[i].text, `slide ${i}`);
+    }
+    // The bg frame: the background alone, or the title when asked.
+    assert.equal(frameState(doc, "bg").content, null);
+    const titled = applyOp(emptyState(1000), "content.show", songContent({ ...marked, intro_mode: "title" }, {}, []), 1000);
+    const bg = frameState(titled, "bg");
+    assert.equal(bg.content.intro, true);
+    assert.equal(bg.content.introMode, "title");
+    assert.equal(currentSlide(bg.content), null, "the intro view: the renderer draws the title, not a slide");
+});
