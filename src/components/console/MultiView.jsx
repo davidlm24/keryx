@@ -71,14 +71,17 @@ export default function MultiView({ live, now: givenNow, logoUrl, tiles, rows = 
                     <Tile key={page} page={page} index={i} live={live} now={now} logoUrl={logoUrl} items={items} motion={!still && i === moving}
                         look={looks.find((l) => l.key === page) || { name: page, icon: "monitor" }} status={tileStatus(page, rows)} onPick={onPick} onRule={onRule} church={church} />
                 ))}
+                {/* Quantas telas (P4 = A): inside the screen, its top-right corner
+                    (a tile's "Não recebe" warning is top-left), shown while the
+                    mouse is over the monitor. It sat outside the screen before
+                    and landed on the page's corner, never on the monitor. */}
+                {onCount && (
+                    <div className="mx-count">
+                        <Seg small label="Quantas saídas o Multiview mostra" value={String(tiles.length)} options={MV_COUNTS.map((n) => [String(n), String(n)])} onChange={(v) => onCount(Number(v))} />
+                    </div>
+                )}
                 {children}
             </div>
-            {/* Quantas telas (P4 = A): shown while the mouse is over the monitor. */}
-            {onCount && (
-                <div className="mx-count">
-                    <Seg small label="Quantas saídas o Multiview mostra" value={String(tiles.length)} options={MV_COUNTS.map((n) => [String(n), String(n)])} onChange={(v) => onCount(Number(v))} />
-                </div>
-            )}
         </div>
     );
 }

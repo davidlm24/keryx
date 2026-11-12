@@ -140,7 +140,9 @@ function CurrentBody({ el, ctx, song, embed, transpose, setTranspose, cut = "" }
     const chorded = el.props.chords && !intro ? chordedOf(song, ctx.index, ctx.current.text) : null;
     const answer = intro ? [] : stageLines(ctx.current?.activity);
     const ref = useRef(null);
-    useBoxFit(ref, `${ctx.current.text || ""}:${ctx.index}:${intro}:${Boolean(chorded)}:${transpose}:${el.size}:${el.w}:${el.h}:${el.font}:${cut}:${ctx.scale}`);
+    // A song's line stays one line, as on the projection (a passage wraps).
+    const oneLine = !intro && !chorded && (ctx.content?.kind ?? "lyrics") === "lyrics";
+    useBoxFit(ref, `${ctx.current.text || ""}:${ctx.index}:${intro}:${Boolean(chorded)}:${transpose}:${el.size}:${el.w}:${el.h}:${el.font}:${cut}:${ctx.scale}`, true, oneLine);
     return (
         <>
             <div className="kl-v" ref={ref}>{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (ctx.current.text || (ctx.current.label ? <span className="ns-part">{ctx.current.label}</span> : ""))}{answer.length > 0 && <span className="ns-answer">{answer.map((l) => <span key={l} className={l.startsWith("✓") || l.startsWith("Resposta") ? "is-right" : ""}>{l}</span>)}</span>}</div>

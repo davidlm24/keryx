@@ -341,6 +341,28 @@ test("grownRect: the lyrics take the room of neighbours not drawn, never past on
     assert.deepEqual(grownRect({ ...cur, grow: false }, [cur, chords], shown(["c"])), { x: 3, y: 18, w: 61, h: 69 });
 });
 
+test("grownRect: never into a drawn neighbour beyond an empty one (the Palco's strip, owner 2026-11-12)", () => {
+    const cur = normalizeElement({ id: "c", type: "current", x: 3, y: 18, w: 61, h: 69, grow: true });
+    const notes = normalizeElement({ id: "n", type: "notes", x: 3, y: 11.5, w: 94, h: 6 });
+    const title = normalizeElement({ id: "t", type: "title", x: 3, y: 1, w: 40, h: 8 });
+    const strip = normalizeElement({ id: "s", type: "band", x: 0, y: 0, w: 100, h: 10 });
+    const shown = (ids) => (o) => ids.includes(o.id);
+    // The notes empty, the title drawn above them: up to the notes, never 8,5 %.
+    assert.deepEqual(grownRect(cur, [strip, title, notes, cur], shown(["c", "t", "s"])), { x: 3, y: 11.5, w: 61, h: 75.5 });
+    // An empty element inside a drawn band: the band stops it where it is.
+    const far = normalizeElement({ id: "n2", type: "notes", x: 3, y: 2, w: 94, h: 6 });
+    assert.deepEqual(grownRect(cur, [strip, far, cur], shown(["c", "s"])), { x: 3, y: 18, w: 61, h: 69 });
+    // The whole Palco on air with no notes, no chords, no next page: inside its bands.
+    const palco = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco");
+    const pc = palco.elements.find((e) => e.id === "palco_current");
+    const off = new Set(["palco_notes", "palco_chords", "palco_next_page"]);
+    const r = grownRect(pc, palco.elements, (o) => !off.has(o.id));
+    const top = palco.elements.find((e) => e.id === "palco_strip"), bar = palco.elements.find((e) => e.id === "palco_bar");
+    assert.ok(r.y >= top.y + top.h, `top ${r.y} under the strip`);
+    assert.ok(r.y + r.h <= bar.y, `bottom ${r.y + r.h} over the bar`);
+    assert.ok(r.x + r.w > pc.x + pc.w, "still takes the chords' room");
+});
+
 test("alertDock: the Aviso rápido sits beside the band on its side and the nearest elements make room", () => {
     const palco = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco");
     const all = () => true;

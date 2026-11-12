@@ -94,7 +94,7 @@ import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList, layoutPatched } from "@/lib/console/layout";
 import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode, dockLocked, setDockLock, withLockOf, nodeAt, isSplit, setSplitWeights, presetsForSplit, weightsLabel, parseWeights, bibleLocks, bibleBooksRoom } from "@/lib/console/dock";
-import { pickTile } from "@/lib/console/multiview";
+import { pickTile, MV_COUNTS } from "@/lib/console/multiview";
 import { outputsLeavingAir, ruleWithKind } from "@/lib/outputPrefs";
 import useOutputRules from "@/components/console/useOutputRules";
 import { useRailViews } from "@/hooks/useOutputPref";
@@ -1311,6 +1311,7 @@ export default function Console() {
         { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
         !camadasOn && { label: drawer ? "Fechar Camadas" : "Camadas…", icon: "layers", onSelect: () => setDrawer((d) => !d) },
         { label: layout.multiview ? "Ver só o Programa" : "Multiview: várias saídas", icon: "grid", onSelect: toggleMultiview },
+        layout.multiview && { label: "Saídas no Multiview", icon: "grid", sub: MV_COUNTS.map((n) => ({ label: n === 1 ? "1 saída" : `${n} saídas`, checked: layout.mvCount === n, onSelect: () => setLayout({ ...layout, mvCount: n }) })) },
         "sep",
         menuItem("encerrar", { air: true, onSelect: () => setOpen("encerrar") }, letters),
     ] });
