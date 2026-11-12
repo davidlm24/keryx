@@ -70,7 +70,9 @@ const r3 = (n) => Math.round(n * 1000) / 1000;
 // crossfaded (xfade), the sound from the playback (a video's sound stream
 // too; none = a silent video), H.264 yuv420p + AAC, `total` seconds, the
 // progress on stdout. `frameFile(frame)` -> the PNG of "bg" or a slide.
-function ffmpegArgs({ segs, fade = 0, frameFile, audio, out, total }) {
+// `end` ({ at, fade } seconds, the song's Fim, owner 2026-11-12): from
+// `at` the picture fades to black and the sound out, over `fade`.
+function ffmpegArgs({ segs, fade = 0, frameFile, audio, out, total, end = null }) {
     const plan = fadePlan(segs, fade);
     const args = ["-y", "-hide_banner", "-nostats", "-progress", "pipe:1"];
     segs.forEach((s, k) => args.push("-loop", "1", "-framerate", String(FPS), "-t", String(r3(plan.lens[k])), "-i", frameFile(s.frame)));
@@ -89,8 +91,10 @@ function ffmpegArgs({ segs, fade = 0, frameFile, audio, out, total }) {
         }
         chain = steps.join(";");
     }
+    const outFade = end && end.fade > 0 && end.at >= 0;
+    if (outFade) chain = `${chain.replace(/\[v\]$/, "[vf]")};[vf]fade=t=out:st=${r3(end.at)}:d=${r3(end.fade)}[v]`;
     args.push("-filter_complex", [...prep, chain].join(";"), "-map", "[v]");
-    if (audio) args.push("-map", `${n}:a:0?`, "-c:a", "aac", "-b:a", "192k");
+    if (audio) args.push("-map", `${n}:a:0?`, ...(outFade ? ["-af", `afade=t=out:st=${r3(end.at)}:d=${r3(end.fade)}`] : []), "-c:a", "aac", "-b:a", "192k");
     args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-t", String(r3(total)), "-movflags", "+faststart", out);
     return args;
 }
@@ -131,7 +135,7 @@ function createLyricVideo({ BrowserWindow, dialog, url, webPreferences, toolsDir
         cleanup(j);
     }
 
-    async function start({ title, doc, total, fade, audioUrl }, owner) {
+    async function start({ title, doc, total, fade, audioUrl, end = null }, owner) {
         if (!hasFfmpeg()) throw Object.assign(new Error("Este KERYX não trouxe o ffmpeg: o vídeo com a letra não pode ser feito aqui."), { status: 503 });
         const slides = doc?.content?.slides || [];
         if (!slides.length) throw Object.assign(new Error("A música não tem slides."), { status: 400 });
@@ -147,7 +151,8 @@ function createLyricVideo({ BrowserWindow, dialog, url, webPreferences, toolsDir
         if (save.canceled || !save.filePath) return { canceled: true };
         const id = crypto.randomUUID();
         const dir = fs.mkdtempSync(path.join(tmpRoot, "keryx-video-"));
-        const j = { id, title: title || "Música", doc, total: len, fade: Number(fade) || 0, audio, out: save.filePath, dir, phase: "frames", pct: 0, frames: new Set(), win: null, proc: null };
+        const endAt = end && Number(end.at) > 0 && Number(end.at) < len ? { at: Number(end.at), fade: Math.max(0, Math.min(10, Number(end.fade) || 0)) } : null;
+        const j = { id, title: title || "Música", doc, total: len, fade: Number(fade) || 0, end: endAt, audio, out: save.filePath, dir, phase: "frames", pct: 0, frames: new Set(), win: null, proc: null };
         jobs.set(id, j);
         tell(j, {});
         const win = new BrowserWindow({
@@ -168,7 +173,7 @@ function createLyricVideo({ BrowserWindow, dialog, url, webPreferences, toolsDir
         const frameFile = (frame) => path.join(j.dir, frame === "bg" ? "bg.png" : `slide-${frame}.png`);
         const missing = segs.find((s) => !fs.existsSync(frameFile(s.frame)));
         if (missing) return fail(j, "Um slide não foi desenhado.");
-        const args = ffmpegArgs({ segs, fade: j.fade, frameFile, audio: j.audio, out: j.out, total: j.total });
+        const args = ffmpegArgs({ segs, fade: j.fade, frameFile, audio: j.audio, out: j.out, total: j.total, end: j.end });
         tell(j, { phase: "encode", pct: 0 });
         const proc = spawn(ffmpegPath(), args, { windowsHide: true });
         j.proc = proc;

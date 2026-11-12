@@ -835,6 +835,59 @@ test("the introduction: only the background until the first mark (2026-11-11)", 
     assert.equal(restoreState(JSON.parse(JSON.stringify(s)), T0).content.intro, undefined);
 });
 
+test("the song's beginning: only the background, its title, or slide 1 (2026-11-12)", () => {
+    const marked = { title: "Canção", slides: [{ text: "um", start: 8 }, { text: "dois", start: 20 }] };
+    const sync = (introMode) => run([["audio.show", { url: "/a.mp3" }], ["content.show", { ...marked, introMode, follow: { source: "audio", url: "/a.mp3" } }]]);
+    // Synced: "slide" = no introduction, never again on seeking back.
+    const slide = sync("slide");
+    assert.equal(slide.content.intro, undefined);
+    assert.equal(slide.content.introMode, "slide");
+    assert.equal(followIndex(slide, T0 + 2 * S), null);
+    assert.equal(applyOp(slide, "content.goTo", { index: 0, auto: true, intro: true }, T0), slide);
+    // Synced, the title: the introduction carries the mode; blank is the default (no key).
+    const title = sync("title");
+    assert.equal(title.content.intro, true);
+    assert.equal(title.content.introMode, "title");
+    assert.equal(sync("blank").content.introMode, undefined);
+    // By hand (no follow): the mode asked shows until the first move.
+    const hand = run([["content.show", { title: "Hino", slides: [{ text: "um" }, { text: "dois" }], introMode: "title" }]]);
+    assert.equal(hand.content.intro, true);
+    assert.equal(currentSlide(hand.content), null);
+    const moved = applyOp(hand, "content.next", {}, T0 + S);
+    assert.equal(moved.content.index, 0);
+    assert.equal(moved.content.intro, undefined);
+    assert.equal(currentSlide(moved.content).text, "um");
+    // Saved on air while still in the introduction: it stays.
+    assert.equal(applyOp(hand, "content.update", { title: "Hino 2" }, T0 + S).content.intro, true);
+    assert.equal(run([["content.show", { title: "Hino", slides: [{ text: "um" }], introMode: "slide" }]]).content.intro, undefined);
+    assert.equal(run([["content.show", { title: "Hino", slides: [{ text: "um" }, { text: "dois" }], index: 1, introMode: "blank" }]]).content.intro, undefined, "sent further on");
+    assert.throws(() => run([["content.show", { title: "x", slides: [{ text: "um" }], introMode: "maybe" }]]), LiveError);
+});
+
+test("the song's end: Fim fades its sound out and marks it ended (2026-11-12)", () => {
+    const marked = { title: "Canção", slides: [{ text: "um", start: 2 }], ends: { url: "/a.mp3", at: 200, fade: 4 }, follow: { source: "audio", url: "/a.mp3" } };
+    const s = run([["background.default", { background: { kind: "color", value: "#112233" } }], ["audio.show", { url: "/a.mp3", kind: "video" }], ["content.show", marked]]);
+    assert.deepEqual(s.content.ends, { url: "/a.mp3", at: 200, fade: 4 });
+    // Kept by an update, dropped with null.
+    assert.deepEqual(applyOp(s, "content.update", { title: "Outra" }, T0).content.ends, s.content.ends);
+    assert.equal(applyOp(s, "content.update", { ends: null }, T0).content.ends, undefined);
+    assert.throws(() => run([["content.show", { ...marked, ends: { at: 1n } }]]), LiveError);
+    // The end: the sound leaves over its own fade, the screens over theirs.
+    const end = applyOp(s, "clear", { fade: 300, ended: true, soundFade: 4000 }, T0 + 200 * S);
+    assert.equal(end.content, null);
+    assert.equal(end.audio, null);
+    assert.equal(end.leaving[0].until - end.leaving[0].at, 4000);
+    assert.equal(end.fade.ms, 300);
+    assert.deepEqual(end.ended, { layer: "audio", id: null, url: "/a.mp3", at: T0 + 200 * S });
+    assert.equal(end.background.value, "#112233", "the papel de parede comes in");
+    // Esc is not an end, and a soundFade alone never marks one.
+    assert.equal(applyOp(s, "clear", { fade: 300 }, T0).ended, s.ended);
+    assert.equal(applyOp(s, "clear", { soundFade: 2000 }, T0).ended, s.ended);
+    // While locked too.
+    const locked = applyOp(s, "screens.lock", { locked: true }, T0);
+    assert.equal(applyOp(locked, "clear", { ended: true, soundFade: 3000 }, T0 + S).content, null);
+});
+
 test("a playback or video: moving the slide seeks the media, the marks never move (2026-11-10)", () => {
     let s = run([["content.show", { ...timed, follow: { source: "audio", url: "/a.mp3" } }], ["audio.show", { url: "/a.mp3" }]]);
     // At 12 s the operator jumps to "três" (30 s): the playback goes to 30 s.

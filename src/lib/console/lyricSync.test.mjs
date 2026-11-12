@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, spliceMarks } from "./lyricSync.js";
+import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, spliceMarks, clampEnd } from "./lyricSync.js";
 import { sungLines, slidesFromLyrics } from "../songImport.js";
 import { applyOp, emptyState, followIndex } from "../../../shared/live-state.mjs";
 
@@ -194,4 +194,13 @@ test("spliceMarks: an edited slide moves no other slide's marks (2026-11-12)", (
     // Short or empty marks are padded, never invented.
     assert.deepEqual(spliceMarks([], 2, 2, 3), [null, null, null, null, null]);
     assert.deepEqual(spliceMarks([1, null, "x"], 0, 1, 1), [1, null, null]);
+});
+
+test("clampEnd: after the last mark, inside the file, to a tenth (2026-11-12)", () => {
+    assert.equal(clampEnd([1, 20, null], 222.23), 222.2);
+    assert.equal(clampEnd([1, 20], 10), 20.1, "never before the last slide");
+    assert.equal(clampEnd([1, 20], 300, 250), 250, "never past the file");
+    assert.equal(clampEnd([], 5), 5);
+    assert.equal(clampEnd([1], null), null);
+    assert.equal(clampEnd([1], "x"), null);
 });

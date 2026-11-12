@@ -33,7 +33,7 @@ const THUMBS_KEY = "keryx.console.editor.thumbs";
 const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); return ["s", "m", "l"].includes(v) ? v : "m"; } catch { return "m"; } };
 
 
-const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", playback_mode: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false, follow_mode: "", slide_seconds: null };
+const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", playback_mode: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false, follow_mode: "", slide_seconds: null, end_at: null, end_fade: null, intro_mode: "" };
 const unCR = (t) => String(t ?? "").replace(/\r\n?/g, "\n");
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
@@ -350,6 +350,10 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         lines: slides.flatMap((x) => String(x.text || "").split("\n").map((text) => ({ text, label: x.label || "" }))),
         groups: slideFirstLines(slides).map((first, k) => ({ first, label: slides[k].label || "" })),
         starts: fitMarks(lineStarts, lineCount(slides)),
+        // The song's Fim and beginning (owner 2026-11-12), edited there too.
+        end: song.end_at ?? null,
+        endFade: song.end_fade ?? null,
+        introMode: song.intro_mode || "",
         // Aplicar brings the marks, and the video or playback chosen there.
         onApply: (next, extra) => {
             setLineStarts(next);
@@ -357,6 +361,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             // The page split one-slide lyrics before marking (option 1): the
             // editor takes the same split (2/4 linhas rewrite the text).
             if (extra?.split > 0) pickSplit(extra.split);
+            if (extra && "end_at" in extra) set({ end_at: extra.end_at, end_fade: extra.end_fade });
+            if (extra && "intro_mode" in extra) set({ intro_mode: extra.intro_mode });
             setDirty(true);
         },
     });
@@ -622,6 +628,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         </>}
                         {advance === "marks" && <>
                             <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} slides marcados</span>
+                            {media && Number.isFinite(song.end_at) && <span className="ed-endline"><Icon name="arrow-right" size={14} />Termina em {mmss(song.end_at)} · fade {String(song.end_fade ?? 3).replace(".", ",")} s</span>}
                             <span className="kx-meta">{!marked ? "Sem marcas: use Marcar os tempos"
                                 : !media ? "No ar: Iniciar letra automática no player, na introdução."
                                 : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>

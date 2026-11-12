@@ -226,6 +226,11 @@
       "type": "boolean",
       "description": "Transicoes: Tela preta e Logo entram e saem com a transicao de Ao tirar do ar. Nulo = sim"
     },
+    "manual_intro": {
+      "type": "string",
+      "enum": ["", "title", "blank"],
+      "description": "Transicoes, musica enviada a mao (sem sincronia) comeca com: vazio = o 1o slide, title = o titulo da musica, blank = so o fundo; a primeira seta poe o 1o slide"
+    },
     "pause_fade_ms": {
       "type": "integer",
       "description": "Transicoes, ao pausar o som: Pausar e Tocar no player suavizam o volume nesta duracao em ms (0 = corte, 200 ou 400). Nulo = 200"

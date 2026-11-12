@@ -13,6 +13,8 @@ import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName, themeF
 import { styleMetrics } from "@/lib/console/fontMetrics";
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
+import { withManualIntro } from "@/lib/console/content";
+import { endDue, endArgs, END_SAY } from "@/lib/console/songEnd";
 import { soundStays, undoSoundStays } from "@/lib/console/videoSound";
 import { withTransitions } from "@/lib/console/transitions";
 import { churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
@@ -72,7 +74,11 @@ export function useStamp(themeId) {
     // Texto and Timer (a tool.show).
     const prefs = usePrefs();
     const kindIds = useMemo(() => ({ bible: prefs.bible_theme_id, text: prefs.text_theme_id, tool: prefs.timer_theme_id }), [prefs.bible_theme_id, prefs.text_theme_id, prefs.timer_theme_id]);
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, themeId)), look), bgPrefs), [themes, kindIds, themeId, look, bgPrefs]);
+    // A song passed by hand starts as the church chose (Telas e saídas ›
+    // Transições, "Música enviada à mão começa com"; withManualIntro).
+    // Read off the row (not a pref: the outputs' bundle carries the prefs).
+    const manualIntro = ["title", "blank"].includes(user?.manual_intro) ? user.manual_intro : "";
+    const stamp = useCallback((op, args) => withManualIntro(op, withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, themeId)), look), bgPrefs), manualIntro), [themes, kindIds, themeId, look, bgPrefs, manualIntro]);
     // How much one slide holds with the theme a kind goes out with
     // (themes.js themeFit): the Bíblia's Auto and the theme's "Quando não
     // cabe" cut by it (owner 2026-10-29, F3/F4 = A). pair: "side" | "stack".
@@ -438,13 +444,15 @@ export function useConsole() {
     // have their own controls. The toast offers Desfazer (owner's decision
     // 2026-10-10). `by`: who asked, when not this console ("Celular"); then a
     // refusal is thrown back to it. Resolves whether Desfazer is offered.
-    const end = useCallback(async ({ by } = {}) => {
-        const before = live;
+    // `ended` (the song reached its Fim, songEnd.js): the same end, its sound
+    // fading over the song's own fade, marked as an end for the Autoplay.
+    const end = useCallback(async ({ by, ended = false } = {}) => {
+        const before = liveRef.current || live;
         let after;
-        try { after = await callOp("clear"); } catch (err) { if (by) throw err; return; }
+        try { after = await callOp("clear", ended ? endArgs(before) : undefined); } catch (err) { if (by) throw err; return; }
         keepLast(before, after);
         const what = before?.audio ? "projeção encerrada e música parada." : "projeção encerrada.";
-        const message = by ? `${by}: ${what}` : what[0].toUpperCase() + what.slice(1);
+        const message = ended ? END_SAY : by ? `${by}: ${what}` : what[0].toUpperCase() + what.slice(1);
         const endedAt = after?.updatedAt;
         const undo = undoEndOps(before, endedAt).length > 0;
         if (undo) say(message, { label: "Desfazer", undo: true, run: () => undoEnd(before, endedAt) });
@@ -452,6 +460,26 @@ export function useConsole() {
         // Whether Desfazer can put it back (the controle remoto says so).
         return undo;
     }, [live, callOp, say, undoEnd, keepLast]);
+
+    // The song's Fim (owner 2026-11-12): while its media plays, the console
+    // ends it at the mark, once per song sent (content.startedAt) — whether
+    // the letra automática runs or not, locked or not (an end works locked).
+    const ends = live?.content?.ends;
+    const endKey = ends ? live.content.startedAt : null;
+    const endRef = useRef(end);
+    endRef.current = end;
+    useEffect(() => {
+        if (!endKey) return undefined;
+        let done = false;
+        const tick = () => {
+            if (done || !endDue(liveRef.current, keryx.live.now())) return;
+            done = true;
+            endRef.current({ ended: true });
+        };
+        tick();
+        const id = setInterval(tick, 150);
+        return () => clearInterval(id);
+    }, [endKey]);
 
     // Travar telas / Destravar (Saídas, the banner).
     const setLocked = useCallback((on) => {
