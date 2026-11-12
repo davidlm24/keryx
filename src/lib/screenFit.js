@@ -16,6 +16,18 @@ export function fitScale(boxWidth, textWidth, min = 0.55) {
 // by halves: a smaller font also rewraps, so the height is not linear in it.
 // The width keeps its own floor (fitScale); the height has none but this.
 export const HEIGHT_MIN = 0.15;
+
+// Whether a text box holds its content (useBoxFit). A font's glyphs stand
+// past a 1.2 line box by a few % of its size (Geist: ~4 %), which the box
+// counts as overflow even with room to spare; on a 1080p Palco that was more
+// than the old 1 px and the fit shrank every size to the same few px (owner
+// 2026-11-12: the size chosen in the Editor never reached the screen). So
+// the height allows a fifth of the font; text that really does not fit
+// overflows by a whole line. The width keeps 1 px (no line wraps there).
+export function boxHolds({ scrollH, clientH, scrollW, clientW, fontPx }) {
+    const slack = Math.max(1, (Number(fontPx) || 0) * 0.2);
+    return scrollH <= clientH + slack && scrollW <= clientW + 1;
+}
 export function fitSearch(fits, min = HEIGHT_MIN, steps = 8) {
     if (fits(1)) return 1;
     let lo = min, hi = 1;

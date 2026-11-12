@@ -40,7 +40,8 @@ const FONT = { ...FONT_MAP, mono: 'ui-monospace, "Cascadia Mono", Consolas, mono
 export default function LayoutRenderer({ layout, live, screenState, alert, nowMs: givenNow, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, motion = false, ghost = false, audio = false, children }) {
     const ownNow = useLiveNow(1000, givenNow === undefined);
     const nowMs = givenNow ?? ownNow;
-    const ctx = useMemo(() => layoutContext({ live, now: nowMs, upcoming, hasService, church }), [live, nowMs, upcoming, hasService, church]);
+    // `scale` (Escala do texto) rides along so the lyrics' fit is measured again.
+    const ctx = useMemo(() => ({ ...layoutContext({ live, now: nowMs, upcoming, hasService, church }), scale }), [live, nowMs, upcoming, hasService, church, scale]);
     const base = screenState === undefined ? live : screenState;
     const screen = useMemo(() => {
         let s = base?.tool && layoutHasTimer(layout) ? { ...base, tool: null } : base;
@@ -139,7 +140,7 @@ function CurrentBody({ el, ctx, song, embed, transpose, setTranspose, cut = "" }
     const chorded = el.props.chords && !intro ? chordedOf(song, ctx.index, ctx.current.text) : null;
     const answer = intro ? [] : stageLines(ctx.current?.activity);
     const ref = useRef(null);
-    useBoxFit(ref, `${ctx.current.text || ""}:${ctx.index}:${intro}:${Boolean(chorded)}:${transpose}:${el.size}:${el.w}:${el.h}:${el.font}:${cut}`);
+    useBoxFit(ref, `${ctx.current.text || ""}:${ctx.index}:${intro}:${Boolean(chorded)}:${transpose}:${el.size}:${el.w}:${el.h}:${el.font}:${cut}:${ctx.scale}`);
     return (
         <>
             <div className="kl-v" ref={ref}>{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (ctx.current.text || (ctx.current.label ? <span className="ns-part">{ctx.current.label}</span> : ""))}{answer.length > 0 && <span className="ns-answer">{answer.map((l) => <span key={l} className={l.startsWith("✓") || l.startsWith("Resposta") ? "is-right" : ""}>{l}</span>)}</span>}</div>
