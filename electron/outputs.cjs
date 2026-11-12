@@ -191,7 +191,7 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", 
 function identifyHtml({ where, name, muted = false }) {
     return "<!doctype html><html lang=\"pt-BR\"><meta charset=\"utf-8\"><body style=\"margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;background:rgba(0,0,0,.72);font-family:Geist,'Segoe UI',system-ui,sans-serif;overflow:hidden\">"
         + `<div style="font-size:17vh;font-weight:700;color:#fff;line-height:1">${escapeHtml(where)}</div>`
-        + `<div style="font-size:5.6vh;font-weight:500;color:${muted ? "#bbb6ac" : "#e2c08a"};line-height:1.1;text-align:center;padding:0 4vw">${escapeHtml(name)}</div></body></html>`;
+        + `<div style="font-size:5.6vh;font-weight:500;color:${muted ? "#b9b6b1" : "#e2c08a"};line-height:1.1;text-align:center;padding:0 4vw">${escapeHtml(name)}</div></body></html>`;
 }
 
 // What Identificar telas draws. `displays`: in their order ("Tela 1" first,
