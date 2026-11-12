@@ -75,7 +75,7 @@
 .ks-tool-v { font-size: 14cqw; line-height: 1; font-weight: 500; text-shadow: 0 .3cqw 1.2cqw rgba(0, 0, 0, .7); }
 .ks-tool-v.ks-done { color: #ff6b70; }
 .ks-tool-date { font-size: 2.4cqw; opacity: .7; text-transform: capitalize; }
-.ks-free { font-size: 5cqw; line-height: 1.25; font-weight: 600; white-space: pre-wrap; text-shadow: 0 .2cqw 1cqw rgba(0, 0, 0, .7); }
+.ks-free { font-size: calc(5cqw * var(--fit, 1)); line-height: 1.25; font-weight: 600; white-space: pre-wrap; text-shadow: 0 .2cqw 1cqw rgba(0, 0, 0, .7); }
 
 /* Communication pieces (countdown, timer, announcement, image + text) */
 .ks-comm { --ks-size: 5cqw; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--ks-size) * .3); text-align: center; padding: 6cqw 8cqw; }

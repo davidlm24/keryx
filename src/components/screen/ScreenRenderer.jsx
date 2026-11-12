@@ -17,6 +17,7 @@ import { refLine, refVersion } from "@/lib/bibleDisplay";
 import { fitScale, fitSearch, clampShift } from "@/lib/screenFit";
 import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
 import ActivityView from "./ActivityView";
+import { useContentFit } from "@/hooks/useBoxFit";
 import { useExitGhost } from "@/hooks/useExitGhost";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { screenExitMs } from "@/lib/exitFade";
@@ -438,10 +439,14 @@ function Content({ content, showTitle = true, still = false }) {
     // the measured one, held inside the safe area (px).
     const shift = fit.shift === null ? (style.text_nudge ? `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` : null) : fit.shift ? `0 ${fit.shift}px` : null;
     // The song's beginning as its title (owner 2026-11-12, introMode
-    // "title"): its name, the artist under it, in the theme's look.
-    if (content.intro && content.introMode === "title" && content.title) {
+    // "title"): its name, the artist under it, in the theme's look; a long
+    // name shrinks until it fits the safe area (T = A).
+    const introOn = Boolean(content.intro && content.introMode === "title" && content.title);
+    const introRef = React.useRef(null);
+    useContentFit(introRef, `${content.startedAt}:${content.title}:${content.artist || ""}:${size}:${style.font_family}:${style.text_margin}`, introOn);
+    if (introOn) {
         return (
-            <div className="ks-content ks-al-center ks-pos-middle" style={{ "--ks-size": `${size}cqw`, ...marginVars(style.text_margin) }}>
+            <div ref={introRef} className="ks-content ks-al-center ks-pos-middle" style={{ "--ks-size": `calc(${size}cqw * var(--fit, 1))`, ...marginVars(style.text_margin) }}>
                 <div key={`${content.startedAt}:intro`} className={anim} style={{ display: "contents" }}>
                     <div className="ks-text ks-intro" style={{ ...textStyle(style), ...textExtra(style) }}>
                         <span>{content.title}</span>
@@ -511,10 +516,17 @@ function activityLook(content, showTitle, still) {
     };
 }
 
+// A free text on screen: shrinks until it fits the safe area (T = A).
+function FreeText({ text, color }) {
+    const boxRef = React.useRef(null);
+    useContentFit(boxRef, String(text || ""));
+    return <div ref={boxRef} className="ks-tool"><div className="ks-free" style={color}>{text}</div></div>;
+}
+
 function Tool({ tool, now }) {
     const style = tool.style || {};
     const color = { color: style.text_color || "#ffffff", fontFamily: fontStack(style.font_family) };
-    if (tool.mode === "freetext") return <div className="ks-tool"><div className="ks-free" style={color}>{tool.text}</div></div>;
+    if (tool.mode === "freetext") return <FreeText text={tool.text} color={color} />;
     if (tool.mode === "clock") {
         const d = new Date(now);
         return (
@@ -544,6 +556,7 @@ const NOTICE_CQW = { small: "3.4cqw", medium: "4.2cqw", large: "5cqw", xlarge: "
 
 function Communication({ comm, now, logoUrl, preview, motion, audio }) {
     const item = comm.item || {};
+    const boxRef = React.useRef(null);
     const elapsed = Math.max(0, now - comm.startedAt);
     const t = noticeTime(item, elapsed);
     const urgent = item.type === "countdown" && t !== null && t > 0 && t <= 10_000;
@@ -553,13 +566,16 @@ function Communication({ comm, now, logoUrl, preview, motion, audio }) {
     const playing = !preview || motion;
     const ts = textStyle(item);
     const heading = item.text || (item.type === "countdown" || item.type === "timer" ? "" : item.title);
+    // A long aviso shrinks until it fits the safe area (T = A); the count
+    // ticking never re-measures, only the aviso, its text and its look.
+    useContentFit(boxRef, `${comm.startedAt}:${heading}:${item.subtext || ""}:${item.font_size || ""}:${item.type || ""}:${t !== null}`);
     return (
         <>
             {picture && <><div key={file.index} className="ks-bg-img" style={{ backgroundImage: `url(${picture})` }} /><div className="ks-bg-dim" /></>}
             {video && <><video key={`${video}${file?.index ?? ""}`} className="ks-bg-video" src={video} autoPlay={playing} loop={!file} muted playsInline preload="metadata" /><div className="ks-bg-dim" /></>}
             {audio && isUrl(item.background_audio) && <audio key={comm.startedAt} src={item.background_audio} autoPlay loop className="hidden" />}
             {audio && item.sound_alert && <Chime key={comm.startedAt} />}
-            <div className={`ks-comm ks-comm-${item.type || "announcement"} ks-al-${item.text_position_h || "center"} ks-pos-${item.text_position_v || "middle"}`} style={{ "--ks-size": NOTICE_CQW[item.font_size] || NOTICE_CQW.large }}>
+            <div ref={boxRef} className={`ks-comm ks-comm-${item.type || "announcement"} ks-al-${item.text_position_h || "center"} ks-pos-${item.text_position_v || "middle"}`} style={{ "--ks-size": `calc(${NOTICE_CQW[item.font_size] || NOTICE_CQW.large} * var(--fit, 1))` }}>
                 {item.type === "attention" && <div className="ks-comm-flag">Atenção</div>}
                 {heading && <div className="ks-comm-t" style={ts}>{heading}</div>}
                 {t !== null && <div className={`ks-comm-big ${urgent ? "ks-urgent" : ""}`} style={ts}>{clockOf(t)}</div>}
