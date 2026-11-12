@@ -95,7 +95,7 @@ test("the controls that are fills or shadows get system-colour boundaries", () =
 
 test("what the congregation sees never takes the contrast theme", () => {
     const screens = optedOut(read("src/components/screen/screen.css"));
-    for (const sel of ["html.ks-output-doc", ".ks", ".kl", ".ks-alert-layer", ".net-stage", ".net-pastor", ".kx-stream-band"]) {
+    for (const sel of ["html.ks-output-doc", ".ks", ".kl", ".ks-alert-layer", ".net-pastor", ".kx-stream-band"]) {
         assert.ok(screens.split(/,\s*/).some((s) => s === sel || s.includes(`> ${sel})`)), `screen.css opts ${sel} out`);
     }
     assert.match(optedOut(read(BUNDLE)), /\.kx-mon-screen/, "the console's monitors (Programa, Prévia, Multiview) opt out");

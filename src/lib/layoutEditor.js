@@ -31,7 +31,30 @@ export const ELEMENT_HINTS = {
     logo: "o logo de Configurações › Igreja",
     text: "um texto seu, sempre o mesmo",
     image: "uma imagem da Mídia",
+    part: "o nome da parte no ar (Refrão, Ponte); Introdução antes do 1º slide; a página num PDF",
+    band: "uma faixa de ponta a ponta atrás dos elementos; some quando nada nela aparece",
 };
+
+// ---- One drawing per screen (owner 2026-11-12, "Editor de telas · Palco") ----
+// A design saved from the Palco before it became one drawing: seeded from the
+// old factory (its ids start f_) and with no Faixa. The Editor says so, with
+// "Voltar ao padrão".
+export const fromOldPalco = (path, design) => path === "/StageView" && Boolean(design?.elements?.length) && design.elements.some((e) => String(e.id || "").startsWith("f_") && e.when !== "idle") && !design.elements.some((e) => e.type === "band");
+
+// "Voltar ao padrão…": the question for each screen.
+export function resetWords(path, name) {
+    if (path === "/StageView") return { title: "Voltar ao desenho padrão?", text: `O desenho salvo de ${name} sai; a tela volta ao desenho padrão, com as partes de Ajustes › Conteúdo.` };
+    return { title: "Voltar à página padrão?", text: `O desenho próprio de ${name} sai; a tela volta a se desenhar sozinha.` };
+}
+
+// Why a part of the Palco's default drawing is off: a switch of its Ajustes
+// (PALCO_PARTS), while the screen has no design of its own; "" otherwise.
+const PART_WORDS = { chords: "Cifra", labels: "Nome da parte", clock: "Relógio e tempo", notes: "Notas para músicos", next: "Próximo" };
+export function switchReason(el, parts, own) {
+    if (own || !el?.hidden) return "";
+    const k = Object.keys(parts || {}).find((key) => parts[key].includes(el.id));
+    return k ? `Desligado em Ajustes › Conteúdo › ${PART_WORDS[k]}. Ligue lá para ele voltar.` : "";
+}
 
 // ---- The text bar (TextBar.jsx speaks the theme's keys) ----
 // What the bar shows for an element: its weight, align and colour under the

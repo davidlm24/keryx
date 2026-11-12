@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { keryx } from "@/api/keryxClient";
-import { designOf } from "@/lib/outputPrefs";
+import { designOf, screenDesign } from "@/lib/outputPrefs";
 
 // The ScreenLayout rows, kept current: only for designOf's lazy migration
 // (an old save whose layout_id still names a row). Nothing writes them.
@@ -24,4 +24,11 @@ export function useLayoutRows() {
 export function useDesign(pref) {
     const rows = useLayoutRows();
     return useMemo(() => designOf(pref, rows), [pref, rows]);
+}
+
+// The drawing a screen shows and whether it is its own (screenDesign): the
+// Palco with no design of its own draws its factory one (owner 2026-11-12).
+export function useScreenDesign(path, pref) {
+    const rows = useLayoutRows();
+    return useMemo(() => screenDesign(path, pref, rows), [path, pref, rows]);
 }

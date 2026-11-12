@@ -25,7 +25,6 @@ import DesktopOnly from '@/components/DesktopOnly';
 import PreviewBanner from '@/components/PreviewBanner';
 import { keryx } from '@/api/keryxClient';
 import { useWindowTitle } from '@/hooks/useChurch';
-import { outputMeta } from '@/lib/outputPrefs';
 import { OUTPUT_NAMES } from '@/lib/network/views';
 
 // Every page is a chunk of its own: an output window or a screen on the
@@ -100,7 +99,7 @@ function WindowTitle() {
   return pathname === '/Janela' || pathname === '/Editor' ? null : <ScreenTitle pathname={pathname} />;
 }
 function ScreenTitle({ pathname }) {
-  useWindowTitle(pathname === '/Remote' ? 'Controle remoto' : TITLED.has(pathname) ? outputMeta(pathname).name : '');
+  useWindowTitle(pathname === '/Remote' ? 'Controle remoto' : TITLED.has(pathname) ? OUTPUT_NAMES[pathname] : '');
   return null;
 }
 

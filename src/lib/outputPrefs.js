@@ -5,7 +5,7 @@
 // or a row with nothing set, is the output exactly as before.
 import { RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
 import { themeBackgroundArgs } from "./console/themeCore.js";
-import { normalizeLayout, findLayout } from "./layouts.js";
+import { normalizeLayout, findLayout, seedLayoutId, PALCO_PARTS } from "./layouts.js";
 import { RULE_KIND_IDS, TEXT_KINDS, ruleKind, ruleKindOf, stageRuleKind } from "./contentKinds.js";
 import { mainLayer, alertLookOf } from "../../shared/live-state.mjs";
 
@@ -291,6 +291,36 @@ export function designOf(pref, layoutRows) {
     if (pref?.design) return pref.design;
     if (pref?.layoutId) return findLayout(pref.layoutId, layoutRows) || null;
     return null;
+}
+
+// One drawing per screen (owner 2026-11-12, "Editor de telas · Palco"):
+// the Palco with no design of its own draws its factory design, dressed by
+// the switches of its Ajustes (the parts switched off hidden; Cifra off also
+// keeps the chords off the lyrics). The Editor shows the same. Null for a
+// screen whose page still draws itself (the Pastor until its turn).
+export function pageDesign(path, pref) {
+    if (path !== "/StageView") return null;
+    const base = findLayout("factory:palco");
+    const opts = stageOptions(pref);
+    const off = new Set(Object.keys(PALCO_PARTS).filter((k) => !opts[k]).flatMap((k) => PALCO_PARTS[k]));
+    if (!off.size) return base;
+    return { ...base, elements: base.elements.map((e) => {
+        let out = off.has(e.id) ? { ...e, hidden: true } : e;
+        if (!opts.chords && e.id === "palco_current") out = { ...out, props: { ...out.props, chords: false } };
+        return out;
+    }) };
+}
+
+// The drawing a screen shows and whether it is its own: a design saved on
+// it (or a church model its old layout_id names); an old layout_id naming
+// the screen's own factory design counts as none, so the page's switches
+// still dress it. -> { layout, own }
+export function screenDesign(path, pref, layoutRows) {
+    const saved = designOf(pref, layoutRows);
+    const factoryRef = !pref?.design && pref?.layoutId && pref.layoutId === seedLayoutId(path);
+    const page = pageDesign(path, pref);
+    if (saved && !(factoryRef && page)) return { layout: saved, own: true };
+    return { layout: page || saved, own: false };
 }
 
 // Palco and Pastor draw their own layouts; OutputPref.options says which
