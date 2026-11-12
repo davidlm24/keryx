@@ -23,6 +23,25 @@ export function videoEnd(song) {
     return { at, fade: song.end_fade === null || song.end_fade === undefined || song.end_fade === "" || !Number.isFinite(f) ? 3 : Math.min(10, Math.max(0, f)) };
 }
 
+// The state one exported frame draws (RenderPage.jsx): "bg" is the
+// introduction — the Fundo alone, or the song's title when the beginning is
+// "Com título" (introMode, as the screens draw it) — and a number is that
+// slide. content.show stamps `intro: true` on any marked song whose first
+// mark is past 0 (introOn, live-state); kept on the copies, it froze every
+// frame on the introduction and the exported video came out with a still
+// background and no lyrics (owner 2026-11-12), so the slide frames drop it.
+export function frameState(doc, at) {
+    const content = doc?.content || null;
+    if (at === "bg") {
+        if (content?.introMode === "title" && content.title) return { ...doc, content: { ...content, intro: true } };
+        return { ...doc, content: null };
+    }
+    if (!content) return doc;
+    const sung = { ...content, index: at };
+    delete sung.intro;
+    return { ...doc, content: sung };
+}
+
 // Why it cannot be made now ("" = it can), in the order the operator fixes
 // them. `desktop`: the program (not the browser preview); `ffmpeg`: this
 // KERYX brought it (null = not known yet).

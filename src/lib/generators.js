@@ -4,7 +4,7 @@
 // checks them there); the GLSL is src/lib/generatorShaders.js, which only
 // the screens load, when they draw one. Pure; the console's (the outputs
 // never import this file).
-import { GENERATOR_IDS, PARAM_IDS, normalizeGenerator } from "../../shared/generators.mjs";
+import { GENERATOR_IDS, PARAM_IDS, normalizeGenerator, BLEND_POS, BLEND_WIDTH } from "../../shared/generators.mjs";
 import { cssFallback } from "./generatorLook.js";
 
 export { GENERATOR_IDS, PARAM_IDS, normalizeGenerator, cssFallback };
@@ -445,7 +445,8 @@ export const startArgs = (id) => presetArgs(presetsOf(id)[0]);
 // degradê), or null.
 const sameColors = (a, b) => (a || []).join() === (b || []).join();
 export const matchingPreset = (gen) => PRESETS.find((p) => p.gen.id === gen?.id && PARAM_IDS.every((k) => p.gen[k] === gen[k])
-    && sameColors(p.gen.colors, gen.colors) && sameColors(p.gen.colors2, gen.colors2) && (p.gen.blend || "") === (gen.blend || "")) || null;
+    && sameColors(p.gen.colors, gen.colors) && sameColors(p.gen.colors2, gen.colors2) && (p.gen.blend || "") === (gen.blend || "")
+    && (p.gen.blendPos ?? BLEND_POS[2]) === (gen?.blendPos ?? BLEND_POS[2]) && (p.gen.blendWidth ?? BLEND_WIDTH[2]) === (gen?.blendWidth ?? BLEND_WIDTH[2])) || null;
 
 
 // A preset's dot: its colours in hard diagonal bands, light first; a

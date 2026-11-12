@@ -38,6 +38,14 @@ export const DEFAULT_COLORS = ["#0b1a30", "#5b8fc9", "#b9d4ee"];
 // turns into across the screen — h left → right, v top → bottom, d top-left
 // → bottom-right, move two patches drifting slowly.
 export const BLENDS = ["h", "v", "d", "move"];
+// Posição e Largura do degradê (owner 2026-11-12, mockup "Fundos gerados ·
+// revisão 12/11", G4 = A): where the turn sits along the direction (0–1)
+// and how soft the band is, as [min, max, default]. 0.5 and 0.8 are the
+// smoothstep(0.1, 0.9) the degradê always had, so a generator saved without
+// them — or read by an older KERYX, which strips the fields — draws exactly
+// as before. Mover keeps its own drifting window (the sliders hide).
+export const BLEND_POS = [0, 1, 0.5];
+export const BLEND_WIDTH = [0.05, 1, 0.8];
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -64,6 +72,9 @@ export function normalizeGenerator(raw = {}) {
     if (colors2.length) {
         out.colors2 = colors2;
         out.blend = BLENDS.includes(r.blend) ? r.blend : BLENDS[0];
+        const win = (v, [lo, hi, d]) => { const n = Number(v); return Math.round((v === "" || v == null || !Number.isFinite(n) ? d : clamp(n, lo, hi)) * 100) / 100; };
+        out.blendPos = win(r.blendPos, BLEND_POS);
+        out.blendWidth = win(r.blendWidth, BLEND_WIDTH);
     }
     // Áudio-reativo: the pattern follows the PC's sound output (the console
     // measures it and sends the level to the outputs on this computer).

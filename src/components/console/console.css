@@ -2224,7 +2224,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .lyr-gens { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
 .console .lyr-gen { display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 3px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: var(--fs-meta); line-height: 12px; text-align: center; }
 .console .lyr-gen i { position: relative; display: block; aspect-ratio: 16 / 10; border-radius: 3px; overflow: hidden; background: var(--bg-2); }
-.console .lyr-gen.is-on { color: var(--fg-1); box-shadow: 0 0 0 2px var(--brand); }
+.console .lyr-gen.is-on { color: var(--fg-1); box-shadow: 0 0 0 2px var(--fg-1); }
 .console .lyr-slider { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .console .lyr-slider .ap-range { flex: 1 1 80px; width: auto; min-width: 60px; accent-color: var(--brand); }
 .console .lyr-slider .kx-meta { flex: none; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -2379,17 +2379,40 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .lib-big-cap { display: flex; gap: var(--space-2); align-items: baseline; font-size: var(--fs-ui); }
 /* Gerados: the big screen on the left, the controls beside it, so every
    change is seen as it is made. */
-/* Gerados (owner 2026-11-12): the sample on the left with its controls
-   under it, always on screen; only the looks on the right scroll. The
-   sample takes the height the controls leave (a size container). */
-.console .lib-main.is-gen { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr); gap: var(--space-3); overflow: hidden; }
-.console .lib-gen-stage { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--space-1); overflow: auto; }
+/* Gerados (owner 2026-11-12, G1 = A): the sample and the looks share the
+   top row; the control band runs the whole width below — the colours
+   beside the wide sliders, the toggles on their own line. */
+.console .lib-main.is-gen { display: flex; min-width: 0; overflow: hidden; }
+.console .lib-gen-stage { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; }
+.console .lib-gen-top { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-3); }
+.console .lib-gen-view { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .console .lib-big-box { flex: 1 1 0; min-height: 140px; container-type: size; display: grid; justify-items: center; align-items: start; }
-.console .lib-big-box > .lib-big-screen { width: min(100cqw, calc(100cqh * 16 / 9)); max-width: none; }
-.console .lib-gen-ctl { flex: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 var(--space-3); padding-top: var(--space-1); border-top: 1px solid var(--line-soft); }
-.console .lib-gen-col { padding: var(--space-1) 0 0; grid-template-columns: 76px minmax(0, 1fr); border-top: 0; align-content: start; }
+.console .lib-big-box > .lib-big-screen { width: min(100cqw, calc(100cqh * 16 / 9)); max-width: none; position: relative; }
+.console .lib-genlyr { position: absolute; top: 6px; right: 6px; z-index: var(--z-mark); }
+.console .lib-gen-ctl { flex: none; max-height: 46%; overflow: auto; display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--line-soft); }
+.console .lib-gen-row1 { display: grid; grid-template-columns: minmax(300px, 460px) minmax(0, 1fr); gap: 0 28px; }
+.console .lib-gen-row2 { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; border-top: 1px solid var(--line-soft); padding-top: var(--space-2); }
+.console .lib-gen-tog { display: inline-flex; align-items: center; gap: var(--space-2); }
+.console .lib-gen-row2 .k { font-size: var(--fs-meta); color: var(--fg-3); }
+.console .lib-gen-col { padding: 0; grid-template-columns: 96px minmax(0, 1fr); border-top: 0; align-content: start; }
+.console .lib-gen-sl .lyr-slider .ap-range { min-width: 160px; }
 .console .lib-gen-list { min-height: 0; overflow: auto; padding-right: var(--space-1); }
 .console .lib-main.is-gen .lyr-gens { grid-template-columns: repeat(2, 1fr); }
+/* A colour chip (G2/G3): the grip that reorders, the ColorPop's swatch,
+   the hover arrows and the ×. */
+.console .cp-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: var(--radius-control); background: var(--bg-3); }
+.console .cp-grip { padding: 0 2px; color: var(--fg-3); cursor: grab; touch-action: none; }
+.console .cp-arr { display: none; }
+.console .cp-chip:hover .cp-arr, .console .cp-chip:focus-within .cp-arr { display: inline-flex; }
+.console .cp-swatch { width: 24px; height: 22px; padding: 0; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .cp-pop { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); width: 252px; }
+.console .cp-row { display: flex; align-items: center; gap: var(--space-1); }
+.console .cp-big { width: 30px; height: 28px; flex: none; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .cp-hex { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.console .cp-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.console .cp-cell { aspect-ratio: 1; padding: 0; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--line-soft); }
+.console .cp-cell.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
+.console .cp-wheel { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
 /* Telas e saídas: a vertical tab per output (icon, name, open dot), then
    Layouts and Som e arquivo; the chosen one's screen and settings beside it. */
 /* Telas e saídas as thumbnails (2026-10-13): one card per output, the
@@ -2665,11 +2688,14 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
    keyboard's focus ring. What is a picture keeps its own colours: the
    screens' stills (.cfg-prev, the editor's canvas; the monitors in
    bundle.css, the outputs in screen.css) and the colour swatches. */
-.console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-dot) { forced-color-adjust: none; }
+.console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-dot, .cp-swatch, .cp-cell, .cp-big) { forced-color-adjust: none; }
 @media (forced-colors: active) {
   /* A generator's colourway dots: the one chosen is a solid ring. */
   .console .lyr-dot { outline: 1px solid CanvasText; }
   .console .lyr-dot.is-on { outline: 2px solid Highlight; outline-offset: 2px; }
+  /* The ColorPop's swatches keep an edge; the one chosen a solid ring. */
+  .console :is(.cp-swatch, .cp-cell, .cp-big) { outline: 1px solid ButtonText; }
+  .console .cp-cell.is-on { outline: 2px solid Highlight; outline-offset: 1px; }
   /* The Biblioteca's folder headers keep an edge on focus. */
   .console .lib-folder:focus-visible { outline: 2px solid Highlight; }
   .console .confirm-warn { outline: 1px solid CanvasText; outline-offset: -1px; }
