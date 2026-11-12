@@ -365,22 +365,23 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                                 {!shown.length && <span className="kx-meta">{tab === "video" ? "Nenhum vídeo. Envie um do computador (MP4 ou WebM); ele toca em loop, sem som." : "Nenhuma imagem nesta categoria."}</span>}
                             </div></div>
                         </>}
+                        {/* Gerados (owner 2026-11-12): the sample with its controls under
+                            it, always on screen; only the looks on the right scroll. */}
                         {tab === "generator" && (
-                            <div className="lib-big">
-                                <div className="ap-sample lib-big-screen">{bigDoc ? <ScreenRenderer state={bigDoc} preview motion /> : <span className="kx-meta">Escolha um gerador abaixo.</span>}</div>
+                            <div className="lib-gen-stage">
+                                <div className="lib-big-box"><div className="ap-sample lib-big-screen">{bigDoc ? <ScreenRenderer state={bigDoc} preview motion /> : <span className="kx-meta">Escolha um look ao lado.</span>}</div></div>
                                 <span className="lib-big-cap"><span className="kx-meta">{sel?.kind === "generator" ? bgLabel(sel, GEN_NAMES) : "Nenhum gerador escolhido"}</span></span>
+                                {sel?.kind === "generator"
+                                    ? <GeneratorPanel background={bgArgs(sel, "")} op={(_op, args) => setSel(cleanSpec(args))} extra={<>
+                                        <span className="k">Escurecer</span>
+                                        <Seg small label="Escurecer" value={String(sel.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => setSel(cleanSpec({ ...sel, dim: Number(v) }))} />
+                                    </>} />
+                                    : <span className="kx-meta">Um fundo que as telas calculam: escolha um look ao lado, depois as cores e o movimento.</span>}
                             </div>
                         )}
                         {tab === "generator" && (
-                            <div className="layerprops lib-gen">
-                                <span className="k">Gerador</span>
+                            <div className="lib-gen-list" aria-label="Looks">
                                 <GeneratorTiles current={sel?.kind === "generator" ? sel.gen : null} op={(_op, args) => setSel(cleanSpec(args))} />
-                                {sel?.kind === "generator" && <>
-                                    <GeneratorPanel background={bgArgs(sel, "")} op={(_op, args) => setSel(cleanSpec(args))} />
-                                    <span className="k">Escurecer</span>
-                                    <Seg small label="Escurecer" value={String(sel.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => setSel(cleanSpec({ ...sel, dim: Number(v) }))} />
-                                </>}
-                                {sel?.kind !== "generator" && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Um fundo que as telas calculam: escolha um gerador, depois as cores e o movimento.</span>}
                             </div>
                         )}
                         {tab === "color" && (

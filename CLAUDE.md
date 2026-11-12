@@ -1978,8 +1978,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   with `blend` h | v | d | move, present only when it has colours, so a
   generator without one keeps the shape it had (an older KERYX reads the
   first three colours and drops the degradê; a new id it does not know
-  is no background there). The console edits it in the library's Gerados
-  (`GeneratorPanel.jsx`: presets as round dots, `presetSwatch`); a
+  is no background there). **Nuvens, Luzes, Partículas de luz and Raios
+  de luz were removed for good** (owner, same day: `clouds`, `bokeh`,
+  `particles`, `rays` left `GENERATOR_IDS`; a theme, culto or song that
+  named one has no background, a saved live state drops it on restore).
+  The console edits it in the library's Gerados: the sample on the left
+  with the controls under it in three columns, always on screen
+  (`GeneratorPanel.jsx`, `.lib-gen-ctl`: colours and degradê, the
+  sliders, Áudio-reativo and the host's `extra`, the library's
+  Escurecer), the looks on the right as stills (the only part that
+  scrolls; presets as round dots, `presetSwatch`); a
   theme keeps one in `background_generator` (`themeBackgroundArgs`).
   **Áudio-reativo** (`gen.audio`): the console measures the PC's output
   with its meters (`useAudioFeed`) and sends the level ~20×/s over its own

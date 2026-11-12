@@ -35,16 +35,8 @@ export const GENERATORS = [
         params: ["speed", "scale", "intensity", "detail", "spacing", "persistence", "contrast"],
     },
     {
-        id: "clouds", name: "Nuvens", hint: "ruído fBm arrastando devagar — discreto, bom atrás de letra",
-        params: ["speed", "scale", "intensity", "detail", "spacing", "persistence", "contrast"],
-    },
-    {
         id: "aurora", name: "Aurora", hint: "faixas de luz ondulando no alto da tela",
         params: ["speed", "scale", "intensity", "detail", "contrast"],
-    },
-    {
-        id: "bokeh", name: "Luzes", hint: "círculos de luz suaves flutuando (bokeh)",
-        params: ["speed", "scale", "intensity", "contrast"],
     },
     {
         id: "gradient", name: "Degradê vivo", hint: "um degradê que gira e respira devagar",
@@ -52,14 +44,6 @@ export const GENERATORS = [
     },
     // The four below keep the current ones' cost: one cell per layer (no
     // neighbour loop, each point stays inside its cell), at most two fbm.
-    {
-        id: "particles", name: "Partículas de luz", hint: "pontos de luz pequenos subindo devagar, balançando para os lados",
-        params: ["speed", "scale", "intensity", "contrast"],
-    },
-    {
-        id: "rays", name: "Raios de luz", hint: "feixes descendo do alto, como luz por uma janela, com poeira no ar",
-        params: ["speed", "scale", "intensity", "contrast"],
-    },
     {
         id: "stars", name: "Céu estrelado", hint: "estrelas piscando, quase paradas, num céu que mal se move",
         params: ["speed", "scale", "intensity", "contrast"],
@@ -159,19 +143,10 @@ export const PRESETS = [
     { id: "lava", name: "Lava", gen: { id: "fluid", speed: 0.16, scale: 3.3, intensity: 0.86, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.34, colors: ["#3f0000", "#ff7600", "#5b0000"] } },
     { id: "oceano", name: "Oceano", gen: { id: "fluid", speed: 0.2, scale: 2.5, intensity: 0.8, detail: 5, spacing: 2.1, persistence: 0.5, contrast: 0.3, colors: ["#031a2e", "#0a5c8c", "#8fd3ff"] } },
     { id: "marmore", name: "Mármore", gen: { id: "fluid", speed: 0.08, scale: 2, intensity: 0.9, detail: 6, spacing: 2.2, persistence: 0.55, contrast: 0.5, colors: ["#101010", "#6b6b6b", "#f0ede6"] } },
-    { id: "nuvem-azul", name: "Nuvem azul", gen: { id: "clouds", speed: 0.3, scale: 3, intensity: 0.8, detail: 6, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#0b1a30", "#5b8fc9", "#b9d4ee"] } },
-    { id: "nevoa", name: "Névoa", gen: { id: "clouds", speed: 0.2, scale: 2.5, intensity: 0.6, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.1, colors: ["#101014", "#3a3a44", "#8a8a96"] } },
-    { id: "por-do-sol", name: "Pôr do sol", gen: { id: "clouds", speed: 0.25, scale: 2.2, intensity: 0.85, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.3, colors: ["#2a0a2e", "#ff6a3d", "#ffd36e"] } },
     { id: "aurora-verde", name: "Aurora verde", gen: { id: "aurora", speed: 0.4, scale: 3, intensity: 1, detail: 4, spacing: 2, persistence: 0.5, contrast: 0.3, colors: ["#020b14", "#1ac98a", "#7cf0ff"] } },
     { id: "aurora-roxa", name: "Aurora roxa", gen: { id: "aurora", speed: 0.35, scale: 2.5, intensity: 1, detail: 4, spacing: 2, persistence: 0.5, contrast: 0.35, colors: ["#0a0414", "#7b3fd6", "#ff8ad8"] } },
-    { id: "luzes-douradas", name: "Luzes douradas", gen: { id: "bokeh", speed: 0.3, scale: 4, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#1a1206", "#c19959", "#fff2c7"] } },
-    { id: "luzes-frias", name: "Luzes frias", gen: { id: "bokeh", speed: 0.25, scale: 5, intensity: 0.9, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#06101c", "#3a7bd5", "#dff3ff"] } },
     { id: "roxo-azul", name: "Roxo e azul", gen: { id: "gradient", speed: 0.5, scale: 3, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.1, colors: ["#1e0b3a", "#2a3f8f", "#0b1a30"] } },
     { id: "verde-escuro", name: "Verde escuro", gen: { id: "gradient", speed: 0.4, scale: 3, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.15, colors: ["#07140d", "#145a32", "#0b2a1a"] } },
-    { id: "particulas-douradas", name: "Douradas", gen: { id: "particles", speed: 0.3, scale: 2.5, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#0d0904", "#c19959", "#fff2c7"] } },
-    { id: "particulas-azuis", name: "Azuis", gen: { id: "particles", speed: 0.25, scale: 3, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#040b16", "#3a7bd5", "#dff3ff"] } },
-    { id: "raios-dourados", name: "Raios dourados", gen: { id: "rays", speed: 0.3, scale: 2, intensity: 0.9, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.15, colors: ["#0c0805", "#8a6a3a", "#fff0cc"] } },
-    { id: "raios-frios", name: "Raios frios", gen: { id: "rays", speed: 0.25, scale: 2.5, intensity: 0.85, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.15, colors: ["#03070d", "#2f5c86", "#d6ecff"] } },
     { id: "noite-azul", name: "Noite azul", gen: { id: "stars", speed: 0.3, scale: 3, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#020610", "#3d5a8a", "#f4f8ff"] } },
     { id: "noite-roxa", name: "Noite roxa", gen: { id: "stars", speed: 0.25, scale: 3.5, intensity: 1, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.2, colors: ["#08040f", "#5b3d8a", "#fbefff"] } },
     { id: "fumaca", name: "Fumaça", gen: { id: "mist", speed: 0.2, scale: 2, intensity: 0.7, detail: 5, spacing: 2, persistence: 0.5, contrast: 0.1, colors: ["#060607", "#26272c", "#55565e"] } },

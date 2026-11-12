@@ -2299,7 +2299,6 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--space-2); align-content: start; }
 .console .lib-thumb { position: absolute; inset: 0; container-type: inline-size; }
 .console .lib-thumb > .ks-box { width: 100%; }
-.console .lib-gen { padding: 0; grid-template-columns: 96px minmax(0, 1fr); border-top: 0; }
 .console .lib-colors { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .console .lib-swatch { width: 48px; height: 32px; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--swatch-edge); }
 .console .lib-swatch.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
@@ -2368,15 +2367,21 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .tm-empty { aspect-ratio: 16 / 9; width: 100%; border-radius: var(--radius-control); border: 1px dashed var(--line-strong); background: none; color: var(--fg-3); display: grid; place-items: center; }
 .console .tm-empty:hover, .console .tm-empty:focus-visible { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
 /* The library's Gerados: the background alone, big and moving, while it is edited. */
-.console .lib-big { display: flex; flex-direction: column; gap: var(--space-1); }
 .console .lib-big-screen { width: 100%; max-width: 760px; display: grid; place-items: center; }
 .console .lib-big-cap { display: flex; gap: var(--space-2); align-items: baseline; font-size: var(--fs-ui); }
 /* Gerados: the big screen on the left, the controls beside it, so every
    change is seen as it is made. */
-.console .lib-main.is-gen { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-3); align-items: start; overflow: hidden; }
-.console .lib-main.is-gen > .lib-big { position: sticky; top: 0; }
-.console .lib-main.is-gen > .lib-gen { max-height: 100%; overflow: auto; align-self: stretch; padding-right: var(--space-1); }
-.console .lib-main.is-gen .lyr-gens { grid-template-columns: repeat(3, 1fr); }
+/* Gerados (owner 2026-11-12): the sample on the left with its controls
+   under it, always on screen; only the looks on the right scroll. The
+   sample takes the height the controls leave (a size container). */
+.console .lib-main.is-gen { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr); gap: var(--space-3); overflow: hidden; }
+.console .lib-gen-stage { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--space-1); overflow: auto; }
+.console .lib-big-box { flex: 1 1 0; min-height: 140px; container-type: size; display: grid; justify-items: center; align-items: start; }
+.console .lib-big-box > .lib-big-screen { width: min(100cqw, calc(100cqh * 16 / 9)); max-width: none; }
+.console .lib-gen-ctl { flex: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 var(--space-3); padding-top: var(--space-1); border-top: 1px solid var(--line-soft); }
+.console .lib-gen-col { padding: var(--space-1) 0 0; grid-template-columns: 76px minmax(0, 1fr); border-top: 0; align-content: start; }
+.console .lib-gen-list { min-height: 0; overflow: auto; padding-right: var(--space-1); }
+.console .lib-main.is-gen .lyr-gens { grid-template-columns: repeat(2, 1fr); }
 /* Telas e saídas: a vertical tab per output (icon, name, open dot), then
    Layouts and Som e arquivo; the chosen one's screen and settings beside it. */
 /* Telas e saídas as thumbnails (2026-10-13): one card per output, the

@@ -9,14 +9,14 @@ test("normalizeGenerator: defaults, clamps, colours", () => {
     for (const k of PARAM_IDS) assert.equal(d[k], GENERATOR_PARAMS[k][2], k);
     assert.deepEqual(d.colors, DEFAULT_COLORS);
     assert.equal(d.audio, false);
-    const g = normalizeGenerator({ id: "clouds", speed: 99, scale: "x", detail: 3.7, contrast: -1, colors: ["#ABCDEF", "red", "#000000", "#111111", "#222222", "#333333", "#444444"], audio: true });
-    assert.equal(g.id, "clouds"); assert.equal(g.speed, 2); assert.equal(g.scale, 3); assert.equal(g.detail, 4); assert.equal(g.contrast, 0);
+    const g = normalizeGenerator({ id: "mist", speed: 99, scale: "x", detail: 3.7, contrast: -1, colors: ["#ABCDEF", "red", "#000000", "#111111", "#222222", "#333333", "#444444"], audio: true });
+    assert.equal(g.id, "mist"); assert.equal(g.speed, 2); assert.equal(g.scale, 3); assert.equal(g.detail, 4); assert.equal(g.contrast, 0);
     assert.deepEqual(g.colors, ["#abcdef", "#000000", "#111111", "#222222", "#333333"], "up to five");
     assert.equal(g.audio, true);
     assert.equal(normalizeGenerator({ audio: "yes" }).audio, false, "only a real true");
     assert.equal(normalizeGenerator({ id: "nope" }).id, "fluid");
     assert.equal(normalizeGenerator("junk").id, "fluid");
-    assert.equal(GENERATOR_IDS.length, 29);
+    assert.equal(GENERATOR_IDS.length, 25);
     assert.equal(new Set(GENERATOR_IDS).size, GENERATOR_IDS.length);
 });
 

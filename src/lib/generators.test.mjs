@@ -40,7 +40,7 @@ test("presets are complete and matched", () => {
 });
 
 test("the worship loops: the owner's first colours, a ramp and degradês each", () => {
-    const loops = GENERATOR_IDS.slice(9);
+    const loops = GENERATOR_IDS.slice(5);
     assert.equal(loops.length, 20);
     for (const id of loops) {
         const ps = presetsOf(id);

@@ -1,7 +1,8 @@
 // Fundos gerados (2026-10-12, as ProPresenter's generated backgrounds): a
-// background the screens compute as they go — slow marble veins, drifting
-// clouds, an aurora, bokeh lights, a living gradient, rising particles,
-// rays of light, a starry sky, mist, and since 2026-11-12 the worship loops
+// background the screens compute as they go — slow marble veins, an
+// aurora, a living gradient, a starry sky, mist (drifting clouds, bokeh
+// lights, rising particles and rays of light left on 2026-11-12, the
+// owner's call: what still named one has no background), and since 2026-11-12 the worship loops
 // (owner's mockup "Fundos em loop", three rounds: light tunnels, fluted
 // glass, watercolour, mosaics, columns, a horizon, a lit room…) — described
 // by a generator id and a few numbers, never a file. The live state carries it
@@ -11,7 +12,7 @@
 // main process can check an op without the shaders. Pure, shared.
 
 export const GENERATOR_IDS = [
-    "fluid", "clouds", "aurora", "bokeh", "gradient", "particles", "rays", "stars", "mist",
+    "fluid", "aurora", "gradient", "stars", "mist",
     // The worship loops (2026-11-12).
     "tunnel", "beams", "lines", "columns", "horizon", "room", "refraction", "reflections", "fluted", "wideglass",
     "watercolor", "mosaic", "blocks", "silk", "dunes", "lightrain", "prism", "ink", "stainedglass", "lightgrid",
