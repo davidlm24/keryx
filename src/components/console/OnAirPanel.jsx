@@ -20,7 +20,8 @@ export default function OnAirPanel({ c }) {
     const air = cur?.content;
     const airId = liveStageId(cur);
     const slides = air?.slides || [];
-    const index = air ? air.index : -1;
+    // The introduction (only the background until the first mark): no slide on air yet.
+    const index = air && !air.intro ? air.index : -1;
     // A slide of this item waiting in the Prévia.
     const prevIndex = air && prev && (prev.airSlide || prev.id === airId) ? prev.index : -1;
     const listRef = useRef(null);

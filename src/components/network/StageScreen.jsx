@@ -48,12 +48,14 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
     const song = { title: content.title, artist: content.artist, background_image: content.style?.background_image, ...content.stage };
     const slides = content.slides?.length ? content.slides : [{ text: "" }];
     const index = content.index || 0;
-    const current = slides[index] || {};
-    const next = slides[index + 1];
+    // The introduction (before the first mark): no slide yet, the first next.
+    const intro = Boolean(content.intro);
+    const current = intro ? { text: "", label: "Introdução" } : slides[index] || {};
+    const next = intro ? slides[index] : slides[index + 1];
     // Time since the operator put this song up (the same on every screen).
     const elapsed = Math.max(0, Math.floor((nowMs - content.startedAt) / 1000));
     // The current slide with its chords, when the lyrics carry them.
-    const chorded = show.chords ? chordedOf(song, index, current.text) : null;
+    const chorded = show.chords && !intro ? chordedOf(song, index, current.text) : null;
     // An Escola bíblica question: the teacher sees the answer here, and the
     // question's own note (content.stage.slide_notes).
     const answer = stageLines(current.activity);
