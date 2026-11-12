@@ -428,6 +428,23 @@ function followOf(value, items) {
     return out;
 }
 
+// The introduction (owner 2026-11-11): a song following its video or
+// playback shows only the background until its first mark — the first
+// slide came on at once, over the intro. `intro: true` on the content
+// (only while true, so the state stays as it was otherwise); the console's
+// follower clears it at the first mark (content.goTo auto), any move of the
+// slide too. Only a follow that runs, from slide 1, with a first start past 0.
+const INTRO_FROM = 0.05;
+function introAt(items, follow, index, position = 0) {
+    const first = items[0]?.start;
+    return Boolean(follow && !follow.paused) && index === 0 && Number.isFinite(first) && first > INTRO_FROM && position < first;
+}
+const withIntro = (content, on) => {
+    const rest = { ...content };
+    delete rest.intro;
+    return on ? { ...rest, intro: true } : rest;
+};
+
 function clampIndex(value, length) {
     const n = Math.trunc(Number(value) || 0);
     if (length <= 0) return 0;
@@ -711,6 +728,8 @@ const OPS = {
     // fades out over this; the same for every show op below.
     "content.show": (s, a, now) => {
         const items = slides(a.slides);
+        const follow = followOf(a.follow, items);
+        const index = clampIndex(a.index, items.length);
         return {
             ...remember(s, now),
             ...reveal(["tool", "communication", "media"]),
@@ -721,13 +740,14 @@ const OPS = {
                 title: text(a.title, "Título", { max: 500 }),
                 artist: text(a.artist, "Artista", { max: 500 }),
                 slides: items,
-                index: clampIndex(a.index, items.length),
+                index,
+                ...(introAt(items, follow, index) ? { intro: true } : {}),
                 style: style(a.style),
                 stage: loose(a.stage, "Dados do palco") || {},
                 // A song's playback track, played by the main projector (rows
                 // sent before Rodada D4; a playback now goes to the audio channel).
                 audio: text(a.audio, "Áudio", { max: MAX_URL }) || null,
-                follow: followOf(a.follow, items),
+                follow,
                 // How far each slide's activity was revealed (content.reveal).
                 revealed: {},
                 startedAt: now,
@@ -756,17 +776,21 @@ const OPS = {
             const keep = f && current.follow && current.follow.source === f.source && current.follow.url === f.url;
             next.follow = keep ? { ...current.follow, ...(f.length !== undefined ? { length: f.length } : {}), ...(f.each ? { each: f.each } : {}) } : f;
         } else if (current.follow && !next.slides.some((it) => Number.isFinite(it.start))) next.follow = null;
-        return { content: next };
+        return { content: next.follow ? next : withIntro(next, false) };
     },
     // `auto`: the automatic lyrics moving on (useLyricFollow). Anyone else
     // moving the slide of a song that follows: with a video or playback the
     // media jumps to that slide's mark and the marks never move (owner
     // 2026-11-10); with the live clock or Por tempo it re-syncs there and
     // follows from the new place (owner 2026-10-15, "continua seguindo").
-    "content.goTo": (s, { index, auto }, now) => {
-        const current = need(s.content, "projetado");
-        const i = clampIndex(index, current.slides.length);
-        if (i === current.index) return null;
+    // `intro` (auto only): back to the introduction, slide 1 not shown yet
+    // (the player sought before the first mark); any other move ends it.
+    "content.goTo": (s, { index, auto, intro }, now) => {
+        const was = need(s.content, "projetado");
+        const i = clampIndex(index, was.slides.length);
+        const wantIntro = Boolean(auto && intro) && i === 0;
+        if (i === was.index && Boolean(was.intro) === wantIntro) return null;
+        const current = withIntro(was, wantIntro);
         const f = current.follow;
         if (auto || !f || f.paused) return { content: { ...current, index: i } };
         if (f.url) {
@@ -789,6 +813,7 @@ const OPS = {
             // first one: from 0, the introduction).
             const position = current.index > 0 && Number.isFinite(at?.start) ? at.start : 0;
             next = { ...f, paused: false, offset: 0, pausedIndex: null, clock: !f.url ? { paused: false, position, at: now } : f.clock };
+            return { content: { ...withIntro(current, introAt(current.slides, next, current.index, position)), follow: next } };
         } else if (action === "pause") {
             if (f.paused) return null;
             const clock = f.clock && !f.clock.paused ? { paused: true, position: livePosition(f.clock, now), at: now } : f.clock;
@@ -827,11 +852,14 @@ const OPS = {
     // answer, then goes to the next question; ← hides it again first).
     "content.next": (s, _a, now) => {
         const current = need(s.content, "projetado");
+        // In the introduction: the first slide comes in (its mark, for a media).
+        if (current.intro) return OPS["content.goTo"](s, { index: current.index }, now);
         if (revealStep(current) < activitySteps(currentSlide(current))) return OPS["content.reveal"](s, { by: 1 }, now);
         return OPS["content.goTo"](s, { index: current.index + 1 }, now);
     },
     "content.prev": (s, _a, now) => {
         const current = need(s.content, "projetado");
+        if (current.intro) return null;
         if (revealStep(current) > 0) return OPS["content.reveal"](s, { by: -1 }, now);
         return OPS["content.goTo"](s, { index: current.index - 1 }, now);
     },
@@ -1190,7 +1218,8 @@ function restoredContent(c, now) {
     if (!c || !isPlainObject(c.follow)) return c;
     const f = c.follow;
     const clock = isPlainObject(f.clock) ? { ...f.clock, paused: true, position: Number(f.clock.position) || 0, at: now } : null;
-    return { ...c, follow: { ...f, paused: true, pausedIndex: Number.isInteger(c.index) ? c.index : null, clock } };
+    // Waiting, the first slide shows (the introduction is a running follow's).
+    return { ...withIntro(c, false), follow: { ...f, paused: true, pausedIndex: Number.isInteger(c.index) ? c.index : null, clock } };
 }
 
 // A saved background, checked again (null when it no longer passes).
@@ -1249,15 +1278,20 @@ export function slideAtTime(slides, t) {
     return at;
 }
 
-// The slide the automatic lyrics want on air now, or null to leave it.
+// The slide the automatic lyrics want on air now, -1 for the introduction
+// (before the first mark: only the background, owner 2026-11-11), or null
+// to leave it.
 export function followIndex(state, now) {
     const c = state?.content;
     const f = c?.follow;
     if (!f || f.paused) return null;
     const pos = followPosition(state, now);
-    if (pos === null) return null;
-    const i = slideAtTime(c.slides, pos + (f.offset || 0));
-    return i < 0 ? null : i;
+    // Its media not playing (stopped, never came): the first slide shows.
+    if (pos === null) return c.intro ? 0 : null;
+    const t = pos + (f.offset || 0);
+    const i = slideAtTime(c.slides, t);
+    if (i >= 0) return i;
+    return introAt(c.slides, f, 0, t) ? -1 : null;
 }
 
 // What a <video> (or YouTube player) should do to follow the shared
@@ -1282,8 +1316,9 @@ export function playbackPlan(el, playback, now, { loop = false, tolerance = 1.5 
     return plan;
 }
 
-export const currentSlide = (content) => (content && content.slides[content.index]) || null;
-export const nextSlide = (content) => (content && content.slides[content.index + 1]) || null;
+// In the introduction no slide is on screen and the first one is next.
+export const currentSlide = (content) => (content && !content.intro && content.slides[content.index]) || null;
+export const nextSlide = (content) => (content && content.slides[content.intro ? content.index : content.index + 1]) || null;
 
 // Milliseconds left on a timer (never negative), or elapsed on a stopwatch.
 export function toolTime(tool, now) {

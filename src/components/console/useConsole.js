@@ -313,10 +313,12 @@ export function useConsole() {
         const tick = () => {
             const cur = liveRef.current;
             const i = followIndex(cur, keryx.live.now());
-            if (i === null || i === cur?.content?.index) { asked = null; return; }
+            // -1: the introduction (only the background until the first mark).
+            const at = cur?.content?.intro ? -1 : cur?.content?.index;
+            if (i === null || i === at) { asked = null; return; }
             if (i === asked) return;
             asked = i;
-            keryx.live.call("content.goTo", { index: i, auto: true }).catch(() => {});
+            keryx.live.call("content.goTo", i < 0 ? { index: 0, auto: true, intro: true } : { index: i, auto: true }).catch(() => {});
         };
         tick();
         const id = setInterval(tick, 150);
