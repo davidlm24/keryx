@@ -278,11 +278,14 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
     // Imagens and Vídeos keep their chips on screen and scroll only the grid
     // (Rodada Q, Q2; as the Mídia's .mv-body).
     const fixedChips = (tab === "image" || tab === "video") && view === "grid";
+    // "Com letra" (owner 2026-11-12, G5 = A): a sample slide over the big
+    // sample, through the real renderer, to judge the contrast while editing.
+    const [genLyrics, setGenLyrics] = useState(false);
     const bigDoc = useMemo(() => {
         if (!big || !previewArgs) return null;
         const t = keryx.live.now();
-        try { return applyOp(emptyState(t), "background.set", previewArgs, t); } catch { return null; }
-    }, [big, JSON.stringify(previewArgs)]); // eslint-disable-line react-hooks/exhaustive-deps
+        try { return genLyrics ? sampleDoc(t, previewArgs) : applyOp(emptyState(t), "background.set", previewArgs, t); } catch { return null; }
+    }, [big, genLyrics, JSON.stringify(previewArgs)]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const title = request.title || (themeMode ? "Escolher tema" : "Escolher fundo");
     const can = themeMode ? Boolean(selTheme) : Boolean(cleanSpec(sel));
@@ -365,23 +368,28 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                                 {!shown.length && <span className="kx-meta">{tab === "video" ? "Nenhum vídeo. Envie um do computador (MP4 ou WebM); ele toca em loop, sem som." : "Nenhuma imagem nesta categoria."}</span>}
                             </div></div>
                         </>}
-                        {/* Gerados (owner 2026-11-12): the sample with its controls under
-                            it, always on screen; only the looks on the right scroll. */}
+                        {/* Gerados (owner 2026-11-12, G1 = A): the sample and the looks
+                            share the top; the control band runs the whole width below. */}
                         {tab === "generator" && (
                             <div className="lib-gen-stage">
-                                <div className="lib-big-box"><div className="ap-sample lib-big-screen">{bigDoc ? <ScreenRenderer state={bigDoc} preview motion /> : <span className="kx-meta">Escolha um look ao lado.</span>}</div></div>
-                                <span className="lib-big-cap"><span className="kx-meta">{sel?.kind === "generator" ? bgLabel(sel, GEN_NAMES) : "Nenhum gerador escolhido"}</span></span>
+                                <div className="lib-gen-top">
+                                    <div className="lib-gen-view">
+                                        <div className="lib-big-box"><div className="ap-sample lib-big-screen">
+                                            {bigDoc ? <ScreenRenderer state={bigDoc} preview motion /> : <span className="kx-meta">Escolha um look ao lado.</span>}
+                                            {sel?.kind === "generator" && <Btn small on={genLyrics} className="lib-genlyr" title="Uma letra de exemplo sobre o fundo, para ver o contraste" aria-pressed={genLyrics} onClick={() => setGenLyrics((v) => !v)}>Com letra</Btn>}
+                                        </div></div>
+                                        <span className="lib-big-cap"><span className="kx-meta">{sel?.kind === "generator" ? bgLabel(sel, GEN_NAMES) : "Nenhum gerador escolhido"}</span></span>
+                                    </div>
+                                    <div className="lib-gen-list" aria-label="Looks">
+                                        <GeneratorTiles current={sel?.kind === "generator" ? sel.gen : null} op={(_op, args) => setSel(cleanSpec(args))} />
+                                    </div>
+                                </div>
                                 {sel?.kind === "generator"
-                                    ? <GeneratorPanel background={bgArgs(sel, "")} op={(_op, args) => setSel(cleanSpec(args))} extra={<>
+                                    ? <GeneratorPanel background={bgArgs(sel, "")} op={(_op, args) => setSel(cleanSpec(args))} extra={<span className="lib-gen-tog">
                                         <span className="k">Escurecer</span>
                                         <Seg small label="Escurecer" value={String(sel.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => setSel(cleanSpec({ ...sel, dim: Number(v) }))} />
-                                    </>} />
+                                    </span>} />
                                     : <span className="kx-meta">Um fundo que as telas calculam: escolha um look ao lado, depois as cores e o movimento.</span>}
-                            </div>
-                        )}
-                        {tab === "generator" && (
-                            <div className="lib-gen-list" aria-label="Looks">
-                                <GeneratorTiles current={sel?.kind === "generator" ? sel.gen : null} op={(_op, args) => setSel(cleanSpec(args))} />
                             </div>
                         )}
                         {tab === "color" && (
