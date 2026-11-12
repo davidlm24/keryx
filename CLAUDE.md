@@ -1982,12 +1982,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   de luz were removed for good** (owner, same day: `clouds`, `bokeh`,
   `particles`, `rays` left `GENERATOR_IDS`; a theme, culto or song that
   named one has no background, a saved live state drops it on restore).
-  The console edits it in the library's Gerados: the sample on the left
-  with the controls under it in three columns, always on screen
-  (`GeneratorPanel.jsx`, `.lib-gen-ctl`: colours and degradê, the
+  The console edits it in the library's Gerados: the sample and the
+  looks (as stills, the only part that scrolls) side by side on top, the
+  controls across the whole width under them in three columns, always on
+  screen (`GeneratorPanel.jsx`, `.lib-gen-ctl`: colours and degradê, the
   sliders, Áudio-reativo and the host's `extra`, the library's
-  Escurecer), the looks on the right as stills (the only part that
-  scrolls; presets as round dots, `presetSwatch`); a
+  Escurecer; presets as round dots, `presetSwatch`); a
   theme keeps one in `background_generator` (`themeBackgroundArgs`).
   **Áudio-reativo** (`gen.audio`): the console measures the PC's output
   with its meters (`useAudioFeed`) and sends the level ~20×/s over its own

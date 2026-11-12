@@ -2371,16 +2371,18 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .lib-big-cap { display: flex; gap: var(--space-2); align-items: baseline; font-size: var(--fs-ui); }
 /* Gerados: the big screen on the left, the controls beside it, so every
    change is seen as it is made. */
-/* Gerados (owner 2026-11-12): the sample on the left with its controls
-   under it, always on screen; only the looks on the right scroll. The
-   sample takes the height the controls leave (a size container). */
-.console .lib-main.is-gen { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr); gap: var(--space-3); overflow: hidden; }
-.console .lib-gen-stage { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--space-1); overflow: auto; }
+/* Gerados (owner 2026-11-12): the sample and the looks side by side on
+   top, the controls across the whole width under them, always on screen;
+   only the looks scroll. The top row takes the height the controls leave
+   (the sample is a size container, 16:9). */
+.console .lib-main.is-gen { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: minmax(0, 1fr) auto; gap: var(--space-2) var(--space-3); overflow: hidden; }
+.console .lib-gen-stage { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: var(--space-1); overflow: hidden; }
 .console .lib-big-box { flex: 1 1 0; min-height: 140px; container-type: size; display: grid; justify-items: center; align-items: start; }
 .console .lib-big-box > .lib-big-screen { width: min(100cqw, calc(100cqh * 16 / 9)); max-width: none; }
-.console .lib-gen-ctl { flex: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 var(--space-3); padding-top: var(--space-1); border-top: 1px solid var(--line-soft); }
+.console .lib-gen-ctl { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 var(--space-3); padding-top: var(--space-1); border-top: 1px solid var(--line-soft); }
 .console .lib-gen-col { padding: var(--space-1) 0 0; grid-template-columns: 76px minmax(0, 1fr); border-top: 0; align-content: start; }
 .console .lib-gen-list { min-height: 0; overflow: auto; padding-right: var(--space-1); }
+.console .lib-gen-hint { grid-column: 1 / -1; }
 .console .lib-main.is-gen .lyr-gens { grid-template-columns: repeat(2, 1fr); }
 /* Telas e saídas: a vertical tab per output (icon, name, open dot), then
    Layouts and Som e arquivo; the chosen one's screen and settings beside it. */
