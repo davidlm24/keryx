@@ -363,7 +363,9 @@ async function checkVideo(webContents, { live }) {
     // ...then plays from the start when the operator seeks there.
     live.call("transport", { action: "seek", time: 0 });
     result.playing = await waitState(screenWin, (v) => !v.paused && v.time < 4);
-    result.title = (await bodyText(screenWin)).includes("Vídeo de teste");
+    // The clip's name is off by default (owner 2026-11-12, V = A: Ajustes ›
+    // Conteúdo › Nome do vídeo turns it on): the Vídeo screen shows only the clip.
+    result.title = !(await bodyText(screenWin)).includes("Vídeo de teste");
     live.call("transport", { action: "pause" });
     result.paused = await waitState(screenWin, (v) => v.paused);
     live.call("transport", { action: "play" });
