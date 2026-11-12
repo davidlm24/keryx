@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { placementShort, destinoSummary, partsSummary, aparenciaSummary, conteudoSummary, kindsSummary, nomeIconeSummary, alertSummary, COMPORTAMENTO_SUMMARY, diagnosticoSummary, netClientsLine, estadoText, ajustesLine, showsNowText } from "./ajustesSummaries.js";
+import { placementShort, destinoSummary, partsSummary, aparenciaSummary, conteudoSummary, kindsSummary, nomeIconeSummary, alertSummary, AUTO_LINE, diagnosticoSummary, netClientsLine, estadoText, ajustesLine, showsNowText } from "./ajustesSummaries.js";
 import { normalizePref, defaultRule } from "../outputPrefs.js";
 import { ruleKindOf, ruleKind } from "../contentKinds.js";
 
@@ -42,7 +42,7 @@ test("Conteúdo carries Sem item da lista; the folded rows say what is chosen (o
     assert.equal(alertSummary({ style: "band", position: "top", entrance: "slide", size: "m" }), "Faixa âmbar no alto · desliza");
     assert.equal(alertSummary({ style: "pill", position: "bottom", entrance: "none", size: "l" }, { amber: false }), "Pílula embaixo · sem entrada · G");
     assert.equal(alertSummary({ style: "band" }, { hidden: true }), "não aparece nesta saída");
-    assert.equal(COMPORTAMENTO_SUMMARY, "Já faz sozinho: monitor, rede e tela ligada");
+    assert.match(AUTO_LINE, /monitor religa/);
 });
 
 test("Diagnóstico", () => {

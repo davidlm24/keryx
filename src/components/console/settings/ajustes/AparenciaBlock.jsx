@@ -47,9 +47,6 @@ export default function AparenciaBlock({ ctx }) {
                     </select>
                     {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId, from: "Editor da tela" }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor"><Icon name="edit" />Editar tema…</Btn>}
                 </FormRow>}
-                {renderer && !ownsTheme(path) && <FormRow k="Tema">
-                    <span className="kx-meta">segue o tema do console (a Projeção não tem tema próprio)</span>
-                </FormRow>}
                 {isStream && <>
                     <FormRow k="Faixa">
                         <input type="color" className="ed-color" value={stream.band} onChange={(e) => saveOpt("band", e.target.value)} aria-label="Cor da faixa" title="Cor da faixa" />

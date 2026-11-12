@@ -5,7 +5,7 @@
 // (ScreenLayout rows: "Salvar como modelo", beside the factory ones in
 // "Começar de um modelo…" — owner's choice 2026-10-22, the old catalog's rows
 // become the church's models). Pure (tested in layoutEditor.test.mjs).
-import { normalizeLayout, layoutFields, clampRect, LAYOUT_CATEGORIES } from "./layouts.js";
+import { normalizeLayout, layoutFields, clampRect, LAYOUT_CATEGORIES, PALCO_PARTS, PASTOR_PARTS } from "./layouts.js";
 
 // One line per element type in the Adicionar picker.
 export const ELEMENT_HINTS = {
@@ -35,25 +35,35 @@ export const ELEMENT_HINTS = {
     band: "uma faixa de ponta a ponta atrás dos elementos; some quando nada nela aparece",
 };
 
-// ---- One drawing per screen (owner 2026-11-12, "Editor de telas · Palco") ----
-// A design saved from the Palco before it became one drawing: seeded from the
-// old factory (its ids start f_) and with no Faixa. The Editor says so, with
-// "Voltar ao padrão".
-export const fromOldPalco = (path, design) => path === "/StageView" && Boolean(design?.elements?.length) && design.elements.some((e) => String(e.id || "").startsWith("f_") && e.when !== "idle") && !design.elements.some((e) => e.type === "band");
+// ---- One drawing per screen (owner 2026-11-12, "Editor de telas · Palco",
+// and the Pastor in "Telas · fase 2", P = A) ----
+// The screens whose page is a factory design dressed by their Ajustes'
+// switches (outputPrefs pageDesign): which ids each switch hides, and the
+// switch's name in Ajustes › Conteúdo.
+export const PAGE_PARTS = {
+    "/StageView": { parts: PALCO_PARTS, words: { chords: "Cifra", labels: "Nome da parte", clock: "Relógio e tempo", notes: "Notas para músicos", next: "Próximo" } },
+    "/PastorView": { parts: PASTOR_PARTS, words: { clock: "Relógio", next: "Próximos itens" } },
+};
+export const drawsItself = (path) => Boolean(PAGE_PARTS[path]);
+
+// A design saved from the Palco or the Pastor before they became one
+// drawing: seeded from the old factory (its ids start f_) and with no
+// Faixa. The Editor says so, with "Voltar ao padrão".
+export const fromOldDesign = (path, design) => drawsItself(path) && Boolean(design?.elements?.length) && design.elements.some((e) => String(e.id || "").startsWith("f_") && e.when !== "idle") && !design.elements.some((e) => e.type === "band");
 
 // "Voltar ao padrão…": the question for each screen.
 export function resetWords(path, name) {
-    if (path === "/StageView") return { title: "Voltar ao desenho padrão?", text: `O desenho salvo de ${name} sai; a tela volta ao desenho padrão, com as partes de Ajustes › Conteúdo.` };
+    if (drawsItself(path)) return { title: "Voltar ao desenho padrão?", text: `O desenho salvo de ${name} sai; a tela volta ao desenho padrão, com as partes de Ajustes › Conteúdo.` };
     return { title: "Voltar à página padrão?", text: `O desenho próprio de ${name} sai; a tela volta a se desenhar sozinha.` };
 }
 
-// Why a part of the Palco's default drawing is off: a switch of its Ajustes
-// (PALCO_PARTS), while the screen has no design of its own; "" otherwise.
-const PART_WORDS = { chords: "Cifra", labels: "Nome da parte", clock: "Relógio e tempo", notes: "Notas para músicos", next: "Próximo" };
-export function switchReason(el, parts, own) {
-    if (own || !el?.hidden) return "";
-    const k = Object.keys(parts || {}).find((key) => parts[key].includes(el.id));
-    return k ? `Desligado em Ajustes › Conteúdo › ${PART_WORDS[k]}. Ligue lá para ele voltar.` : "";
+// Why a part of a default drawing is off: a switch of its Ajustes, while
+// the screen has no design of its own; "" otherwise.
+export function switchReason(el, path, own) {
+    const page = PAGE_PARTS[path];
+    if (own || !page || !el?.hidden) return "";
+    const k = Object.keys(page.parts).find((key) => page.parts[key].includes(el.id));
+    return k ? `Desligado em Ajustes › Conteúdo › ${page.words[k]}. Ligue lá para ele voltar.` : "";
 }
 
 // ---- The text bar (TextBar.jsx speaks the theme's keys) ----

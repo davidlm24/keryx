@@ -1,9 +1,8 @@
 import React, { useMemo } from "react";
 import Icon from "./Icon";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import PastorScreen from "@/components/network/PastorScreen";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
-import { prefState, prefVars, pastorOptions, ruleOf, ruleLabel, ruleSummary, leftOutNow } from "@/lib/outputPrefs";
+import { prefState, prefVars, ruleOf, ruleLabel, ruleSummary, leftOutNow } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
 import { useScreenDesign } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
@@ -33,10 +32,7 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
     const upcoming = useMemo(() => (layout ? nextItems(items, live?.session || null, 10) : []), [layout, items, live?.session]);
     let body;
     if (layout && (own || doc)) body = <LayoutRenderer layout={layout} live={live} screenState={own ? undefined : doc} nowMs={now} logoUrl={logoUrl} upcoming={upcoming} hasService={items.length > 0} church={church} scale={own ? pref.scale : 1} embed motion={motion} />;
-    else if (own === "/PastorView") {
-        const upcoming = nextItems(items, live?.session || null, pastorOptions(pref).next_count || 1);
-        body = <PastorScreen live={live} nowMs={now} logo={logoUrl} upcoming={upcoming} hasService={items.length > 0} embed opts={pref.options} scale={pref.scale} />;
-    } else if (doc) body = <ScreenRenderer state={doc} now={now} logoUrl={logoUrl} preview motion={motion} />;
+    else if (doc) body = <ScreenRenderer state={doc} now={now} logoUrl={logoUrl} preview motion={motion} />;
     else body = <div className="kx-screen-empty">Nada no ar nesta saída</div>;
     return (
         <div className={`mx-tile ${vars ? "kp-out" : ""}`} style={vars || undefined} data-page={page}>

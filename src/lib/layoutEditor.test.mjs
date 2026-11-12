@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ELEMENT_HINTS, elementBar, barToElement, alignElements, distributeElements, moveElements, boxOf, gridRect, cleanGrid, churchModels, modelFields, modelCategory, modelNameTaken, ALIGN_ACTIONS, fromOldPalco, resetWords, switchReason } from "./layoutEditor.js";
-import { ELEMENT_TYPES, normalizeElement, normalizeLayout, FACTORY_LAYOUTS, PALCO_PARTS } from "./layouts.js";
+import { ELEMENT_HINTS, elementBar, barToElement, alignElements, distributeElements, moveElements, boxOf, gridRect, cleanGrid, churchModels, modelFields, modelCategory, modelNameTaken, ALIGN_ACTIONS, fromOldDesign, drawsItself, resetWords, switchReason } from "./layoutEditor.js";
+import { ELEMENT_TYPES, normalizeElement, normalizeLayout, FACTORY_LAYOUTS } from "./layouts.js";
 
 test("every element type has its hint in the editor's module, none left in the outputs' one", () => {
     for (const t of ELEMENT_TYPES) {
@@ -114,20 +114,27 @@ test("the church's models: ScreenLayout rows by name; Salvar como modelo writes 
 
 // ---- One drawing per screen (owner 2026-11-12) ----
 
-test("fromOldPalco: a Palco design from the old factory (f_ ids, no band)", () => {
+test("fromOldDesign: a Palco or Pastor design from the old factory (f_ ids, no band)", () => {
     const old = { elements: [{ id: "f_title", type: "title" }, { id: "f_clock", type: "clock", when: "idle" }] };
-    assert.equal(fromOldPalco("/StageView", old), true);
-    assert.equal(fromOldPalco("/PastorView", old), false);
-    assert.equal(fromOldPalco("/StageView", FACTORY_LAYOUTS.find((l) => l.id === "factory:palco")), false);
-    assert.equal(fromOldPalco("/StageView", { elements: [{ id: "abc", type: "title" }] }), false, "drawn by hand");
-    assert.equal(fromOldPalco("/StageView", null), false);
+    assert.equal(fromOldDesign("/StageView", old), true);
+    assert.equal(fromOldDesign("/PastorView", old), true);
+    assert.equal(fromOldDesign("/Projection", old), false);
+    assert.equal(fromOldDesign("/StageView", FACTORY_LAYOUTS.find((l) => l.id === "factory:palco")), false);
+    assert.equal(fromOldDesign("/PastorView", FACTORY_LAYOUTS.find((l) => l.id === "factory:pastor")), false);
+    assert.equal(fromOldDesign("/StageView", { elements: [{ id: "abc", type: "title" }] }), false, "drawn by hand");
+    assert.equal(fromOldDesign("/StageView", null), false);
+    assert.equal(drawsItself("/PastorView"), true);
+    assert.equal(drawsItself("/LyricProjection"), false);
 });
 
 test("resetWords and switchReason", () => {
     assert.match(resetWords("/StageView", "Palco").text, /desenho padrão/);
-    assert.match(resetWords("/PastorView", "Pastor").text, /se desenhar sozinha/);
-    assert.match(switchReason({ id: "palco_chords", hidden: true }, PALCO_PARTS, false), /Ajustes › Conteúdo › Cifra/);
-    assert.equal(switchReason({ id: "palco_chords", hidden: true }, PALCO_PARTS, true), "", "own design: the eye");
-    assert.equal(switchReason({ id: "palco_chords", hidden: false }, PALCO_PARTS, false), "");
-    assert.equal(switchReason({ id: "other", hidden: true }, PALCO_PARTS, false), "");
+    assert.match(resetWords("/PastorView", "Pastor").text, /desenho padrão/);
+    assert.match(resetWords("/LyricProjection", "Letras").text, /se desenhar sozinha/);
+    assert.match(switchReason({ id: "palco_chords", hidden: true }, "/StageView", false), /Ajustes › Conteúdo › Cifra/);
+    assert.match(switchReason({ id: "pastor_next", hidden: true }, "/PastorView", false), /Próximos itens/);
+    assert.equal(switchReason({ id: "palco_chords", hidden: true }, "/StageView", true), "", "own design: the eye");
+    assert.equal(switchReason({ id: "palco_chords", hidden: false }, "/StageView", false), "");
+    assert.equal(switchReason({ id: "other", hidden: true }, "/StageView", false), "");
+    assert.equal(switchReason({ id: "palco_chords", hidden: true }, "/Projection", false), "");
 });

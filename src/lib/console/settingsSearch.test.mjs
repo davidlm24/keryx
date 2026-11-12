@@ -15,7 +15,6 @@ const FILES = {
     "ajustes/DestinoBlock.jsx": "telas",
     "ajustes/ConteudoBlock.jsx": "telas",
     "ajustes/AparenciaBlock.jsx": "telas",
-    "ajustes/ComportamentoBlock.jsx": "telas",
     "ajustes/DiagnosticoBlock.jsx": "telas",
     "ajustes/OutputAjustes.jsx": "telas",
     "TransicoesBlock.jsx": "telas",
