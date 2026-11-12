@@ -1959,12 +1959,27 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   a file — `background: { kind: "generator", value: <id>, gen: {...} }` in
   the live state. What the numbers are is `shared/generators.mjs`
   (`normalizeGenerator`, checked by `background.set` in the main process);
-  the shaders (WebGL 1) and the presets are `src/lib/generators.js`, drawn
-  by `src/components/screen/GeneratorBackground.jsx` inside the
-  renderer's background (moving on an output and on the Programa monitor,
-  one still frame elsewhere). A new generator is an entry in `GENERATORS`
-  (its GLSL body leaves `v`), its id in `GENERATOR_IDS`, and a preset. The
-  console edits it in the library's Gerados (`GeneratorPanel.jsx`); a
+  the names, sliders and presets are `src/lib/generators.js` (the
+  console's), the shaders (WebGL 1) `src/lib/generatorShaders.js`, which
+  `src/components/screen/GeneratorBackground.jsx` loads with `import()`
+  the first time a window draws one (the still gradient, `cssFallback` in
+  `src/lib/generatorLook.js`, until then): **never import either
+  statically on the outputs' path** (`generators.test.mjs` checks the
+  screen folder). Drawn inside the renderer's background (moving on an
+  output and on the Programa monitor, one still frame elsewhere). A new
+  generator is an entry in `GENERATORS`, its body in `BODIES` (it leaves
+  `v`), its id in `GENERATOR_IDS`, and a preset. **The worship loops**
+  (owner's mockup "Fundos em loop", 2026-11-12, three rounds; in the style
+  of CMG's SundayScreens, our own looks): twenty more generators (Túnel de
+  luz … Grade de luz), each with the owner's numbers and colourways in
+  `LOOP_PRESETS`, a ramp and two degradês among them. **Colour** (same
+  day): `colors` takes 1 to 5 (a ramp, dark → light; three = the palette
+  of before, exactly), and the **degradê pela tela** is `colors2` (1–5)
+  with `blend` h | v | d | move, present only when it has colours, so a
+  generator without one keeps the shape it had (an older KERYX reads the
+  first three colours and drops the degradê; a new id it does not know
+  is no background there). The console edits it in the library's Gerados
+  (`GeneratorPanel.jsx`: presets as round dots, `presetSwatch`); a
   theme keeps one in `background_generator` (`themeBackgroundArgs`).
   **Áudio-reativo** (`gen.audio`): the console measures the PC's output
   with its meters (`useAudioFeed`) and sends the level ~20×/s over its own

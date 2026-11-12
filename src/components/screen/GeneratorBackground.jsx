@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { fragmentSource, VERTEX_SOURCE, cssFallback } from "@/lib/generators";
+import { cssFallback } from "@/lib/generatorLook";
 import { getLevel, listenSystemLevel, follow } from "@/lib/audioLevel";
 
-// A generated background (src/lib/generators.js) filling its box.
+// A generated background (shared/generators.mjs) filling its box.
+//
+// The shaders (src/lib/generatorShaders.js) load the first time a window
+// draws one, so an output's first load carries none of them; until they
+// arrive the box shows the still gradient of the colours.
 //
 // Moving (an output, the Programa monitor): its own WebGL canvas, one
 // full-screen triangle 30 times a second, at most 960 pixels wide (the
@@ -19,7 +23,19 @@ const FPS = 30;
 const MAX_W = 960;
 const STILL_W = 480;
 const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255);
-const UNIFORMS = ["u_res", "u_time", "u_speed", "u_scale", "u_intensity", "u_spacing", "u_persistence", "u_contrast", "u_detail", "u_ncol", "u_c0", "u_c1", "u_c2", "u_audio"];
+const UNIFORMS = ["u_res", "u_time", "u_speed", "u_scale", "u_intensity", "u_spacing", "u_persistence", "u_contrast", "u_detail", "u_audio",
+    "u_ncol", "u_c0", "u_c1", "u_c2", "u_c3", "u_c4", "u_ncol2", "u_blend", "u_d0", "u_d1", "u_d2", "u_d3", "u_d4"];
+const BLEND_N = { h: 1, v: 2, d: 3, move: 4 };
+// Five colours for a ramp's five uniforms: the list, its last one repeated.
+const five = (cs) => [0, 1, 2, 3, 4].map((i) => hex(cs[Math.min(i, cs.length - 1)]));
+
+// The shaders, once loaded (one import per window, shared by every canvas).
+let shaders = null;
+let loading = null;
+const loadShaders = () => {
+    loading ||= import("@/lib/generatorShaders").then((m) => { shaders = m; return m; }, (e) => { loading = null; throw e; });
+    return loading;
+};
 
 // A WebGL context with a program per generator: draw(gen, t, audio) paints
 // the whole canvas. null when the context cannot be had (no WebGL, or lost).
@@ -34,8 +50,8 @@ function makeRenderer(canvas) {
         if (programs.has(id)) return programs.get(id);
         const compile = (type, src) => { const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh); return sh; };
         const prog = gl.createProgram();
-        gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERTEX_SOURCE));
-        gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fragmentSource(id)));
+        gl.attachShader(prog, compile(gl.VERTEX_SHADER, shaders.VERTEX_SOURCE));
+        gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, shaders.fragmentSource(id)));
         gl.linkProgram(prog);
         let made = null;
         if (gl.getProgramParameter(prog, gl.LINK_STATUS)) {
@@ -63,9 +79,14 @@ function makeRenderer(canvas) {
             gl.uniform1f(u.u_audio, audio);
             gl.uniform1f(u.u_speed, g.speed); gl.uniform1f(u.u_scale, g.scale); gl.uniform1f(u.u_intensity, g.intensity);
             gl.uniform1f(u.u_spacing, g.spacing); gl.uniform1f(u.u_persistence, g.persistence); gl.uniform1f(u.u_contrast, g.contrast);
-            gl.uniform1i(u.u_detail, g.detail); gl.uniform1i(u.u_ncol, g.colors.length);
-            const cs = [g.colors[0], g.colors[1] || g.colors[0], g.colors[2] || g.colors[1] || g.colors[0]].map(hex);
-            gl.uniform3f(u.u_c0, ...cs[0]); gl.uniform3f(u.u_c1, ...cs[1]); gl.uniform3f(u.u_c2, ...cs[2]);
+            gl.uniform1i(u.u_detail, g.detail);
+            gl.uniform1i(u.u_ncol, g.colors.length);
+            five(g.colors).forEach((c, i) => gl.uniform3f(u[`u_c${i}`], ...c));
+            // Degradê pela tela: the second ramp and its direction (0 = none).
+            const c2 = g.colors2 || [];
+            gl.uniform1i(u.u_ncol2, c2.length);
+            gl.uniform1i(u.u_blend, c2.length ? BLEND_N[g.blend] || 1 : 0);
+            if (c2.length) five(c2).forEach((c, i) => gl.uniform3f(u[`u_d${i}`], ...c));
             gl.drawArrays(gl.TRIANGLES, 0, 3);
             return true;
         },
@@ -100,6 +121,13 @@ export default function GeneratorBackground({ gen, animate = true }) {
     const genRef = useRef(gen);
     genRef.current = gen;
     const [lost, setLost] = useState(0);
+    const [ready, setReady] = useState(Boolean(shaders));
+    useEffect(() => {
+        if (ready) return undefined;
+        let live = true;
+        loadShaders().then(() => live && setReady(true), (e) => console.warn("Fundo gerado: os shaders não carregaram", e));
+        return () => { live = false; };
+    }, [ready]);
     // Without WebGL for THIS generator (a new one tries again).
     const [noGlFor, setNoGlFor] = useState(null);
     const noGl = noGlFor === gen.id;
@@ -108,7 +136,7 @@ export default function GeneratorBackground({ gen, animate = true }) {
     // Still: one frame from the shared renderer, redrawn when the box or
     // the generator changes.
     useEffect(() => {
-        if (animate) return undefined;
+        if (animate || !ready) return undefined;
         const canvas = ref.current;
         if (!canvas) return undefined;
         const paint = () => {
@@ -124,11 +152,11 @@ export default function GeneratorBackground({ gen, animate = true }) {
         const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(paint) : null;
         if (ro && canvas.parentElement) ro.observe(canvas.parentElement);
         return () => ro?.disconnect();
-    }, [gen, animate]);
+    }, [gen, animate, ready]);
 
     // Moving: its own renderer and frame loop.
     useEffect(() => {
-        if (!animate) return undefined;
+        if (!animate || !ready) return undefined;
         const canvas = ref.current;
         if (!canvas) return undefined;
         const r = makeRenderer(canvas);
@@ -172,9 +200,9 @@ export default function GeneratorBackground({ gen, animate = true }) {
             document.removeEventListener("visibilitychange", onVisible);
             r.dispose();
         };
-    }, [gen.id, gen.audio, animate, lost]);
+    }, [gen.id, gen.audio, animate, lost, ready]);
 
-    if (noGl) return <div className="ks-layer" style={{ background: cssFallback(gen) }} />;
+    if (noGl || !ready) return <div className="ks-layer" style={{ background: cssFallback(gen) }} />;
     // A fresh canvas per generator (and per audio on/off, which re-runs the
     // loop too): leaving one disposes its WebGL context (loseContext), and a
     // canvas never gives a lost context back — the next generator drawn on
