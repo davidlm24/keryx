@@ -23,7 +23,12 @@ const OUTPUT_PAGES = {
 };
 // Bytes of JS an output may load before it draws. 2026-10-16: 286–350 kB
 // (StageView the heaviest); the whole console was 1,466 kB before the split.
-const OUTPUT_BUDGET = 400_000;
+// 2026-11-12 (owner's call, PR "Fundos gerados: 20 loops"): 400 → 405 kB.
+// The phone page (/Remote) sat at exactly 400.0 kB on master and the 20 new
+// generator ids in shared/generators.mjs (the live state checks them) added
+// 0.3 kB; the same PR took ~10 kB off every output that draws backgrounds
+// (the shaders load on demand). Slimming /Remote is the real fix, still owed.
+const OUTPUT_BUDGET = 405_000;
 // Only reported, never refused: what the console loads.
 const CONSOLE_PAGE = "src/pages/Console.jsx";
 

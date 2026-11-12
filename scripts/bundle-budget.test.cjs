@@ -38,13 +38,13 @@ test("a sound bundle passes", () => {
     const { loads, errors } = checkBundle(bundle());
     assert.deepEqual(errors, []);
     assert.equal(loads["/StageView"], 340_000);
-    assert.match(summary(loads, 969_000), /340\.0 kB–340\.0 kB of JS \(budget 400\.0 kB\), the console 969\.0 kB/);
+    assert.match(summary(loads, 969_000), /340\.0 kB–340\.0 kB of JS \(budget 405\.0 kB\), the console 969\.0 kB/);
 });
 
 test("an output that pulls the console's code in is refused", () => {
     const { errors } = checkBundle(bundle({ "src/pages/StageView.jsx": { imports: ["assets/index.js", "assets/WinPages.js"] } }));
     assert.equal(errors.length, 1);
-    assert.match(errors[0], /^\/StageView loads 806\.0 kB of JS, over the outputs' budget of 400\.0 kB/);
+    assert.match(errors[0], /^\/StageView loads 806\.0 kB of JS, over the outputs' budget of 405\.0 kB/);
     assert.ok(OUTPUT_BUDGET < 806_000);
 });
 
