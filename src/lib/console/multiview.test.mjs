@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MV_PAGES, DEFAULT_TILES, normalizeTiles, pickTile, tileStatus, motionTile } from "./multiview.js";
+import { MV_PAGES, DEFAULT_TILES, MV_COUNTS, normalizeCount, normalizeTiles, pickTile, tileStatus, motionTile } from "./multiview.js";
 
 test("four known outputs by default, all of them pickable", () => {
     assert.equal(DEFAULT_TILES.length, 4);
@@ -8,19 +8,23 @@ test("four known outputs by default, all of them pickable", () => {
     assert.deepEqual(MV_PAGES, ["/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection", "/StageView", "/PastorView"]);
 });
 
-test("a saved list keeps what it can and fills the rest, never twice", () => {
-    assert.deepEqual(normalizeTiles(null), DEFAULT_TILES);
-    assert.deepEqual(normalizeTiles("x"), DEFAULT_TILES);
+test("a saved list keeps what it can and fills the whole order, never twice", () => {
+    const FULL = [...DEFAULT_TILES, "/VideoProjection", "/PastorView"];
+    assert.deepEqual(normalizeTiles(null), FULL);
+    assert.deepEqual(normalizeTiles("x"), FULL);
     assert.deepEqual(normalizeTiles(["/PastorView", "/Nope", "/PastorView", "/VideoProjection"]),
-        ["/PastorView", "/VideoProjection", "/Projection", "/LyricProjection"]);
-    assert.deepEqual(normalizeTiles(["/StageView", "/PastorView", "/VideoProjection", "/LyricProjection", "/Projection"]),
-        ["/StageView", "/PastorView", "/VideoProjection", "/LyricProjection"]);
+        ["/PastorView", "/VideoProjection", "/Projection", "/LyricProjection", "/StageView", "/CommunicationProjection"]);
+    // Quantas telas (P4 = A): 1, 2, 4 or 6; anything else is 4.
+    assert.deepEqual(MV_COUNTS, [1, 2, 4, 6]);
+    assert.equal(normalizeCount(6), 6);
+    assert.equal(normalizeCount("2"), 2);
+    for (const bad of [0, 3, 5, 9, null, "x"]) assert.equal(normalizeCount(bad), 4);
 });
 
 test("picking an output shown elsewhere swaps the two quadrants", () => {
-    const t = DEFAULT_TILES; // Projeção, Letras, Palco, Avisos
-    assert.deepEqual(pickTile(t, 1, "/PastorView"), ["/Projection", "/PastorView", "/StageView", "/CommunicationProjection"]);
-    assert.deepEqual(pickTile(t, 0, "/StageView"), ["/StageView", "/LyricProjection", "/Projection", "/CommunicationProjection"]);
+    const t = normalizeTiles(DEFAULT_TILES); // Projeção, Letras, Palco, Avisos, Vídeo, Pastor
+    assert.deepEqual(pickTile(t, 1, "/PastorView"), ["/Projection", "/PastorView", "/StageView", "/CommunicationProjection", "/VideoProjection", "/LyricProjection"]);
+    assert.deepEqual(pickTile(t, 0, "/StageView"), ["/StageView", "/LyricProjection", "/Projection", "/CommunicationProjection", "/VideoProjection", "/PastorView"]);
     assert.deepEqual(pickTile(t, 0, "/Projection"), t);
     assert.deepEqual(pickTile(t, 7, "/PastorView"), t);
     assert.deepEqual(pickTile(t, 1, "/Nope"), t);

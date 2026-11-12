@@ -86,15 +86,20 @@ test("the tab rows are part of the layout; an old or broken save gets the defaul
     assert.deepEqual(rows(mine.tabs), { panel: ["notas", "avisos", "pedidos", "chat", "historico"], lib: DEFAULT_TABS.lib });
 });
 
-test("the multiview is off by default; a saved one keeps its outputs, cleaned", () => {
+test("the multiview is off by default; a saved one keeps its outputs, cleaned, and its count", () => {
     assert.equal(DEFAULT_LAYOUT.multiview, false);
-    assert.deepEqual(DEFAULT_LAYOUT.mvTiles, DEFAULT_TILES);
+    assert.deepEqual(DEFAULT_LAYOUT.mvTiles.slice(0, 4), DEFAULT_TILES);
+    assert.equal(DEFAULT_LAYOUT.mvTiles.length, 6);
+    assert.equal(DEFAULT_LAYOUT.mvCount, 4);
     const old = withStore({ libW: 300 }, () => loadLayout("x"));
     assert.equal(old.multiview, false);
-    assert.deepEqual(old.mvTiles, DEFAULT_TILES);
-    const mine = withStore({ multiview: true, mvTiles: ["/PastorView", "/PastorView", "/Nope"] }, () => loadLayout("x"));
+    assert.deepEqual(old.mvTiles.slice(0, 4), DEFAULT_TILES);
+    assert.equal(old.mvCount, 4);
+    const mine = withStore({ multiview: true, mvTiles: ["/PastorView", "/PastorView", "/Nope"], mvCount: 6 }, () => loadLayout("x"));
     assert.equal(mine.multiview, true);
-    assert.deepEqual(mine.mvTiles, ["/PastorView", "/Projection", "/LyricProjection", "/StageView"]);
+    assert.deepEqual(mine.mvTiles, ["/PastorView", "/Projection", "/LyricProjection", "/StageView", "/CommunicationProjection", "/VideoProjection"]);
+    assert.equal(mine.mvCount, 6);
+    assert.equal(withStore({ multiview: true, mvCount: 3 }, () => loadLayout("x")).mvCount, 4);
     assert.equal(withStore({ multiview: "yes" }, () => loadLayout("x")).multiview, false);
 });
 

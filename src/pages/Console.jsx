@@ -1285,7 +1285,8 @@ export default function Console() {
     );
 
     // Multiview (Programa › Multiview; src/lib/console/multiview.js): the
-    // Programa as four outputs at once; a quadrant's label picks its output.
+    // Programa as 1, 2, 4 or 6 outputs at once; a quadrant's label picks its
+    // output, the count Seg on the grid how many show (P4 = A).
     const railViews = useRailViews();
     const toggleMultiview = () => setLayout({ ...layout, multiview: !layout.multiview });
     const pickQuadrant = (e, index) => openMenu(e, { title: `Quadro ${index + 1} · mostrar a saída`, items: [
@@ -1293,7 +1294,7 @@ export default function Console() {
         "sep",
         { label: "Ajustes das saídas…", icon: "sliders", onSelect: () => openSettings("telas") },
     ] });
-    const multiview = layout.multiview ? { tiles: layout.mvTiles, rows: health.rows, onPick: pickQuadrant, onRule: ruleMenu } : null;
+    const multiview = layout.multiview ? { tiles: layout.mvTiles.slice(0, layout.mvCount), rows: health.rows, onPick: pickQuadrant, onRule: ruleMenu, onCount: (n) => setLayout({ ...layout, mvCount: n }) } : null;
 
     // The player (always visible): under the Programa until the dock places it.
     const playerSlot = (
@@ -1307,7 +1308,7 @@ export default function Console() {
         { label: "Limpar texto", icon: "eraser", kbd: keyHint("clear", letters), onSelect: c.clearText },
         { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
         !camadasOn && { label: drawer ? "Fechar Camadas" : "Camadas…", icon: "layers", onSelect: () => setDrawer((d) => !d) },
-        { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
+        { label: layout.multiview ? "Ver só o Programa" : "Multiview: várias saídas", icon: "grid", onSelect: toggleMultiview },
         "sep",
         menuItem("encerrar", { air: true, onSelect: () => setOpen("encerrar") }, letters),
     ] });
@@ -1450,7 +1451,7 @@ export default function Console() {
             menuItem("encerrar", { onSelect: () => setOpen("encerrar") }, letters),
             { label: c.locked ? "Destravar telas" : "Travar telas", icon: c.locked ? "unlock" : "lock", onSelect: () => c.setLocked(!c.locked) },
             { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
-            { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
+            { label: layout.multiview ? "Ver só o Programa" : "Multiview: várias saídas", icon: "grid", onSelect: toggleMultiview },
             { label: "Saídas", icon: "monitor", onSelect: () => setOpen("outs") },
         ],
         sections: SECTIONS, onSection: (id) => openSettings(id),

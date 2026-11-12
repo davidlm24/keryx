@@ -4,7 +4,7 @@
 // multiview. Saved per operator profile in localStorage; "Restaurar
 // painéis" returns to DEFAULT_LAYOUT.
 import { DEFAULT_ORDER, DEFAULT_STACKS, normalizeArrangement } from "./arrange.js";
-import { DEFAULT_TILES, normalizeTiles } from "./multiview.js";
+import { DEFAULT_TILES, normalizeTiles, normalizeCount, MV_COUNT } from "./multiview.js";
 import { DEFAULT_TABS, normalizeTabs } from "./panelTabs.js";
 import { normalizeDock, onairSpanOf, canFoldModule, envModules, dockLocked, setDockLock, withLockOf } from "./dock.js";
 import { normalizePresets } from "./dockPresets.js";
@@ -112,9 +112,11 @@ export const DEFAULT_LAYOUT = {
     dockPresets: [],
     dockPreset: null,
     bibleDockPreset: null,
-    // The Programa as four outputs at once (multiview.js), and which.
+    // The Programa as several outputs at once (multiview.js): which, in
+    // order, and how many show (1 · 2 · 4 · 6; owner 2026-11-12, P4 = A).
     multiview: false,
-    mvTiles: DEFAULT_TILES,
+    mvTiles: normalizeTiles(DEFAULT_TILES),
+    mvCount: MV_COUNT,
 };
 
 // layout.folded made safe: only modules that fold, only `true`; a save from
@@ -198,7 +200,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const { onairMin, ...saved } = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), folded: normalizeFolded(saved.folded, onairMin), detached: normalizeDetached(saved.detached), onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", bibleRead: readStep(saved.bibleRead), temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, libShowArtist: saved.libShowArtist === true, libShowKey: saved.libShowKey !== false, libShowLength: saved.libShowLength !== false, libGroup: normalizeLibGroup(saved.libGroup), libFoldersOpen: normalizeFoldersOpen(saved.libFoldersOpen), dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), mvCount: normalizeCount(saved.mvCount), folded: normalizeFolded(saved.folded, onairMin), detached: normalizeDetached(saved.detached), onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", bibleRead: readStep(saved.bibleRead), temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, libShowArtist: saved.libShowArtist === true, libShowKey: saved.libShowKey !== false, libShowLength: saved.libShowLength !== false, libGroup: normalizeLibGroup(saved.libGroup), libFoldersOpen: normalizeFoldersOpen(saved.libFoldersOpen), dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }
