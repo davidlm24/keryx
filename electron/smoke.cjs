@@ -1987,10 +1987,9 @@ async function checkConsole(webContents, { live, outputs }) {
         const edAirAfter = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null);
         result.edSlideMenu = { labels: edMenuLabels, duplicated: edDuplicated, saved: edDupSaved, airUntouched: edAirAfter === edAirBefore };
         result.edSlideMenuOk = edMenuLabels === "Mostrar na letra|Duplicar estrofe|Dividir em dois" && edDuplicated && edDupSaved && edAirAfter === edAirBefore;
-        // Choosing "2 linhas" never rewrites the lyrics (owner 2026-10-14:
-        // Song.lines_per_slide is a setting, the old one-way reflow is gone):
-        // the 4-row stanza re-splits into two slides and the textarea keeps
-        // the exact text that was typed.
+        // Choosing "2 linhas" re-splits the 4-row stanza into two slides and
+        // rewrites the lyrics as the slides read (owner 2026-11-10, #437:
+        // reflowLyrics, a blank line every two sung lines).
         const SPLIT_LYRICS = "[Verso]\num\ndois\ntrês\nquatro";
         const edTyped = await js(`(() => {
             const el = document.querySelector("textarea[aria-label=Letra]");
@@ -2005,7 +2004,7 @@ async function checkConsole(webContents, { live, outputs }) {
             const edOneSlide = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 1"));
             await click(".win-dialog .lines-pick button", "2 linhas");
             const edTwoSlides = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 2"), 3000);
-            const edLyricsKept = await js(`(document.querySelector("textarea[aria-label=Letra]") || {}).value === ${JSON.stringify(SPLIT_LYRICS)}`);
+            const edLyricsKept = await js(`(document.querySelector("textarea[aria-label=Letra]") || {}).value === ${JSON.stringify("[Verso]\num\ndois\n\ntrês\nquatro")}`);
             result.edSplitLive = edOneSlide && edTwoSlides && edLyricsKept === true;
             if (!result.edSplitLive) result.edSplitLiveDiag = { edOneSlide, edTwoSlides, edLyricsKept };
         } else {
@@ -2319,7 +2318,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // in Desenho is one.
         result.screenSaveIdle = await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela'); return Boolean(b && b.disabled); })()").catch(() => false);
         await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor [role=radio]')].find((x) => x.textContent.trim() === 'Desenho'); if (b) b.click(); return Boolean(b); })()");
-        await waitFor(() => sjs("(() => { const b = document.querySelector('.win-dialog.is-editor button[aria-label^=\"Esconder \"]'); if (b) b.click(); return Boolean(b); })()").catch(() => false), 4000);
+        await waitFor(() => sjs("(() => { const b = document.querySelector('.win-dialog.is-editor .le-els button[aria-label^=\"Esconder \"]'); if (b) b.click(); return Boolean(b); })()").catch(() => false), 4000);
         await waitFor(() => sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela' && !x.disabled); if (b) b.click(); return Boolean(b); })()").catch(() => false), 4000);
         await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor [role=radio]')].find((x) => x.textContent.trim() === 'Ajustes'); if (b) b.click(); return Boolean(b); })()");
         result.screenSaved = await waitFor(async () => {
