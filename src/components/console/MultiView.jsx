@@ -1,12 +1,11 @@
 import React, { useMemo } from "react";
 import Icon from "./Icon";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { prefState, prefVars, pastorOptions, ruleOf, ruleLabel, ruleSummary, leftOutNow } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
-import { useDesign } from "@/hooks/useLayout";
+import { useScreenDesign } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { SCREEN_PAGES, nextItems } from "@/lib/network/views";
@@ -21,7 +20,7 @@ import "@/components/screen/output-prefs.css";
 // is on screen.
 function Tile({ page, index, live, now, logoUrl, items, motion, look, status, onPick, onRule, church }) {
     const { pref, theme } = useOutputPref(page);
-    const layout = useDesign(pref);
+    const { layout } = useScreenDesign(page, pref);
     const own = !pref.content && SCREEN_PAGES.some((p) => p.key === page) ? page : null;
     const doc = useMemo(() => (own ? null : prefState(page, live, pref, theme)), [own, page, live, pref, theme]);
     const vars = own ? null : prefVars(pref);
@@ -34,7 +33,6 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
     const upcoming = useMemo(() => (layout ? nextItems(items, live?.session || null, 10) : []), [layout, items, live?.session]);
     let body;
     if (layout && (own || doc)) body = <LayoutRenderer layout={layout} live={live} screenState={own ? undefined : doc} nowMs={now} logoUrl={logoUrl} upcoming={upcoming} hasService={items.length > 0} church={church} scale={own ? pref.scale : 1} embed motion={motion} />;
-    else if (own === "/StageView") body = <StageScreen content={live?.content || null} nowMs={now} embed opts={pref.options} scale={pref.scale} />;
     else if (own === "/PastorView") {
         const upcoming = nextItems(items, live?.session || null, pastorOptions(pref).next_count || 1);
         body = <PastorScreen live={live} nowMs={now} logo={logoUrl} upcoming={upcoming} hasService={items.length > 0} embed opts={pref.options} scale={pref.scale} />;

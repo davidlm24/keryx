@@ -2226,14 +2226,14 @@ async function checkConsole(webContents, { live, outputs }) {
         result.cfgFileGroup = await waitFor(() => js(`(() => { const g = document.querySelector('.console .cfg .cfg-group.is-open[data-cfg-group="telas.arquivo"]'); return Boolean(g && [...g.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Exportar ajustes…')); })()`), 4000);
         await js("document.querySelector('.console .cfg button.cfg-group-t[data-cfg-k=\"Arquivo de ajustes\"]').click(); true"); // closed again: the default
         const stagePrefRow = async () => ((await js('window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: "/StageView" }])')).data || [])[0] || null;
-        result.palcoPrev = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".net-stage .ns-chords")); })()`), 8000);
+        result.palcoPrev = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".kl .kl-chords")); })()`), 8000);
         const stageRow0 = await stagePrefRow();
         await js(stageRow0
             ? `window.keryxDesktop.db.call("OutputPref", "update", [${JSON.stringify(stageRow0.id)}, { options: { chords: false } }])`
             : 'window.keryxDesktop.db.call("OutputPref", "create", [{ screen_path: "/StageView", options: { chords: false } }])');
-        result.palcoCifraOff = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".net-stage") && !c.querySelector(".ns-chords")); })()`), 8000);
+        result.palcoCifraOff = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".kl") && !c.querySelector(".kl-chords")); })()`), 8000);
         { const r = await stagePrefRow(); if (r) await js(`window.keryxDesktop.db.call("OutputPref", "update", [${JSON.stringify(r.id)}, { options: {} }])`); }
-        result.palcoRestored = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".ns-chords")); })()`), 8000);
+        result.palcoRestored = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".kl-chords")); })()`), 8000);
         // Every screen is landscape: the Pastor's still is a 16:9 card like
         // the others (the real /PastorView still turns with a tablet).
         result.pastorPrev = await waitFor(() => js(`(() => {
@@ -2314,7 +2314,14 @@ async function checkConsole(webContents, { live, outputs }) {
         // monitor select and Nome as the first input), each a .cfg-group.
         result.screenBlocks = await sjs("(() => { const g = [...document.querySelectorAll('.win-dialog.is-editor .cfg-outprefs .cfg-group')]; const t = g[0] && g[0].querySelector('.cfg-group-t'); return g.length >= 4 && Boolean(t) && t.textContent.trim() === 'Destino' && Boolean(g[0].querySelector('select[aria-label^=\"Tela de\"]')); })()").catch(() => false);
         result.screenMenu = await sjs("[...document.querySelectorAll('.win-dialog.is-editor .kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
-        await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
+        // One drawing (owner 2026-11-12): opening the Editor changes nothing,
+        // so Salvar a tela waits for a change; one element hidden by its eye
+        // in Desenho is one.
+        result.screenSaveIdle = await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela'); return Boolean(b && b.disabled); })()").catch(() => false);
+        await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor [role=radio]')].find((x) => x.textContent.trim() === 'Desenho'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => sjs("(() => { const b = document.querySelector('.win-dialog.is-editor button[aria-label^=\"Esconder \"]'); if (b) b.click(); return Boolean(b); })()").catch(() => false), 4000);
+        await waitFor(() => sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela' && !x.disabled); if (b) b.click(); return Boolean(b); })()").catch(() => false), 4000);
+        await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor [role=radio]')].find((x) => x.textContent.trim() === 'Ajustes'); if (b) b.click(); return Boolean(b); })()");
         result.screenSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: "/StageView" }])')).data || [];
             return Boolean(rows[0] && rows[0].design && Array.isArray(rows[0].design.elements) && rows[0].design.elements.length > 0 && !rows[0].layout_id);
@@ -3049,7 +3056,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.activeCulto && result.layersFixed === true
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.cfgSaidasGrid && result.cfgFileGroup && result.cardTrimmed && result.screenBlocks && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.cfgSaidasGrid && result.cfgFileGroup && result.cardTrimmed && result.screenBlocks && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaveIdle && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edMenuOnScreen === true && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edSplitLive && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

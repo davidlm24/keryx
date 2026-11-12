@@ -23,6 +23,8 @@ export const WHEN = [["always", "Sempre"], ["content", "Com algo no ar"], ["tool
 export const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["georgia", "Georgia"], ["times", "Times"], ["arial", "Arial"], ["verdana", "Verdana"], ["mono", "Monoespaçada"], ["cursive", "Cursiva"]];
 export const ALIGNS = [["left", "Esq."], ["center", "Centro"], ["right", "Dir."]];
 export const VALIGNS = [["top", "Topo"], ["middle", "Meio"], ["bottom", "Base"]];
+// What a Próximo slide element shows: the text and a PDF's page, or one of them.
+export const NEXT_SHOWS = [["both", "Texto e página"], ["text", "Só texto"], ["page", "Só página"]];
 export const SIZE_RANGE = [1, 30];
 export const MIN_SIDE = 2;
 export const MAX_ELEMENTS = 40;
@@ -44,7 +46,8 @@ export const ELEMENT_TYPES = [
     { id: "church", name: "Igreja", icon: "logo", group: "tela", w: 40, h: 8, size: 2.6, when: "always", props: {} },
     { id: "title", name: "Título da música", icon: "music", group: "musica", w: 50, h: 10, size: 4.2, weight: "bold", when: "content", props: { artist: true } },
     { id: "current", name: "Letra atual", icon: "text", group: "musica", w: 60, h: 50, size: 7.4, weight: "bold", align: "center", valign: "middle", when: "content", props: { chords: true } },
-    { id: "next", name: "Próximo slide", icon: "list", group: "musica", w: 94, h: 12, size: 3, when: "content", label: "Próximo", props: {} },
+    { id: "next", name: "Próximo slide", icon: "list", group: "musica", w: 94, h: 12, size: 3, when: "content", label: "Próximo", props: { show: "both" } },
+    { id: "part", name: "Nome da parte", icon: "music", group: "musica", w: 13, h: 8, size: 3, weight: "bold", when: "content", label: "Parte", props: {} },
     { id: "next_items", name: "Próximos da Setlist", icon: "list", group: "setlist", w: 30, h: 60, size: 2.8, when: "always", label: "Próximo", props: { count: 3 } },
     { id: "song_key", name: "Tom", icon: "music", group: "musica", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "Tom", box: true, props: {} },
     { id: "bpm", name: "BPM", icon: "music", group: "musica", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "BPM", box: true, props: {} },
@@ -56,12 +59,15 @@ export const ELEMENT_TYPES = [
     { id: "logo", name: "Logo da igreja", icon: "logo", group: "tela", w: 10, h: 16, size: 2, when: "always", props: {} },
     { id: "text", name: "Texto fixo", icon: "text", group: "tela", w: 40, h: 8, size: 3, when: "always", props: { text: "Texto" } },
     { id: "image", name: "Imagem", icon: "image", group: "tela", w: 30, h: 30, size: 2, when: "always", props: { url: "" } },
+    // A strip from edge to edge behind other elements (owner 2026-11-12,
+    // "Editor de telas · Palco"): drawn only while it carries something.
+    { id: "band", name: "Faixa", icon: "rows", group: "tela", w: 100, h: 10, size: 2, when: "content", props: {} },
 ];
 export const typeOf = (id) => ELEMENT_TYPES.find((t) => t.id === id) || null;
 // The Adicionar picker's groups, in its order.
 export const ELEMENT_GROUPS = [["tempo", "Tempo"], ["musica", "Música"], ["setlist", "Setlist"], ["tela", "Tela"]];
 // The elements drawn as one string (elementText).
-export const TEXT_TYPES = new Set(["clock", "date", "timer", "service_time", "air_for", "air_title", "church", "title", "next", "song_key", "bpm", "song_time", "notes", "text"]);
+export const TEXT_TYPES = new Set(["clock", "date", "timer", "service_time", "air_for", "air_title", "church", "title", "next", "song_key", "bpm", "song_time", "notes", "text", "part"]);
 // The elements whose panel shows the text look (Rótulo, tamanho, fonte, cor,
 // alinhamento, caixa): the string ones plus the blocks that draw text
 // themselves. The others (Projeção, monitor, logo, imagem, progresso) only
@@ -92,6 +98,7 @@ export function normalizeElement(raw) {
         else if (typeof t.props[k] === "number") props[k] = clamp(Math.round(num(v, t.props[k])), 0, 10);
         else props[k] = typeof v === "string" ? v.slice(0, k === "url" ? 2000 : 400) : t.props[k];
     }
+    if (t.id === "next" && !NEXT_SHOWS.some(([k]) => k === props.show)) props.show = "both";
     return {
         id: typeof raw.id === "string" && raw.id ? raw.id.slice(0, 40) : newId(),
         type: t.id,
@@ -107,6 +114,11 @@ export function normalizeElement(raw) {
         align: oneOf(raw.align, ALIGNS, t.align || "left"),
         valign: oneOf(raw.valign, VALIGNS, t.valign || "top"),
         box: onOff(raw.box, Boolean(t.box)),
+        // "Rótulo ao lado": RÓTULO valor on one line, "…" past the box.
+        inline: onOff(raw.inline, false),
+        // "Ocupa o lugar vazio": on the screen it takes the room of the
+        // neighbours that are not drawn now (grownRect).
+        grow: onOff(raw.grow, false),
         // The full package (owner's pick, Rodada C fase d2): an element can
         // be hidden without losing its place, and faded.
         hidden: onOff(raw.hidden, false),
@@ -165,22 +177,41 @@ export const layoutFields = (layout) => ({ name: layout.name, category: layout.c
 // the operator starts from something that works (Duplicar makes a copy to
 // edit). Never rows: always there, never deleted.
 const el = (type, x, y, w, h, extra = {}) => ({ id: `f_${type}_${x}_${y}`, type, x, y, w, h, ...extra });
+// The Palco's parts by the switches of its Ajustes (stageOptions): what each
+// one hides while the Palco has no design of its own (outputPrefs pageDesign).
+export const PALCO_PARTS = {
+    chords: ["palco_chords"],
+    labels: ["palco_part"],
+    clock: ["palco_clock", "palco_song_time"],
+    notes: ["palco_notes"],
+    next: ["palco_next", "palco_next_page"],
+};
+const chip = (id, type, x, w, extra = {}) => ({ id, type, x, y: 1, w, h: 8, size: 3, valign: "middle", inline: true, box: false, ...extra });
 export const FACTORY_LAYOUTS = [
     normalizeLayout({
         id: "factory:palco", factory: true, name: "Palco (modelo)", category: "palco",
         background: { song_image: true, dim: 0.72 },
         elements: [
-            // A thin strip on top, the lyrics with the most room, the next
-            // slide big at the bottom with the dots beside it (owner
-            // 2026-11-12, mockup "Palco compacto": the page's own Palco too).
-            el("title", 3, 1, 44, 9, { size: 3, weight: "bold", props: { artist: true } }),
-            el("song_key", 49, 1, 8, 9, { size: 3 }), el("bpm", 58, 1, 8, 9, { size: 3 }), el("song_time", 67, 1, 13, 9, { size: 3 }),
-            el("clock", 81, 1, 16, 9, { size: 3.2, weight: "bold", box: true, label: "Hora", when: "content" }),
-            el("notes", 3, 11.5, 94, 6, { size: 2.2, box: true }),
-            el("current", 3, 18, 61, 68, { size: 7.4, weight: "bold", align: "center", valign: "middle", props: { chords: true } }),
-            el("chords", 66, 18, 31, 68),
-            el("next", 3, 88, 82, 10, { size: 4, box: true, label: "Próximo" }),
-            el("progress", 87, 91.5, 10, 3),
+            // One drawing for the Palco (owner 2026-11-12, mockups "Palco
+            // compacto" and "Editor de telas · Palco"): the screen with no
+            // design of its own draws this, and the Editor shows it as it
+            // is. A strip on top, edge to edge (title, then RÓTULO valor),
+            // the lyrics with the most room, the next slide on one line in
+            // a bar at the bottom with the dots beside it; no cards.
+            { id: "palco_strip", type: "band", x: 0, y: 0, w: 100, h: 10 },
+            chip("palco_title", "title", 3, 40, { size: 3.2, weight: "bold", label: "", props: { artist: true } }),
+            chip("palco_part", "part", 44, 13),
+            chip("palco_key", "song_key", 58, 7),
+            chip("palco_bpm", "bpm", 66, 8),
+            chip("palco_song_time", "song_time", 75, 11),
+            chip("palco_clock", "clock", 87, 10, { size: 3.6, weight: "bold", label: "", align: "right", when: "content" }),
+            { id: "palco_notes", type: "notes", x: 3, y: 11.5, w: 94, h: 6, size: 2.2, box: true, valign: "middle" },
+            { id: "palco_current", type: "current", x: 3, y: 18, w: 61, h: 69, size: 7.4, weight: "bold", align: "center", valign: "middle", grow: true, props: { chords: true } },
+            { id: "palco_chords", type: "chords", x: 66, y: 18, w: 31, h: 69 },
+            { id: "palco_next_page", type: "next", x: 66, y: 18, w: 31, h: 69, size: 2.4, label: "Próxima", props: { show: "page" } },
+            { id: "palco_bar", type: "band", x: 0, y: 89, w: 100, h: 11 },
+            { id: "palco_next", type: "next", x: 3, y: 90, w: 80, h: 9, size: 4.2, weight: "bold", align: "left", valign: "middle", inline: true, label: "Próximo", props: { show: "text" } },
+            { id: "palco_progress", type: "progress", x: 85, y: 90, w: 12, h: 9 },
             el("clock", 20, 30, 60, 24, { size: 16, align: "center", valign: "middle", when: "idle" }),
             el("text", 20, 56, 60, 8, { size: 3, align: "center", when: "idle", props: { text: "Aguardando projeção" } }),
         ],
@@ -271,10 +302,15 @@ export function layoutContext({ live, now, upcoming = [], hasService = false, ch
     const song = content ? { title: content.title, artist: content.artist, background_image: content.style?.background_image, ...(content.stage || {}) } : null;
     const session = live?.session || null;
     const tool = live?.tool || null;
+    // The introduction (live-state's currentSlide/nextSlide): no slide on
+    // screen yet, the first one next; "Letra atual" says "Introdução".
+    const intro = Boolean(content?.intro);
     return {
-        live, now, content, slides, index, song,
-        current: content ? slides[index] || null : null,
-        next: content ? slides[index + 1] || null : null,
+        live, now, content, slides, index, song, intro,
+        presentation: content?.kind === "presentation",
+        current: !content ? null : intro ? { text: "", label: "Introdução", intro: true } : slides[index] || null,
+        next: !content ? null : intro ? slides[index] || null : slides[index + 1] || null,
+        slideNote: content?.stage?.slide_notes?.[index] || "",
         elapsed: content?.startedAt ? Math.max(0, Math.floor((now - content.startedAt) / 1000)) : 0,
         running: session?.startedAt ? Math.max(0, Math.floor((now - session.startedAt) / 1000)) : null,
         tool,
@@ -317,15 +353,37 @@ export function elementText(el, ctx) {
         case "air_for": return ctx.airFor || "";
         case "air_title": return ctx.caption.title === "nada" ? "" : `${ctx.caption.title}${ctx.caption.pos ? ` · ${ctx.caption.pos}` : ""}`;
         case "church": return [ctx.church?.name, ctx.church?.city].filter(Boolean).join(" · ");
-        case "title": return ctx.content ? `${song.title || "Música"}${el.props.artist && song.artist ? `\n${song.artist}` : ""}` : "";
-        case "next": return ctx.next ? ctx.next.text || "" : "";
+        case "title": {
+            if (!ctx.content) return "";
+            const sub = ctx.presentation ? "Apresentação" : el.props.artist ? song.artist : "";
+            return `${song.title || (ctx.presentation ? "Apresentação" : "Música")}${sub ? `\n${sub}` : ""}`;
+        }
+        case "next": {
+            if (!ctx.next || el.props.show === "page") return "";
+            const t = ctx.next.text || "";
+            return el.inline ? oneLine(t) : t;
+        }
+        case "part": return ctx.presentation ? `${ctx.index + 1}/${ctx.slides.length}` : ctx.current?.label || "";
         case "song_key": return song.song_key ? String(song.song_key) : "";
         case "bpm": return song.bpm ? String(song.bpm) : "";
         case "song_time": return ctx.content ? formatSpan(ctx.elapsed) : "";
-        case "notes": return song.musician_notes || "";
+        case "notes": return [song.musician_notes, ctx.slideNote].filter(Boolean).join("\n");
         case "text": return el.props.text || "";
         default: return undefined;
     }
+}
+
+// A slide's lines as one line ("…" past the box): the Palco's Próximo.
+export const oneLine = (t) => String(t || "").split("\n").map((l) => l.trim()).filter(Boolean).join(" / ");
+
+// An element's label now: what the operator typed, else its type's; with a
+// presentation on air the type's own words change ("No ar", "Página").
+export function elementLabel(el, ctx) {
+    const t = typeOf(el.type);
+    if (!ctx?.presentation || el.label !== (t?.label || "")) return el.label;
+    if (el.type === "song_time") return "No ar";
+    if (el.type === "part") return "Página";
+    return el.label;
 }
 
 // The next Setlist items an element lists.
@@ -334,9 +392,14 @@ export const elementItems = (el, ctx) => ctx.upcoming.slice(0, Math.max(1, el.pr
 // Whether an element has anything to draw now: a text element with a
 // string, a chords block with chords, dots with more than one slide, a logo
 // or image with a file. Empty, the renderer draws nothing (no empty box).
-export function elementHasContent(el, ctx, { logoUrl = "" } = {}) {
+export function elementHasContent(el, ctx, extra = {}) {
+    const { logoUrl = "" } = extra;
     // The next page of a presentation draws its picture (LayoutRenderer).
-    if (el.type === "next" && slidePage(ctx.next)) return true;
+    if (el.type === "next") {
+        const page = el.props.show !== "text" && Boolean(slidePage(ctx.next));
+        return page || Boolean(elementText(el, ctx));
+    }
+    if (el.type === "band") return bandCarries(el, ctx, extra);
     if (TEXT_TYPES.has(el.type)) return Boolean(elementText(el, ctx));
     switch (el.type) {
         case "current": return Boolean(ctx.current);
@@ -346,6 +409,66 @@ export function elementHasContent(el, ctx, { logoUrl = "" } = {}) {
         case "image": return Boolean(el.props.url);
         default: return true; // next_items says "Fim da setlist."; monitor and screen draw the idle look
     }
+}
+
+// A band carries an element whose centre is inside it: drawn only while
+// one of them is (with nothing on air, or no next slide and one slide, the
+// Palco's bar goes, as its page's did).
+const inside = (o, b) => { const cx = o.x + o.w / 2, cy = o.y + o.h / 2; return cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h; };
+function bandCarries(band, ctx, extra) {
+    return (extra.elements || []).some((o) => o.type !== "band" && o.id !== band.id && inside(o, band) && !o.hidden && elementVisible(o, ctx) && elementHasContent(o, ctx, extra));
+}
+
+// "Ocupa o lugar vazio" (owner 2026-11-12, E4): the rect a `grow` element
+// takes now. Toward each side, over the neighbours beyond its edge that are
+// not drawn (hidden, left out by their rule, empty), up to the farthest of
+// them — at the canvas's edge keeping the gap it had — and never past a
+// neighbour that is drawn. `isShown(el)` says which are.
+const overlaps = (a0, a1, b0, b1) => a0 < b1 - 0.01 && b0 < a1 - 0.01;
+export function grownRect(el, elements, isShown) {
+    if (!el?.grow) return { x: el.x, y: el.y, w: el.w, h: el.h };
+    let x0 = el.x, y0 = el.y, x1 = el.x + el.w, y1 = el.y + el.h;
+    const others = (elements || []).filter((o) => o.id !== el.id && o.type !== "band");
+    const side = (beyond, across, near, far, edge) => {
+        const there = others.filter((o) => across(o) && beyond(o));
+        const empty = there.filter((o) => !isShown(o));
+        if (!empty.length) return null;
+        const shown = there.filter((o) => isShown(o));
+        const gap = Math.max(0, Math.min(...empty.map(near)));
+        let to = edge(empty.map(far), gap);
+        if (shown.length) to = Math.min(to, Math.min(...shown.map(near)) - gap);
+        return to;
+    };
+    const vert = (o) => overlaps(o.y, o.y + o.h, y0, y1);
+    const right = side((o) => o.x >= x1 - 0.5, vert, (o) => o.x - x1, (o) => o.x + o.w, (fars, gap) => { const f = Math.max(...fars); return f >= 99.9 ? 100 - gap : f; });
+    if (right !== null && right > x1) x1 = right;
+    const left = side((o) => o.x + o.w <= x0 + 0.5, vert, (o) => x0 - (o.x + o.w), (o) => o.x, (fars, gap) => { const f = Math.min(...fars); return f <= 0.1 ? gap : f; });
+    if (left !== null && left < x0) x0 = left;
+    const horiz = (o) => overlaps(o.x, o.x + o.w, x0, x1);
+    const down = side((o) => o.y >= y1 - 0.5, horiz, (o) => o.y - y1, (o) => o.y + o.h, (fars, gap) => { const f = Math.max(...fars); return f >= 99.9 ? 100 - gap : f; });
+    if (down !== null && down > y1) y1 = down;
+    const up = side((o) => o.y + o.h <= y0 + 0.5, horiz, (o) => y0 - (o.y + o.h), (o) => o.y, (fars, gap) => { const f = Math.min(...fars); return f <= 0.1 ? gap : f; });
+    if (up !== null && up < y0) y0 = up;
+    return { x: round1(x0), y: round1(y0), w: round1(x1 - x0), h: round1(y1 - y0) };
+}
+
+// Where the Aviso rápido goes in a design (owner 2026-11-12): beside a band
+// drawn at that edge — above the bar at the bottom, under the strip on top —
+// and the elements whose edge meets that band (current, chords…) make room
+// for it (`cut`). No band there: the whole screen, as before.
+export function alertDock(elements, position = "top", isShown = () => true) {
+    const bands = (elements || []).filter((e) => e.type === "band" && isShown(e));
+    const content = (elements || []).filter((e) => e.type !== "band" && isShown(e));
+    const bottom = position === "bottom";
+    const b = bands.find((e) => (bottom ? e.y + e.h >= 99.5 : e.y <= 0.5));
+    if (!b) return { top: 0, bottom: 0, cut: [] };
+    const line = bottom ? b.y : b.y + b.h;
+    // The nearest elements on the open side of the band make room.
+    const edgeOf = (e) => (bottom ? e.y + e.h : e.y);
+    const near = content.filter((e) => (bottom ? edgeOf(e) <= line + 0.5 : edgeOf(e) >= line - 0.5));
+    const best = near.length ? (bottom ? Math.max(...near.map(edgeOf)) : Math.min(...near.map(edgeOf))) : null;
+    const cut = best === null ? [] : near.filter((e) => Math.abs(edgeOf(e) - best) <= 1).map((e) => e.id);
+    return bottom ? { top: 0, bottom: round1(100 - line), cut } : { top: round1(line), bottom: 0, cut };
 }
 
 // Why an element is (or is not) drawn now — the Editor de telas tells the
