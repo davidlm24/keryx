@@ -7,7 +7,7 @@
 // the canvas (src/lib/console/themeBox.js maps it to text_align /
 // text_position / text_max_width / text_nudge, "" = factory), with the 3×3
 // zones as guides while dragging.
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { Panel, Btn, Seg, Empty, WinBar } from "../console/kx";
@@ -243,6 +243,34 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
 
     // ---- The lyrics box on the canvas (themeBox.js) ----
     const rect = draft ? themeBoxRect(themeStyle(draft)) : null;
+    // The gold box hugs the text as it is drawn (owner 2026-11-12, P3 = A):
+    // its top and height follow the rendered slide — so changing the size
+    // visibly moves the box — while the width stays the theme largura the
+    // handles edit. While dragging, the model box (the 9 positions) leads;
+    // before the first measure (fonts still coming) it stands in whole.
+    const [measured, setMeasured] = useState(null);
+    useLayoutEffect(() => {
+        const screen = screenRef.current;
+        if (!screen) return undefined;
+        let raf = 0;
+        const measure = () => {
+            const box = screen.getBoundingClientRect();
+            const parts = screen.querySelectorAll(".ks-content .ks-text, .ks-content .ks-chorus, .ks-content .ks-ref");
+            if (!box.height || !parts.length) { setMeasured(null); return; }
+            let top = Infinity, bottom = -Infinity;
+            parts.forEach((el) => { const b = el.getBoundingClientRect(); if (!b.height) return; top = Math.min(top, b.top); bottom = Math.max(bottom, b.bottom); });
+            if (!(bottom > top)) { setMeasured(null); return; }
+            const y = ((top - box.top) / box.height) * 100, h = ((bottom - top) / box.height) * 100;
+            setMeasured((m) => (m && Math.abs(m.y - y) < 0.2 && Math.abs(m.h - h) < 0.2 ? m : { y: Math.round(y * 10) / 10, h: Math.round(h * 10) / 10 }));
+        };
+        const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(measure); };
+        later();
+        const ro = typeof ResizeObserver === "function" ? new ResizeObserver(later) : null;
+        ro?.observe(screen);
+        document.fonts?.addEventListener?.("loadingdone", later);
+        return () => { cancelAnimationFrame(raf); ro?.disconnect(); document.fonts?.removeEventListener?.("loadingdone", later); };
+    }, [doc, sample, slide]);
+    const shownRect = rect && measured && !dragging ? { ...rect, y: measured.y, h: measured.h } : rect;
     // The theme's Margem (owner 2026-10-30, M = A): the dashed safe area.
     const margin = draft ? marginOf(draft) : 8;
     const SAFE = safeArea(margin);
@@ -457,8 +485,8 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                     <i key={i} className="le-h le-safe-h" style={{ left: `${x}%`, top: `${y}%` }} title={`Margem ${margin} % · arraste para mudar`} onPointerDown={(e) => startDrag(e, "m")} />
                                 ))}
                                 {dragging && [1, 2].map((n) => <React.Fragment key={n}><i className="le-guide x" style={{ left: `${SAFE.x + (SAFE.w * n) / 3}%` }} /><i className="le-guide y" style={{ top: `${SAFE.y + (SAFE.h * n) / 3}%` }} /></React.Fragment>)}
-                                {rect && (
-                                    <div className="le-hit is-sel tb-box" style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` }}
+                                {shownRect && (
+                                    <div className="le-hit is-sel tb-box" style={{ left: `${shownRect.x}%`, top: `${shownRect.y}%`, width: `${shownRect.w}%`, height: `${shownRect.h}%` }}
                                         title="A caixa da letra" onPointerDown={(e) => startDrag(e)}>
                                         {!band && <><i className="le-h e" onPointerDown={(e) => startDrag(e, "e")} /><i className="le-h w" onPointerDown={(e) => startDrag(e, "w")} /></>}
                                     </div>
@@ -467,7 +495,7 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                         </div>
                     </div>
                     <div className="listhead nv-note">
-                        <span className="kx-meta">A caixa é onde a letra se encaixa, dentro da área segura (tracejada): arraste para as 9 posições; as alças mudam a largura e os cantos do tracejado, a margem. Um slide que não cabe diminui até caber.</span>
+                        <span className="kx-meta">A caixa abraça a letra como ela está, dentro da área segura (tracejada): mudou o tamanho, ela acompanha. Arraste para as 9 posições; as alças mudam a largura e os cantos do tracejado, a margem. Um slide que não cabe diminui até caber.</span>
                     </div>
                 </Panel>
             </div>

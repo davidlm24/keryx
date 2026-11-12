@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import Icon from "./Icon";
+import { Seg } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { prefState, prefVars, ruleOf, ruleLabel, ruleSummary, leftOutNow } from "@/lib/outputPrefs";
@@ -8,7 +9,7 @@ import { useScreenDesign } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { SCREEN_PAGES, nextItems } from "@/lib/network/views";
-import { tileStatus, motionTile } from "@/lib/console/multiview";
+import { tileStatus, motionTile, MV_COUNTS } from "@/lib/console/multiview";
 import "@/components/screen/output-prefs.css";
 
 // One quadrant: what is on air as `page` shows it, with that output's own
@@ -57,7 +58,7 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
 // a right-click menu like it. `rows` are the output health rows (Saídas).
 // Its clocks tick on its own clock (useLiveNow), never the console's; a
 // given `now` is a still frame.
-export default function MultiView({ live, now: givenNow, logoUrl, tiles, rows = [], items = [], state, className = "", onPick, onRule = null, dropProps, children, still = false }) {
+export default function MultiView({ live, now: givenNow, logoUrl, tiles, rows = [], items = [], state, className = "", onPick, onRule = null, onCount = null, dropProps, children, still = false }) {
     const ownNow = useLiveNow(1000, givenNow === undefined);
     const now = givenNow ?? ownNow;
     const looks = useRailViews();
@@ -65,13 +66,19 @@ export default function MultiView({ live, now: givenNow, logoUrl, tiles, rows = 
     const moving = motionTile(tiles);
     return (
         <div className={`kx-mon prog mx ${state ? `is-${state}` : ""} ${className}`} {...dropProps}>
-            <div className="kx-mon-screen mx-grid" role="group" aria-label="Multiview: quatro saídas com o que está no ar">
+            <div className={`kx-mon-screen mx-grid is-n${tiles.length}`} role="group" aria-label="Multiview: as saídas com o que está no ar">
                 {tiles.map((page, i) => (
                     <Tile key={page} page={page} index={i} live={live} now={now} logoUrl={logoUrl} items={items} motion={!still && i === moving}
                         look={looks.find((l) => l.key === page) || { name: page, icon: "monitor" }} status={tileStatus(page, rows)} onPick={onPick} onRule={onRule} church={church} />
                 ))}
                 {children}
             </div>
+            {/* Quantas telas (P4 = A): shown while the mouse is over the monitor. */}
+            {onCount && (
+                <div className="mx-count">
+                    <Seg small label="Quantas saídas o Multiview mostra" value={String(tiles.length)} options={MV_COUNTS.map((n) => [String(n), String(n)])} onChange={(v) => onCount(Number(v))} />
+                </div>
+            )}
         </div>
     );
 }

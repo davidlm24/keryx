@@ -1537,7 +1537,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   2026-10-22, P1 = B; replaces DS1's gold-on-air and red elsewhere):
   **green = ao vivo** (`air`/`live` tokens: rows, cells, slides, the
   Programa's dot and frames), **gold = selecionado** (the Prévia: `prev`
-  tokens, the brand's gold as a state), **grey = próximo** (`--next-ring`),
+  tokens, the brand's gold as a state — the livelier `#d9a84e` since 12/11,
+  P2 = B, `--brand` and `--prev` always the same hex), **grey = próximo**
+  (`--next-ring`); **a CARD, row, cell or segment picked in a gallery or
+  dialog selects in WHITE** (`--fg-1` ring or fill: the library and Temas
+  tiles, the looks, the preset dots, ColorPop cells, sv-type/sv-word,
+  pkg-radio, fd-row, ob-steps, the phone's `.is-sel`; owner 2026-11-12,
+  P1 = A — gold stays only on buttons, the Prévia and the slide lists;
+  the editors' working selection boxes, `.le-hit.is-sel`, stay gold:
+  tools, not cards),
   **red only alerts and Encerrar** (`danger`, `air-fill` for the red
   buttons), green "OK/connected/done" is `ok` (never the on-air tokens);
   marked (several) and Travado stay blue. **No left bars anywhere**: the
@@ -1975,19 +1983,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `LOOP_PRESETS`, a ramp and two degradês among them. **Colour** (same
   day): `colors` takes 1 to 5 (a ramp, dark → light; three = the palette
   of before, exactly), and the **degradê pela tela** is `colors2` (1–5)
-  with `blend` h | v | d | move, present only when it has colours, so a
+  with `blend` h | v | d | move — and, since 12/11 (G4 = A), **`blendPos`
+  e `blendWidth`** (Posição e Largura; 0.5/0.8 = the smoothstep(0.1, 0.9)
+  of before, so old saves and an older KERYX draw the same; Mover keeps
+  its own window and hides the sliders) —, present only when it has colours, so a
   generator without one keeps the shape it had (an older KERYX reads the
   first three colours and drops the degradê; a new id it does not know
   is no background there). **Nuvens, Luzes, Partículas de luz and Raios
   de luz were removed for good** (owner, same day: `clouds`, `bokeh`,
   `particles`, `rays` left `GENERATOR_IDS`; a theme, culto or song that
   named one has no background, a saved live state drops it on restore).
-  The console edits it in the library's Gerados: the sample on the left
-  with the controls under it in three columns, always on screen
-  (`GeneratorPanel.jsx`, `.lib-gen-ctl`: colours and degradê, the
-  sliders, Áudio-reativo and the host's `extra`, the library's
-  Escurecer), the looks on the right as stills (the only part that
-  scrolls; presets as round dots, `presetSwatch`); a
+  The console edits it in the library's Gerados (owner 2026-11-12, mockup
+  "Fundos gerados · revisão 12/11", G1–G5 all A): the moving sample and
+  the looks share the top row (the looks as stills, the only part that
+  scrolls; presets as round dots, `presetSwatch`; **"Com letra"** on the
+  sample overlays a sample slide through the real renderer), and the
+  control band runs the whole width below (`GeneratorPanel.jsx`,
+  `.lib-gen-ctl`: `lib-gen-row1` = colours beside the wide sliders,
+  `lib-gen-row2` = Áudio-reativo and the host's `extra`, the library's
+  Escurecer). **Each colour chip** (`.cp-chip`) opens the **ColorPop**
+  (`src/components/console/ColorPop.jsx`: hex, the Chromium EyeDropper
+  conta-gotas, the look's palette as swatches, Roda de cores… for the
+  native wheel — THE colour picker; a raw `input[type=color]` only where
+  it has not migrated yet) and moves by its grip (drag, ← → on it) or the
+  hover arrows: the order runs dark → light along the pattern and
+  normalizeGenerator preserves it. A
   theme keeps one in `background_generator` (`themeBackgroundArgs`).
   **Áudio-reativo** (`gen.audio`): the console measures the PC's output
   with its meters (`useAudioFeed`) and sends the level ~20×/s over its own
@@ -2772,7 +2792,12 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     Configurações › Temas é só a lista; Camadas ajusta o ar e captura com
     "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`
     (o estilo explícito do item vence; aplicar um tema no ar os reseta), e
-    a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado).
+    a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado);
+    **a caixa dourada abraça o texto desenhado** (owner 2026-11-12, P3 =
+    A): o topo e a altura vêm da medida do slide no canvas (um efeito no
+    ThemeEditor; arrastando, e antes da primeira medida, vale a caixa do
+    modelo), a largura continua a do tema — mudar o tamanho da fonte move
+    a caixa na hora.
     **O formulário é em grupos** (Rodada HF3, owner 2026-10-20: `CfgGroup`, ids
     `tema.*`, fold per computer; Nome e padrão fixo, Fundo aberto, Caixa do
     texto, Posição e Transição fechados com resumo de `boxSummary`…`transitionSummary`
@@ -3069,7 +3094,7 @@ the same amount (`anchorMarks`, "andaram +5,1 s" with Desfazer); Pular keeps
 them; any other edit makes them ordinary marks and moves only that slide.
 Measured on two lyric videos of the church's playbacks (22/10): the LRC
 times hit within a second at the median. The Biblioteca's "Na internet…"
-still imports a take's marks (S1 = C). **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. **Only the Programa moves** (owner 2026-11-09): every other preview — Telas e saídas' cards, the Editor's canvas, a Multiview tile but its moving one — is a still frame; a design drawn embedded plays its Projeção element only with `LayoutRenderer motion` (the Multiview's moving tile), and a card's design ticks every second only when it shows time (`layoutCountsTime` in layouts.js). The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
+still imports a take's marks (S1 = C). **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into **1, 2, 4 or 6 outputs at once** (owner 2026-11-12, P4 = A: the count Seg on the monitor's corner, shown on hover; `layout.mvCount`, `MV_COUNTS`/`normalizeCount`; `mvTiles` keeps the WHOLE order and the first `mvCount` show; 2 and 6 letterbox their tiles), each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested). Only the Projeção quadrant (else Vídeo) plays videos. **Only the Programa moves** (owner 2026-11-09): every other preview — Telas e saídas' cards, the Editor's canvas, a Multiview tile but its moving one — is a still frame; a design drawn embedded plays its Projeção element only with `LayoutRenderer motion` (the Multiview's moving tile), and a card's design ticks every second only when it shows time (`layoutCountsTime` in layouts.js). The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.

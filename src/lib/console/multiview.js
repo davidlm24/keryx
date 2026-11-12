@@ -1,24 +1,28 @@
-// Multiview (2026-10-12, as Holyrics' four quadrants): the Programa monitor
-// as four outputs at once, each showing what is on air the way that output
-// shows it (its own settings; Palco and Pastor with their own layouts), so
-// the operator sees the band's and the pastor's screens without walking over.
-// Which output each quadrant shows is the operator's, saved with the layout
-// (layout.js). Pure: no I/O.
+// Multiview (2026-10-12, as Holyrics' quadrants): the Programa monitor as
+// several outputs at once — 1, 2, 4 or 6 (owner 2026-11-12, P4 = A) — each
+// showing what is on air the way that output shows it (its own settings;
+// Palco and Pastor with their own layouts), so the operator sees the band's
+// and the pastor's screens without walking over. Which output each quadrant
+// shows, and how many show, is the operator's, saved with the layout
+// (layout.js: mvTiles keeps the WHOLE order, the first mvCount show). Pure.
 import { RAIL_VIEWS } from "../network/views.js";
 
 export const MV_PAGES = RAIL_VIEWS.map((v) => v.key);
-export const MV_COUNT = 4;
+export const MV_COUNT = 4; // the default of MV_COUNTS
+export const MV_COUNTS = [1, 2, 4, 6];
+export const normalizeCount = (v) => (MV_COUNTS.includes(Number(v)) ? Number(v) : MV_COUNT);
 export const DEFAULT_TILES = ["/Projection", "/LyricProjection", "/StageView", "/CommunicationProjection"];
 
-// Four known outputs, none twice: a saved list from an older version (or
-// edited by hand) keeps what it can and fills the rest in the default order.
+// The whole order, every known output once (the first mvCount show): a
+// saved list — 4 long until 12/11 — keeps what it can and fills the rest
+// in the default order.
 export function normalizeTiles(saved) {
     const out = [];
     for (const p of Array.isArray(saved) ? saved : []) {
-        if (out.length < MV_COUNT && MV_PAGES.includes(p) && !out.includes(p)) out.push(p);
+        if (MV_PAGES.includes(p) && !out.includes(p)) out.push(p);
     }
     for (const p of [...DEFAULT_TILES, ...MV_PAGES]) {
-        if (out.length < MV_COUNT && !out.includes(p)) out.push(p);
+        if (!out.includes(p)) out.push(p);
     }
     return out;
 }
@@ -27,7 +31,7 @@ export function normalizeTiles(saved) {
 // two swap (an output never shows twice).
 export function pickTile(tiles, index, page) {
     const list = normalizeTiles(tiles);
-    if (!MV_PAGES.includes(page) || index < 0 || index >= MV_COUNT || list[index] === page) return list;
+    if (!MV_PAGES.includes(page) || index < 0 || index >= list.length || list[index] === page) return list;
     const next = [...list];
     const was = next.indexOf(page);
     if (was >= 0) next[was] = next[index];
