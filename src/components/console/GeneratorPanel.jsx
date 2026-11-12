@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Btn, IconBtn, Seg } from "./kx";
 import { Switch } from "./settings/parts";
+import GeneratorBackground from "@/components/screen/GeneratorBackground";
 import { GENERATORS, PARAM_LABELS, generatorOf, presetsOf, presetArgs, startArgs, matchingPreset, generatorArgs, normalizeGenerator, presetSwatch, secondColors } from "@/lib/generators";
 import { GENERATOR_PARAMS, MAX_COLORS } from "@shared/generators.mjs";
 
@@ -24,7 +25,8 @@ export function GeneratorTiles({ current, disabled, op }) {
             {GENERATORS.map((g) => (
                 <button type="button" key={g.id} disabled={disabled} className={`kx-t lyr-gen ${current?.id === g.id ? "is-on" : ""}`} title={g.hint} aria-pressed={current?.id === g.id}
                     onClick={() => op("background.set", startArgs(g.id))}>
-                    <i style={{ background: `linear-gradient(135deg, ${presetsOf(g.id)[0].gen.colors.join(", ")})` }} /><span>{g.name}</span>
+                    {/* A still frame of the look itself (its first colours), not a gradient of them. */}
+                    <i><GeneratorBackground gen={presetsOf(g.id)[0].gen} animate={false} /></i><span>{g.name}</span>
                 </button>
             ))}
         </div>

@@ -4,17 +4,18 @@ import { Btn, IconBtn } from "../kx";
 import { cleanSpec, bgLabel } from "@/lib/console/backgroundSpec";
 import { cssFallback, GENERATORS } from "@/lib/generators";
 import { useLibraryPicker } from "./libraryContext";
+import GeneratorBackground from "@/components/screen/GeneratorBackground";
 
 const GEN_NAMES = Object.fromEntries(GENERATORS.map((g) => [g.id, g.name]));
 
-// A background as a small tile (a picture, a clip, a generated one's
-// colours, a colour), for the rows that show what is chosen.
+// A background as a small tile (a picture, a clip, a still frame of a
+// generated one, a colour), for the rows that show what is chosen.
 export function BgThumb({ spec }) {
     const s = cleanSpec(spec);
     if (!s) return <span className="bgchip-t is-none" />;
     if (s.kind === "image") return <span className="bgchip-t"><img src={s.value} alt="" /></span>;
     if (s.kind === "video") return <span className="bgchip-t is-video"><Icon name="film" size={14} /></span>;
-    if (s.kind === "generator") return <span className="bgchip-t" style={{ background: cssFallback(s.gen) }} />;
+    if (s.kind === "generator") return <span className="bgchip-t is-gen" style={{ background: cssFallback(s.gen) }}><GeneratorBackground gen={s.gen} animate={false} /></span>;
     return <span className="bgchip-t" style={{ background: s.value }} />;
 }
 
