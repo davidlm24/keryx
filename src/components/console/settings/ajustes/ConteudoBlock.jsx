@@ -3,7 +3,7 @@ import Icon from "../../Icon";
 import { Btn, Seg } from "../../kx";
 import { CfgDisc, CfgGroup, CfgKey, FormRow, Switch } from "../parts";
 import { RULE_KINDS, RULE_GROUPS } from "@/lib/contentKinds";
-import { PREF_CONTENTS, RULE_SHORTCUTS, RULE_EMPTY, ruleShortcut, ruleSummary, normalizeRule, stageOptions, pastorOptions, lyricsOptions } from "@/lib/outputPrefs";
+import { PREF_CONTENTS, RULE_SHORTCUTS, RULE_EMPTY, ruleShortcut, ruleSummary, normalizeRule, stageOptions, pastorOptions, lyricsOptions, videoTitleOn } from "@/lib/outputPrefs";
 import { partsSummary, conteudoSummary, kindsSummary } from "@/lib/console/ajustesSummaries";
 
 const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
@@ -85,6 +85,11 @@ export default function ConteudoBlock({ ctx }) {
                     </FormRow>
                     {/* What this screen adds to a song's lyrics (lyricsOptions):
                         the chords over the syllables and the part's name. */}
+                    {/* The Vídeo screen: the clip's name over it (V = A, off by default). */}
+                    {path === "/VideoProjection" && <FormRow k="Nome do vídeo">
+                        <Switch on={videoTitleOn(pref)} onChange={(on) => saveOpt("video_title", on)} label={`Nome do vídeo em ${label}`} />
+                        <span className="kx-meta">o nome do arquivo no alto do clipe</span>
+                    </FormRow>}
                     {has("lyrics") && <>
                         <FormRow k="Cifra">
                             <Switch on={lyrics.chords} onChange={(on) => saveOpt("chords", on)} label={`Cifra em ${label}`} />

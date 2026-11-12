@@ -500,3 +500,10 @@ test("screenDesign: own design, the old factory layout_id (not own), none", () =
     assert.equal(screenDesign("/PastorView", normalizePref({ layout_id: "factory:pastor" }), []).own, false, "the old factory id is the page");
     assert.deepEqual(screenDesign("/LyricProjection", normalizePref(null), []), { layout: null, own: false });
 });
+
+test("the Vídeo screen writes the clip's name only when asked (owner 2026-11-12, V = A)", async () => {
+    const { videoTitleOn } = await import("./outputPrefs.js");
+    assert.equal(videoTitleOn(normalizePref(null)), false);
+    assert.equal(videoTitleOn(normalizePref({ options: { video_title: true } })), true);
+    assert.equal(videoTitleOn(normalizePref({ options: { video_title: "sim" } })), false);
+});

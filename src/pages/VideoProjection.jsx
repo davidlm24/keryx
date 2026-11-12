@@ -8,7 +8,7 @@ import OutputScreen from "@/components/screen/OutputScreen";
 import { useOutputPref } from "@/hooks/useOutputPref";
 import LiveVideo from "@/components/projection/LiveVideo";
 import { AlertLayer } from "@/components/screen/AlertBar";
-import { alertOf, ruleOf } from "@/lib/outputPrefs";
+import { alertOf, ruleOf, videoTitleOn } from "@/lib/outputPrefs";
 import { ruleKindOf } from "@/lib/contentKinds";
 import { useExitGhost } from "@/hooks/useExitGhost";
 import { videoExitMs } from "@/lib/exitFade";
@@ -43,9 +43,11 @@ export default function VideoProjection() {
     // On a network screen the box is the 16:9 stage (ks-stage, ScreenStart),
     // so the clip fills the box, not the tablet's viewport.
     const tall = keryx.isNetworkScreen ? "w-full h-full" : "w-full h-screen";
+    // The clip's name over it only when this screen asks (V = A, off by default).
+    const titled = videoTitleOn(prefs.pref);
     const fading = leaving && (
         <div key={ghost.key} className="ks-fade-out ks-stage" style={{ ...box, animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
-            {leaving.title && <div className="net-vtitle">{leaving.title}</div>}
+            {titled && leaving.title && <div className="net-vtitle">{leaving.title}</div>}
             <LiveVideo item={leaving} muted fadeOut={{ at: ghost.at, until: ghost.until }} className={tall} />
         </div>
     );
@@ -55,7 +57,7 @@ export default function VideoProjection() {
     return (
         <>
             <div className="ks-stage" style={box}>
-                {video.title && <div className="net-vtitle">{video.title}</div>}
+                {titled && video.title && <div className="net-vtitle">{video.title}</div>}
                 <LiveVideo item={video} muted meter="video" className={tall} onEnded={() => { if (keryx.isDesktop) projection.clearVideo({ ended: true }).catch(() => {}); }} onRefused={(code) => { if (keryx.isDesktop && !keryx.isNetworkScreen) projection.clearVideo({ refused: code, url: video.url }).catch(() => {}); }} />
                 <AlertLayer alert={alertOf(live, prefs.pref, "/VideoProjection")} />
             </div>

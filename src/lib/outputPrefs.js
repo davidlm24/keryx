@@ -373,6 +373,11 @@ export function lyricsOptions(page, pref) {
     return { chords: onOff(pref?.options?.chords, on), labels: onOff(pref?.options?.labels, on) };
 }
 
+// The Vídeo screen writes the clip's name over it only when asked (owner
+// 2026-11-12, "Telas · fase 2", V = A): Ajustes › Conteúdo › Nome do
+// vídeo, OutputPref.options.video_title, off by default.
+export const videoTitleOn = (pref) => pref?.options?.video_title === true;
+
 // Transmissão (/StreamView): the band of the lower third. Missing keys are
 // the band as it always was.
 export const STREAM_DEFAULTS = { band: "#0a0a0c", band_opacity: 0.78, size: "auto", position: "bottom", show_ref: true };

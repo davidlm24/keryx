@@ -5,6 +5,7 @@ import { blanksView, memorizeView, discussionTime, LETTERS, TRUE_FALSE } from "@
 import { clockOf } from "@/lib/console/notice";
 import { ringBell } from "@/lib/bell";
 import { usePrefs } from "@/hooks/useUser";
+import { useContentFit } from "@/hooks/useBoxFit";
 
 // An Escola bíblica activity on screen (slide.activity, owner 2026-10-16,
 // Rodada E4), drawn by ScreenRenderer in place of the plain text: the
@@ -20,6 +21,11 @@ export default function ActivityView({ content, now, look, audio = false }) {
     const reveal = revealOf(content);
     const step = reveal?.step || 0;
     const text = look.text;
+    // A long question or verse shrinks until it fits the safe area (T = A);
+    // measured again on each slide, each reveal step and the look, never on
+    // the discussion timer's tick.
+    const boxRef = React.useRef(null);
+    useContentFit(boxRef, `${content.startedAt}:${content.index}:${step}:${slide.text || ""}:${look.size}:${look.upper}`);
     const words = (runs) => runs.map((r, i) => {
         if (r.blank) return <span key={i} className="ks-gap"><span>{r.text}</span></span>;
         if (r.shown) return <span key={i} className={`ks-word-in ${r.last ? "is-new" : ""}`}>{r.text}</span>;
@@ -68,7 +74,7 @@ export default function ActivityView({ content, now, look, audio = false }) {
     return (
         <>
             {look.titled && content.title && <div className="ks-title" style={look.font}>{content.title}</div>}
-            <div className={`ks-act ks-act-${a.kind}`} style={{ "--ks-size": look.size, color: look.color, ...look.font, ...(look.upper ? { textTransform: "uppercase" } : {}) }}>
+            <div ref={boxRef} className={`ks-act ks-act-${a.kind}`} style={{ "--ks-size": `calc(${look.size} * var(--fit, 1))`, color: look.color, ...look.font, ...(look.upper ? { textTransform: "uppercase" } : {}) }}>
                 <div key={`${content.startedAt}:${content.index}`} className={look.anim} style={{ display: "contents" }}>
                     {slide.label && <div className="ks-act-kicker">{slide.label}</div>}
                     {body}
