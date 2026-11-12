@@ -6,6 +6,7 @@ import { useExportVideo } from "./ExportVideoDialog";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import { frameState } from "@/lib/console/lyricVideo";
 import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
 import { soundModeFor, songSoundWhy, soundModeValue } from "@/lib/console/videoSound";
@@ -202,7 +203,9 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         setResplit(true);
     };
 
-    // One rendered state, every thumbnail points at its slide.
+    // One rendered state, every thumbnail points at its slide (frameState:
+    // without the intro a song that follows its marks is sent with, which
+    // drew the background alone on every thumbnail).
     const doc = useMemo(() => {
         if (!song || !slides.length) return null;
         // Stamped like a send: the default theme dresses it when it follows.
@@ -567,7 +570,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                                 : fit.lines + (fit.lines === 1 ? " linha, " : " linhas, ") + fit.chars + " caracteres · cabe na tela";
                             return (
                             <button type="button" key={i} className={`ed-th kx-t ${i === sel ? "is-sel" : ""}`} onClick={() => setSel(i)} onContextMenu={(e) => slideMenu(e, i)} title={s.label || `Slide ${i + 1}`}>
-                                <ScreenRenderer state={{ ...doc, content: { ...doc.content, index: i, ...(showChords ? { show: { chords: true, labels: true } } : {}) } }} preview />
+                                <ScreenRenderer state={{ ...doc, content: { ...frameState(doc, i).content, ...(showChords ? { show: { chords: true, labels: true } } : {}) } }} preview />
                                 <span className="n">{i + 1}{advance === "time" ? (s.duration > 0 ? ` · ${s.duration} s` : "") : Number.isFinite(starts[i]) ? ` · ${mmss(starts[i])}` : ""}</span>
                                 {s.label && (i === 0 || slides[i - 1].label !== s.label) && <span className="lab">{s.label}</span>}
                                 <span className={"fit" + (fit.wraps.length ? " is-warn" : "")} title={fitTitle}>{fit.lines} l · {fit.chars} c{fit.wraps.length ? " · fonte menor" : ""}</span>
