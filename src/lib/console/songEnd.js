@@ -49,6 +49,15 @@ export function endLength(live, item) {
     return ends?.url && item?.url === ends.url && at > 0 ? at : null;
 }
 
+// The level of the song's sound at `t` (seconds) for a Fim at `end` with a
+// `fade`: 1 before the Fim, down to 0 over the fade, 0 after (Marcar os
+// tempos plays its preview to the Fim this way; owner 2026-11-12).
+export function endGain(t, end, fade = 3) {
+    if (!(t >= end)) return 1;
+    const f = Math.max(0, Number(fade) || 0);
+    return f > 0 ? Math.max(0, 1 - (t - end) / f) : 0;
+}
+
 // The clear that ends it: the sound's own fade (ms).
 export const endArgs = (live) => ({ ended: true, soundFade: Math.round((live?.content?.ends?.fade ?? 3) * 1000) });
 

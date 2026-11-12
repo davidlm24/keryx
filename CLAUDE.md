@@ -2970,7 +2970,13 @@ remaining time, the seek and the ticks stop at the mark, within the file). The e
 `SyncTimeline.jsx`): an overview of the whole song, a ruler that only moves
 the time, a lane that only holds the marks (flags; one moves after a 4 px
 drag, a click goes to its time) and the Fim's red flag with its fade band,
-over the sound's wave (`waveform.js`, decoded once per file); 30 s on
+over the sound's wave (`waveform.js`, decoded once per file); **the Fim
+tuned by ear** (owner 2026-11-12): to 0,01 s (`END_STEP`, `clampEnd`), its −
+/ + 0,1 s · Shift 1 s · Alt 0,01 s, its flag focusable with ← → the same
+steps and its label with the hundredths, **Ouvir o fim** (the 4 s before
+it), the Fade out by 0,1 s and undoable, a 5 s zoom; and **the page's
+preview ends at the Fim with its fade** (`endGain` in songEnd.js; once it
+crosses the Fim, never while recording); 30 s on
 screen, turning its page while it plays, the wheel slides and Ctrl + the
 wheel zooms (`timelineView.js`, tested); the Intro row on top of the
 slides, the Fim and Fade out rows under them; Espaço after the last slide

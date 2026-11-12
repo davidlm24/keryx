@@ -81,3 +81,14 @@ test("endBefore: the watcher arms only while the song is before its Fim (owner 2
     assert.equal(endDue(late, T0), true, "due, but the watcher needs the crossing");
     assert.equal(endBefore(run([lyrics()]), T0), false, "nothing playing");
 });
+
+test("endGain: full before the Fim, down over the fade, silent after (owner 2026-11-12)", async () => {
+    const { endGain } = await import("./songEnd.js");
+    assert.equal(endGain(10, 30, 4), 1);
+    assert.equal(endGain(30, 30, 4), 1);
+    assert.equal(endGain(32, 30, 4), 0.5);
+    assert.equal(endGain(34, 30, 4), 0);
+    assert.equal(endGain(40, 30, 4), 0);
+    assert.equal(endGain(30, 30, 0), 0, "no fade: silent at the Fim");
+    assert.equal(endGain(29.99, 30, 0), 1);
+});
