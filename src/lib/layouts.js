@@ -170,14 +170,17 @@ export const FACTORY_LAYOUTS = [
         id: "factory:palco", factory: true, name: "Palco (modelo)", category: "palco",
         background: { song_image: true, dim: 0.72 },
         elements: [
-            el("title", 3, 3, 50, 11, { size: 4.2, weight: "bold", props: { artist: true } }),
-            el("song_key", 55, 3, 8, 11), el("bpm", 64, 3, 8, 11), el("song_time", 73, 3, 11, 11),
-            el("clock", 85, 3, 12, 11, { size: 4.2, weight: "bold", box: true, label: "Hora", when: "content" }),
-            el("notes", 3, 16, 94, 7, { size: 2.4, box: true }),
-            el("current", 3, 25, 61, 50, { size: 7.4, weight: "bold", align: "center", valign: "middle", props: { chords: true } }),
-            el("chords", 66, 25, 31, 50),
-            el("next", 3, 78, 94, 12, { size: 3, box: true, label: "Próximo" }),
-            el("progress", 3, 93, 94, 3),
+            // A thin strip on top, the lyrics with the most room, the next
+            // slide big at the bottom with the dots beside it (owner
+            // 2026-11-12, mockup "Palco compacto": the page's own Palco too).
+            el("title", 3, 1, 44, 9, { size: 3, weight: "bold", props: { artist: true } }),
+            el("song_key", 49, 1, 8, 9, { size: 3 }), el("bpm", 58, 1, 8, 9, { size: 3 }), el("song_time", 67, 1, 13, 9, { size: 3 }),
+            el("clock", 81, 1, 16, 9, { size: 3.2, weight: "bold", box: true, label: "Hora", when: "content" }),
+            el("notes", 3, 11.5, 94, 6, { size: 2.2, box: true }),
+            el("current", 3, 18, 61, 68, { size: 7.4, weight: "bold", align: "center", valign: "middle", props: { chords: true } }),
+            el("chords", 66, 18, 31, 68),
+            el("next", 3, 88, 82, 10, { size: 4, box: true, label: "Próximo" }),
+            el("progress", 87, 91.5, 10, 3),
             el("clock", 20, 30, 60, 24, { size: 16, align: "center", valign: "middle", when: "idle" }),
             el("text", 20, 56, 60, 8, { size: 3, align: "center", when: "idle", props: { text: "Aguardando projeção" } }),
         ],

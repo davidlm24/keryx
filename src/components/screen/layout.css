@@ -23,7 +23,7 @@
 .kl-va-bottom { justify-content: flex-end; }
 .kl-va-middle .kl-v, .kl-va-bottom .kl-v { flex: 0 1 auto; }
 .kl-al-center .kl-lab, .kl-al-right .kl-lab { width: 100%; }
-.kl-current .kl-v { text-shadow: 0 .4cqmin 2cqmin #000000b3; }
+.kl-current .kl-v { font-size: calc(1em * var(--fit, 1)); text-shadow: 0 .4cqmin 2cqmin #000000b3; }
 /* A presentation's page in Letra atual / Próximo slide (Rodada F3) */
 .kl-page { flex: 1; min-height: 0; width: 100%; object-fit: contain; border-radius: 1cqmin; }
 .kl-current .kl-trans { position: absolute; right: 0; top: 0; font-size: 2cqmin; }
