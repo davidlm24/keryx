@@ -24,7 +24,7 @@ const MAX_W = 960;
 const STILL_W = 480;
 const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255);
 const UNIFORMS = ["u_res", "u_time", "u_speed", "u_scale", "u_intensity", "u_spacing", "u_persistence", "u_contrast", "u_detail", "u_audio",
-    "u_ncol", "u_c0", "u_c1", "u_c2", "u_c3", "u_c4", "u_ncol2", "u_blend", "u_d0", "u_d1", "u_d2", "u_d3", "u_d4"];
+    "u_ncol", "u_c0", "u_c1", "u_c2", "u_c3", "u_c4", "u_ncol2", "u_blend", "u_bpos", "u_bwid", "u_d0", "u_d1", "u_d2", "u_d3", "u_d4"];
 const BLEND_N = { h: 1, v: 2, d: 3, move: 4 };
 // Five colours for a ramp's five uniforms: the list, its last one repeated.
 const five = (cs) => [0, 1, 2, 3, 4].map((i) => hex(cs[Math.min(i, cs.length - 1)]));
@@ -86,6 +86,8 @@ function makeRenderer(canvas) {
             const c2 = g.colors2 || [];
             gl.uniform1i(u.u_ncol2, c2.length);
             gl.uniform1i(u.u_blend, c2.length ? BLEND_N[g.blend] || 1 : 0);
+            gl.uniform1f(u.u_bpos, g.blendPos ?? 0.5);
+            gl.uniform1f(u.u_bwid, g.blendWidth ?? 0.8);
             if (c2.length) five(c2).forEach((c, i) => gl.uniform3f(u[`u_d${i}`], ...c));
             gl.drawArrays(gl.TRIANGLES, 0, 3);
             return true;

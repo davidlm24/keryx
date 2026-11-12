@@ -14,7 +14,7 @@ import {
     ChevronUp, ChevronsDownUp, ChevronsUpDown, Circle, CircleHelp, Clock, Cloud, Columns2, Copy, CornerDownLeft, Download,
     Ellipsis, Eraser, ExternalLink, Eye, EyeOff, Film, Folder, Footprints, Globe, GripVertical, History, Image, Info,
     Keyboard, Layers, LayoutGrid, LayoutPanelLeft, Library, Link, List, ListChecks, Lock, LockOpen, Megaphone, Menu, MessageSquare, Minus, Monitor, Music,
-    Palette, Pause, Pencil, Pin, Play, Plus, Power, Presentation, Projector, Redo2, RefreshCw, Rows2, Save,
+    Palette, Pause, Pencil, Pin, Pipette, Play, Plus, Power, Presentation, Projector, Redo2, RefreshCw, Rows2, Save,
     QrCode, Search, SendHorizontal, SkipBack, SkipForward, SlidersHorizontal, Square, Star, Tablet, Trash2, TriangleAlert, Tv,
     Type, Undo2, Unplug, User, Volume2, VolumeX, Wifi, WifiOff, X, Youtube,
 } from "lucide";
@@ -74,6 +74,7 @@ export const ICON_NODES = {
     "chevron-up": ChevronUp,
     more: Ellipsis,
     grip: GripVertical,
+    dropper: Pipette,
     music: Music,
     film: Film,
     megaphone: Megaphone,

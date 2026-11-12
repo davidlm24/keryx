@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeGenerator, GENERATOR_IDS, GENERATOR_PARAMS, PARAM_IDS, DEFAULT_COLORS, BLENDS } from "./generators.mjs";
+import { normalizeGenerator, GENERATOR_IDS, GENERATOR_PARAMS, PARAM_IDS, DEFAULT_COLORS, BLENDS, BLEND_POS, BLEND_WIDTH } from "./generators.mjs";
 import { cssFallback } from "../src/lib/generatorLook.js";
 
 test("normalizeGenerator: defaults, clamps, colours", () => {
@@ -36,4 +36,19 @@ test("cssFallback: the colours, the degradê in its direction", () => {
     assert.equal(cssFallback({ colors: ["#3f0000", "#ff7600", "#5b0000"] }), "linear-gradient(160deg, #3f0000, #ff7600, #5b0000)");
     assert.equal(cssFallback(null), "linear-gradient(160deg, #000)");
     assert.equal(cssFallback({ colors: ["#000000", "#111111", "#222222"], colors2: ["#aaaaaa", "#bbbbbb"], blend: "v" }), "linear-gradient(180deg, #111111, #bbbbbb)");
+});
+
+test("degradê: Posição e Largura ride only with colors2; absent = the look of before (owner 2026-11-12, G4)", () => {
+    const none = normalizeGenerator({ id: "columns", colors: ["#112233"] });
+    assert.equal("blendPos" in none, false);
+    assert.equal("blendWidth" in none, false);
+    const d = normalizeGenerator({ id: "columns", colors: ["#112233"], colors2: ["#445566"] });
+    assert.equal(d.blendPos, BLEND_POS[2]);
+    assert.equal(d.blendWidth, BLEND_WIDTH[2]);
+    const g = normalizeGenerator({ id: "columns", colors: ["#112233"], colors2: ["#445566"], blendPos: 0.321, blendWidth: 2 });
+    assert.equal(g.blendPos, 0.32);
+    assert.equal(g.blendWidth, 1);
+    assert.equal(normalizeGenerator({ id: "columns", colors: ["#112233"], colors2: ["#445566"], blendPos: -3, blendWidth: 0 }).blendPos, 0);
+    assert.equal(normalizeGenerator({ id: "columns", colors: ["#112233"], colors2: ["#445566"], blendWidth: 0 }).blendWidth, BLEND_WIDTH[0]);
+    assert.deepEqual([BLEND_POS[2], BLEND_WIDTH[2]], [0.5, 0.8], "the smoothstep(0.1, 0.9) of before");
 });

@@ -13,11 +13,13 @@ import { GENERATOR_IDS } from "../../shared/generators.mjs";
 // The palette is a ramp of 1 to 5 colours (u_c0…u_c4; with three it is the
 // three-stop palette of before, exactly), and the degradê a second ramp
 // (u_d0…u_d4) the first turns into across the screen (u_blend: 0 off,
-// 1 left → right, 2 top → bottom, 3 diagonal, 4 two patches drifting).
+// 1 left → right, 2 top → bottom, 3 diagonal, 4 two patches drifting);
+// u_bpos/u_bwid place the turn (G4: Posição, Largura; 0.5/0.8 = the
+// smoothstep(0.1, 0.9) of before; Mover keeps its own).
 const PRELUDE = `
 precision highp float;
 uniform vec2 u_res;
-uniform float u_time, u_speed, u_scale, u_intensity, u_spacing, u_persistence, u_contrast, u_audio;
+uniform float u_time, u_speed, u_scale, u_intensity, u_spacing, u_persistence, u_contrast, u_audio, u_bpos, u_bwid;
 uniform int u_detail, u_ncol, u_ncol2, u_blend;
 uniform vec3 u_c0, u_c1, u_c2, u_c3, u_c4, u_d0, u_d1, u_d2, u_d3, u_d4;
 float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
@@ -63,7 +65,8 @@ const CODA = `
         if (u_blend == 2) kxG = 1.0 - uv.y;
         else if (u_blend == 3) kxG = (uv.x + 1.0 - uv.y) * 0.5;
         else if (u_blend == 4) kxG = smoothstep(0.25, 0.75, noise(vec2(uv.x * 1.6 + u_time * 0.04, uv.y * 1.6 - u_time * 0.03)));
-        kxCol = mix(kxCol, ramp(s, u_ncol2, u_d0, u_d1, u_d2, u_d3, u_d4), smoothstep(0.1, 0.9, kxG));
+        float kxT = u_blend == 4 ? smoothstep(0.1, 0.9, kxG) : smoothstep(u_bpos - u_bwid * 0.5, u_bpos + u_bwid * 0.5, kxG);
+        kxCol = mix(kxCol, ramp(s, u_ncol2, u_d0, u_d1, u_d2, u_d3, u_d4), kxT);
     }
     gl_FragColor = vec4(kxCol, 1.0);
 }
