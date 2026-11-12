@@ -16,6 +16,9 @@ export function fitScale(boxWidth, textWidth, min = 0.55) {
 // by halves: a smaller font also rewraps, so the height is not linear in it.
 // The width keeps its own floor (fitScale); the height has none but this.
 export const HEIGHT_MIN = 0.15;
+// How far a song's line may shrink to stay one line before it wraps (the
+// projection's useFit and the Palco's lyrics, useBoxFit `oneLine`).
+export const LINE_MIN = 0.45;
 
 // Whether a text box holds its content (useBoxFit). A font's glyphs stand
 // past a 1.2 line box by a few % of its size (Geist: ~4 %), which the box

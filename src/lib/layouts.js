@@ -437,31 +437,45 @@ function bandCarries(band, ctx, extra) {
 // takes now. Toward each side, over the neighbours beyond its edge that are
 // not drawn (hidden, left out by their rule, empty), up to the farthest of
 // them — at the canvas's edge keeping the gap it had — and never past a
-// neighbour that is drawn. `isShown(el)` says which are.
+// neighbour that is drawn, a band drawn included (the Palco's strip and
+// bar: before, a drawn neighbour's DISTANCE was taken for its edge, and the
+// lyrics grew up to 8,5 % over the strip, owner 2026-11-12). `isShown(el)`
+// says which are.
 const overlaps = (a0, a1, b0, b1) => a0 < b1 - 0.01 && b0 < a1 - 0.01;
 export function grownRect(el, elements, isShown) {
     if (!el?.grow) return { x: el.x, y: el.y, w: el.w, h: el.h };
     let x0 = el.x, y0 = el.y, x1 = el.x + el.w, y1 = el.y + el.h;
-    const others = (elements || []).filter((o) => o.id !== el.id && o.type !== "band");
-    const side = (beyond, across, near, far, edge) => {
-        const there = others.filter((o) => across(o) && beyond(o));
-        const empty = there.filter((o) => !isShown(o));
+    const all = (elements || []).filter((o) => o.id !== el.id);
+    // What may be taken: elements not drawn (never a band: a band not drawn
+    // has nothing in it to measure by). What stops it: anything drawn.
+    const others = all.filter((o) => o.type !== "band");
+    const walls = all.filter((o) => isShown(o));
+    // `fwd`: growing toward higher coordinates (right, down). `lo`/`len`
+    // read an element along the axis, `across` keeps those in its way.
+    const side = (fwd, lo, len, across, from) => {
+        const near = (o) => (fwd ? lo(o) : lo(o) + len(o));
+        const far = (o) => (fwd ? lo(o) + len(o) : lo(o));
+        const beyond = (o) => (fwd ? lo(o) >= from - 0.5 : lo(o) + len(o) <= from + 0.5);
+        const empty = others.filter((o) => across(o) && beyond(o) && !isShown(o));
         if (!empty.length) return null;
-        const shown = there.filter((o) => isShown(o));
-        const gap = Math.max(0, Math.min(...empty.map(near)));
-        let to = edge(empty.map(far), gap);
-        if (shown.length) to = Math.min(to, Math.min(...shown.map(near)) - gap);
+        const gap = Math.max(0, Math.min(...empty.map((o) => Math.abs(near(o) - from))));
+        let to = fwd ? Math.max(...empty.map(far)) : Math.min(...empty.map(far));
+        if (fwd && to >= 99.9) to = 100 - gap;
+        if (!fwd && to <= 0.1) to = gap;
+        const wall = walls.filter((o) => across(o) && beyond(o));
+        if (wall.length) to = fwd ? Math.min(to, Math.min(...wall.map(near)) - gap) : Math.max(to, Math.max(...wall.map(near)) + gap);
         return to;
     };
+    const X = (o) => o.x, W = (o) => o.w, Y = (o) => o.y, H = (o) => o.h;
     const vert = (o) => overlaps(o.y, o.y + o.h, y0, y1);
-    const right = side((o) => o.x >= x1 - 0.5, vert, (o) => o.x - x1, (o) => o.x + o.w, (fars, gap) => { const f = Math.max(...fars); return f >= 99.9 ? 100 - gap : f; });
+    const right = side(true, X, W, vert, x1);
     if (right !== null && right > x1) x1 = right;
-    const left = side((o) => o.x + o.w <= x0 + 0.5, vert, (o) => x0 - (o.x + o.w), (o) => o.x, (fars, gap) => { const f = Math.min(...fars); return f <= 0.1 ? gap : f; });
+    const left = side(false, X, W, vert, x0);
     if (left !== null && left < x0) x0 = left;
     const horiz = (o) => overlaps(o.x, o.x + o.w, x0, x1);
-    const down = side((o) => o.y >= y1 - 0.5, horiz, (o) => o.y - y1, (o) => o.y + o.h, (fars, gap) => { const f = Math.max(...fars); return f >= 99.9 ? 100 - gap : f; });
+    const down = side(true, Y, H, horiz, y1);
     if (down !== null && down > y1) y1 = down;
-    const up = side((o) => o.y + o.h <= y0 + 0.5, horiz, (o) => y0 - (o.y + o.h), (o) => o.y, (fars, gap) => { const f = Math.min(...fars); return f <= 0.1 ? gap : f; });
+    const up = side(false, Y, H, horiz, y0);
     if (up !== null && up < y0) y0 = up;
     return { x: round1(x0), y: round1(y0), w: round1(x1 - x0), h: round1(y1 - y0) };
 }

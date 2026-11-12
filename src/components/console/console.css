@@ -289,7 +289,7 @@
 .console .mx-grid.is-n1 { grid-template: 1fr / 1fr; }
 .console .mx-grid.is-n2 { grid-template: 1fr / 1fr 1fr; }
 .console .mx-grid.is-n6 { grid-template: 1fr 1fr / 1fr 1fr 1fr; }
-.console .mx-count { position: absolute; top: 6px; left: 6px; z-index: var(--z-badge); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+.console .mx-count { position: absolute; top: var(--space-1); right: var(--space-1); z-index: var(--z-badge); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
 .console .mx:hover .mx-count, .console .mx:focus-within .mx-count { opacity: 1; pointer-events: auto; }
 .console .mx-tile { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--screen-bg); container-type: inline-size; }
 .console .mx-lbl { position: absolute; left: var(--space-1); bottom: var(--space-1); z-index: var(--z-badge); display: flex; align-items: center; gap: var(--space-1); max-width: calc(100% - 2 * var(--space-1)); padding-right: var(--space-2); border-radius: var(--radius-control); background: color-mix(in srgb, var(--bg-0) 82%, transparent); color: var(--fg-1); font: 500 var(--fs-meta)/1 var(--font-sans); }

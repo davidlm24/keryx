@@ -14,7 +14,7 @@ import { ringBell } from "@/lib/bell";
 import { usePrefs } from "@/hooks/useUser";
 import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
 import { refLine, refVersion } from "@/lib/bibleDisplay";
-import { fitScale, fitSearch, clampShift } from "@/lib/screenFit";
+import { fitScale, fitSearch, clampShift, LINE_MIN } from "@/lib/screenFit";
 import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
 import ActivityView from "./ActivityView";
 import { useContentFit } from "@/hooks/useBoxFit";
@@ -332,7 +332,7 @@ function verseNodes(text, numbers = "sup") {
 //   --ks-size times that share, and --ks-h for the small lines.
 // The theme's fine nudge then moves the text only inside that area
 // (clampShift). Nothing is ever cut at the screen's edge.
-const FIT_MIN = 0.45;
+const FIT_MIN = LINE_MIN;
 const NO_FIT = { scale: 1, wrap: false, h: 1, shift: null };
 // The theme's Margem (owner 2026-10-30, M = A): text_margin cqw each side,
 // 7/8 of it above and below; none set = screen.css's 8cqw / 7cqw.
