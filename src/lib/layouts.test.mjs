@@ -351,3 +351,14 @@ test("alertDock: the Aviso rápido sits beside the band on its side and the near
     assert.equal(high.bottom, 0); assert.equal(high.top, 10);
     assert.deepEqual(alertDock([normalizeElement({ type: "current" })], "top"), { top: 0, bottom: 0, cut: [] }, "no band: the whole screen");
 });
+
+test("factory:pastor: a strip, the monitor 16:9, the next items, stable ids", () => {
+    const pastor = FACTORY_LAYOUTS.find((l) => l.id === "factory:pastor");
+    const ids = pastor.elements.map((e) => e.id);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.ok(pastor.elements.some((e) => e.type === "band" && e.y === 0 && e.w === 100));
+    assert.ok(pastor.elements.every((e) => !e.box), "no cards");
+    const mon = pastor.elements.find((e) => e.id === "pastor_monitor");
+    assert.equal(mon.w, mon.h, "on a 16:9 screen, equal % keep the monitor 16:9");
+    assert.deepEqual(mon.props, { chords: false, labels: false });
+});

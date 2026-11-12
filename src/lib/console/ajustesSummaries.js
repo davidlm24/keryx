@@ -60,8 +60,10 @@ export function kindsSummary(rule, total) {
     const top = [rule?.top?.alert && "Aviso rápido", rule?.top?.logo && "Logo"].filter(Boolean);
     return `${(rule?.kinds || []).length} de ${total} tipos${top.length ? ` · por cima: ${top.join(", ")}` : " · nada por cima"}`;
 }
-// Comportamento keeps only what the KERYX already does by itself.
-export const COMPORTAMENTO_SUMMARY = "Já faz sozinho: monitor, rede e tela ligada";
+// What the KERYX already does by itself for an output: one line of
+// Diagnóstico (the Comportamento block, only sentences, went; owner
+// 2026-11-12, A = A).
+export const AUTO_LINE = "volta sozinha quando o monitor religa, reconecta na rede e não deixa o computador apagar a tela";
 
 // "Nome e ícone", folded at the end of Destino (T3 = A): "Telão · ícone
 // próprio", "Projeção · ícone padrão".

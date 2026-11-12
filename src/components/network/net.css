@@ -66,43 +66,8 @@
 .ns-chords-h button:active { background: var(--bg-3); }
 .ns-chords-h output { min-width: 6cqmin; text-align: center; font-size: 2cqmin; color: var(--fg-2); }
 
-/* ---- Tela do pastor: what the congregation sees, the time, what comes next ---- */
-.net-pastor { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 2.4cqmin 3cqmin; padding: 3cqmin 3.5cqmin; }
-.np-h { grid-column: 1 / -1; display: flex; align-items: center; gap: 2.5cqmin; }
-.np-h .np-who { flex: 1; min-width: 0; }
-.np-h .np-who b { display: block; font-size: 2.6cqmin; font-weight: 600; }
-.np-h .np-who span { display: block; font-size: 1.9cqmin; color: var(--fg-2); }
-.np-time { display: flex; flex-direction: column; align-items: flex-end; }
-.np-time b { font-size: calc(6cqmin * var(--kp-text, 1)); line-height: 1; font-weight: 500; }
-.np-time span { font-size: 1.9cqmin; color: var(--fg-2); margin-top: .5cqmin; }
-.np-time span.is-run { color: var(--air-fg); }
-.np-air { min-height: 0; display: flex; flex-direction: column; gap: 1.2cqmin; }
-.np-cap { display: flex; align-items: baseline; gap: 1.4cqmin; min-width: 0; }
-.np-cap .net-section.is-air { color: var(--air-fg); }
-.np-cap b { flex: 0 1 auto; min-width: 0; font-size: 3cqmin; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.np-cap span { flex: none; font-size: 2cqmin; color: var(--fg-2); }
-.np-mon { position: relative; width: 100%; max-height: 100%; aspect-ratio: 16 / 9; border-radius: 1.4cqmin; overflow: hidden; background: var(--screen-bg); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; isolation: isolate; align-self: start; }
-.np-mon > * { position: absolute; inset: 0; }
-.np-side { min-height: 0; display: flex; flex-direction: column; gap: 1.6cqmin; overflow: hidden; }
-.np-list { display: flex; flex-direction: column; gap: .8cqmin; }
-.np-item { display: flex; align-items: baseline; gap: 1.4cqmin; padding: 1.4cqmin 1.8cqmin; border-radius: 1.2cqmin; background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); }
-.np-item b { flex: 1; min-width: 0; font-size: calc(2.8cqmin * var(--kp-text, 1)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.np-item span { flex: none; font-size: calc(1.9cqmin * var(--kp-text, 1)); color: var(--fg-3); }
-.np-item.is-next { background: color-mix(in srgb, var(--fg-3) 14%, transparent); box-shadow: var(--next-ring); }
-.np-empty { font-size: 2.2cqmin; color: var(--fg-3); }
-.np-prog { display: flex; gap: .6cqmin; }
-.np-prog i { flex: 1; height: 1cqmin; min-height: 5px; border-radius: 999px; background: var(--bg-3); }
-.np-prog i.is-done { background: color-mix(in srgb, var(--air) 45%, var(--bg-3)); }
-.np-prog i.is-on { background: var(--air); }
-/* A tablet held upright: the screen on top, the rest under it. */
-@container net (orientation: portrait) {
-    .net-pastor { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
-    .np-time b { font-size: calc(7cqmin * var(--kp-text, 1)); }
-}
-
 /* ---- Vídeo: the clip's name over the picture ---- */
 .net-vtitle { position: absolute; top: max(14px, 3vmin); left: 50%; transform: translateX(-50%); z-index: 10; pointer-events: none; padding: 1.2vmin 2.4vmin; border-radius: 999px; background: #000000a6; color: #fff; font-family: var(--font-sans); font-size: max(15px, 2.6vmin); font-weight: 600; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
-.np-cap .np-since { font-variant-numeric: tabular-nums; color: var(--fg-3); }
 
 /* An output page on a screen of the network (owner 2026-11-01, S2 = A;
    ScreenStart.jsx sets html.ks-net and the box, src/lib/network/screenStage.js):

@@ -186,7 +186,7 @@
    renderer, a screen's design, the Palco, the Pastor, the Aviso rápido
    beside them, the Transmissão band — so the console's stills match the
    outputs (its monitors opt out in bundle.css). */
-html.ks-output-doc, .ks, .kl, .ks-alert-layer, .net:has(> .net-pastor), .kx-stream-band { forced-color-adjust: none; }
+html.ks-output-doc, .ks, .kl, .ks-alert-layer, .kx-stream-band { forced-color-adjust: none; }
 
 /* The song's beginning as its title (introMode "title", 2026-11-12). */
 .ks-intro { display: flex; flex-direction: column; align-items: center; gap: 0.35em; }

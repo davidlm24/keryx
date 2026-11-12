@@ -5,7 +5,7 @@
 // or a row with nothing set, is the output exactly as before.
 import { RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
 import { themeBackgroundArgs } from "./console/themeCore.js";
-import { normalizeLayout, findLayout, seedLayoutId, PALCO_PARTS } from "./layouts.js";
+import { normalizeLayout, findLayout, seedLayoutId, PALCO_PARTS, PASTOR_PARTS } from "./layouts.js";
 import { RULE_KIND_IDS, TEXT_KINDS, ruleKind, ruleKindOf, stageRuleKind } from "./contentKinds.js";
 import { mainLayer, alertLookOf } from "../../shared/live-state.mjs";
 
@@ -299,6 +299,7 @@ export function designOf(pref, layoutRows) {
 // keeps the chords off the lyrics). The Editor shows the same. Null for a
 // screen whose page still draws itself (the Pastor until its turn).
 export function pageDesign(path, pref) {
+    if (path === "/PastorView") return pastorDesign(pref);
     if (path !== "/StageView") return null;
     const base = findLayout("factory:palco");
     const opts = stageOptions(pref);
@@ -308,6 +309,22 @@ export function pageDesign(path, pref) {
         let out = off.has(e.id) ? { ...e, hidden: true } : e;
         if (!opts.chords && e.id === "palco_current") out = { ...out, props: { ...out.props, chords: false } };
         return out;
+    }) };
+}
+
+// The Pastor the same way (owner 2026-11-12, P = A): Relógio off hides the
+// clock and the service's time, Próximos itens "Não" the list (else its
+// count), Cifra and Nome da parte dress the monitor of the congregation's
+// screen.
+function pastorDesign(pref) {
+    const base = findLayout("factory:pastor");
+    const opts = pastorOptions(pref);
+    const off = new Set([...(opts.clock ? [] : PASTOR_PARTS.clock), ...(opts.next_count ? [] : PASTOR_PARTS.next)]);
+    return { ...base, elements: base.elements.map((e) => {
+        if (off.has(e.id)) return { ...e, hidden: true };
+        if (e.id === "pastor_next") return { ...e, props: { ...e.props, count: opts.next_count } };
+        if (e.id === "pastor_monitor") return { ...e, props: { ...e.props, chords: opts.chords, labels: opts.labels } };
+        return e;
     }) };
 }
 

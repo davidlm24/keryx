@@ -472,8 +472,20 @@ test("pageDesign: the Palco's factory design dressed by its switches; null elsew
     assert.equal(noNext.elements.find((e) => e.id === "palco_next_page").hidden, true);
     const noClock = pageDesign("/StageView", normalizePref({ options: { clock: false } }));
     assert.equal(noClock.elements.find((e) => e.id === "palco_clock").hidden, true);
-    assert.equal(pageDesign("/PastorView", normalizePref(null)), null);
     assert.equal(pageDesign("/Projection", normalizePref(null)), null);
+    // The Pastor too (owner 2026-11-12, P = A).
+    const pastor = pageDesign("/PastorView", normalizePref(null));
+    assert.equal(pastor.id, "factory:pastor");
+    assert.ok(pastor.elements.every((e) => !e.hidden));
+    assert.equal(pastor.elements.find((e) => e.id === "pastor_next").props.count, 3);
+    const pNoClock = pageDesign("/PastorView", normalizePref({ options: { clock: false } }));
+    assert.equal(pNoClock.elements.find((e) => e.id === "pastor_clock").hidden, true);
+    assert.equal(pNoClock.elements.find((e) => e.id === "pastor_service_time").hidden, true);
+    const pNoNext = pageDesign("/PastorView", normalizePref({ options: { next_count: 0 } }));
+    assert.equal(pNoNext.elements.find((e) => e.id === "pastor_next").hidden, true);
+    assert.equal(pageDesign("/PastorView", normalizePref({ options: { next_count: 5 } })).elements.find((e) => e.id === "pastor_next").props.count, 5);
+    const chords = pageDesign("/PastorView", normalizePref({ options: { chords: true, labels: true } })).elements.find((e) => e.id === "pastor_monitor");
+    assert.deepEqual([chords.props.chords, chords.props.labels], [true, true]);
 });
 
 test("screenDesign: own design, the old factory layout_id (not own), none", () => {
@@ -483,6 +495,8 @@ test("screenDesign: own design, the old factory layout_id (not own), none", () =
     assert.equal(old.own, false); assert.equal(old.layout.id, "factory:palco");
     const none = screenDesign("/StageView", normalizePref(null), []);
     assert.equal(none.own, false); assert.equal(none.layout.id, "factory:palco");
-    assert.deepEqual(screenDesign("/PastorView", normalizePref(null), []), { layout: null, own: false });
-    assert.equal(screenDesign("/PastorView", normalizePref({ layout_id: "factory:pastor" }), []).own, true, "the Pastor has no page design yet");
+    const pastor = screenDesign("/PastorView", normalizePref(null), []);
+    assert.equal(pastor.own, false); assert.equal(pastor.layout.id, "factory:pastor");
+    assert.equal(screenDesign("/PastorView", normalizePref({ layout_id: "factory:pastor" }), []).own, false, "the old factory id is the page");
+    assert.deepEqual(screenDesign("/LyricProjection", normalizePref(null), []), { layout: null, own: false });
 });

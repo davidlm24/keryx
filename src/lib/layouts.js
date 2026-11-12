@@ -54,7 +54,7 @@ export const ELEMENT_TYPES = [
     { id: "song_time", name: "Tempo na música", icon: "clock", group: "musica", w: 12, h: 10, size: 3.4, weight: "bold", when: "content", label: "Na música", box: true, props: {} },
     { id: "chords", name: "Cifra", icon: "music", group: "musica", w: 31, h: 50, size: 2.2, font: "mono", when: "content", label: "Cifra", box: true, props: {} },
     { id: "notes", name: "Notas para músicos", icon: "edit", group: "musica", w: 94, h: 8, size: 2.4, when: "content", props: {} },
-    { id: "monitor", name: "Monitor da projeção", icon: "projector", group: "tela", w: 60, h: 58, size: 2, when: "always", props: {} },
+    { id: "monitor", name: "Monitor da projeção", icon: "projector", group: "tela", w: 60, h: 58, size: 2, when: "always", props: { chords: false, labels: false } },
     { id: "progress", name: "Progresso dos slides", icon: "dot", group: "setlist", w: 94, h: 3, size: 1, when: "content", props: {} },
     { id: "logo", name: "Logo da igreja", icon: "logo", group: "tela", w: 10, h: 16, size: 2, when: "always", props: {} },
     { id: "text", name: "Texto fixo", icon: "text", group: "tela", w: 40, h: 8, size: 3, when: "always", props: { text: "Texto" } },
@@ -186,6 +186,13 @@ export const PALCO_PARTS = {
     notes: ["palco_notes"],
     next: ["palco_next", "palco_next_page"],
 };
+// The Pastor's (pastorOptions): the Relógio hides the clock and the
+// service's time; Próximos itens "Não" hides the list (its count is the
+// list's count; Cifra and Nome da parte dress the monitor).
+export const PASTOR_PARTS = {
+    clock: ["pastor_clock", "pastor_service_time"],
+    next: ["pastor_next"],
+};
 const chip = (id, type, x, w, extra = {}) => ({ id, type, x, y: 1, w, h: 8, size: 3, valign: "middle", inline: true, box: false, ...extra });
 export const FACTORY_LAYOUTS = [
     normalizeLayout({
@@ -220,14 +227,21 @@ export const FACTORY_LAYOUTS = [
         id: "factory:pastor", factory: true, name: "Pastor (modelo)", category: "pastor",
         background: { song_image: false },
         elements: [
-            el("church", 3, 3, 50, 6, { size: 2.6, weight: "bold" }),
-            el("date", 3, 9, 50, 5, { size: 1.9 }),
-            el("clock", 60, 3, 37, 8, { size: 6, align: "right" }),
-            el("service_time", 60, 11, 37, 5, { size: 1.9, align: "right", label: "Culto há" }),
-            el("air_title", 3, 17, 58, 5, { size: 3, weight: "bold", label: "No ar" }),
-            el("monitor", 3, 23, 58, 58),
-            el("progress", 3, 83, 58, 3),
-            el("next_items", 65, 17, 32, 80, { size: 2.8, label: "Próximo", props: { count: 3 } }),
+            // One drawing for the Pastor too (owner 2026-11-12, mockup
+            // "Telas · fase 2", P = A): a strip on top with the church, the
+            // date, the service's time and the clock; what is on air and how
+            // long, the congregation's screen big, and the next items as a
+            // list. Stable ids: PASTOR_PARTS and its switches name them.
+            { id: "pastor_strip", type: "band", x: 0, y: 0, w: 100, h: 10 },
+            chip("pastor_church", "church", 3, 36, { size: 3.2, weight: "bold" }),
+            chip("pastor_date", "date", 40, 26, { size: 2.2, color: "#a19b90" }),
+            chip("pastor_service_time", "service_time", 67, 17, { size: 2.6, align: "right", when: "always" }),
+            chip("pastor_clock", "clock", 86, 11, { size: 4, weight: "bold", align: "right", when: "always" }),
+            { id: "pastor_air", type: "air_title", x: 3, y: 12, w: 50, h: 6, size: 2.8, weight: "bold", valign: "middle", inline: true, label: "No ar" },
+            { id: "pastor_air_for", type: "air_for", x: 54, y: 12, w: 12, h: 6, size: 2.2, align: "right", valign: "middle", inline: true, label: "Há" },
+            { id: "pastor_monitor", type: "monitor", x: 3, y: 19, w: 63, h: 63 },
+            { id: "pastor_progress", type: "progress", x: 3, y: 85, w: 63, h: 3 },
+            { id: "pastor_next", type: "next_items", x: 69, y: 12, w: 28, h: 80, size: 2.6, label: "Próximo", props: { count: 3 } },
         ],
     }),
     // The projector as it is, with a clock or timer on air in the corner

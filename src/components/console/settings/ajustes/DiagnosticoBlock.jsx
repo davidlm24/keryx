@@ -3,14 +3,15 @@ import { CfgGroup, FormRow } from "../parts";
 import { useDisplays, useNetworkInfo } from "../useDisplays";
 import { isDefaultSettings, ruleOf } from "@/lib/outputPrefs";
 import { ruleKind, ruleKindOf } from "@/lib/contentKinds";
-import { diagnosticoSummary, estadoText, ajustesLine, netClientsLine, showsNowText } from "@/lib/console/ajustesSummaries";
+import { diagnosticoSummary, estadoText, ajustesLine, netClientsLine, showsNowText, AUTO_LINE } from "@/lib/console/ajustesSummaries";
 
 // Diagnóstico (Editor da tela › Ajustes, Rodada H2): read-only, closed — the
 // state of the window, who on the network shows this page, whether the screen
-// has settings and a design of its own, and what it shows right now.
+// has settings and a design of its own, what it shows right now, and what
+// the KERYX already does by itself (the old Comportamento, A = A).
 // (Identificar and Testar belong to a later front.)
 export default function DiagnosticoBlock({ ctx }) {
-    const { path, pref, renderer, c } = ctx;
+    const { path, pref, renderer, c, isStream } = ctx;
     const { outputs, number } = useDisplays(c.say);
     const { info } = useNetworkInfo();
     const o = outputs.find((x) => x.key === path) || null;
@@ -29,6 +30,9 @@ export default function DiagnosticoBlock({ ctx }) {
                 </FormRow>
                 {renderer && <FormRow k="Mostrando agora">
                     <span className="cfg-diag-v">{showsNowText(c.live, ruleOf(pref, path), { kindOf: ruleKindOf, label: (k) => ruleKind(k).label })}</span>
+                </FormRow>}
+                {!isStream && <FormRow k="Já faz sozinho">
+                    <span className="cfg-diag-v kx-meta">{AUTO_LINE}</span>
                 </FormRow>}
             </div>
         </CfgGroup>

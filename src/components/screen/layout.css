@@ -24,6 +24,9 @@
 .kl-el.is-inline.kl-al-center { justify-content: center; } .kl-el.is-inline.kl-al-right { justify-content: flex-end; }
 .kl-el.is-inline .kl-lab { width: auto; }
 .kl-el.is-inline .kl-v { flex: 0 1 auto; min-width: 0; white-space: nowrap; text-overflow: ellipsis; }
+/* A small screen (Telas e saídas' cards, the Multiview, a narrow tablet:
+   owner 2026-11-12, M = A): the chips keep only their values. */
+@container (max-width: 520px) { .kl-el.is-inline .kl-lab { display: none; } }
 .kl-sub { margin-left: 1.2cqmin; font-size: .72em; font-weight: 400; color: var(--fg-3); }
 /* The Aviso rápido docked beside a band (alertDock), and the elements that
    make room for it. */
@@ -71,8 +74,8 @@
    can be picked and moved — dashed when their Aparece rule or the lack of
    anything to say leaves them out in this state (is-rule, is-empty),
    dotted and fainter when their eye hides them (is-off; Rodada G2). */
-.kl.is-ghost .kl-el.is-hidden { opacity: .35; outline: 1px dashed var(--fg-3); outline-offset: -1px; }
-.kl.is-ghost .kl-el.is-hidden.is-off { opacity: .2; outline-style: dotted; }
+.kl.is-ghost .kl-el.is-hidden { opacity: .25; outline: 1px dashed var(--fg-3); outline-offset: -1px; }
+.kl.is-ghost .kl-el.is-hidden.is-off { opacity: .15; outline-style: dotted; }
 .kl-ghost { color: var(--fg-3); font-size: .7em; }
 
 /* The text bar's look on an element (Rodada P, P8-3): the underline on its
