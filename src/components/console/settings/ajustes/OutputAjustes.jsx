@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Btn } from "../../kx";
 import { FormRow } from "../parts";
-import { PREF_OUTPUTS, normalizePref, isDefaultSettings, designOf, ruleOf } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, normalizePref, isDefaultSettings, screenDesign, ruleOf } from "@/lib/outputPrefs";
 import { useLayoutRows } from "@/hooks/useLayout";
 import useOutputPrefSave from "./useOutputPrefSave";
 import DestinoBlock from "./DestinoBlock";
@@ -28,7 +28,9 @@ export default function OutputAjustes({ output, row, themes = [], c, alertSample
     const { key: path, label } = output;
     const pref = normalizePref(row);
     const layoutRows = useLayoutRows();
-    const design = designOf(pref, layoutRows);
+    // Only a design of its own: the Palco's factory one is dressed by the switches.
+    const shown = screenDesign(path, pref, layoutRows);
+    const design = shown.own ? shown.layout : null;
     const { save, saveOpt, saveOptions, options, forgetOptions } = useOutputPrefSave(path, row, pref, c.say);
     const [confirmReset, setConfirmReset] = useState(false);
     const reset = () => {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 import {
     ELEMENT_TYPES, TEXT_TYPES, LOOK_TYPES, ELEMENT_GROUPS, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
-    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, elementState, whenLabel, ghostReason, slidePage, layoutHasTimer, seedLayoutId, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
+    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, elementState, whenLabel, ghostReason, slidePage, layoutHasTimer, seedLayoutId, NEXT_SHOWS, PALCO_PARTS, oneLine, elementLabel, grownRect, alertDock, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
 } from "./layouts.js";
 
 const T0 = Date.UTC(2026, 9, 12, 19, 30, 0);
@@ -258,4 +258,96 @@ test("a design counts time only with a clock, the date, a timer or a span", asyn
     assert.equal(layoutCountsTime({ elements: [{ type: "lyrics" }, { type: "title" }] }), false);
     for (const type of ["clock", "date", "timer", "service_time", "air_for", "song_time"]) assert.equal(layoutCountsTime({ elements: [{ type: "lyrics" }, { type }] }), true, type);
     assert.equal(layoutCountsTime(null), false);
+});
+
+// ---- One drawing per screen: the Palco's factory design (owner 2026-11-12) ----
+
+test("factory:palco: two bands, the chips inline, only notes and the Cifra in a box, stable ids", () => {
+    const palco = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco");
+    const ids = palco.elements.map((e) => e.id);
+    assert.equal(new Set(ids).size, ids.length, "unique ids");
+    const bands = palco.elements.filter((e) => e.type === "band");
+    assert.equal(bands.length, 2);
+    assert.ok(bands.some((b) => b.y === 0 && b.w === 100), "the strip on top");
+    assert.ok(bands.some((b) => b.y + b.h >= 99.5 && b.w === 100), "the bar at the bottom");
+    assert.deepEqual(palco.elements.filter((e) => e.box).map((e) => e.type).sort(), ["chords", "notes"]);
+    for (const id of ["palco_title", "palco_key", "palco_bpm", "palco_next"]) assert.equal(palco.elements.find((e) => e.id === id).inline, true, id);
+    assert.equal(palco.elements.find((e) => e.id === "palco_current").grow, true);
+    // Every switch names ids that exist.
+    for (const list of Object.values(PALCO_PARTS)) for (const id of list) assert.ok(ids.includes(id), id);
+});
+
+test("normalizeElement: inline, grow and the Próximo's show default off/both; an old save reads the same", () => {
+    const old = normalizeElement({ type: "next", x: 3, y: 86, w: 80, h: 10, box: true });
+    assert.equal(old.inline, false); assert.equal(old.grow, false); assert.equal(old.props.show, "both");
+    assert.equal(normalizeElement({ type: "next", props: { show: "nope" } }).props.show, "both");
+    assert.equal(normalizeElement({ type: "next", props: { show: "page" } }).props.show, "page");
+    assert.deepEqual(NEXT_SHOWS.map(([k]) => k), ["both", "text", "page"]);
+});
+
+test("the introduction: no slide on air, slide 1 next, the part says Introdução", () => {
+    const live = song();
+    const ctx = layoutContext({ live: { ...live, content: { ...live.content, intro: true } }, now: T0 });
+    assert.equal(ctx.intro, true);
+    assert.equal(ctx.current.label, "Introdução");
+    assert.equal(ctx.next.text, "Grande é o Senhor");
+    assert.equal(elementText(normalizeElement({ type: "part" }), ctx), "Introdução");
+});
+
+test("part, next inline and its show, notes with the slide's own note", () => {
+    const live = applyOp(emptyState(T0), "content.show", {
+        kind: "lyrics", title: "X", slides: [{ text: "a", label: "Refrão" }, { text: "b\nc" }],
+        stage: { musician_notes: "Intro 2x", slide_notes: ["só violão"] },
+    }, T0);
+    const ctx = layoutContext({ live, now: T0 });
+    assert.equal(elementText(normalizeElement({ type: "part" }), ctx), "Refrão");
+    assert.equal(elementText(normalizeElement({ type: "next", inline: true }), ctx), "b / c");
+    assert.equal(elementText(normalizeElement({ type: "next" }), ctx), "b\nc");
+    assert.equal(elementText(normalizeElement({ type: "next", props: { show: "page" } }), ctx), "");
+    assert.equal(elementText(normalizeElement({ type: "notes" }), ctx), "Intro 2x\nsó violão");
+    assert.equal(oneLine(" a \n\n b "), "a / b");
+});
+
+test("a presentation: the part counts pages, the labels change, Próximo shows the page or not", () => {
+    const live = applyOp(emptyState(T0), "content.show", { kind: "presentation", title: "Slides", slides: [{ image_url: "/p1.png" }, { image_url: "/p2.png" }] }, T0);
+    const ctx = layoutContext({ live, now: T0 });
+    assert.equal(elementText(normalizeElement({ type: "part" }), ctx), "1/2");
+    assert.equal(elementLabel(normalizeElement({ type: "part" }), ctx), "Página");
+    assert.equal(elementLabel(normalizeElement({ type: "song_time" }), ctx), "No ar");
+    assert.equal(elementLabel(normalizeElement({ type: "song_time", label: "Meu" }), ctx), "Meu");
+    assert.equal(elementHasContent(normalizeElement({ type: "next", props: { show: "text" } }), ctx), false);
+    assert.equal(elementHasContent(normalizeElement({ type: "next", props: { show: "page" } }), ctx), true);
+});
+
+test("a band is drawn only while it carries something shown", () => {
+    const band = normalizeElement({ id: "b", type: "band", x: 0, y: 88, w: 100, h: 12 });
+    const next = normalizeElement({ id: "n", type: "next", x: 3, y: 89, w: 80, h: 10 });
+    const elements = [band, next];
+    const on = layoutContext({ live: song(), now: T0 });
+    const last = layoutContext({ live: applyOp(song(), "content.goTo", { index: 1 }, T0), now: T0 });
+    assert.equal(elementState(band, on, { elements }), "shown");
+    assert.equal(elementState(band, last, { elements }), "empty", "no next slide: the bar goes");
+    assert.equal(elementState(band, on, { elements: [band, { ...next, hidden: true }] }), "empty");
+});
+
+test("grownRect: the lyrics take the room of neighbours not drawn, never past one drawn", () => {
+    const cur = normalizeElement({ id: "c", type: "current", x: 3, y: 18, w: 61, h: 69, grow: true });
+    const chords = normalizeElement({ id: "k", type: "chords", x: 66, y: 18, w: 31, h: 69 });
+    const shown = (ids) => (o) => ids.includes(o.id);
+    assert.deepEqual(grownRect(cur, [cur, chords], shown(["c", "k"])), { x: 3, y: 18, w: 61, h: 69 });
+    assert.deepEqual(grownRect(cur, [cur, chords], shown(["c"])), { x: 3, y: 18, w: 94, h: 69 }, "up to the chords' far edge");
+    const notes = normalizeElement({ id: "n", type: "notes", x: 3, y: 11.5, w: 94, h: 6 });
+    assert.deepEqual(grownRect(cur, [cur, notes], shown(["c"])), { x: 3, y: 11.5, w: 61, h: 75.5 }, "up over the notes");
+    assert.deepEqual(grownRect({ ...cur, grow: false }, [cur, chords], shown(["c"])), { x: 3, y: 18, w: 61, h: 69 });
+});
+
+test("alertDock: the Aviso rápido sits beside the band on its side and the nearest elements make room", () => {
+    const palco = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco");
+    const all = () => true;
+    const low = alertDock(palco.elements, "bottom", all);
+    assert.equal(low.top, 0); assert.ok(low.bottom >= 10 && low.bottom <= 12);
+    assert.ok(low.cut.includes("palco_current"));
+    const high = alertDock(palco.elements, "top", all);
+    assert.equal(high.bottom, 0); assert.equal(high.top, 10);
+    assert.deepEqual(alertDock([normalizeElement({ type: "current" })], "top"), { top: 0, bottom: 0, cut: [] }, "no band: the whole screen");
 });

@@ -13,15 +13,15 @@ import { mainLayer, emptyState } from "@shared/live-state.mjs";
 import {
     ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
     normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, FACTORY_LAYOUTS, seedLayoutId,
-    layoutContext, elementState, whenLabel, ghostReason,
+    layoutContext, elementState, whenLabel, ghostReason, NEXT_SHOWS, PALCO_PARTS,
 } from "@/lib/layouts";
 import {
     ELEMENT_HINTS, elementBar, barToElement, ALIGN_ACTIONS, alignElements, distributeElements, moveElements, gridRect, cleanGrid, GRID_STEPS,
-    churchModels, modelFields, modelNameTaken, categoryLabel,
+    churchModels, modelFields, modelNameTaken, categoryLabel, fromOldPalco, resetWords, switchReason,
 } from "@/lib/layoutEditor";
 import { clickSelection, EMPTY_SELECTION } from "@/lib/console/multiSelect";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
-import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars, ruleOf, noticeOnly, alertOf, churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, outputLook, normalizePref, screenDesign, pageDesign, stageOptions, prefState, prefVars, ruleOf, noticeOnly, alertOf, churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
 import { usePrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, sampleNotice, sampleAlert, sampleTimer, SAMPLE_ITEMS } from "../console/settings/sample";
@@ -54,9 +54,13 @@ export const EDITOR_SCREENS = [...PREF_OUTPUTS, "/StageView", "/PastorView", "/S
 // the screen itself is the identity; owner 2026-10-13).
 const designFields = (d) => { if (!d) return null; const f = layoutFields(normalizeLayout(d)); return { elements: f.elements, background: f.background }; };
 const CATEGORY = { "/StageView": "palco", "/PastorView": "pastor" };
-// The page's ready design, as a fresh draft for this screen.
-const seedFor = (path) => {
+// The page's ready design, as a fresh draft for this screen: the Palco's is
+// the drawing the screen shows itself, dressed by its switches (one drawing,
+// owner 2026-11-12: pageDesign), its element ids kept.
+const seedFor = (path, pref = null) => {
     const cat = CATEGORY[path] || "publico";
+    const page = pageDesign(path, pref);
+    if (page) return normalizeLayout({ ...page, id: "", name: "", category: cat, factory: false });
     const f = findLayout(seedLayoutId(path), []);
     return normalizeLayout(f ? { ...duplicateLayout(f), name: "", category: cat, factory: false } : newLayout(cat));
 };
@@ -148,18 +152,28 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
             if (!alive) return;
             const r = rows?.[0] || null;
             const legacy = r && !r.design && r.layout_id ? await keryx.entities.ScreenLayout.list().catch(() => []) : [];
-            const base = designOf(normalizePref(r), legacy);
+            const p = normalizePref(r);
+            const { layout: base, own: mine } = screenDesign(path, p, legacy);
             loaded.current = true;
-            const start = base ? normalizeLayout({ ...base, factory: false }) : seedFor(path);
+            const start = base && mine ? normalizeLayout({ ...base, factory: false }) : seedFor(path, p);
             setDraft(start);
             setSaved(start);
             resetHistory(start);
-            setOwn(Boolean(base));
+            setOwn(Boolean(base && mine));
         }).catch(() => { if (!alive) return; loaded.current = true; const seed = seedFor(path); setDraft(seed); setSaved(seed); resetHistory(seed); });
         return () => { alive = false; };
     }, [path, isStream, resetHistory]);
 
     const dirty = useMemo(() => !sameJson(designFields(draft), designFields(saved)), [draft, saved]);
+    // The Palco's default drawing follows its switches (Ajustes › Conteúdo)
+    // while it is not its own and nothing was changed here.
+    const switches = path === "/StageView" ? JSON.stringify(stageOptions(pref)) : "";
+    useEffect(() => {
+        if (!loaded.current || own || dirty || !switches) return;
+        const seed = seedFor(path, pref);
+        if (sameJson(designFields(seed), designFields(saved))) return;
+        setDraft(seed); setSaved(seed); resetHistory(seed);
+    }, [switches]); // eslint-disable-line react-hooks/exhaustive-deps
     const set = (patch) => { setConfirm(null); setDraft((d) => ({ ...d, ...patch })); };
     const setEl = (id, patch) => setDraft((d) => ({ ...d, elements: d.elements.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
     const setProp = (id, k, v) => setDraft((d) => ({ ...d, elements: d.elements.map((e) => (e.id === id ? { ...e, props: { ...e.props, [k]: v } } : e)) }));
@@ -194,7 +208,8 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     // Save: the design on THIS screen's OutputPref (layout_id cleared — the
     // old pointer migrates into the row the first time it is saved).
     const save = async () => {
-        if (!draft) return null;
+        // Nothing changed: nothing written (opening the Editor never freezes a copy).
+        if (!draft || !dirty) return null;
         setBusy(true);
         try {
             const fields = { design: designFields(draft), layout_id: "" };
@@ -212,12 +227,12 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     // Voltar à página padrão: the design goes, the page draws itself again
     // and the canvas starts over from its ready design.
     const resetToPage = async () => {
-        if (askCtx) { if (!(await askCtx({ title: "Voltar à página padrão?", text: `O desenho próprio de ${name} sai; a tela volta a se desenhar sozinha.`, ok: "Voltar ao padrão", danger: true }))) return; }
+        if (askCtx) { const w = resetWords(path, name); if (!(await askCtx({ title: w.title, text: w.text, ok: "Voltar ao padrão", danger: true }))) return; }
         else if (confirm !== "reset") { setConfirm("reset"); say(`Clique de novo: ${name} volta ao desenho padrão da página.`); return; }
         setConfirm(null);
         try {
             if (row && own) await keryx.entities.OutputPref.update(row.id, { design: null, layout_id: "" });
-            const seed = seedFor(path);
+            const seed = seedFor(path, pref);
             setDraft(seed); setSaved(seed); history.reset(seed); setSel(null); setOwn(false);
             say(`${name} voltou à página padrão.`);
         } catch (err) { say(err?.message || "Não foi possível."); }
@@ -304,7 +319,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
         if (libScrim) { if (!escRef && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); libScrim.click(); } return; }
         if (document.querySelector(".console .ctx-scrim, .console .confirm-scrim")) return;
         const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft && dirty) save(); return; }
         const hk = draft ? historyKey(e, hasOwnUndo(e.target)) : null;
         if (hk) { e.preventDefault(); e.stopPropagation(); setConfirm(null); history[hk](); return; }
         if (e.key === "Escape") {
@@ -372,7 +387,9 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     // eye, the Aparece rule, nothing to say), as the canvas computes it.
     // The rules read no clock: the time now is enough (the canvas ticks its own).
     const elCtx = layoutContext({ live, now: keryx.live.now(), upcoming: SAMPLE_ITEMS, hasService: true, church });
-    const stateOf = (el) => elementState(el, elCtx, { logoUrl: church.logo });
+    const stateOf = (el) => elementState(el, elCtx, { logoUrl: church.logo, elements: draft?.elements || [] });
+    // A part of the Palco's default drawing switched off in its Ajustes says so.
+    const reasonOf = (el, st) => (path === "/StageView" && switchReason(el, PALCO_PARTS, own)) || ghostReason(el, st);
     const selState = selected ? stateOf(selected) : "shown";
 
     const upload = async (file, apply) => {
@@ -401,7 +418,8 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     };
     const copySources = EDITOR_SCREENS.filter((p) => p !== path && p !== "/StreamView").map((p) => {
         const r = prefRows.find((x) => x.screen_path === p) || null;
-        return { path: p, name: outputLook(p, r).name, design: designOf(normalizePref(r), []) };
+        const d = screenDesign(p, normalizePref(r), []);
+        return { path: p, name: outputLook(p, r).name, design: d.own ? d.layout : null };
     }).filter((s) => s.design);
     // The church's models (Rodada P, P8-3; layoutEditor.js): ScreenLayout
     // rows, synced between the church's computers, listed beside the
@@ -505,7 +523,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                                     onClick={(e) => pickEl(el.id, e)}
                                     dragProps={{ ...elSort.rowProps(di, { label: t.name, icon: t.icon }), style: elSort.rowStyle(di) }}
                                     actions={<>
-                                        <IconBtn name={el.hidden ? "eye-off" : "eye"} small className={st === "rule" || st === "empty" ? "le-eye-ghost" : ""} title={el.hidden ? "Mostrar o elemento" : st === "shown" ? "Esconder o elemento (ele fica no lugar)" : `${ghostReason(el, st)} O olho esconde o elemento.`} aria-label={`${el.hidden ? "Mostrar" : "Esconder"} ${t.name}`} onClick={(e) => { e.stopPropagation(); setEl(el.id, { hidden: !el.hidden }); }} />
+                                        <IconBtn name={el.hidden ? "eye-off" : "eye"} small className={st === "rule" || st === "empty" ? "le-eye-ghost" : ""} title={el.hidden ? "Mostrar o elemento" : st === "shown" ? "Esconder o elemento (ele fica no lugar)" : `${reasonOf(el, st)} O olho esconde o elemento.`} aria-label={`${el.hidden ? "Mostrar" : "Esconder"} ${t.name}`} onClick={(e) => { e.stopPropagation(); setEl(el.id, { hidden: !el.hidden }); }} />
                                         <IconBtn name="x" small title="Tirar da tela" aria-label={`Tirar ${t.name} da tela`} onClick={(e) => { e.stopPropagation(); remove(el.id); }} />
                                     </>}>
                                     {rule && <span className={`le-rule ${st === "rule" ? "is-out" : ""}`} title={`Aparece: ${rule}`}>{rule}</span>}
@@ -571,8 +589,13 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                                     {LOOK_TYPES.has(selected.type) && <>
                                         <span className="k">Vertical</span><Seg small label="Vertical" value={selected.valign} options={VALIGNS} onChange={(v) => setEl(selected.id, { valign: v })} />
                                         <span className="k">Caixa</span>
-                                        <span className="nv-inline"><Switch on={selected.box} onChange={(on) => setEl(selected.id, { box: on })} label="Caixa atrás do elemento" /><span className="kx-meta">um cartão atrás, como as fichas do Palco</span></span>
+                                        <span className="nv-inline"><Switch on={selected.box} onChange={(on) => setEl(selected.id, { box: on })} label="Caixa atrás do elemento" /><span className="kx-meta">um cartão atrás do elemento</span></span>
+                                        <span className="k">Rótulo ao lado</span>
+                                        <span className="nv-inline"><Switch on={selected.inline} onChange={(on) => setEl(selected.id, { inline: on })} label="Rótulo ao lado do valor" /><span className="kx-meta">TOM G numa linha só, … quando não cabe</span></span>
+                                        <span className="k">Ocupa o lugar vazio</span>
+                                        <span className="nv-inline"><Switch on={selected.grow} onChange={(on) => setEl(selected.id, { grow: on })} label="Ocupa o lugar vazio" /><span className="kx-meta">na tela, cresce sobre os vizinhos que não aparecem</span></span>
                                     </>}
+                                    {selected.type === "next" && <><span className="k">Mostra</span><Seg small label="O que o Próximo mostra" value={selected.props.show || "both"} options={NEXT_SHOWS} onChange={(v) => setProp(selected.id, "show", v)} /></>}
                                     {(selected.type === "monitor" || selected.type === "logo" || selected.type === "image") && <>
                                         <span className="k">Alinhar</span><Seg small label="Alinhar" value={selected.align} options={ALIGNS} onChange={(v) => setEl(selected.id, { align: v })} />
                                         <span className="k">Vertical</span><Seg small label="Vertical" value={selected.valign} options={VALIGNS} onChange={(v) => setEl(selected.id, { valign: v })} />
@@ -607,7 +630,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                             {copySources.length > 0 && <Btn small on={starting === "copy"} onClick={() => setStarting(starting === "copy" ? null : "copy")}>Copiar de outra tela…</Btn>}
                             <Btn small disabled={!draft?.elements.length} onClick={saveModel} title="Guarda este desenho como um modelo da igreja, para começar outras telas dele">Salvar como modelo…</Btn>
                             <span style={{ flex: 1 }} />
-                            {draft && (own || dirty) && <Btn small kind={confirm === "reset" ? "air" : ""} onClick={resetToPage}>{confirm === "reset" ? "Voltar mesmo" : "Voltar à página padrão…"}</Btn>}
+                            {draft && (own || dirty) && <Btn small kind={confirm === "reset" ? "air" : ""} onClick={resetToPage}>{confirm === "reset" ? "Voltar mesmo" : "Voltar ao padrão…"}</Btn>}
                         </div>
                         {starting === "model" && (
                             <div className="nv-pick">
@@ -633,7 +656,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                     {draft && !isStream && !hosted && (
                         <div className="nv-foot">
                             <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
-                            <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar a tela</Btn>
+                            <Btn kind="brand" disabled={busy || !dirty} onClick={save} title={dirty ? "Ctrl+S" : "Nada mudou"}>Salvar a tela</Btn>
                         </div>
                     )}
                 </Panel>
@@ -660,7 +683,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                                     {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}
                                     {draft.elements.map((el) => (
                                         <div key={el.id} className={`le-hit ${marked.includes(el.id) ? "is-sel" : ""}`} style={{ left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%` }}
-                                            title={[typeOf(el.type)?.name, ghostReason(el, stateOf(el))].filter(Boolean).join(" · ")} onPointerDown={(e) => startDrag(e, el)} onDoubleClick={() => setSel(el.id)}>
+                                            title={[typeOf(el.type)?.name, reasonOf(el, stateOf(el))].filter(Boolean).join(" · ")} onPointerDown={(e) => startDrag(e, el)} onDoubleClick={() => setSel(el.id)}>
                                             {!many && sel === el.id && HANDLES.map((h) => <i key={h} className={`le-h ${h}`} onPointerDown={(e) => startDrag(e, el, h)} />)}
                                         </div>
                                     ))}
@@ -668,12 +691,21 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                             </div>
                         </div>
                     )}
+                    {draft && !isStream && (path === "/StageView" || path === "/PastorView") && (
+                        <div className={`listhead nv-note le-one ${fromOldPalco(path, own ? saved : null) ? "is-old" : ""}`}>
+                            {fromOldPalco(path, own ? saved : null)
+                                ? <><span className="kx-meta"><b>Este desenho é anterior ao Palco novo.</b> Volte ao padrão para usar a faixa e o Próximo embaixo.</span><Btn small onClick={resetToPage}>Voltar ao padrão</Btn></>
+                                : path === "/PastorView" && !own
+                                    ? <span className="kx-meta">A tela do Pastor ainda se desenha sozinha; este desenho só vale depois de salvo.</span>
+                                    : !own && <span className="kx-meta">Este é o desenho padrão do Palco: o mesmo da tela. As partes ligam em Ajustes › Conteúdo; mudou algo aqui, Salvar grava um desenho próprio e as chaves dão lugar ao olho de cada parte.</span>}
+                        </div>
+                    )}
                     {draft && !isStream && (
                         <div className="listhead nv-note">
                             {/* The selected element's state in words (the G2 mockup's line). */}
                             <span className="kx-meta le-why" aria-live="polite">
                                 {!selected ? "Clique num elemento da lista ou da tela." : selState !== "shown"
-                                    ? <><b>{typeOf(selected.type)?.name}</b> está {ghostReason(selected, selState).replace(/^E/, "e")}</>
+                                    ? <><b>{typeOf(selected.type)?.name}</b> está {reasonOf(selected, selState).replace(/^E/, "e").replace(/^D/, "d")}</>
                                     : <><b>{typeOf(selected.type)?.name}</b> aparece agora ({(whenLabel(selected.when) || "Sempre").toLowerCase()}).</>}
                             </span>
                             <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã e a grade, Ctrl ou Shift + clique marca vários, Delete tira o elemento, Ctrl+Z desfaz. Esmaecido = não aparece neste estado: tracejado pela regra Aparece ou por falta do que mostrar, pontilhado pelo olho; Mostrar com troca o estado.{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
@@ -691,7 +723,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                 actions={!isStream && <>
                     <UndoRedo history={history} />
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
-                    <Btn small kind="brand" disabled={busy || !draft} onClick={save} title="Ctrl+S">Salvar a tela</Btn>
+                    <Btn small kind="brand" disabled={busy || !draft || !dirty} onClick={save} title={dirty ? "Ctrl+S" : "Nada mudou"}>Salvar a tela</Btn>
                 </>}
                 detach={onDetach} />
             <div className="win-body is-ed">{body}</div>

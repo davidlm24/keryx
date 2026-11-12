@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeRule, ruleOf, defaultRule, applyRule, ruleShortcut, ruleLabel, ruleSummary, outputsNotShowing, RULE_SHORTCUTS, normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults, churchAlertLook, sentAlertLook } from "./outputPrefs.js";
+import { normalizeRule, ruleOf, defaultRule, applyRule, ruleShortcut, ruleLabel, ruleSummary, outputsNotShowing, RULE_SHORTCUTS, normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, designOf, pageDesign, screenDesign, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults, churchAlertLook, sentAlertLook } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -456,4 +456,33 @@ test("the rule's doors: a shortcut, one kind more, what leaves the air (owner 20
 test("the Prévia's warning carries the kind's id for its fix", () => {
     const got = outputsNotShowing({ kind: "bible" }, [{ screen_path: "/Projection", content_rule: { kinds: ["lyrics"], top: { alert: true, logo: true }, empty: "wall" } }]);
     assert.equal(got[0].kindId, "bible");
+});
+
+// ---- One drawing per screen (owner 2026-11-12) ----
+
+test("pageDesign: the Palco's factory design dressed by its switches; null elsewhere", () => {
+    const all = pageDesign("/StageView", normalizePref(null));
+    assert.equal(all.id, "factory:palco");
+    assert.ok(all.elements.every((e) => !e.hidden));
+    const noChords = pageDesign("/StageView", normalizePref({ options: { chords: false } }));
+    assert.equal(noChords.elements.find((e) => e.id === "palco_chords").hidden, true);
+    assert.equal(noChords.elements.find((e) => e.id === "palco_current").props.chords, false);
+    const noNext = pageDesign("/StageView", normalizePref({ options: { next: false } }));
+    assert.equal(noNext.elements.find((e) => e.id === "palco_next").hidden, true);
+    assert.equal(noNext.elements.find((e) => e.id === "palco_next_page").hidden, true);
+    const noClock = pageDesign("/StageView", normalizePref({ options: { clock: false } }));
+    assert.equal(noClock.elements.find((e) => e.id === "palco_clock").hidden, true);
+    assert.equal(pageDesign("/PastorView", normalizePref(null)), null);
+    assert.equal(pageDesign("/Projection", normalizePref(null)), null);
+});
+
+test("screenDesign: own design, the old factory layout_id (not own), none", () => {
+    const design = { elements: [{ id: "x", type: "clock" }] };
+    assert.equal(screenDesign("/StageView", normalizePref({ design }), []).own, true);
+    const old = screenDesign("/StageView", normalizePref({ layout_id: "factory:palco" }), []);
+    assert.equal(old.own, false); assert.equal(old.layout.id, "factory:palco");
+    const none = screenDesign("/StageView", normalizePref(null), []);
+    assert.equal(none.own, false); assert.equal(none.layout.id, "factory:palco");
+    assert.deepEqual(screenDesign("/PastorView", normalizePref(null), []), { layout: null, own: false });
+    assert.equal(screenDesign("/PastorView", normalizePref({ layout_id: "factory:pastor" }), []).own, true, "the Pastor has no page design yet");
 });
