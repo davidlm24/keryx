@@ -752,8 +752,8 @@ test("a generated background: the generator is checked, its numbers clamped and 
     assert.deepEqual(s.background.gen.colors, ["#3f0000", "#ff7600"]);
     assert.equal(s.background.dim, 0.3);
     assert.throws(() => applyOp(emptyState(T0), "background.set", { kind: "generator", value: "lava" }, T0), /Gerador inválido/);
-    const plain = applyOp(emptyState(T0), "background.set", { kind: "generator", value: "clouds" }, T0);
-    assert.equal(plain.background.gen.id, "clouds", "no gen at all is the defaults");
+    const plain = applyOp(emptyState(T0), "background.set", { kind: "generator", value: "mist" }, T0);
+    assert.equal(plain.background.gen.id, "mist", "no gen at all is the defaults");
 });
 
 // Automatic lyrics (owner 2026-10-15, Rodada D4): the same marks follow a

@@ -25,9 +25,9 @@ test("one background format: the new field, else the old picture, else the old g
 
 test("saving: the new field and the old ones in step", () => {
     assert.deepEqual(bgFields({ kind: "image", value: "u.png", dim: 0.4 }), { background: { kind: "image", value: "u.png", dim: 0.4 }, background_image: "u.png", background_generator: null, background_dim: 0.4, background_blur: null, background_fit: "" });
-    const g = bgFields({ kind: "generator", value: "clouds" });
+    const g = bgFields({ kind: "generator", value: "mist" });
     assert.equal(g.background_image, "");
-    assert.equal(g.background_generator.id, "clouds");
+    assert.equal(g.background_generator.id, "mist");
     assert.deepEqual(bgFields({ kind: "video", value: "v.mp4" }).background_image, "", "a clip is not a picture for old readers");
     assert.deepEqual(bgFields(null), { background: null, background_image: "", background_generator: null, background_dim: null, background_blur: null, background_fit: "" });
 });
@@ -45,16 +45,16 @@ test("background.set arguments and labels", () => {
 
 test("the rule of the Fundo: an item's background goes to the Fundo layer, so it stays after Esc", () => {
     // (A song has no background of its own since 2026-11-09: a passage's.)
-    const args = passageContent({ reference: "Canto", text: "um", background: { kind: "generator", value: "clouds" } });
+    const args = passageContent({ reference: "Canto", text: "um", background: { kind: "generator", value: "mist" } });
     assert.equal(args.fundo.kind, "generator");
     const ops = fundoOps("content.show", args, emptyState(T));
     assert.deepEqual(ops.map(([op]) => op), ["background.set", "content.show"]);
     assert.equal(ops[1][1].fundo, undefined, "fundo never reaches the live state");
     let s = applyWithFundo(emptyState(T), "content.show", args, T);
-    assert.equal(s.background.value, "clouds");
+    assert.equal(s.background.value, "mist");
     assert.equal(s.background.title, "Canto");
     s = applyOp(s, "clear", {}, T);
-    assert.equal(s.background.value, "clouds", "Esc: the song's background stays");
+    assert.equal(s.background.value, "mist", "Esc: the song's background stays");
     // A picture in the style (a text item, an old history entry) moves too, with its look.
     const pic = fundoOps("content.show", { title: "T", slides: [{ text: "x" }], style: { font_size: "large", background_image: "p.png", background_dim: 0.7, background_blur: 6 } }, null);
     assert.deepEqual(pic[0], ["background.set", { kind: "image", value: "p.png", dim: 0.7, blur: 6, title: "T" }]);
@@ -78,4 +78,12 @@ test("a timer dressed by its theme brings the theme's background to the Fundo", 
     assert.equal(ops[1][1].fundo, undefined);
     const locked = applyOp(emptyState(T), "layers.lock", { layer: "background", locked: true }, T);
     assert.deepEqual(fundoOps("tool.show", { mode: "clock", fundo: { kind: "color", value: "#101820" } }, locked).map(([op]) => op), ["tool.show"]);
+});
+
+test("a generator removed from KERYX is no background (owner 2026-11-12: Nuvens, Luzes, Partículas, Raios)", () => {
+    for (const value of ["clouds", "bokeh", "particles", "rays"]) {
+        assert.equal(cleanSpec({ kind: "generator", value }), null, value);
+        assert.equal(bgSpec({ background: { kind: "generator", value } }), null, value);
+    }
+    assert.throws(() => applyOp(emptyState(0), "background.set", { kind: "generator", value: "clouds" }, 1));
 });

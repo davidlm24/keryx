@@ -92,9 +92,9 @@ test("default theme: filled in at send time, only where the item asks", () => {
     assert.equal(own.style.background_image, undefined);
     assert.equal(own.fundo, undefined, "an item with its own background keeps it");
     // A generated background in the theme comes too (it used to be lost).
-    const gen = withThemeDefaults("content.show", args, { name: "Céu", background_generator: { id: "clouds" } });
+    const gen = withThemeDefaults("content.show", args, { name: "Céu", background_generator: { id: "mist" } });
     assert.equal(gen.fundo.kind, "generator");
-    assert.equal(gen.fundo.gen.id, "clouds");
+    assert.equal(gen.fundo.gen.id, "mist");
     // No default theme: just the item, without inherit.
     assert.deepEqual(withThemeDefaults("content.show", args, null), { title: "X", slides: [], style: args.style });
     // Other ops and items without inherit pass untouched.
@@ -143,8 +143,8 @@ test("text placement rides as extras: the theme fills, the item wins", () => {
 });
 
 test("a theme with a generated background sets the Fundo as a generator", () => {
-    const gen = { id: "clouds", speed: 0.3, colors: ["#000000", "#ffffff"] };
-    assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_dim: 0.2 }), { kind: "generator", value: "clouds", gen: normalizeGenerator(gen), title: "Céu", dim: 0.2 });
+    const gen = { id: "mist", speed: 0.3, colors: ["#000000", "#ffffff"] };
+    assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_dim: 0.2 }), { kind: "generator", value: "mist", gen: normalizeGenerator(gen), title: "Céu", dim: 0.2 });
     assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_image: "u.png" }).kind, "image", "a picture wins");
     assert.equal(themeBackgroundArgs({ name: "X", background_generator: {} }), null);
 });

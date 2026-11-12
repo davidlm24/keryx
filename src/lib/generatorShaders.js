@@ -74,58 +74,16 @@ export const BODIES = {
             vec2 q = vec2(fbm(p + t * 0.10), fbm(p + vec2(5.2, 1.3) + t * 0.08));
             vec2 r = vec2(fbm(p + 4.0 * q + vec2(1.7, 9.2) + t * 0.15), fbm(p + 4.0 * q + vec2(8.3, 2.8) + t * 0.126));
             float v = fbm(p + 4.0 * r);`,
-    clouds: `
-            float v = fbm(p + vec2(t * 0.20, t * 0.05));`,
     aurora: `
             float w = fbm(vec2(p.x * 0.6 + t * 0.3, t * 0.15));
             float w2 = fbm(vec2(p.x * 1.3 - t * 0.2, 7.0 + t * 0.1));
             float band = exp(-pow((uv.y - 0.45 - (w - 0.5) * 0.6) * 2.6, 2.0));
             float band2 = exp(-pow((uv.y - 0.62 - (w2 - 0.5) * 0.5) * 3.5, 2.0));
             float v = clamp(band * (0.5 + 0.5 * fbm(p * 1.5 + t * 0.4)) + 0.6 * band2 * (0.5 + 0.5 * fbm(p * 2.2 - t * 0.3)), 0.0, 1.0);`,
-    bokeh: `
-            float v = 0.0;
-            vec2 gi = floor(p), gf = fract(p);
-            for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
-                vec2 o = vec2(float(x), float(y));
-                vec2 cell = gi + o;
-                float h = hash(cell);
-                vec2 c = o + vec2(hash(cell + 1.7), hash(cell + 3.1)) + 0.25 * vec2(sin(t * (0.5 + h) + h * 6.28), cos(t * (0.3 + h) + h * 3.14));
-                float r = 0.15 + 0.35 * hash(cell + 5.3);
-                v += smoothstep(r, r * 0.2, length(gf - c)) * (0.4 + 0.6 * h);
-            }
-            v = clamp(v, 0.0, 1.0);`,
     gradient: `
             float a = t * 0.25;
             vec2 d = vec2(cos(a), sin(a));
             float v = clamp(dot(uv - 0.5, d) * 0.8 + 0.5 + 0.12 * sin(t * 0.6 + uv.x * 4.0 + uv.y * 2.0), 0.0, 1.0);`,
-    particles: `
-            float v = 0.0;
-            for (int l = 0; l < 2; l++) {
-                float fl = float(l);
-                vec2 q = p * (1.6 + fl * 1.1) + vec2(fl * 17.0, 0.0);
-                float col = floor(q.x);
-                q.y -= t * (0.5 + 0.6 * hash(vec2(col, 3.0 + fl)));
-                vec2 cell = floor(q), f = fract(q);
-                float h = hash(cell + fl * 11.0);
-                vec2 c = vec2(0.32 + 0.36 * hash(cell + 1.3), 0.4 + 0.4 * hash(cell + 2.7));
-                c.x += 0.08 * sin(t * (0.8 + h) + h * 6.28);
-                float r = (0.045 + 0.045 * hash(cell + 4.1)) * (1.0 + u_audio * 0.6);
-                vec2 d = f - c;
-                vec2 dt = vec2(d.x, d.y < 0.0 ? d.y * 0.45 : d.y); // the halo trails below: it rises
-                v += step(0.3, h) * (exp(-dot(d, d) / (r * r)) + 0.22 * exp(-dot(dt, dt) / (r * r) * 0.3)) * (0.6 + 0.4 * sin(t * 2.0 + h * 40.0)) * (1.0 - 0.4 * fl);
-            }
-            v = clamp(v * (0.75 + 0.25 * uv.y), 0.0, 1.0);`,
-    rays: `
-            vec2 sp = vec2((uv.x - 0.5) * u_res.x / u_res.y, uv.y - 1.3);
-            float a = atan(sp.x, -sp.y) + 0.05 * sin(t * 0.4);
-            float k = u_scale * 2.2;
-            float beams = noise(vec2(a * k, t * 0.12)) * 0.65 + noise(vec2(a * k * 2.3 + 4.0, -t * 0.09)) * 0.35;
-            beams = beams * beams * beams * 1.9 * (1.0 + u_audio * 0.5) * smoothstep(-0.3, 0.15, 1.0 - uv.y);
-            float fall = smoothstep(1.7, 0.25, length(sp));
-            vec2 dq = p * 3.0 + vec2(t * 0.06, -t * 0.1);
-            vec2 dc = floor(dq), df = fract(dq) - vec2(0.2 + 0.6 * hash(dc + 1.9), 0.2 + 0.6 * hash(dc + 7.3));
-            float dust = step(0.75, hash(dc)) * exp(-dot(df, df) * 900.0);
-            float v = clamp((beams + dust * 0.8) * fall, 0.0, 1.0);`,
     stars: `
             float v = 0.06 * noise(p * 0.6 + t * 0.02);
             for (int l = 0; l < 2; l++) {
