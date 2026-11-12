@@ -64,6 +64,23 @@
       "maximum": 120,
       "description": "Por tempo: segundos de cada slide (vazio = 8)"
     },
+    "end_at": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Fim da música (2026-11-12): onde, no vídeo ou playback, o som começa a descer em fade e a música sai do ar, em segundos; vazio = toca até o arquivo acabar (src/lib/console/songEnd.js)"
+    },
+    "end_fade": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Fim da música: duração do fade em segundos (vazio = 3)"
+    },
+    "intro_mode": {
+      "type": "string",
+      "enum": ["", "title", "slide"],
+      "default": "",
+      "description": "Antes do 1º slide marcado (letra que segue o vídeo ou playback): vazio = só o fundo, title = o título da música, slide = o 1º slide já aparece"
+    },
     "line_starts": {
       "type": "array",
       "items": { "type": ["number", "null"] },

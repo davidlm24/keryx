@@ -130,3 +130,15 @@ test("a countdown gives way to something new on air, never to what leaves", () =
     assert.equal(newOnAir(applyOp(cleared, "session.item", { itemId: "i2" }, T0 + 5000), T0 + 4000), true);
     assert.equal(newOnAir(null, 0), false);
 });
+
+test("a song's Fim is an end: the Autoplay goes on (2026-11-12)", () => {
+    const song = { id: "s1", audio_url: "keryx-media://pb.mp3" };
+    const item = { id: "i1", type: "SONG", contentId: "s1" };
+    const lyrics = ["content.show", { kind: "lyrics", title: "Canção", slides: [{ text: "um" }], ends: { url: song.audio_url, at: 180, fade: 3 }, ref: { songId: "s1" } }, T0];
+    const live = run([["audio.show", { url: song.audio_url, kind: "video" }, T0], lyrics, onAir("i1")]);
+    assert.equal(itemEnded({ live, item, song, now: T0 + 170_000 }), false);
+    const ended = applyOp(live, "clear", { ended: true, soundFade: 3000 }, T0 + 180_000);
+    assert.equal(itemEnded({ live: ended, item, song, now: T0 + 181_000 }), true);
+    // Esc at the same moment is not.
+    assert.equal(itemEnded({ live: applyOp(live, "clear", { fade: 300 }, T0 + 180_000), item, song, now: T0 + 181_000 }), false);
+});

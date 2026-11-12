@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { Seg } from "../kx";
 import Icon from "../Icon";
 import { Switch, CfgKey, CfgFlash, FormRow, CfgGroup } from "./parts";
-import { usePrefs, updateUser } from "@/hooks/useUser";
+import { usePrefs, useUser, updateUser } from "@/hooks/useUser";
 import { MEDIA_MODES, MEDIA_MS, CLEAR_MODES, CLEAR_MS, PAUSE_MS, ENTER_MODES, ENTER_MS, KIND_MODES, transitionsSummary } from "@/lib/console/transitions";
 import { TRANSITION_TYPES } from "@/lib/contentKinds";
 
@@ -20,6 +20,7 @@ const msOptions = (list) => list.map(([v, label]) => [String(v), label]);
 const KINDS_KEY = "Por tipo de conteúdo";
 export default function TransicoesBlock({ c }) {
     const prefs = usePrefs();
+    const user = useUser();
     const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
     const mediaFade = prefs.media_transition === "fade";
     const clearFades = prefs.clear_transition === "fade";
@@ -74,6 +75,11 @@ export default function TransicoesBlock({ c }) {
                         onChange={(v) => save({ media_transition: v }, v === "mix" ? "Áudios e vídeos tocam juntos, como antes." : v === "cut" ? "Um som novo para o que tocava na hora." : "Um som novo faz o que tocava sumir aos poucos.")} />
                     {mediaFade && <Seg small label="Duração entre áudios e vídeos" value={String(prefs.media_transition_ms)} options={msOptions(MEDIA_MS)} onChange={(v) => save({ media_transition_ms: Number(v) })} />}
                     <span className="kx-meta">Quando um começa, o que tocava para</span>
+                </FormRow>
+                <FormRow k="Música enviada à mão começa com">
+                    <Seg small label="Música enviada à mão começa com" value={["title", "blank"].includes(user?.manual_intro) ? user.manual_intro : "slide"} options={[["slide", "1º slide"], ["title", "Título"], ["blank", "Só o fundo"]]}
+                        onChange={(v) => save({ manual_intro: v === "slide" ? "" : v }, v === "title" ? "A música passada à mão começa pelo título." : v === "blank" ? "A música passada à mão começa só com o fundo." : "A música passada à mão começa no 1º slide.")} />
+                    <span className="kx-meta">Para a música que você passa com as setas: com Título ou Só o fundo, a primeira → põe o 1º slide. A que segue um áudio ou vídeo escolhe a sua em Marcar os tempos.</span>
                 </FormRow>
                 <FormRow k="Tela preta e Logo">
                     <Switch on={prefs.screen_transition} disabled={!clearFades} onChange={(on) => save({ screen_transition: on }, on ? "Tela preta e Logo entram e saem aos poucos." : "Tela preta e Logo entram e saem na hora.")} label="Tela preta e Logo entram e saem com a transição" />

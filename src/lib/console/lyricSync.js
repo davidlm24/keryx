@@ -293,3 +293,13 @@ export function withFollowStarts(slides, follow) {
     const at = followStarts(slides, { each: follow.source === "time" ? follow.each : null, length: follow.length });
     return slides.map((s, i) => (isMark(at[i]) ? { ...s, start: at[i] } : s));
 }
+
+// The song's Fim (owner 2026-11-12): after the last mark (a tenth past it),
+// never past the file, to a tenth of a second. null clears it.
+export function clampEnd(starts, t, length = null) {
+    if (t === null || t === undefined || !Number.isFinite(Number(t))) return null;
+    const last = Math.max(0, ...(starts || []).filter(isMark));
+    const lo = (starts || []).some(isMark) ? last + STEP : 0;
+    const hi = Number.isFinite(length) && length > lo ? length : Infinity;
+    return snap(Math.min(hi, Math.max(lo, Number(t))));
+}

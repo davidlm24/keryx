@@ -437,6 +437,20 @@ function Content({ content, showTitle = true, still = false }) {
     // Before the first measure the nudge is as the theme says (cqw); then
     // the measured one, held inside the safe area (px).
     const shift = fit.shift === null ? (style.text_nudge ? `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` : null) : fit.shift ? `0 ${fit.shift}px` : null;
+    // The song's beginning as its title (owner 2026-11-12, introMode
+    // "title"): its name, the artist under it, in the theme's look.
+    if (content.intro && content.introMode === "title" && content.title) {
+        return (
+            <div className="ks-content ks-al-center ks-pos-middle" style={{ "--ks-size": `${size}cqw`, ...marginVars(style.text_margin) }}>
+                <div key={`${content.startedAt}:intro`} className={anim} style={{ display: "contents" }}>
+                    <div className="ks-text ks-intro" style={{ ...textStyle(style), ...textExtra(style) }}>
+                        <span>{content.title}</span>
+                        {content.artist && <span className="ks-intro-artist">{content.artist}</span>}
+                    </div>
+                </div>
+            </div>
+        );
+    }
     return (
         <>
             {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: fontStack(style.font_family) }}>{content.title}</div>}

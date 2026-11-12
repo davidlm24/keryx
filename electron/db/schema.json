@@ -1822,6 +1822,16 @@
         "slide_seconds": {
           "type": "real"
         },
+        "end_at": {
+          "type": "text"
+        },
+        "end_fade": {
+          "type": "real"
+        },
+        "intro_mode": {
+          "type": "text",
+          "default": ""
+        },
         "line_starts": {
           "type": "json"
         },
@@ -2118,6 +2128,9 @@
         },
         "screen_transition": {
           "type": "boolean"
+        },
+        "manual_intro": {
+          "type": "text"
         },
         "pause_fade_ms": {
           "type": "integer"

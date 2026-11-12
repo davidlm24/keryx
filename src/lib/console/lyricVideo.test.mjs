@@ -26,3 +26,11 @@ test("videoLength and jobLine", () => {
     assert.equal(jobLine({ phase: "done", out: "C:/v.mp4" }), "Pronto: C:/v.mp4");
     assert.equal(jobLine({ phase: "failed", error: "x" }), "x");
 });
+
+test("the video lasts up to the song's Fim and fade (2026-11-12)", async () => {
+    const { videoLength, videoEnd } = await import("./lyricVideo.js");
+    assert.equal(videoLength({ duration: 250, end_at: 200, end_fade: 4 }), 204);
+    assert.deepEqual(videoEnd({ end_at: 200 }), { at: 200, fade: 3 });
+    assert.equal(videoEnd({ end_at: null }), null);
+    assert.equal(videoLength({ duration: 250, end_at: null }), 250);
+});
