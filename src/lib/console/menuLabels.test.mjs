@@ -25,8 +25,9 @@ test("the table: pt-BR labels, mapped icons, a hint only where a key exists", ()
     for (const [id, m] of Object.entries(MENU_LABELS)) {
         assert.ok(m.label && typeof m.label === "string", id);
         assert.ok(ICON_NAMES.includes(m.icon), `${id}: icon ${m.icon} is not in icons.js`);
-        // "…" ends a label only where the command asks for more before it acts.
-        if (/^(Nova música|Novo aviso|Novo culto|Planejar o culto|Editar)/.test(m.label)) assert.ok(!m.label.endsWith("…"), `${id}: opens a page, no "…"`);
+        // "…" ends a label only where the command asks for more before it acts
+        // ("Editar este slide…" asks for the lines, in a box: no page opens).
+        if (/^(Nova música|Novo aviso|Novo culto|Planejar o culto|Editar(?! este slide))/.test(m.label)) assert.ok(!m.label.endsWith("…"), `${id}: opens a page, no "…"`);
         if (m.key) assert.ok(keyHint(m.key), `${id}: key ${m.key} names no key`);
     }
     // The owner's words (Rodada M mockup, "todas as trocas").

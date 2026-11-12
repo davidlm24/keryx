@@ -1470,7 +1470,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   stacked without one keep the gutter as a margin); don't add a second gap
   beside a splitter. The old
   Próximo/Depois lines, the Setlist side card and the Biblioteca's compact
-  Setlist tab are gone. **The Slides column is the item in hand, the No ar
+  Setlist tab are gone. **"Editar este slide…"** (owner 2026-11-12, mockup
+  "Editar o slide e só o som com marcas", E1–E5): a song's slide in the
+  Slides column or No ar, by its right click (MENU_LABELS `editarSlide`) or
+  F2, opens `SlideEditPop.jsx` beside it — that slide's own lines with the
+  chords (`slideToEdit` in src/lib/console/slideEdit.js, tested), Ctrl+Enter
+  saves, Esc cancels first; `editSlide` puts the lines back in the lyrics,
+  rebuilds the slides as the song editor does (`timedSlides`,
+  `slidesToSave`, shared with it) and keeps every other slide's marks on
+  their lines (`spliceMarks` in lyricSync.js); the console's `songSaved`
+  refreshes the Prévia and the song on air (locked: it says so). Refused
+  with "Abrir no editor": an empty box, a part with no lyrics, saved slides
+  that differ from the lyrics. Songs only. **The Slides column is the item in hand, the No ar
   module is what is on air** (owner 2026-10-14, as Holyrics' slide column
   and bottom strip): Slides shows the Prévia's slides whenever it holds an
   item, even a single slide (`handIsPrev` in SlidesPanel.jsx; a theme's

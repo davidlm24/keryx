@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks } from "./lyricSync.js";
+import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, spliceMarks } from "./lyricSync.js";
 import { sungLines, slidesFromLyrics } from "../songImport.js";
 import { applyOp, emptyState, followIndex } from "../../../shared/live-state.mjs";
 
@@ -177,4 +177,21 @@ test("several marks move together, never out of order (2026-11-11)", () => {
     assert.deepEqual(shiftMarks([null, 20, 30], [0, 1], 5), [null, 25, 30 + 0], "an unmarked line is not moved");
     assert.deepEqual(shiftMarks(starts, [], 5), starts);
     assert.deepEqual(shiftMarks([10, 10.1, 30], [1], -1), [10, 10.1, 30], "no room: unchanged");
+});
+
+test("spliceMarks: an edited slide moves no other slide's marks (2026-11-12)", () => {
+    // Slides of 2, 2 and 2 lines; the middle one (lines 2–3) edited.
+    const marks = [1, 2, 3, 4, 5, 6];
+    // A line added: the range keeps its two marks, a new unmarked line, the rest shift.
+    assert.deepEqual(spliceMarks(marks, 2, 2, 3), [1, 2, 3, 4, null, 5, 6]);
+    // A line removed: the first mark of the range stays, the rest shift back.
+    assert.deepEqual(spliceMarks(marks, 2, 2, 1), [1, 2, 3, 5, 6]);
+    // Replaced, same count: nothing moves.
+    assert.deepEqual(spliceMarks(marks, 2, 2, 2), marks);
+    // The first and the last slide.
+    assert.deepEqual(spliceMarks(marks, 0, 2, 3), [1, 2, null, 3, 4, 5, 6]);
+    assert.deepEqual(spliceMarks(marks, 4, 2, 1), [1, 2, 3, 4, 5]);
+    // Short or empty marks are padded, never invented.
+    assert.deepEqual(spliceMarks([], 2, 2, 3), [null, null, null, null, null]);
+    assert.deepEqual(spliceMarks([1, null, "x"], 0, 1, 1), [1, null, null]);
 });

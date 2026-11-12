@@ -118,6 +118,19 @@ export function startsFromLines(slides, lineStarts) {
     });
 }
 
+// One slide edited in place (owner 2026-11-12, "Editar este slide…"): its
+// `oldRows` lines from `first` became `newRows`. The marks before it and
+// after it stay with their lines (the ones after shift by the difference);
+// the edited range keeps its first marks, one per line still there.
+export function spliceMarks(lineStarts, first, oldRows, newRows) {
+    const marks = (lineStarts || []).map((v) => (isMark(v) ? v : null));
+    const before = marks.slice(0, first);
+    while (before.length < first) before.push(null);
+    const range = marks.slice(first, first + oldRows).slice(0, newRows);
+    while (range.length < newRows) range.push(null);
+    return [...before, ...range, ...marks.slice(first + oldRows)];
+}
+
 // A song marked by slide (before 2026-11-10): each slide's mark goes to its
 // first line, the others unmarked.
 export function linesFromStarts(slides, starts) {

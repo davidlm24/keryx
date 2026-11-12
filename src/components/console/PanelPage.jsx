@@ -189,7 +189,7 @@ export default function PanelPage({ module, h, escRef, active, onClose }) {
     } else if (module === "slides") {
         body = (
             <Panel title="Slides" noHead={!coverTag} className={coveredBy ? "is-covered" : ""} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                <SlidesPanel c={c} onGo={(st) => h.sendNow(st)} airTabs={Boolean(placed) && !placed.includes("onair")} />
+                <SlidesPanel c={c} onGo={(st) => h.sendNow(st)} airTabs={Boolean(placed) && !placed.includes("onair")} onSongSaved={h.songSaved} onOpenSong={openSong} />
             </Panel>
         );
     } else if (module === "setlist") {

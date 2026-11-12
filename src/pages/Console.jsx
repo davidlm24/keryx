@@ -1274,13 +1274,13 @@ export default function Console() {
     );
     const slidesPanel = (
         <Panel title="Slides" className={coverCls} count={handTitle(c) || ""} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} />
+            <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} onSongSaved={songSaved} onOpenSong={openSong} />
         </Panel>
     );
     // What is on air, slide by slide, whatever the Slides column holds.
     const onAirPanel = (
         <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || ""} actions={coverTag} className={`onair-panel ${coverCls}`} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <OnAirPanel c={c} />
+            <OnAirPanel c={c} onSongSaved={songSaved} onOpenSong={openSong} />
         </Panel>
     );
 
