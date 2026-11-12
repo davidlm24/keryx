@@ -795,6 +795,46 @@ test("slides keep their start; a song with marks follows its source", () => {
     assert.equal(followPosition(v, T0 + 5 * S), 5);
 });
 
+test("the introduction: only the background until the first mark (2026-11-11)", () => {
+    // The console fills every start (followStarts): slide 1 comes in at 8 s.
+    const marked = { title: "Canção", slides: [{ text: "um", start: 8 }, { text: "dois", start: 20 }, { text: "três", start: 30 }] };
+    let s = run([["audio.show", { url: "/a.mp3" }], ["content.show", { ...marked, follow: { source: "audio", url: "/a.mp3" } }]]);
+    assert.equal(s.content.intro, true);
+    assert.equal(currentSlide(s.content), null, "no slide on screen");
+    assert.equal(nextSlide(s.content).text, "um", "the first one is next");
+    assert.equal(followIndex(s, T0 + 3 * S), -1, "still the introduction");
+    // The follower's tick at the first mark: slide 1 comes in.
+    assert.equal(followIndex(s, T0 + 8.5 * S), 0);
+    let on = applyOp(s, "content.goTo", { index: 0, auto: true }, T0 + 8.5 * S);
+    assert.equal(on.content.intro, undefined);
+    assert.equal(currentSlide(on.content).text, "um");
+    // The player sought back to the start: the introduction again.
+    on = applyOp(on, "transport", { layer: "audio", action: "seek", time: 0 }, T0 + 9 * S);
+    assert.equal(followIndex(on, T0 + 10 * S), -1);
+    on = applyOp(on, "content.goTo", { index: 0, auto: true, intro: true }, T0 + 10 * S);
+    assert.equal(on.content.intro, true);
+    assert.equal(applyOp(on, "content.goTo", { index: 0, auto: true, intro: true }, T0 + 10 * S), on, "nothing changes twice");
+    // → in the introduction: the first slide, the music at its mark; ← nothing.
+    assert.equal(applyOp(s, "content.prev", {}, T0 + 2 * S), s);
+    const next = applyOp(s, "content.next", {}, T0 + 2 * S);
+    assert.equal(next.content.index, 0);
+    assert.equal(next.content.intro, undefined);
+    assert.equal(followPosition(next, T0 + 2 * S), 8);
+    // Its media stopped: the first slide shows.
+    assert.equal(followIndex(applyOp(s, "audio.clear", {}, T0 + 2 * S), T0 + 3 * S), 0);
+    // No introduction: a first mark at 0, a slide sent further on, a follow that waits.
+    assert.equal(run([["content.show", { ...marked, slides: [{ text: "um", start: 0 }, ...marked.slides.slice(1)], follow: { source: "audio", url: "/a.mp3" } }]]).content.intro, undefined);
+    assert.equal(run([["content.show", { ...marked, index: 1, follow: { source: "audio", url: "/a.mp3" } }]]).content.intro, undefined);
+    let c = run([["content.show", { ...marked, follow: { source: "clock" } }]]);
+    assert.equal(c.content.intro, undefined, "the live clock waits for Iniciar: slide 1 shows");
+    // Iniciar from slide 1: the introduction until 8 s on the clock.
+    c = applyOp(c, "content.follow", { action: "start" }, T0);
+    assert.equal(c.content.intro, true);
+    assert.equal(followIndex(c, T0 + 9 * S), 0);
+    // Read back after a restart: waiting, so the first slide shows.
+    assert.equal(restoreState(JSON.parse(JSON.stringify(s)), T0).content.intro, undefined);
+});
+
 test("a playback or video: moving the slide seeks the media, the marks never move (2026-11-10)", () => {
     let s = run([["content.show", { ...timed, follow: { source: "audio", url: "/a.mp3" } }], ["audio.show", { url: "/a.mp3" }]]);
     // At 12 s the operator jumps to "três" (30 s): the playback goes to 30 s.

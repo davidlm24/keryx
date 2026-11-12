@@ -46,9 +46,11 @@ export default function SlidesPanel({ c, onGo, airTabs = false, onSongSaved, onO
     // The kept item as a stage (its bookkeeping out), for the Prévia and a send.
     const lastStage = useMemo(() => { if (!c.last) return null; const { stopped: _s, key: _k, ...st } = c.last; return st; }, [c.last]);
     const slides = useMemo(() => (hand ? prev.slides : gone ? c.last.slides : air ? air.slides : []), [hand, prev, air, gone, c.last]);
-    const index = hand ? prev.index : gone ? c.last.stopped : air ? air.index : -1;
+    // The introduction (only the background until the first mark): no slide on air yet.
+    const airAt = air && !air.intro ? air.index : -1;
+    const index = hand ? prev.index : gone ? c.last.stopped : airAt;
     // The Prévia holds the item that is on air (another slide of it): mark both.
-    const airIndex = hand && air && (prev.airSlide || prev.id === airId) ? air.index : -1;
+    const airIndex = hand && air && (prev.airSlide || prev.id === airId) ? airAt : -1;
     const listRef = useRef(null);
     // "Editar este slide…" (2026-11-12): the song these slides are of, and the
     // box open on one of them ({ songId, index, anchor }).
