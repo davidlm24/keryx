@@ -1579,6 +1579,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .ed-syncstat > * { flex-shrink: 0; }
 .console .ed-syncn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-content); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .ed-syncn.is-on { color: var(--fg-1); }
+/* The song's Fim (2026-11-12): where it ends, under the marks. */
+.console .ed-endline { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-ui); color: var(--danger-fg); font-variant-numeric: tabular-nums; }
 /* "Só o som do vídeo" on by itself: the lyrics follow the marks (2026-11-12). */
 .console .ed-soundwhy { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-ui); color: var(--brand-hover); }
 .console .ed-unmarked { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
@@ -2481,18 +2483,52 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-play { width: 32px; height: 32px; background: var(--bg-3); color: var(--fg-1); }
 .console .sync .sync-clock { margin-left: var(--space-2); font-variant-numeric: tabular-nums; font-size: var(--fs-content); color: var(--fg-1); }
 .console .sync .sync-clock small { color: var(--fg-3); font-size: var(--fs-meta); }
-.console .sync .sync-line { flex: none; position: relative; height: 30px; margin: 4px 8px 0; background: var(--bg-3); border-radius: var(--radius-control); touch-action: none; }
-.console .sync .sync-played { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--fg-2) 22%, transparent); border-radius: var(--radius-control) 0 0 var(--radius-control); pointer-events: none; }
-.console .sync .sync-mk { position: absolute; top: 4px; transform: translateX(-50%); min-width: 18px; height: 22px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-meta); font-variant-numeric: tabular-nums; color: var(--fg-1); background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line-strong); border-radius: 4px; cursor: ew-resize; z-index: var(--z-screen); }
-.console .sync .sync-mk::after { content: ""; position: absolute; left: 50%; bottom: -4px; width: 1px; height: 4px; background: var(--fg-2); }
-.console .sync .sync-mk.is-sel { box-shadow: inset 0 0 0 1px var(--fg-1); }
-.console .sync .sync-mk.is-air { background: var(--live-bg); color: var(--live-fg); box-shadow: inset 0 0 0 1px var(--live); }
+/* The timeline (owner 2026-11-12, T1–T4; SyncTimeline.jsx): the overview of
+   the whole song, then the ruler (only the time) over the lane (only the
+   marks, over the sound's wave), one frame. */
+.console .sync .sync-tl { flex: none; display: flex; flex-direction: column; gap: var(--space-1); margin: 4px 0 0; touch-action: none; }
+.console .sync .sync-ov { position: relative; height: 14px; border-radius: 4px; background: var(--bg-3); cursor: pointer; }
+.console .sync .sync-ov > i { position: absolute; pointer-events: none; }
+.console .sync .sync-ov-mk { top: 4px; width: 2px; height: 6px; margin-left: -1px; background: var(--fg-3); }
+.console .sync .sync-ov-end { top: 2px; bottom: 2px; width: 2px; margin-left: -1px; background: var(--danger); }
+.console .sync .sync-ov-frame { top: -1px; bottom: -1px; border-radius: 4px; background: color-mix(in srgb, var(--fg-1) 8%, transparent); box-shadow: inset 0 0 0 1.5px var(--fg-1); }
+.console .sync .sync-ov-head { top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--air); }
+.console .sync .sync-frame { position: relative; border-radius: var(--radius-control); background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.console .sync .sync-ruler { position: relative; height: 28px; background: var(--bg-3); border-bottom: 1px solid var(--line); cursor: pointer; }
+.console .sync .sync-tick { position: absolute; bottom: 0; width: 1px; height: 5px; background: var(--line-strong); pointer-events: none; }
+.console .sync .sync-tick.is-major { height: 10px; background: var(--fg-3); }
+.console .sync .sync-tlab { position: absolute; top: 3px; transform: translateX(-50%); font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; }
+.console .sync .sync-grip { position: absolute; top: 2px; width: 14px; height: 15px; margin-left: -7px; background: var(--air); border-radius: 3px 3px 7px 7px; pointer-events: none; z-index: var(--z-mark); }
+.console .sync .sync-lane { position: relative; height: 104px; }
+.console .sync .sync-lane > i, .console .sync .sync-wave { pointer-events: none; }
+.console .sync .sync-wave { position: absolute; left: 0; top: 30px; width: 100%; height: 66px; --wave: var(--line-strong); --wave-played: var(--fg-3); }
+.console .sync .sync-played { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--fg-1) 5%, transparent); }
+.console .sync .sync-fade { position: absolute; top: 0; bottom: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--danger) 35%, transparent), transparent); }
+.console .sync .sync-after { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--bg-0) 70%, transparent) 0 4px, transparent 4px 8px); }
+/* A mark is a flag: its number on top, its line down the lane. */
+.console .sync .sync-mk { position: absolute; top: 6px; bottom: 6px; width: 2px; margin-left: -1px; padding: 0; background: var(--fg-2); cursor: ew-resize; z-index: var(--z-screen); font-size: 0; }
+/* The number: a tab hanging off the top of the line. */
+.console .sync .sync-mk > .sync-mk-n { font-size: var(--fs-meta); font-weight: 600; font-variant-numeric: tabular-nums; }
+.console .sync .sync-mk > .sync-mk-n { position: absolute; top: 0; left: 0; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 0 6px 6px 0; background: var(--fg-2); color: var(--bg-0); display: grid; place-items: center; white-space: nowrap; }
+.console .sync .sync-mk::after { content: ""; position: absolute; top: -2px; bottom: -2px; left: -6px; right: -18px; }
+.console .sync .sync-mk.is-sel, .console .sync .sync-mk.is-sel > .sync-mk-n { background: var(--fg-1); }
+.console .sync .sync-mk.is-air, .console .sync .sync-mk.is-air > .sync-mk-n { background: var(--air); }
 /* Line by line (2026-11-10): a line that is not a slide's start is a thin tick; the slide starts keep their numbered marker. */
-.console .sync .sync-mk.is-line { min-width: 6px; width: 6px; padding: 0; height: 14px; top: 8px; color: transparent; }
-.console .sync .sync-head { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--air); border-radius: 1px; pointer-events: none; z-index: var(--z-mark); }
-.console .sync .sync-scale { flex: none; position: relative; height: 14px; margin: 0 8px; font-size: var(--fs-meta); color: var(--fg-3); font-variant-numeric: tabular-nums; }
-.console .sync .sync-scale > span { position: absolute; transform: translateX(-50%); }
-.console .sync .sync-scale > span:first-child { transform: none; }
+.console .sync .sync-mk.is-line { top: 40px; bottom: 28px; background: var(--line-strong); }
+/* The Fim (2026-11-12): a red flag with its time. */
+.console .sync .sync-mk.is-end { background: var(--danger); font-size: var(--fs-meta); }
+.console .sync .sync-mk.is-end > .sync-mk-n { background: var(--danger); color: var(--fg-1); font-weight: 700; }
+.console .sync .sync-head { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--air); pointer-events: none; z-index: var(--z-mark); }
+.console .sync .sync-span { min-width: 44px; text-align: center; font-size: var(--fs-ui); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+/* The rows of the song's beginning and end (2026-11-12, I1 and F1). */
+.console .sync .sync-intro { background: color-mix(in srgb, var(--rh) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rh) 45%, transparent); }
+.console .sync .sync-intro .n, .console .sync .sync-end .n { width: auto; min-width: 28px; font-weight: 700; }
+.console .sync .sync-intro .n { color: var(--rh-fg); }
+.console .sync .sync-endlist { padding-top: 0; }
+.console .sync .sync-end.is-set { background: color-mix(in srgb, var(--danger) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 45%, transparent); }
+.console .sync .sync-end .n { color: var(--danger-fg); }
+.console .sync .sync-end .sync-acts { opacity: 1; }
+.console .sync .sync-endnote { padding: 0 var(--space-2) var(--space-1); }
 .console .sync .sync-list { display: flex; flex-direction: column; gap: 2px; padding: var(--space-1); }
 .console .sync .sync-row { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 2px 4px 2px 8px; border-radius: var(--radius-control); }
 .console .sync .sync-row:hover { background: var(--bg-2); }
@@ -2500,8 +2536,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-row.is-prev { background: var(--prev-bg); }
 /* Several slides selected (owner 2026-11-11): the blue of "selecionar vários". */
 .console .sync .sync-row.is-marked { background: var(--sel-bg); box-shadow: inset 0 0 0 1px var(--sel-ring); }
-.console .sync .sync-mk.is-marked { background: var(--sel-bg); box-shadow: inset 0 0 0 1px var(--sel-ring); }
-.console .sync .sync-tip { position: absolute; top: -22px; transform: translateX(-50%); padding: 1px 6px; border-radius: 4px; font-size: var(--fs-meta); white-space: nowrap; color: var(--fg-1); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-strong); pointer-events: none; z-index: var(--z-screen); }
+.console .sync .sync-mk.is-marked, .console .sync .sync-mk.is-marked > .sync-mk-n { background: var(--rh); }
+.console .sync .sync-tip { position: absolute; top: 4px; margin-left: 30px; transform: translateX(-50%); padding: 1px 6px; border-radius: 4px; font-size: var(--fs-meta); white-space: nowrap; color: var(--fg-1); background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-strong); pointer-events: none; z-index: var(--z-screen); }
 .console .sync .sync-lines { display: flex; flex-direction: column; gap: 1px; }
 .console .sync .sync-silent, .console .kx-ln-silent { color: var(--fg-3); font-style: italic; }
 .console .sync .sync-lines > span:not(:first-of-type) { color: var(--fg-3); }
@@ -2520,7 +2556,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
    marks from the internet dashed in gold until the first slide is set, the
    note above the stage (gold while it asks, plain once they moved), the
    empty stage's two doors. */
-.console .sync .sync-mk.is-sug { background: var(--bg-1); color: var(--prev-fg); box-shadow: none; outline: 1px dashed var(--prev); outline-offset: -1px; }
+.console .sync .sync-mk.is-sug { background: transparent; border-left: 2px dashed var(--prev); }
+.console .sync .sync-mk.is-sug > .sync-mk-n { background: var(--bg-1); color: var(--prev-fg); box-shadow: inset 0 0 0 1px var(--prev); }
 .console .sync .sync-time.is-sug { background: transparent; color: var(--prev-fg); box-shadow: none; outline: 1px dashed color-mix(in srgb, var(--prev) 60%, transparent); outline-offset: -1px; }
 .console .sync .sync-note { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); }
 .console .sync .sync-note.is-ask { background: color-mix(in srgb, var(--prev) 18%, var(--bg-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prev) 40%, transparent); }

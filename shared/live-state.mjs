@@ -434,10 +434,23 @@ function followOf(value, items) {
 // (only while true, so the state stays as it was otherwise); the console's
 // follower clears it at the first mark (content.goTo auto), any move of the
 // slide too. Only a follow that runs, from slide 1, with a first start past 0.
+// The song's beginning (owner 2026-11-12): `introMode` on the content —
+// absent = only the background, "title" = the song's title, "slide" = no
+// introduction (slide 1 at once). A song that follows its media takes its
+// own (Song.intro_mode); one passed by hand the church's (User.manual_intro),
+// shown until the first move (→, a click).
 const INTRO_FROM = 0.05;
-function introAt(items, follow, index, position = 0) {
+function introAt(items, follow, index, position = 0, mode = "") {
     const first = items[0]?.start;
-    return Boolean(follow && !follow.paused) && index === 0 && Number.isFinite(first) && first > INTRO_FROM && position < first;
+    return mode !== "slide" && Boolean(follow && !follow.paused) && index === 0 && Number.isFinite(first) && first > INTRO_FROM && position < first;
+}
+// content.show's intro and introMode keys, only when not the defaults: the
+// mode a sender asks ("" = blank); a song following its media by its marks
+// (introAt), any other with "blank" or "title", from slide 1.
+function introOn(items, follow, index, v) {
+    const m = v ? oneOf(v, ["blank", "title", "slide"], "Começo") : "";
+    const on = follow?.url ? introAt(items, follow, index, 0, m) : (m === "blank" || m === "title") && !index && items.length > 0;
+    return { ...(on ? { intro: true } : {}), ...(m && m !== "blank" ? { introMode: m } : {}) };
 }
 const withIntro = (content, on) => {
     const rest = { ...content };
@@ -741,7 +754,8 @@ const OPS = {
                 artist: text(a.artist, "Artista", { max: 500 }),
                 slides: items,
                 index,
-                ...(introAt(items, follow, index) ? { intro: true } : {}),
+                ...introOn(items, follow, index, a.introMode),
+                ...(a.ends ? { ends: loose(a.ends, "Fim") } : {}),
                 style: style(a.style),
                 stage: loose(a.stage, "Dados do palco") || {},
                 // A song's playback track, played by the main projector (rows
@@ -767,6 +781,7 @@ const OPS = {
         if (a.style !== undefined) next.style = style(a.style);
         if (a.stage !== undefined) next.stage = loose(a.stage, "Dados do palco") || {};
         if (a.audio !== undefined) next.audio = text(a.audio, "Áudio", { max: MAX_URL }) || null;
+        if (a.ends !== undefined) { delete next.ends; if (a.ends) next.ends = loose(a.ends, "Fim"); }
         next.index = clampIndex(a.index ?? current.index, next.slides.length);
         if (a.slides !== undefined && current.revealed) next.revealed = revealedFor(current.revealed, next.slides);
         // New marks (the song saved while on air): a follow still running keeps
@@ -776,7 +791,8 @@ const OPS = {
             const keep = f && current.follow && current.follow.source === f.source && current.follow.url === f.url;
             next.follow = keep ? { ...current.follow, ...(f.length !== undefined ? { length: f.length } : {}), ...(f.each ? { each: f.each } : {}) } : f;
         } else if (current.follow && !next.slides.some((it) => Number.isFinite(it.start))) next.follow = null;
-        return { content: next.follow ? next : withIntro(next, false) };
+        // A follow that went away ends its introduction; a song passed by hand keeps its own.
+        return { content: next.follow || !current.follow ? next : withIntro(next, false) };
     },
     // `auto`: the automatic lyrics moving on (useLyricFollow). Anyone else
     // moving the slide of a song that follows: with a video or playback the
@@ -788,7 +804,7 @@ const OPS = {
     "content.goTo": (s, { index, auto, intro }, now) => {
         const was = need(s.content, "projetado");
         const i = clampIndex(index, was.slides.length);
-        const wantIntro = Boolean(auto && intro) && i === 0;
+        const wantIntro = Boolean(auto && intro) && i === 0 && was.introMode !== "slide";
         if (i === was.index && Boolean(was.intro) === wantIntro) return null;
         const current = withIntro(was, wantIntro);
         const f = current.follow;
@@ -813,7 +829,7 @@ const OPS = {
             // first one: from 0, the introduction).
             const position = current.index > 0 && Number.isFinite(at?.start) ? at.start : 0;
             next = { ...f, paused: false, offset: 0, pausedIndex: null, clock: !f.url ? { paused: false, position, at: now } : f.clock };
-            return { content: { ...withIntro(current, introAt(current.slides, next, current.index, position)), follow: next } };
+            return { content: { ...withIntro(current, introAt(current.slides, next, current.index, position, current.introMode)), follow: next } };
         } else if (action === "pause") {
             if (f.paused) return null;
             const clock = f.clock && !f.clock.paused ? { paused: true, position: livePosition(f.clock, now), at: now } : f.clock;
@@ -1149,10 +1165,16 @@ const OPS = {
     // padlock holds it; with no Fundo padrão it stays as it is. The audio
     // channel stops too, paused or not (owner 2026-10-17, Rodada G3: it
     // played on before). `fade`: what goes fades out, the music with it.
+    // `ended` (the song reached its Fim, owner 2026-11-12): an end, not Parar —
+    // the layer playing the song's media is marked ended (live.ended, which
+    // the Setlist's Autoplay reads) and its sound fades `soundFade` ms.
     "clear": (s, a, now) => {
         const fundo = s.defaultBackground && !layerLocked(s, "background") ? { background: { ...s.defaultBackground }, ...without(s, "background") } : {};
         const fade = exitFade(a.fade, now);
-        return { ...remember(s, now), ...without(s, "content"), ...fundo, ...leave(s, ["audio"], fade?.ms, now), screen: "show", content: null, media: null, video: null, audio: null, tool: null, communication: null, fade };
+        const sound = a.soundFade == null ? fade?.ms : ranged(a.soundFade, [0, 1e4], "Fim");
+        const url = a.ended && (s.content?.ends?.url || s.content?.follow?.url);
+        const layer = url && ["audio", "video", "media"].find((k) => s[k]?.url === url);
+        return { ...remember(s, now), ...without(s, "content"), ...fundo, ...leave(s, ["audio"], sound, now), ...(layer ? endedMark(layer, s[layer], now) : {}), screen: "show", content: null, media: null, video: null, audio: null, tool: null, communication: null, fade };
     },
 };
 
@@ -1291,7 +1313,7 @@ export function followIndex(state, now) {
     const t = pos + (f.offset || 0);
     const i = slideAtTime(c.slides, t);
     if (i >= 0) return i;
-    return introAt(c.slides, f, 0, t) ? -1 : null;
+    return introAt(c.slides, f, 0, t, c.introMode) ? -1 : null;
 }
 
 // What a <video> (or YouTube player) should do to follow the shared

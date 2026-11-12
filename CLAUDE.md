@@ -2861,7 +2861,34 @@ and a restart; `followIndex` -1 = the introduction, and the follower sends
 `content.goTo { index: 0, auto, intro }` when the player seeks back);
 `currentSlide` is null then (the screens draw the silent slide, the stream
 nothing), `nextSlide` is slide 1, the Palco says "Introdução", Slides and No
-ar mark no card on air. The exported video does the same.
+ar mark no card on air. The exported video does the same. **The beginning
+is a choice** (owner 2026-11-12, mockup "Fim da música com fade", I1–I4):
+`content.introMode` — absent = only the background, "title" = the song's
+title and artist in the theme's look (ScreenRenderer, `.ks-intro`), "slide"
+= no introduction. A song following its media takes `Song.intro_mode`
+(Marcar os tempos' Intro row); a song passed by hand the church's
+`User.manual_intro` ("" = slide 1, "title", "blank"; Telas e saídas ›
+Transições, "Música enviada à mão começa com"; read off the row, not a
+pref, and stamped by `withManualIntro` in content.js), shown until the
+first → (`introOn` in live-state.mjs). **The song's Fim** (owner
+2026-11-12, F1–F9): `Song.end_at` / `end_fade` (s, "" = 3) ride as
+`content.ends = { url, at, fade }` (`songEnd` in content.js; the follow's
+length is end + fade); the console watches the media playing that url
+(`endDue` in songEnd.js, tested; an effect in useConsole, once per
+`content.startedAt`, whether the letra automática runs or not) and ends it
+through its own Esc with `{ ended: true, soundFade }`: `clear` fades the
+sound over the song's fade, marks `live.ended` (so the Autoplay goes on),
+the papel de parede comes in, the toast "A música terminou no fim marcado"
+has Desfazer. The exported video stops at end + fade, fading to black
+(`ffmpegArgs` `end`). **Marcar os tempos' timeline** (T1–T4,
+`SyncTimeline.jsx`): an overview of the whole song, a ruler that only moves
+the time, a lane that only holds the marks (flags; one moves after a 4 px
+drag, a click goes to its time) and the Fim's red flag with its fade band,
+over the sound's wave (`waveform.js`, decoded once per file); 30 s on
+screen, turning its page while it plays, the wheel slides and Ctrl + the
+wheel zooms (`timelineView.js`, tested); the Intro row on top of the
+slides, the Fim and Fade out rows under them; Espaço after the last slide
+marks the Fim.
 The Biblioteca says "com tempos". **Marks are by LINE** (owner
 2026-11-10, Line by line = A): `Song.line_starts` keeps one time per sung
 line (`sungLines` in songImport.js: no [Label], no chords-only row); a

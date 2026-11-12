@@ -6,7 +6,7 @@ import { useStamp } from "./useConsole";
 import { songContent } from "@/lib/console/content";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { emptyState } from "@shared/live-state.mjs";
-import { exportBlock, videoLength, jobLine } from "@/lib/console/lyricVideo";
+import { exportBlock, videoLength, videoEnd, jobLine } from "@/lib/console/lyricVideo";
 import { themeName } from "@/lib/console/themes";
 
 // "Exportar vídeo com a letra…" (owner 2026-11-11, mockup approved): the
@@ -59,7 +59,7 @@ export default function ExportVideoDialog({ song, themeInUse, media, say, onClos
         const args = { ...songContent(song, {}, themes), kind: "lyrics" };
         const doc = applyWithFundo(emptyState(t), "content.show", stamp("content.show", args), t);
         try {
-            const r = await bridge.call("start", { title: song.title, doc, total, fade: fade === "soft" ? 0.4 : 0, audioUrl: song.audio_url });
+            const r = await bridge.call("start", { title: song.title, doc, total, fade: fade === "soft" ? 0.4 : 0, audioUrl: song.audio_url, end: videoEnd(song) });
             if (r?.error) { say?.(r.error.message); return; }
             if (r?.data?.canceled) return;
             setJob({ id: r.data.id, phase: "frames", pct: 0 });

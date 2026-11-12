@@ -7,6 +7,7 @@ import { isFactoryLook } from "./themes.js";
 import { bgSpec, bgArgs } from "./backgroundSpec.js";
 import { songStep, steppedSize } from "./songSize.js";
 import { followModeOf, slideSeconds, timedLength, withFollowStarts } from "./lyricSync.js";
+import { isYouTubeUrl } from "../../utils/youtube.js";
 
 // A song's audio_url may be its video clip (sent to the video screen) or a
 // playback track (sent to the audio channel, Rodada D4: with the player's
@@ -20,6 +21,32 @@ export const isVideoUrl = (url) => Boolean(url) && (/\.(mp4|m4v|webm|mov|mkv)(?=
 // the live clock the operator starts; "Por tempo" (Rodada P7) that clock
 // with a time for every slide. null when it does not advance (Avançar
 // sozinha: Não, or no slide has a start).
+// Where the song ends (owner 2026-11-12, Marcar os tempos' Fim): its media,
+// the second the fade starts and how long it lasts (s; "" = 3). Only a file
+// of the computer (a YouTube link never plays hidden or ends by a mark).
+export const END_FADE = 3;
+const blank = (v) => v === null || v === undefined || v === "";
+export function songEnd(song) {
+    const url = song?.audio_url || "";
+    const at = Number(song?.end_at);
+    if (!url || isYouTubeUrl(url) || blank(song?.end_at) || !Number.isFinite(at) || at <= 0) return null;
+    const f = Number(song.end_fade);
+    const fade = blank(song.end_fade) || !Number.isFinite(f) ? END_FADE : Math.min(10, Math.max(0, f));
+    return { url, at, fade };
+}
+
+// The beginning a song asks for (owner 2026-11-12): one that follows its
+// media by the marks takes its own (Song.intro_mode: "" only the background,
+// "title", "slide"); any other is the church's (withManualIntro).
+const introOf = (song, follow) => (follow?.url ? song.intro_mode || "blank" : undefined);
+
+// A song passed by hand starts as the church chose (User.manual_intro: ""
+// the first slide, "title", "blank"), stamped at send by the console.
+export function withManualIntro(op, args, manual) {
+    if (op !== "content.show" || !manual || !args?.ref?.songId || args.follow?.url || args.introMode !== undefined) return args;
+    return { ...args, introMode: manual };
+}
+
 export function songFollow(song, slides) {
     const mode = followModeOf(song, slides);
     if (mode === "time" && slides?.length) {
@@ -28,7 +55,9 @@ export function songFollow(song, slides) {
     }
     if (mode === "off" || !(slides || []).some((it) => Number.isFinite(it?.start))) return null;
     const url = song.audio_url || "";
-    const length = Number.isFinite(song.duration) && song.duration > 0 ? song.duration : null;
+    // With a Fim (songEnd), the song is as long as its end and its fade.
+    const end = songEnd(song);
+    const length = end ? end.at + end.fade : Number.isFinite(song.duration) && song.duration > 0 ? song.duration : null;
     return { source: !url ? "clock" : isVideoUrl(url) ? "video" : "audio", ...(url ? { url } : {}), ...(length ? { length } : {}) };
 }
 
@@ -54,6 +83,8 @@ export function songContent(song, ref = {}, _themes = []) {
         // content.audio any more (it played on every output, untransported).
         audio: null,
         ...(follow ? { follow } : {}),
+        ...(introOf(song, follow) ? { introMode: introOf(song, follow) } : {}),
+        ...(songEnd(song) ? { ends: songEnd(song) } : {}),
         // The size is a step from the theme's (songSize.js, Rodada P): over
         // the factory look here; withThemeDefaults moves the theme's.
         style: {

@@ -4,12 +4,23 @@
 const isMark = (v) => Number.isFinite(v);
 const isYouTube = (url) => /youtu\.?be/.test(String(url || ""));
 
-// The song's length in seconds: its own, else its playback's (the Mídia row
-// of that file). null when neither is known.
+// The song's length in seconds: up to its Fim and fade (owner 2026-11-12),
+// else its own, else its playback's (the Mídia row of that file). null when
+// none is known.
 export function videoLength(song, media = []) {
+    const end = videoEnd(song);
+    if (end) return end.at + end.fade;
     if (Number(song?.duration) > 0) return Number(song.duration);
     const row = (media || []).find((m) => m.file_url && m.file_url === song?.audio_url);
     return Number(row?.duration) > 0 ? Number(row.duration) : null;
+}
+
+// The song's Fim for the video: { at, fade } seconds, or null.
+export function videoEnd(song) {
+    const at = Number(song?.end_at);
+    if (song?.end_at === null || song?.end_at === undefined || song?.end_at === "" || !(at > 0)) return null;
+    const f = Number(song.end_fade);
+    return { at, fade: song.end_fade === null || song.end_fade === undefined || song.end_fade === "" || !Number.isFinite(f) ? 3 : Math.min(10, Math.max(0, f)) };
 }
 
 // Why it cannot be made now ("" = it can), in the order the operator fixes
