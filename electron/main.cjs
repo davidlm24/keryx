@@ -58,8 +58,8 @@ const BG = "#0d0d0c";
 // A detached page's window (/Janela) is THE window's surface (--bg-1; Rodada
 // O, O7): the system's caption buttons sit on the page's colour, never on a
 // darker block. src/lib/designTokens.test.mjs holds both to tokens.json.
-const JANELA_BG = "#171715";
-const TITLEBAR_SYMBOLS = "#bbb6ac"; // --fg-2
+const JANELA_BG = "#171716";
+const TITLEBAR_SYMBOLS = "#b9b6b1"; // --fg-2
 const TITLEBAR_HEIGHT = 32;
 // A detached page's bar (.win-bar in console.css, 40 px with its 1 px line
 // under it) is its title bar: the system's buttons sit at its right end,

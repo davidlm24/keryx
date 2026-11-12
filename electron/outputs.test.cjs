@@ -204,7 +204,7 @@ test("Identificar telas: every monitor its number and what is on it; windows apa
     assert.deepEqual(plan.screens.map((s) => [s.where, s.name, s.muted]), [["Tela 1", "Console", false], ["Tela 2", "Projeção · Letras", false], ["Tela 3", "livre", true]]);
     assert.deepEqual(plan.windows.map((w) => [w.where, w.name, w.bounds.width]), [["Janela", "Palco", 800]]);
     // A monitor with nothing is grey; the console's and the outputs' gold.
-    assert.ok(identifyHtml(plan.screens[2]).includes("#bbb6ac"));
+    assert.ok(identifyHtml(plan.screens[2]).includes("#b9b6b1"));
     assert.ok(identifyHtml(plan.screens[1]).includes("#e2c08a"));
     // Nothing open: every monitor still shows its number.
     assert.deepEqual(identifyPlan({ displays: [{ id: 5, bounds: b(0) }] }).screens.map((s) => [s.where, s.name]), [["Tela 1", "livre"]]);

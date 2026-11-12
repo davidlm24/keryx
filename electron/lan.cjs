@@ -318,9 +318,9 @@ function lanAddresses(interfaces = os.networkInterfaces()) {
 // system's colours (docs/design-system/tokens.css: bg-0, bg-1/2, line-strong,
 // fg-1/2, brand + on-brand for the one action, warn-fg for the error).
 const page = (title, body, css = "") => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>${title}</title><style>
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0d0d0c;color:#f4f1ea;font:16px system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}
-main{width:min(100%,360px);text-align:center;background:#171715;border-radius:14px;padding:28px 24px;box-shadow:0 0 0 1px #35342f}h1{font-size:22px;margin:0 0 8px;font-weight:600;letter-spacing:.02em}p{color:#bbb6ac;margin:0 0 20px;line-height:1.45}
-input{width:100%;box-sizing:border-box;padding:14px;font-size:28px;text-align:center;letter-spacing:.4em;border-radius:8px;border:0;box-shadow:inset 0 0 0 1px #4a4840;background:#20201d;color:inherit;outline:none}input:focus{box-shadow:inset 0 0 0 2px #c19959}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0d0d0c;color:#f3f1ee;font:16px system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}
+main{width:min(100%,360px);text-align:center;background:#171716;border-radius:14px;padding:28px 24px;box-shadow:0 0 0 1px #343431}h1{font-size:22px;margin:0 0 8px;font-weight:600;letter-spacing:.02em}p{color:#b9b6b1;margin:0 0 20px;line-height:1.45}
+input{width:100%;box-sizing:border-box;padding:14px;font-size:28px;text-align:center;letter-spacing:.4em;border-radius:8px;border:0;box-shadow:inset 0 0 0 1px #494844;background:#20201e;color:inherit;outline:none}input:focus{box-shadow:inset 0 0 0 2px #c19959}
 button{width:100%;margin-top:12px;padding:14px;font-size:17px;border:0;border-radius:8px;background:#c19959;color:#20180c;font-weight:600;cursor:pointer}button:hover{background:#d0a968}button:active{background:#a47d43}
 .err{color:#ffc24d;background:#f5a5241a;border-radius:8px;padding:10px 12px;margin:14px 0 0}${css}</style></head><body><main>${body}</main></body></html>`;
 
@@ -340,10 +340,10 @@ const DOORS = [
 ];
 const DOOR_ROLES = new Set(DOORS.map((d) => d.role));
 const doorCss = (doors) => `.r{position:absolute;width:1px;height:1px;margin:0;padding:0;opacity:0}
-.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;margin:0 0 12px;border-radius:10px;background:#20201d;box-shadow:inset 0 0 0 1px #35342f}
-.seg label{display:block;padding:11px 0;border-radius:7px;color:#bbb6ac;cursor:pointer}
-.what,.code,.code .l{display:none}.what{margin:0 0 16px}.code>label{display:block;text-align:left;font-size:14px;color:#bbb6ac;margin:0 0 6px}
-${doors.map(({ role }) => `#r-${role}:checked~.seg [for=r-${role}]{background:#2f2e2a;color:#f4f1ea;font-weight:600;box-shadow:inset 0 0 0 1px #c19959}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;margin:0 0 12px;border-radius:10px;background:#20201e;box-shadow:inset 0 0 0 1px #343431}
+.seg label{display:block;padding:11px 0;border-radius:7px;color:#b9b6b1;cursor:pointer}
+.what,.code,.code .l{display:none}.what{margin:0 0 16px}.code>label{display:block;text-align:left;font-size:14px;color:#b9b6b1;margin:0 0 6px}
+${doors.map(({ role }) => `#r-${role}:checked~.seg [for=r-${role}]{background:#2e2e2c;color:#f3f1ee;font-weight:600;box-shadow:inset 0 0 0 1px #c19959}
 #r-${role}:focus-visible~.seg [for=r-${role}]{outline:2px solid #c19959;outline-offset:2px}
 #r-${role}:checked~.w-${role},#r-${role}:checked~.code{display:block}#r-${role}:checked~.code .l-${role}{display:inline}`).join("\n")}`;
 // on: { control, team } (which doors are on); role: the side to start on.
@@ -362,10 +362,10 @@ ${doors.map((d) => `<p class="what w-${d.role}">${d.what}</p>`).join("")}
 // The QR's page (board 3a): the phone's name, then Conectar. No script; the
 // ticket rides in a hidden field.
 const esc = (v) => String(v ?? "").replace(/[&"'<>]/g, (ch) => ({ "&": "&amp;", '"': "&quot;", "'": "&#39;", "<": "&lt;", ">": "&gt;" })[ch]);
-const pairCss = `main{text-align:left}h1{line-height:1.25}.chip{display:inline-block;padding:4px 10px;border-radius:999px;background:#2a2925;color:#bbb6ac;font-size:13px;margin:0 0 18px}
-label{display:block;font-size:14px;color:#bbb6ac;margin:0 0 6px}.nm{font-size:17px;letter-spacing:0;text-align:left;padding:13px 14px}
-.hint{font-size:13px;color:#9b958a;margin:8px 0 0}.after{font-size:13px;margin:18px 0 0}.after+.after{margin-top:8px}
-a.btn{display:block;margin-top:12px;padding:14px;border-radius:8px;box-shadow:inset 0 0 0 1px #4a4840;color:#f4f1ea;text-decoration:none;text-align:center;font-weight:600}`;
+const pairCss = `main{text-align:left}h1{line-height:1.25}.chip{display:inline-block;padding:4px 10px;border-radius:999px;background:#292927;color:#b9b6b1;font-size:13px;margin:0 0 18px}
+label{display:block;font-size:14px;color:#b9b6b1;margin:0 0 6px}.nm{font-size:17px;letter-spacing:0;text-align:left;padding:13px 14px}
+.hint{font-size:13px;color:#989590;margin:8px 0 0}.after{font-size:13px;margin:18px 0 0}.after+.after{margin-top:8px}
+a.btn{display:block;margin-top:12px;padding:14px;border-radius:8px;box-shadow:inset 0 0 0 1px #494844;color:#f3f1ee;text-decoration:none;text-align:center;font-weight:600}`;
 const pairPage = ({ ticket, role, name }) => page("KERYX", `<h1>Conectar este aparelho ao KERYX</h1><span class="chip">${role === "team" ? "Equipe" : "Controle"}</span>
 <form method="post" action="${PAIR_PATH}"><input type="hidden" name="t" value="${esc(ticket)}">
 <label for="nm">Nome deste aparelho</label><input class="nm" id="nm" name="name" value="${esc(name)}" maxlength="${NAME_MAX}" autocomplete="off">
