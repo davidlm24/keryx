@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, playbackGain, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, FOLLOW_SOURCES,
+    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, playbackGain, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, slideProgress, FOLLOW_SOURCES,
     activitySteps, revealStep, revealOf, LAYER_ORDER, layerHidden, alertLookOf,
 } from "./live-state.mjs";
 
@@ -1440,4 +1440,30 @@ test("fadeGain: a leaving sound comes down along a cube, softly to silence (owne
     assert.equal(fadeGain(-1), 0);
     assert.equal(fadeGain(2), 1);
     assert.equal(fadeGain(NaN), 0);
+});
+
+test("slideProgress: how far the slide on air is through its time (2026-11-14)", () => {
+    const marked = { title: "Canção", slides: [{ text: "um", start: 8 }, { text: "dois", start: 20 }, { text: "três", start: 50 }], follow: { source: "audio", url: "/media/a.mp3", length: 80 } };
+    let s = run([["content.show", marked], ["audio.show", { url: "/media/a.mp3" }]]);
+    // The introduction: from 0 to the first mark.
+    assert.equal(s.content.intro, true);
+    let p = slideProgress(s, T0 + 2 * S);
+    assert.deepEqual([p.index, p.intro, p.frac, p.left, p.warn], [-1, true, 0.25, 6, false]);
+    // Slide 1 runs 8 -> 20: halfway at 14 s.
+    s = applyOp(s, "content.goTo", { index: 0, auto: true }, T0);
+    p = slideProgress(s, T0 + 14 * S);
+    assert.deepEqual([p.index, p.frac, p.left, p.warn], [0, 0.5, 6, false]);
+    // The last 5 s of a slide of 10 s or more warn; never past its end.
+    assert.equal(slideProgress(s, T0 + 16 * S).warn, true);
+    assert.equal(slideProgress(s, T0 + 25 * S).frac, 1);
+    // The last slide has no Fim: full, no time left; with a Fim it runs to it.
+    s = applyOp(s, "content.goTo", { index: 2, auto: true }, T0);
+    assert.deepEqual(slideProgress(s, T0 + 60 * S), { index: 2, intro: false, frac: 1, left: null, warn: false });
+    s = applyOp(s, "content.update", { ends: { url: "/media/a.mp3", at: 70, fade: 3 } }, T0);
+    p = slideProgress(s, T0 + 60 * S);
+    assert.deepEqual([p.frac, p.left], [0.5, 10]);
+    // Nothing says how long it takes: its source not playing, no follow.
+    assert.equal(slideProgress(applyOp(s, "audio.show", { url: "/media/other.mp3" }, T0), T0 + 60 * S), null);
+    assert.equal(slideProgress(run([["content.show", song]]), T0), null);
+    assert.equal(slideProgress(null, T0), null);
 });

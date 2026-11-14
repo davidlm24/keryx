@@ -10,7 +10,7 @@
 // w, h), each with a rule for when it shows, a text look (size in cqmin,
 // font, weight, colour, alignment) and the options of its type. Pure (no
 // React, tested in layouts.test.mjs): the renderer and the editor only draw.
-import { toolTime } from "../../shared/live-state.mjs";
+import { toolTime, slideProgress } from "../../shared/live-state.mjs";
 import { captionParts, airFor } from "./console/caption.js";
 
 export const LAYOUT_CATEGORIES = [["palco", "Palco"], ["pastor", "Pastor"], ["publico", "Público"], ["outro", "Outros"]];
@@ -55,7 +55,7 @@ export const ELEMENT_TYPES = [
     { id: "chords", name: "Cifra", icon: "music", group: "musica", w: 31, h: 50, size: 2.2, font: "mono", when: "content", label: "Cifra", box: true, props: {} },
     { id: "notes", name: "Notas para músicos", icon: "edit", group: "musica", w: 94, h: 8, size: 2.4, when: "content", props: {} },
     { id: "monitor", name: "Monitor da projeção", icon: "projector", group: "tela", w: 60, h: 58, size: 2, when: "always", props: { chords: false, labels: false } },
-    { id: "progress", name: "Progresso dos slides", icon: "dot", group: "setlist", w: 94, h: 3, size: 1, when: "content", props: {} },
+    { id: "progress", name: "Progresso dos slides", icon: "dot", group: "setlist", w: 94, h: 3, size: 1, when: "content", props: { line: false } },
     { id: "logo", name: "Logo da igreja", icon: "logo", group: "tela", w: 10, h: 16, size: 2, when: "always", props: {} },
     { id: "text", name: "Texto fixo", icon: "text", group: "tela", w: 40, h: 8, size: 3, when: "always", props: { text: "Texto" } },
     { id: "image", name: "Imagem", icon: "image", group: "tela", w: 30, h: 30, size: 2, when: "always", props: { url: "" } },
@@ -217,8 +217,11 @@ export const FACTORY_LAYOUTS = [
             { id: "palco_chords", type: "chords", x: 66, y: 18, w: 31, h: 69 },
             { id: "palco_next_page", type: "next", x: 66, y: 18, w: 31, h: 69, size: 2.4, label: "Próxima", props: { show: "page" } },
             { id: "palco_bar", type: "band", x: 0, y: 89, w: 100, h: 11 },
+            // The slides as segments along the bar's top edge, the time left at
+            // its right (owner 2026-11-14, mockup "Pontos do Palco", P1 A, P2 A,
+            // P3 B, P4 A1); under the Próximo so it never covers it.
+            { id: "palco_progress", type: "progress", x: 0, y: 89, w: 100, h: 11, props: { line: true } },
             { id: "palco_next", type: "next", x: 3, y: 90, w: 80, h: 9, size: 4.2, weight: "bold", align: "left", valign: "middle", inline: true, label: "Próximo", props: { show: "text" } },
-            { id: "palco_progress", type: "progress", x: 85, y: 90, w: 12, h: 9 },
             el("clock", 20, 30, 60, 24, { size: 16, align: "center", valign: "middle", when: "idle" }),
             el("text", 20, 56, 60, 8, { size: 3, align: "center", when: "idle", props: { text: "Aguardando projeção" } }),
         ],
@@ -321,6 +324,8 @@ export function layoutContext({ live, now, upcoming = [], hasService = false, ch
     const intro = Boolean(content?.intro);
     return {
         live, now, content, slides, index, song, intro,
+        // How far the slide on air is through its time (null: nothing says).
+        progress: slideProgress(live, now),
         presentation: content?.kind === "presentation",
         current: !content ? null : intro ? { text: "", label: "Introdução", intro: true } : slides[index] || null,
         next: !content ? null : intro ? slides[index] || null : slides[index + 1] || null,

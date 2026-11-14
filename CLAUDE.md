@@ -2672,7 +2672,19 @@ both | text | page, `oneLine`) e os pontos. `part` é o nome da parte
 ("Introdução" na introdução, "n/m" num PDF; `elementLabel` troca os rótulos
 num PDF). **O Aviso rápido encosta na faixa** do seu lado (`alertDock`:
 acima da faixa de baixo, abaixo da de cima; os elementos vizinhos abrem
-espaço com `--ka-h`), a pílula fica no meio. Um design salvo do Palco antigo
+espaço com `--ka-h`), a pílula fica no meio. **Os pontos enchem** (owner 2026-11-14, mockup "Pontos do Palco", P1 A · P2 A · P3 B ·
+P4 A1): o elemento "Progresso dos slides" (`Progress` em LayoutRenderer.jsx,
+`slideProgress` em shared/live-state.mjs, testado) desenha um segmento por slide
+enquanto a letra segue um tempo (marcas, Por tempo, a letra automática
+andando): os passados cheios, o do ar enchendo com o tempo dele (de uma marca
+à seguinte, o último até o Fim; a introdução é o primeiro segmento),
+**âmbar e pulsando nos últimos 5 s** (de um slide de 10 s ou mais) e o tempo
+que falta à direita. Sem tempo (slide passado à mão, música sem marcas, letra
+pausada) são os pontos de antes: nada finge saber (P3 = B); o último slide
+sem Fim fica cheio e sem número. O Palco de fábrica usa `props.line` (a
+linha de ponta a ponta no topo da faixa de baixo, o tempo à direita; a chave
+"Linha" do Editor); o Pastor, a barra dele com o tempo ao lado.
+Um design salvo do Palco antigo
 (ids `f_`, sem Faixa: `fromOldDesign`) fica como está e o Editor diz "Este
 desenho é anterior ao Palco novo" com Voltar ao padrão. **O Pastor também**
 (owner 2026-11-12, mockup "Telas · fase 2", P = A; o PastorScreen morreu):

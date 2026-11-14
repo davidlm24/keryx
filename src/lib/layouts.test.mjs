@@ -384,3 +384,16 @@ test("factory:pastor: a strip, the monitor 16:9, the next items, stable ids", ()
     assert.equal(mon.w, mon.h, "on a 16:9 screen, equal % keep the monitor 16:9");
     assert.deepEqual(mon.props, { chords: false, labels: false });
 });
+
+test("progress: the context carries how far the slide is through its time; the Palco's bar is a line (2026-11-14)", () => {
+    const marked = { title: "Canção", slides: [{ text: "um", start: 8 }, { text: "dois", start: 20 }, { text: "três", start: 50 }], follow: { source: "clock" } };
+    let live = applyOp(emptyState(T0), "content.show", marked, T0);
+    assert.equal(layoutContext({ live, now: T0 }).progress, null, "the clock has not started: nothing says");
+    live = applyOp(live, "content.follow", { action: "start" }, T0);
+    live = applyOp(live, "content.goTo", { index: 0, auto: true }, T0 + 8_000);
+    const p = layoutContext({ live, now: T0 + 14_000 }).progress;
+    assert.ok(p && p.frac > 0 && p.frac < 1 && p.left === 6, "slide 1 runs 8 to 20: 6 s left at 14 s");
+    const palco = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco").elements.find((e) => e.type === "progress");
+    assert.equal(palco.props.line, true);
+    assert.equal(normalizeElement({ type: "progress" }).props.line, false, "the Pastor's and old designs keep the row");
+});
