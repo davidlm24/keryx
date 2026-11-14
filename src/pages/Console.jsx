@@ -49,6 +49,8 @@ import SlidesPanel, { handTitle, handIsPrev } from "@/components/console/SlidesP
 import OnAirPanel, { onAirCount } from "@/components/console/OnAirPanel";
 import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaPill } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
+import { alertCards } from "@/lib/console/alerts";
+import Alerts from "@/components/console/Alerts";
 import Rundown, { plannedTimes, SetlistFooter } from "@/components/console/Rundown";
 import { useSetlistAutoplay } from "@/components/console/useSetlistAutoplay";
 import { endsByItself, AUTOPLAY_SAY } from "@/lib/console/autoplay";
@@ -1590,50 +1592,33 @@ export default function Console() {
             <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} verDot={pedidosUnread && !pedidosReachable} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
                 menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || reporting || importReq || pkg.open || libReq || bibleAsk)} />
 
-            {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
-            {health.banner?.kind === "reconnecting" && (
-                <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
-                    <Icon name="warn" className="kx-banner-i" />
-                    <span className="kx-alert-title">{health.banner.row.name} · Reconectando… tentativa {tries}</span>
-                    <span className="kx-sub">ATENÇÃO · {health.banner.row.key === "/Projection" ? `última conexão boa às ${hhmm(lastOkAt)} · ` : ""}o monitor escolhido não está ligado</span>
-                    <span className="kx-spacer" />
-                    <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("black")}>Tela preta</button>
-                    <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("logo")}>Mostrar logo</button>
-                    <button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
-                </div>
-            )}
-            {health.banner && health.banner.kind !== "reconnecting" && (
-                <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
-                    <Icon name="warn" className="kx-banner-i" />
-                    <span className="kx-alert-title">{health.banner.title}{health.banner.more ? ` · e mais ${health.banner.more}` : ""}</span>
-                    <span className="kx-sub">{health.banner.sub}</span>
-                    <span className="kx-spacer" />
-                    {health.banner.kind === "closed" && <button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => openOutput(health.banner.row.key)}>Reabrir</button>}
-                    <button type="button" className={`kx-btn kx-t ${health.banner.kind === "closed" ? "" : "kx-banner-main"}`} onClick={() => setOpen("outs")}>Ver saídas</button>
-                    <button type="button" className="kx-btn kx-t" onClick={() => forgetOutput(health.banner.row.id)} title="Não avisar mais sobre esta saída nesta sessão">Esquecer</button>
-                </div>
-            )}
-            {/* Travar telas: the console prepares, the screens keep what they show. */}
+            {/* A failing output and Travar telas float at the top right, never in the flow (owner 2026-11-14, mockup "Avisos flutuantes": the in-flow banners pushed the dock down). One output card at a time (outputHealth picks it). */}
+            <Alerts cards={alertCards({ banner: health.banner, tries, lastOkAt, hhmm, problems: health.problems, locked: c.locked })} openMenu={openMenu} inert={winOpen ? "" : undefined}
+                onAct={(act) => {
+                    if (act === "black" || act === "logo") c.toggleScreen(act);
+                    else if (act === "outs") setOpen("outs");
+                    else if (act === "reopen" && health.banner) openOutput(health.banner.row.key);
+                    else if (act === "forget" && health.banner) forgetOutput(health.banner.row.id);
+                    else if (act === "unlock") c.setLocked(false);
+                }} />
             {editing && (
                 <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou aos painéis padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!winOpen && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
                     {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small label="Tamanhos" value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }], ["exact", "Exato", { title: "Divisões exatas (33 · 33 · 34), sem o pulo de 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
+                    {/* The one-click splits live in a menu, not inline (A4 = A, 2026-11-14: one tighter line). */}
                     {!winOpen && splitNames.length > 0 && (
-                        <span className="dock-presets dock-span" role="group" aria-label="Divisão exata">
-                            <span className="kx-meta" title={`A divisão do último divisor que você tocou: ${splitNames.join(" · ")}`}>Divisão: <b className="dock-preset-name">{weightsLabel(splitNode.weights)}</b></span>
-                            {presetsForSplit(splitNames.length).map((w) => (
-                                <button key={w.join()} type="button" className={`kx-btn kx-t ${weightsLabel(splitNode.weights) === weightsLabel(w) ? "is-on" : ""}`} aria-pressed={weightsLabel(splitNode.weights) === weightsLabel(w)} title={`${splitNames.join(" · ")} em ${weightsLabel(w)} %`} onClick={() => setWeights(w)}>{weightsLabel(w)}</button>
-                            ))}
-                            <button type="button" className="kx-btn kx-t" title="Digitar a porcentagem de cada painel" onClick={typeWeights}>Digitar…</button>
-                        </span>
+                        <button type="button" className="kx-btn kx-t dock-preset-btn" aria-haspopup="menu" title={`A divisão do último divisor que você tocou: ${splitNames.join(" · ")}`}
+                            onClick={(e) => openMenu(e, { title: `Divisão: ${splitNames.join(" · ")}`, items: [
+                                ...presetsForSplit(splitNames.length).map((w) => ({ label: `${weightsLabel(w)} %`, checked: weightsLabel(splitNode.weights) === weightsLabel(w), onSelect: () => setWeights(w) })),
+                                { label: "Digitar…", title: "Digitar a porcentagem de cada painel", onSelect: typeWeights },
+                            ] })}>
+                            <span className="kx-meta">Divisão:</span> <b className="dock-preset-name">{weightsLabel(splitNode.weights)}</b><Icon name="chevron-down" />
+                        </button>
                     )}
                     {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small label="No ar" value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Colunas", { title: "Sob as colunas: a faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela", { title: "Janela toda: a faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
                     {!winOpen && <DockLockSwitch on={envLocked} onChange={setEnvLock} />}
                     {!winOpen && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} openMenu={openMenu} />}
                 </EditBanner>
-            )}
-            {c.locked && (
-                <div className="kx-banner is-rh" role="status" inert={winOpen ? "" : undefined}><Icon name="lock" className="kx-banner-i" /><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-banner-main kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             {/* Behind THE window nothing takes the focus (C-12); its keys still listen on window. */}
             <main className="main" ref={mainRef} inert={winOpen ? "" : undefined}>
