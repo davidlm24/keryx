@@ -65,10 +65,35 @@
 .kl-mon { position: relative; width: min(100cqw, calc(100cqh * 16 / 9)); aspect-ratio: 16 / 9; margin: auto; border-radius: 1.4cqmin; overflow: hidden; background: var(--screen-bg, #000); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; isolation: isolate; }
 .kl-al-left .kl-mon { margin-left: 0; } .kl-al-right .kl-mon { margin-right: 0; }
 .kl-mon > * { position: absolute; inset: 0; }
-.kl-dots { display: flex; justify-content: center; gap: .8cqmin; height: 100%; align-items: center; }
+.kl-dots { display: flex; width: 100%; justify-content: center; gap: .8cqmin; height: 100%; align-items: center; }
 .kl-dots i { height: 1cqmin; min-height: 4px; width: 1cqmin; min-width: 4px; border-radius: 999px; background: var(--line-strong); }
 .kl-dots i.is-on { width: 5cqmin; background: var(--air); }
 .kl-dots i.is-done { background: var(--fg-3); }
+.kl-dots.is-end { justify-content: flex-end; padding-right: 3cqw; }
+/* The slides as segments that fill (LayoutRenderer Progress): the one on air
+   fills with its time and turns amber, pulsing, for its last seconds. */
+.kl-prog { position: relative; display: flex; align-items: center; gap: 1.2cqw; width: 100%; height: 100%; }
+.kl-segs { flex: 1; min-width: 0; display: flex; gap: .45cqw; height: min(1.1cqw, 100%); }
+.kl-seg { position: relative; flex: 1 1 0; border-radius: 999px; box-shadow: inset 0 0 0 .14cqw var(--line-strong); overflow: hidden; }
+.kl-seg.is-intro { flex-grow: .55; }
+.kl-seg.is-done { background: var(--fg-3); box-shadow: none; }
+.kl-seg.is-cur { box-shadow: inset 0 0 0 .14cqw color-mix(in srgb, var(--air) 65%, transparent); }
+.kl-seg.is-warn { box-shadow: inset 0 0 0 .14cqw color-mix(in srgb, var(--warn) 70%, transparent); }
+.kl-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--air); border-radius: inherit; }
+.kl-fill.is-smooth { transition: width 1s linear; }
+.kl-seg.is-warn .kl-fill { background: var(--warn); animation: kl-pulse 1s ease-in-out infinite; }
+@keyframes kl-pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .kl-seg.is-warn .kl-fill { animation: none; } }
+.kl-left { flex: none; min-width: 5cqw; text-align: right; font-size: 2.1cqw; font-weight: 700; color: var(--air-fg); white-space: nowrap; }
+.kl-left.is-warn { color: var(--warn-fg); }
+/* The Palco's bar: a hairline across the top edge, the time at the right. */
+.kl-prog.is-line .kl-segs { position: absolute; left: 0; right: 0; top: 0; height: .95cqw; gap: .3cqw; }
+.kl-prog.is-line .kl-seg { border-radius: 0; box-shadow: none; background: color-mix(in srgb, var(--line-strong) 80%, transparent); }
+.kl-prog.is-line .kl-seg.is-done { background: var(--fg-3); }
+.kl-prog.is-line .kl-seg.is-cur { background: color-mix(in srgb, var(--air) 28%, var(--bg-2)); }
+.kl-prog.is-line .kl-seg.is-warn { background: color-mix(in srgb, var(--warn) 28%, var(--bg-2)); }
+.kl-prog.is-line .kl-fill { border-radius: 0; }
+.kl-prog.is-line .kl-left { position: absolute; right: 3cqw; top: 0; bottom: 0; display: flex; align-items: center; }
 .kl-img { width: 100%; height: 100%; object-fit: cover; }
 .kl-img.is-contain { object-fit: contain; }
 .kl-al-left .kl-img.is-contain { object-position: left; } .kl-al-right .kl-img.is-contain { object-position: right; }

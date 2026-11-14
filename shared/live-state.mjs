@@ -1331,6 +1331,34 @@ export function followIndex(state, now) {
     return introAt(c.slides, f, 0, t, c.introMode) ? -1 : null;
 }
 
+// How far the slide on air is through its own time, for the Palco's progress
+// bar (owner 2026-11-14: "os pontos enchem até o próximo slide"): the slide's
+// start to the next one's, the last one's to the song's Fim; the
+// introduction's from 0 to the first mark. { index (-1: introduction), intro,
+// frac 0-1, left (seconds, null when the end is not known), warn (the last
+// `PROGRESS_WARN` seconds of a slide that lasts at least 10) } — or null when
+// nothing says how long it takes: no follow, paused, its source not playing,
+// an unmarked slide. The last slide with no Fim is full, with no time left.
+export const PROGRESS_WARN = 5;
+export function slideProgress(state, now) {
+    const c = state?.content;
+    const f = c?.follow;
+    if (!f || f.paused || !Array.isArray(c.slides) || c.slides.length < 2) return null;
+    const pos = followPosition(state, now);
+    if (pos === null) return null;
+    const t = pos + (f.offset || 0);
+    const intro = Boolean(c.intro);
+    const index = intro ? -1 : Math.min(Math.max(0, c.index || 0), c.slides.length - 1);
+    const start = intro ? 0 : c.slides[index]?.start;
+    if (!Number.isFinite(start)) return null;
+    const last = !intro && index === c.slides.length - 1;
+    const end = last ? (Number.isFinite(c.ends?.at) ? c.ends.at : NaN) : c.slides[index + 1]?.start;
+    if (!Number.isFinite(end)) return last ? { index, intro, frac: 1, left: null, warn: false } : null;
+    if (end <= start) return null;
+    const left = Math.max(0, end - t);
+    return { index, intro, frac: Math.min(1, Math.max(0, (t - start) / (end - start))), left, warn: left > 0 && left <= PROGRESS_WARN && end - start >= 10 };
+}
+
 // What a <video> (or YouTube player) should do to follow the shared
 // playback: el = { currentTime, paused, ended, duration } of the element.
 // Returns { seek?: seconds, play?: true, pause?: true, volume }.

@@ -151,6 +151,35 @@ function CurrentBody({ el, ctx, song, embed, transpose, setTranspose, cut = "" }
     );
 }
 
+// "Progresso dos slides" (owner 2026-11-14, mockup "Pontos do Palco"): while
+// the lyrics follow a time (marks, Por tempo, the letra automática running)
+// each slide is a segment, the passed ones full, the one on air filling with
+// the time it has, in amber for its last seconds, with the time left; the
+// first segment is the introduction when the song has one. Without a time
+// (a slide moved by hand, a song with no marks, paused) the dots of before:
+// nothing here pretends to know. `line` (the Palco's bar): the segments along
+// the element's top edge, the time at its right.
+const left = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+function Progress({ el, ctx, embed }) {
+    const p = ctx.progress;
+    const line = Boolean(el.props.line);
+    const label = `Slide ${ctx.index + 1} de ${ctx.slides.length}`;
+    if (!p) return <div className={`kl-dots ${line ? "is-end" : ""}`} aria-label={label}>{ctx.slides.map((_, i) => <i key={i} className={i === ctx.index ? "is-on" : i < ctx.index ? "is-done" : ""} />)}</div>;
+    const hasIntro = Number.isFinite(ctx.slides[0]?.start) && ctx.slides[0].start > 0;
+    const seg = (i) => {
+        const state = i < p.index ? "is-done" : i === p.index ? "is-cur" : "";
+        return <span key={i} className={`kl-seg ${state} ${i === p.index && p.warn ? "is-warn" : ""} ${i === -1 ? "is-intro" : ""}`}>{i === p.index && <i className={`kl-fill ${embed ? "" : "is-smooth"}`} style={{ width: `${(p.frac * 100).toFixed(2)}%` }} />}</span>;
+    };
+    const rest = ctx.slides.map((_, i) => seg(i));
+    const showLeft = p.left !== null && (line || el.w >= 18);
+    return (
+        <div className={`kl-prog ${line ? "is-line" : ""}`} aria-label={label}>
+            <div className="kl-segs">{hasIntro && seg(-1)}{rest}</div>
+            {showLeft && <span className={`kl-left ${p.warn ? "is-warn" : ""}`}>{left(Math.ceil(p.left))}</span>}
+        </div>
+    );
+}
+
 function Body({ el, ctx, logoUrl, embed, motion, transpose, setTranspose, screen, audio, cut }) {
     const song = ctx.song || {};
     switch (el.type) {
@@ -186,11 +215,7 @@ function Body({ el, ctx, logoUrl, embed, motion, transpose, setTranspose, screen
             return <div className="kl-mon"><ScreenRenderer state={live} now={ctx.now} logoUrl={logoUrl} preview audio={false} /></div>;
         }
         case "progress":
-            return (
-                <div className="kl-dots" aria-label={`Slide ${ctx.index + 1} de ${ctx.slides.length}`}>
-                    {ctx.slides.map((_, i) => <i key={i} className={i === ctx.index ? "is-on" : i < ctx.index ? "is-done" : ""} />)}
-                </div>
-            );
+            return <Progress el={el} ctx={ctx} embed={embed} />;
         case "logo":
             return <img className="kl-img is-contain" src={logoUrl} alt="" />;
         case "image":
