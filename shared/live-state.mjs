@@ -549,6 +549,18 @@ function soundTransition(value) {
 const exitFade = (value, now) => (value === undefined || value === null || value === false || value === 0 ? null : { ms: Math.round(ranged(value, EXIT_FADE_MS, "Transição")), at: now });
 
 // How loud a playback is at `now` against its volume (0-1): 1, or where its
+// How loud a sound still is on its way out (owner 2026-11-14: the Fim's fade
+// "não fica muito natural"): `left` is the share of the fade still to go
+// (1 at its start, 0 at its end) and the level falls as its cube — the ear
+// hears the straight line it replaced as loud almost to the end, then cut;
+// the cube comes down evenly and lands softly (ffmpeg's afade curve "cub",
+// which the exported video uses). Every leaving sound takes it: the Fim, Esc,
+// Limpar, one sound giving way to another.
+export function fadeGain(left) {
+    const r = Math.max(0, Math.min(1, Number(left) || 0));
+    return r * r * r;
+}
+
 // ramp (pausing or playing again with a fade, a Desfazer fading in) is, in a
 // straight line from `from` to `to` over `ms` from `at`. Every window that
 // plays the layer computes the same curve on the live clock.
@@ -1174,7 +1186,10 @@ const OPS = {
         const sound = a.soundFade == null ? fade?.ms : ranged(a.soundFade, [0, 1e4], "Fim");
         const url = a.ended && (s.content?.ends?.url || s.content?.follow?.url);
         const layer = url && ["audio", "video", "media"].find((k) => s[k]?.url === url);
-        return { ...remember(s, now), ...without(s, "content"), ...fundo, ...leave(s, ["audio"], sound, now), ...(layer ? endedMark(layer, s[layer], now) : {}), screen: "show", content: null, media: null, video: null, audio: null, tool: null, communication: null, fade };
+        // The song's own fade (soundFade, the Fim) takes the video channel and
+        // the media layer too when one of them plays it (owner 2026-11-14: a
+        // song played from a video cut or took Tirar's fade instead).
+        return { ...remember(s, now), ...without(s, "content"), ...fundo, ...leave(s, a.soundFade == null ? ["audio"] : ["audio", "video", "media"], sound, now), ...(layer ? endedMark(layer, s[layer], now) : {}), screen: "show", content: null, media: null, video: null, audio: null, tool: null, communication: null, fade };
     },
 };
 

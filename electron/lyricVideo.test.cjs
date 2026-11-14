@@ -62,7 +62,7 @@ test("ffmpegArgs with the song's Fim: the picture to black and the sound out fro
     const args = ffmpegArgs({ segs, fade: 0.4, frameFile: (f) => `F/${f}.png`, audio: "A/play.mp3", out: "O/x.mp4", total: 33, end: { at: 30, fade: 3 } });
     const fc = args[args.indexOf("-filter_complex") + 1];
     assert.match(fc, /xfade=transition=fade:duration=0\.4:offset=19\.8\[vf\];\[vf\]fade=t=out:st=30:d=3\[v\]$/);
-    assert.equal(args[args.indexOf("-af") + 1], "afade=t=out:st=30:d=3");
+    assert.equal(args[args.indexOf("-af") + 1], "afade=t=out:st=30:d=3:curve=cub");
     // One slide only, no fade: the plain chain, no audio filter.
     const one = ffmpegArgs({ segs: segments([0], 20), fade: 0, frameFile: (f) => `F/${f}.png`, audio: "A/p.mp3", out: "O/y.mp4", total: 20, end: { at: 17, fade: 0 } });
     assert.ok(!one.includes("-af"));

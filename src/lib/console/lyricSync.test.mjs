@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, spliceMarks, clampEnd } from "./lyricSync.js";
+import { snap, fmtTime, parseTime, marksOf, markedCount, indexAt, nextUnmarked, setMark, nudge, recordMark, distribute, fitMarks, sameMarks, followModeOf, slideSeconds, timedLength, followStarts, withFollowStarts, lineCount, slideFirstLines, startsFromLines, linesFromStarts, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, spliceMarks, clampEnd, remapMarks } from "./lyricSync.js";
 import { sungLines, slidesFromLyrics } from "../songImport.js";
 import { applyOp, emptyState, followIndex } from "../../../shared/live-state.mjs";
 
@@ -204,4 +204,33 @@ test("clampEnd: after the last mark, inside the file, to a hundredth (2026-11-12
     assert.equal(clampEnd([], 5), 5);
     assert.equal(clampEnd([1], null), null);
     assert.equal(clampEnd([1], "x"), null);
+});
+
+test("remapMarks: an edit to the lyrics moves no other slide's time (owner 2026-11-14)", () => {
+    const four = "[Verso]\na1\na2\na3\na4\n\nb1\nb2\nb3\nb4\n\n[Refrão]\nc1\nc2\nc3\nc4\n\nd1\nd2\nd3\nd4";
+    const marks = [10, null, null, null, 20, null, null, null, 30, null, null, null, 40, null, null, null];
+    const slideTimes = (lyrics, m) => startsFromLines(slidesFromLyrics(lyrics), m);
+    // A line added to the second slide: the others keep their times.
+    const added = four.replace("b4", "b4\nb5");
+    assert.deepEqual(slideTimes(added, remapMarks(four, added, marks)), [10, 20, 30, 40]);
+    // A line taken out of the first.
+    const cut = four.replace("a2\n", "");
+    assert.deepEqual(slideTimes(cut, remapMarks(four, cut, marks)), [10, 20, 30, 40]);
+    // A typo fixed in a marked line keeps its time.
+    const typo = four.replace("b1", "B um");
+    assert.deepEqual(slideTimes(typo, remapMarks(four, typo, marks)), [10, 20, 30, 40]);
+    // A part with no lyrics put between slides: a new slide with no time.
+    const part = four.replace("\n\n[Refrão]", "\n\n[Ministração]\n\n[Refrão]");
+    assert.deepEqual(slideTimes(part, remapMarks(four, part, marks)), [10, 20, null, 30, 40]);
+    // Split in blocks of 2: the first line of every old slide keeps its time.
+    const two = four.split("\n\n").map((b) => b.replace(/(\n[a-d]2)\n/, "$1\n\n")).join("\n\n");
+    assert.deepEqual(slideTimes(two, remapMarks(four, two, marks)), [10, null, 20, null, 30, null, 40, null]);
+    // Nothing that counts changed (chords only): the same marks.
+    assert.deepEqual(remapMarks(four, four.replace("a1", "[G]a1"), marks), marks);
+    // A label moved into a stanza and out again keeps every time.
+    const mid = "[Verso]\na1\na2\n[Refrão]\nb1\nb2\n\nc1\nc2";
+    const m2 = [1, null, 2, 3, null, 5, null];
+    const fixed = "[Verso]\na1\na2\n\n[Refrão]\nb1\nb2\n\nc1\nc2";
+    const back = remapMarks(mid, fixed, m2);
+    assert.deepEqual(back, [1, null, 3, null, 5, null]);
 });

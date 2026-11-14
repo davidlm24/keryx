@@ -86,7 +86,8 @@ test("endGain: full before the Fim, down over the fade, silent after (owner 2026
     const { endGain } = await import("./songEnd.js");
     assert.equal(endGain(10, 30, 4), 1);
     assert.equal(endGain(30, 30, 4), 1);
-    assert.equal(endGain(32, 30, 4), 0.5);
+    assert.equal(endGain(32, 30, 4), 0.125, "half the fade: the cube, an eighth of the level");
+    assert.equal(endGain(33, 30, 4), 0.015625);
     assert.equal(endGain(34, 30, 4), 0);
     assert.equal(endGain(40, 30, 4), 0);
     assert.equal(endGain(30, 30, 0), 0, "no fade: silent at the Fim");

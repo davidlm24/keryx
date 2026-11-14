@@ -2969,7 +2969,13 @@ marked, moved or taken off while the song is on air), and `restoreArgs`
 carries `ends`/`introMode` (Desfazer, Voltar ao anterior, the item after
 Esc). **The player's bar ends at the Fim** (`endLength`: the total, the
 remaining time, the seek and the ticks stop at the mark, within the file). The exported video stops at end + fade, fading to black
-(`ffmpegArgs` `end`). **Marcar os tempos' timeline** (T1–T4,
+(`ffmpegArgs` `end`). **The fade is a curve** (owner 2026-11-14: the
+straight line sounded loud to the end, then cut): every leaving sound — the
+Fim, Esc, Limpar, a sound giving way — comes down as `fadeGain` (the cube of
+what is left, shared/live-state.mjs; LiveVideo's `left()`, `endGain`, the
+export's `afade` `curve=cub`), and the Fim's `soundFade` takes the video
+channel and the media layer too when one of them plays the song (it cut or
+took Tirar's fade before). **Marcar os tempos' timeline** (T1–T4,
 `SyncTimeline.jsx`): an overview of the whole song, a ruler that only moves
 the time, a lane that only holds the marks (flags; one moves after a 4 px
 drag, a click goes to its time) and the Fim's red flag with its fade band,
@@ -2992,6 +2998,23 @@ lyricSync.js, tested), so Estrofe / 2 / 4 linhas never lose the marks and
 lyrics with no blank line can be marked; save writes both `line_starts` and
 the derived `slides[].start` (the screens read only the slides); an old
 song's slide marks go to each slide's first line (`linesFromStarts`).
+**The marks follow their lines through every edit** (owner 2026-11-14: a
+line added to one slide moved the others' times): the editor's `set`
+runs `remapMarks` (lyricSync.js, tested) on every change of the lyrics —
+typing, the chips, Duplicar estrofe, 2/4 linhas, Desfazer —, matching the
+old and new sung lines by text (a longest common sequence; changed lines
+in a gap keep the old marks in order), so no other slide's time moves;
+**Tirar todas as marcações…** (the editor's marks line, with Desfazer, and
+Marcar os tempos' row menu, one undo step) clears them, the Fim stays.
+**Marcar os tempos inserts parts with no lyrics** (owner 2026-11-14): a
+row's right click › Inserir depois deste slide › Ministração ·
+Instrumental · Solo · Interlúdio adds an empty slide with no time
+(`spliceMarks`, every other mark kept; off while a split waits, and when
+the editor's slides do not read the lyrics line for line, `canInsert`);
+Aplicar hands `extra.parts` and the editor writes them into the lyrics
+(`insertParts` in songImport.js, tested: between stanzas a block of its
+own, inside one it cuts it and the rest names itself again). The editor's
+[Instrumental] chip is a part with no lyrics, like [Ministração].
 Marcar os tempos shows **one row and one time per slide** (owner
 2026-11-11: "se marco por slide, por que posso marcar as outras linhas?";
 the line times are internal: a slide's time lives on its first line,

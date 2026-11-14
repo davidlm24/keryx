@@ -338,6 +338,68 @@ export function slidesFromLyrics(lyrics, { lines = 0, chorded = false } = {}) {
 // Marcar os tempos marks one by one (owner 2026-11-10). -> [{ text, label }]
 export const sungLines = (lyrics) => slidesFromLyrics(lyrics, { lines: 1 }).map(({ text, label }) => ({ text, label }));
 
+// Parts with no lyrics put into the lyrics (owner 2026-11-14: Marcar os
+// tempos inserts a Ministração or an Instrumental between slides, keeping
+// every time): each { before, label } goes alone between blank lines right
+// before sung line `before` (sungLines' index; the count of lines puts it
+// at the end). Between two stanzas it is a block of its own; inside one it
+// cuts the stanza there. The lines after a part lose the label they took
+// from above (slidesFromLyrics resets it), so they get it back as their own
+// "[Label]" heading. -> the new lyrics.
+export function insertParts(lyrics, parts = []) {
+    const want = (parts || []).filter((p) => Number.isInteger(p?.before) && p.before >= 0 && String(p.label || "").trim());
+    if (!want.length) return String(lyrics || "");
+    const partBlock = (p) => `[${String(p.label).trim()}]`;
+    const at = (j) => want.filter((p) => p.before === j);
+    const out = [];
+    let label = "";
+    let j = 0;
+    String(lyrics || "").replace(/\r/g, "").split(/\n\s*\n/).forEach((block) => {
+        let rows = block.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
+        if (!rows.length) return;
+        const m = /^\s*\[(.+?)\]\s*$/.exec(rows[0]);
+        let head = null;
+        if (m && !hasInlineChords(rows[0])) { head = rows[0]; label = m[1].trim(); rows = rows.slice(1); }
+        const sung = rows.map((r, i) => (stripLine(r).trim() ? i : -1)).filter((i) => i >= 0);
+        if (!sung.length) {
+            if (head && isNoLyrics(label)) {
+                // A part already there: one slot of its own.
+                for (const p of at(j)) out.push(partBlock(p));
+                j += 1;
+                label = "";
+            }
+            out.push([head, ...rows].filter(Boolean).join("\n"));
+            return;
+        }
+        // Cut the stanza before each sung line that has parts to go before it.
+        let piece = head ? [head] : [];
+        let from = 0;
+        let pieceLabel = label;
+        sung.forEach((ri, s) => {
+            const here = at(j + s);
+            if (here.length) {
+                // Chords-only rows right above the line go with it.
+                let cut = ri;
+                while (cut > from && !stripLine(rows[cut - 1]).trim() && !(/^\s*\[(.+?)\]\s*$/.test(rows[cut - 1]) && !hasInlineChords(rows[cut - 1]))) cut--;
+                // What comes before the part, only when it holds a sung line
+                // (a stanza's own heading alone goes with the rest, below).
+                const before = rows.slice(from, cut);
+                piece.push(...before);
+                if (before.some((r) => stripLine(r).trim())) out.push(piece.join("\n"));
+                for (const p of here) out.push(partBlock(p));
+                // After a part the label is gone: the rest names itself again.
+                piece = pieceLabel && !isNoLyrics(pieceLabel) ? [`[${pieceLabel}]`] : [];
+                from = cut;
+            }
+        });
+        piece.push(...rows.slice(from));
+        out.push(piece.join("\n"));
+        j += sung.length;
+    });
+    for (const p of want.filter((x) => x.before >= j)) out.push(partBlock(p));
+    return out.join("\n\n");
+}
+
 // Saved slides from before the editor kept their chorded twins (chords
 // in the lyrics, none in the slides): the twins from the lyrics, when the
 // lyrics still split into exactly those slides; else the slides as saved.
@@ -444,7 +506,7 @@ export function parseLrc(lrc) {
 }
 
 // A line as the matching sees it: no chords, accents, case or punctuation.
-const lineKey = (s) => stripChords(String(s || "")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+export const lineKey = (s) => stripChords(String(s || "")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, " ").trim();
 // The same line, give or take its end (one of them cut short) or a word
 // spelled otherwise ("ó" / "oh"): three words in four the same.

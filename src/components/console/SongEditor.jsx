@@ -11,8 +11,8 @@ import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
 import { soundModeFor, songSoundWhy, soundModeValue } from "@/lib/console/videoSound";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
-import { parseChords, slidesFromLyrics, reflowLyrics, linesLimit, parseDuration, formatDuration } from "@/lib/songImport";
-import { fitMarks, startsFromLines, linesFromStarts, slideFirstLines, lineCount, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength } from "@/lib/console/lyricSync";
+import { parseChords, slidesFromLyrics, reflowLyrics, linesLimit, parseDuration, formatDuration, insertParts, sungLines } from "@/lib/songImport";
+import { fitMarks, startsFromLines, linesFromStarts, slideFirstLines, lineCount, FOLLOW_MODES, SLIDE_SECONDS_RANGE, followModeOf, slideSeconds, timedLength, remapMarks } from "@/lib/console/lyricSync";
 import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeInline, transposeChords, transposeChord } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
@@ -132,7 +132,22 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         return () => { alive = false; };
     }, [songId]);
 
-    const set = (patch) => { setSong((s) => ({ ...s, ...patch })); setDirty(true); };
+    // The lyrics as they are now (a Desfazer made renders ago reads them here).
+    const lyricsNow = useRef("");
+    lyricsNow.current = song?.lyrics || "";
+    // Every change of the lyrics carries the marks with their lines (owner
+    // 2026-11-14: typing, the chips, Duplicar estrofe, 2/4 linhas, Desfazer;
+    // remapMarks in lyricSync.js), so no other slide's time moves.
+    const set = (patch) => {
+        if (patch && "lyrics" in patch) {
+            const before = lyricsNow.current;
+            const after = patch.lyrics || "";
+            if (after !== before) setLineStarts((ls) => remapMarks(before, after, ls));
+            lyricsNow.current = after;
+        }
+        setSong((s) => ({ ...s, ...patch }));
+        setDirty(true);
+    };
     // One kind of line break, so every offset (the cursor, slideSpan) means
     // the same place in the text.
     const setLyrics = (lyrics) => { set({ lyrics: unCR(lyrics) }); setResplit(true); };
@@ -156,8 +171,9 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // still what the last pick wrote, another pick starts from the text
     // before it (so typing 1 then 12 in Outro, or 2 then 4, never stacks)
     // and Estrofe gives it back; once edited by hand, the text is the new
-    // start. The toast has Desfazer. Timings are by slide index, so when the
-    // count changes they are cleared.
+    // start. The toast has Desfazer. The marks stay on their lines (set →
+    // remapMarks); Por tempo's per-slide exceptions are by slide index, so
+    // when the count changes they are cleared.
     const reflowBase = useRef(null);
     const pickSplit = (n) => {
         const lines = linesLimit(n);
@@ -353,12 +369,23 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         lines: slides.flatMap((x) => String(x.text || "").split("\n").map((text) => ({ text, label: x.label || "" }))),
         groups: slideFirstLines(slides).map((first, k) => ({ first, label: slides[k].label || "" })),
         starts: fitMarks(lineStarts, lineCount(slides)),
+        // Inserting a Ministração there needs the slides to read the lyrics
+        // line for line (the saved slides of an old song may not).
+        canInsert: lineCount(slides) === sungLines(song.lyrics || "").length,
         // The song's Fim and beginning (owner 2026-11-12), edited there too.
         end: song.end_at ?? null,
         endFade: song.end_fade ?? null,
         introMode: song.intro_mode || "",
         // Aplicar brings the marks, and the video or playback chosen there.
         onApply: (next, extra) => {
+            // Parts with no lyrics inserted there (owner 2026-11-14): into the
+            // lyrics, the marks already one per line of the new text.
+            if (extra?.parts?.length) {
+                const lyrics = insertParts(lyricsNow.current, extra.parts);
+                lyricsNow.current = lyrics;
+                set({ lyrics });
+                setResplit(true);
+            }
             setLineStarts(next);
             if (extra?.audio_url !== undefined && extra.audio_url !== song.audio_url) set({ audio_url: extra.audio_url });
             // The page split one-slide lyrics before marking (option 1): the
@@ -448,6 +475,14 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const linesMarked = fitMarks(lineStarts, linesTotal).filter((x) => Number.isFinite(x)).length;
     // The lyrics changed their line count since the marks: they may be off.
     const linesMoved = linesMarked > 0 && lineStarts.length > 0 && lineStarts.length !== linesTotal;
+    // Tirar todas as marcações (owner 2026-11-14): asks; the toast has Desfazer.
+    const clearMarks = async () => {
+        if (!(await ask({ title: "Tirar todas as marcações?", text: `Os tempos de ${marked} ${marked === 1 ? "slide saem" : "slides saem"} desta música. O Fim fica.`, ok: "Tirar todas", danger: true }))) return;
+        const was = lineStarts;
+        setLineStarts([]);
+        setDirty(true);
+        c.say("Marcações tiradas.", { label: "Desfazer", run: () => { setLineStarts(was); setDirty(true); } });
+    };
     // Avançar sozinha (Rodada P7): Não, Pelas marcas or Por tempo.
     const advance = followModeOf(song, starts.map((start) => ({ start })));
     const each = slideSeconds(song);
@@ -529,7 +564,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         <Btn small kind="outline" onClick={() => addMarker("Verso")}>[Verso]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Refrão")}>[Refrão]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Ponte")}>[Ponte]</Btn>
-                        <Btn small kind="outline" onClick={() => addMarker("Instrumental")}>[Instrumental]</Btn>
+                        <Btn small kind="outline" onClick={() => addMarker("Instrumental", true)} title="Um slide sem letra: as telas mostram só o fundo">[Instrumental]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Ministração", true)} title="Um slide sem letra: as telas mostram só o fundo (uma ministração, um solo)">[Ministração]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Final")}>[Final]</Btn>
                         <Btn small onClick={splitHere} title="Uma linha vazia no cursor: a estrofe vira dois slides">Dividir aqui</Btn>
@@ -630,7 +665,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <span className="kx-meta">No ar: Iniciar letra por tempo no player, quando a banda começar. ← → continuam valendo, e o tempo segue do slide escolhido.</span>
                         </>}
                         {advance === "marks" && <>
-                            <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} slides marcados</span>
+                            <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} slides marcados
+                                {linesMarked > 0 && <Btn small onClick={clearMarks} title="Tira o tempo de todos os slides (o Fim fica)"><Icon name="trash" size={12} />Tirar todas as marcações…</Btn>}</span>
                             {media && Number(song.end_at) > 0 && <span className="ed-endline"><Icon name="arrow-right" size={14} />Termina em {mmss(Number(song.end_at))} · fade {String(song.end_fade ?? 3).replace(".", ",")} s</span>}
                             <span className="kx-meta">{!marked ? "Sem marcas: use Marcar os tempos"
                                 : !media ? "No ar: Iniciar letra automática no player, na introdução."

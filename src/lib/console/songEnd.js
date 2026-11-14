@@ -6,7 +6,7 @@
 // over `fade`, the text leaves, the papel de parede comes in, and the
 // Setlist's Autoplay sees an end (clear with `ended`, live-state.mjs).
 // Pure; the console watches (useConsole). Console only.
-import { livePosition } from "../../../shared/live-state.mjs";
+import { livePosition, fadeGain } from "../../../shared/live-state.mjs";
 
 const LAYERS = ["audio", "video", "media"];
 
@@ -55,7 +55,7 @@ export function endLength(live, item) {
 export function endGain(t, end, fade = 3) {
     if (!(t >= end)) return 1;
     const f = Math.max(0, Number(fade) || 0);
-    return f > 0 ? Math.max(0, 1 - (t - end) / f) : 0;
+    return f > 0 ? fadeGain(1 - (t - end) / f) : 0;
 }
 
 // The clear that ends it: the sound's own fade (ms).
