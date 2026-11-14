@@ -354,14 +354,15 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-out.is-off .kx-out-st { color: var(--fg-3); }
 .kx-out.is-rh .kx-out-st { color: var(--rh-fg); }
 
-/* ---- Banner: one thin line across the grid. The colour is the state's tint + a 2px top rule. ---- */
+/* ---- Banner: the edit mode's line across the grid (is-edit). ---- */
 /* A banner (owner 2026-10-30, mockup "Barras de alerta e de edição", B1 = B,
    B2 = A, B3 = A): a 1 px border all round in the state's colour, the
    state's glyph first (kx-banner-i), no top rule. Its ways out read on the
    tint: the main one filled in the state's colour (kx-banner-main), the
    others ringed in it with fg-1 text; the controls inside (Seg, switch,
    labels) sit in a darker well. --st is the state's colour, --st-on the
-   text on it. */
+   text on it. Since 2026-11-14 (mockup "Avisos flutuantes") only the edit
+   mode is a banner in the flow: the state alerts float as kx-acard below. */
 .kx-banner { --st: var(--warn); --st-on: var(--on-brand); min-height: var(--row); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3); border-radius: var(--radius-control); font-size: var(--fs-ui); font-weight: 500; }
 .kx-banner span.kx-sub { font-weight: 400; color: var(--fg-2); }
 .kx-banner .kx-spacer { flex: 1; }
@@ -383,6 +384,31 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx-banner .kx-seg > button.is-on { background: var(--bg-3); opacity: 1; box-shadow: inset 0 0 0 1px var(--line-strong); }
 .kx .kx-banner .kx-switch:not(.is-on) { background: var(--bg-0); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .kx .kx-banner .kx-switch:not(.is-on)::after { background: var(--fg-1); }
+
+/* ---- Floating state cards (owner 2026-11-14, mockup "Avisos flutuantes", A1–A3 = A) ----
+   The state alerts (Telas travadas, a failing output) left the flow — as banners they pushed the dock down —
+   and float at the console's top right (console.css .kx-alerts), one compact line each: the banner rules of
+   30/10 stand (1 px state ring, glyph first, filled main action), the explanation is the card's tooltip and
+   the "⋯" menu (kx-acard-more) holds the secondary actions. Over glass where it applies (the Glass block).
+   After a while the card shrinks to a chip of one word (is-chip + kx-acard-w; pointing or focusing opens it
+   back, a click pins it — Alerts.jsx); Reconectando never shrinks. */
+.kx-acard { --st: var(--warn); --st-on: var(--on-brand); min-height: var(--row); max-width: 100%; display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1) 0 var(--space-2); border-radius: var(--radius-control); font-size: var(--fs-ui); font-weight: 500; }
+.kx-acard.is-warn { --st: var(--warn); background: var(--warn-tint); color: var(--warn-fg); box-shadow: var(--warn-ring); }
+.kx-acard.is-rh { --st: var(--rh-fill); --st-on: var(--on-state); background: var(--rh-tint); color: var(--rh-fg); box-shadow: var(--rh-ring); }
+.kx-acard .kx-banner-i { flex: none; color: var(--st); }
+.kx-acard.is-rh .kx-banner-i { color: var(--rh); }
+.kx-acard .kx-alert-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-acard .kx-btn { flex: none; height: var(--control-sm); padding: 0 var(--space-2); color: var(--fg-1); background: color-mix(in srgb, var(--bg-0) 35%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--st) 60%, transparent); }
+.kx-acard .kx-btn:hover { background: var(--bg-2); color: var(--fg-1); }
+.kx-acard .kx-btn.kx-banner-main { padding: 0 var(--space-3); background: var(--st); color: var(--st-on); font-weight: 600; box-shadow: none; }
+.kx-acard .kx-btn.kx-banner-main:hover { background: color-mix(in srgb, var(--st) 85%, var(--fg-1)); color: var(--st-on); }
+.kx-acard .kx-btn.kx-banner-main:active { background: color-mix(in srgb, var(--st) 85%, var(--bg-0)); }
+.kx-acard .kx-acard-more { width: var(--control-sm); padding: 0; justify-content: center; }
+/* The chip: the state's word alone, round, until it is pointed at or holds the focus. */
+.kx-acard .kx-acard-w { display: none; font-weight: 600; }
+.kx-acard.is-chip:not(:hover, :focus-within) { border-radius: var(--radius-round); cursor: pointer; }
+.kx-acard.is-chip:not(:hover, :focus-within) .kx-acard-w { display: inline; }
+.kx-acard.is-chip:not(:hover, :focus-within) :is(.kx-alert-title, .kx-btn) { display: none; }
 
 /* ---- Popover, menu, tooltip ---- */
 .kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 6px; min-width: 180px; }
@@ -624,6 +650,10 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
        itself it would be the submenu's backdrop root, and the submenu (inside it) would blur only the menu. */
     .kx .kx-pop:has(.mb-row) { background: none; backdrop-filter: none; isolation: isolate; }
     .kx .kx-pop:has(.mb-row)::before { content: ""; position: absolute; inset: 0; z-index: var(--z-behind); border-radius: inherit; background: var(--glass-bg); backdrop-filter: var(--glass-blur); pointer-events: none; }
+    /* The floating state cards keep their tint over the glass (never a flat grey warning). */
+    .kx .kx-acard { backdrop-filter: var(--glass-blur); }
+    .kx .kx-acard.is-warn { background: linear-gradient(var(--warn-tint), var(--warn-tint)), var(--glass-bg); box-shadow: var(--shadow-glass), var(--warn-ring); }
+    .kx .kx-acard.is-rh { background: linear-gradient(var(--rh-tint), var(--rh-tint)), var(--glass-bg); box-shadow: var(--shadow-glass), var(--rh-ring); }
   }
 }
 
@@ -643,6 +673,8 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
   .kx-panel:not(.kx-panel-bare) { outline: 1px solid CanvasText; outline-offset: -1px; }
   .kx-pop, .kx-tip { outline: 1px solid CanvasText; }
   .kx :is(.kx-toast, .kx-win) { outline: 1px solid CanvasText; }
+  /* The floating state cards: their tint and ring go; a solid Highlight ring says "a state", as elsewhere. */
+  .kx-acard { outline: 2px solid Highlight; outline-offset: -2px; background: Canvas; }
   .kx .kx-toast.is-important { outline-color: Highlight; }
   .kx .kx-toast-wave { display: none; }
   .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand) { border: 1px solid ButtonText; }

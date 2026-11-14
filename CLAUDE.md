@@ -1277,9 +1277,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   its new one (FLIP over `[data-dock-mods]`, keyed by `data-dock-active`,
   `--dur-fold`/`--ease-fold`; one that comes from the tray fades in; reduced
   motion cuts; `useDockEase` is untouched). Esc mid-drag cancels only the
-  drag. **The banner is one line where it fits** (wraps only when it must):
-  "Editando os painéis" (the long hint is its tooltip), a short hint
-  hidden under 1500 px, the Bandeja inline, Tamanhos, Divisão (Exato), No
+  drag. **The banner is one tighter line where it fits** (wraps only when
+  it must; A4 = A, 2026-11-14: 32 px, 24 px controls — it stays in the
+  flow, a mode, never a floating card): "Editando os painéis" (the whole
+  hint only in its tooltip; the short hint line is gone), the Bandeja
+  inline, Tamanhos, **Divisão as a menu** (Exato: the one-click splits and
+  Digitar… under one `dock-preset-btn`), No
   ar Colunas | Janela, Travar, the Painéis button (its menu: Salvar,
   Salvar como…, Excluir…), Restaurar, Concluir. While editing,
   every splitter shows its side's size in % of the split and a click on
@@ -2888,11 +2891,27 @@ plays it** on the Editor de temas' canvas (the next slide comes in with
 console switch for it either (`User.song_themes` stays stored, unread).
 Don't bring a switch or a song theme back. **Banners have a border, not a top rule** (owner
 2026-10-30, mockup "Barras de alerta e de edição", B1 = B, B2 = A, B3 = A;
-the Banner of docs/design-system.md): the edit, alert and Travadas banners
+the Banner of docs/design-system.md): the edit banner, the state cards
 and the Aviso rápido on air wear a 1 px border all round in their state's
 colour and its glyph first; the main way out is filled in that colour, the
 others ringed with `fg-1` text, and a Seg or switch inside sits in a darker
-well.
+well. **The state alerts float, nothing pushes the dock down** (owner
+2026-11-14, mockup "Avisos flutuantes", A1–A4 = A; in the flow every
+banner moved the whole console): Telas travadas and the failing-output
+alert are compact cards stacked at the console's top right (`Alerts.jsx`,
+`.kx-acard` over glass + `.kx-alerts`; the words and rules in
+`src/lib/console/alerts.js`, tested) — one line each: the state's glyph, a
+short title, the filled main action (Destravar / Reabrir / Ver saídas) and
+a "⋯" menu with the rest (Ver saídas, Esquecer, Tela preta, Mostrar logo);
+the old explanation is the card's tooltip. After `CHIP_MS` (10 s) a card
+shrinks to a chip of one word ("Travadas", "1 tela"); pointing or focusing
+opens it back, a click pins it, and a new state (a new id) enters full
+again; Reconectando never shrinks (a live alert). The cards sit at
+`--pop-top` right (the toast keeps the centre), `--z-alerts`: over the
+panels, under every scrim and THE window (they still go `inert` while it
+is open). `.main` no longer shrinks for them: its ResizeObserver simply
+stops seeing banners. Only the edit mode is still a banner in the flow
+(below).
 **Panel headers are the name and the buttons** (H1): no fixed subtitles
 (Camadas, Slides' "—", Temas' "em uso" is its tooltip), the Setlist's count
 and time in its footer (`.rund-foot-n`).

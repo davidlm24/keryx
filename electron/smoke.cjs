@@ -1407,7 +1407,8 @@ async function checkConsole(webContents, { live, outputs }) {
         result.resent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
         await click(".kx-status", "");
         await click(".kx-pop .kx-seg button", "Travadas");
-        result.locked = await waitFor(() => live.get().locked === true) && await waitText(webContents, "TELAS TRAVADAS");
+        // Travar telas floats as a card at the top right (2026-11-14), no longer an in-flow banner.
+        result.locked = await waitFor(() => live.get().locked === true) && await waitFor(() => js("Boolean(document.querySelector('.kx-acard.is-rh'))"));
         await press("Escape"); // closes the popover
         await dblclick(".kx-slide", "Segundo slide do console");
         await press("Enter");
@@ -1418,8 +1419,9 @@ async function checkConsole(webContents, { live, outputs }) {
         result.lockBlackWorks = await waitFor(() => live.get().screen === "black");
         await pillClick("Tela preta", "ela preta");
         await waitFor(() => live.get().screen !== "black");
-        await click(".kx-banner button", "Destravar");
-        result.unlocked = await waitFor(() => live.get().locked === false) && await waitText(webContents, "TELAS TRAVADAS", false);
+        await click(".kx-acard.is-rh", ""); // a click opens the card back if it shrank to its chip
+        await click(".kx-acard button", "Destravar");
+        result.unlocked = await waitFor(() => live.get().locked === false) && await waitFor(() => js("!document.querySelector('.kx-acard.is-rh')"));
         await dblclick(".kx-slide", "Segundo slide do console");
         result.unlockedSends = await waitFor(() => live.get().content && live.get().content.index === 1);
         // The service clock took Ensaio | Ao vivo's place in the top bar.
