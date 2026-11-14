@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
-import { playbackPlan, playbackGain } from "@shared/live-state.mjs";
+import { playbackPlan, playbackGain, fadeGain } from "@shared/live-state.mjs";
 import { createPool } from "@/lib/mediaPool";
 import { applySink } from "@/lib/soundSink";
 import { getYouTubeId, loadYouTubeApi } from "@/utils/youtube";
@@ -118,7 +118,8 @@ export default function LiveVideo({ item, loop = false, muted: mutedProp = false
         const f = fadeRef.current;
         if (!f) return 1;
         const span = f.until - f.at;
-        return span > 0 ? Math.max(0, Math.min(1, (f.until - keryx.live.now()) / span)) : 0;
+        // The level comes down along fadeGain's curve, not a straight line.
+        return span > 0 ? fadeGain((f.until - keryx.live.now()) / span) : 0;
     };
     const metered = Boolean(meter) && Boolean(window.keryxDesktop);
     useDurationReport(videoRef, { layer: meter, url: item?.url || "", enabled: metered && !isYouTube });

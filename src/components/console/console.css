@@ -890,6 +890,9 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .pl-list { position: relative; }
 .console [data-sort-row][draggable="true"] { cursor: grab; }
 .console [data-sort-row][draggable="true"]:active { cursor: grabbing; }
+/* Planejar o culto: only an item's row drags, never its open details (owner 2026-11-14). */
+.console .pl-sortrow > .kx-row[draggable="true"] { cursor: grab; }
+.console .pl-sortrow > .kx-row[draggable="true"]:active { cursor: grabbing; }
 /* The card that follows the pointer (dragGhost.js): the row's size, its
    icon, title and time, lifted; it lands in the lit slot (.is-land) or
    fades (.is-gone). Built on <body>, outside .console, so it reads the

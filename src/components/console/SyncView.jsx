@@ -11,8 +11,11 @@ import PlaybackPicker, { useMediaFromComputer } from "./PlaybackPicker";
 import { useLibrary } from "./useConsoleData";
 import { useContextMenu } from "./ContextMenu";
 import { isVideoUrl } from "@/lib/console/content";
-import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, clampEnd, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, SPEEDS, SEEK_SECONDS, STEP, END_STEP } from "@/lib/console/lyricSync";
+import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, clampEnd, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, spliceMarks, SPEEDS, SEEK_SECONDS, STEP, END_STEP } from "@/lib/console/lyricSync";
 import { anchorIndex, anchorMarks, fmtDelta } from "@/lib/console/lrcPick";
+
+// The parts with no lyrics Marcar os tempos inserts (songImport.js NO_LYRICS_RE).
+const PARTS = ["Ministração", "Instrumental", "Solo", "Interlúdio"];
 
 const isMark = (v) => Number.isFinite(v);
 const firstLine = (text) => String(text || "").split("\n").find((l) => l.trim()) || "";
@@ -60,11 +63,17 @@ function TimeField({ value, onCommit, sug = false }) {
 // Backspace bring it back there; at the last line the media pauses and says
 // so. The video or playback can be chosen here too (PlaybackPicker, the
 // computer's files entering the Mídia); Aplicar takes it with the marks.
-export default function SyncView({ title = "", artist = "", slides: slideRows = [], lines = null, groups = null, media: mediaIn = "", duration: songDuration = null, starts: initial = [], end: endIn = null, endFade: endFadeIn = null, introMode: introIn = "", onApply, onClose, escRef, active = true, say }) {
+export default function SyncView({ title = "", artist = "", slides: slideRows = [], lines = null, groups = null, media: mediaIn = "", duration: songDuration = null, starts: initial = [], end: endIn = null, endFade: endFadeIn = null, introMode: introIn = "", canInsert = false, onApply, onClose, escRef, active = true, say }) {
     const col = useWinCol("sync.slides", { name: "Slides", def: 440, min: 340, max: 760, sign: -1 });
     const ask = useConfirm();
-    const slides = lines || slideRows;
-    const byLine = Boolean(lines);
+    // The lines and their slides as they are now: a part with no lyrics
+    // inserted here (owner 2026-11-14) is a line of its own (`part`) and a
+    // slide of its own, every mark staying where it was.
+    const [lineRows, setLineRows] = useState(lines);
+    const [groupRows, setGroupRows] = useState(groups);
+    const slides = lineRows || slideRows;
+    const byLine = Boolean(lineRows);
+    const partsIn = (lineRows || []).filter((r) => r.part).length;
     const n = slides.length;
     const [media, setMedia] = useState(mediaIn || "");
     const [picking, setPicking] = useState(false);
@@ -79,7 +88,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     // Lyrics that are one slide (owner 2026-11-11, option 1): split them
     // here, in 2 or 4 lines, before marking; Aplicar takes the split along.
     const [split, setSplit] = useState(0);
-    const groupsNow = split > 0 ? chunkGroups(n, split, groups?.[0]?.label || "") : groups;
+    const groupsNow = split > 0 ? chunkGroups(n, split, groupRows?.[0]?.label || "") : groupRows;
     // One time per slide (owner 2026-11-11): the marks live on each slide's
     // first line; marks made on inner lines before fold onto it.
     const initialMarks = useRef(null);
@@ -116,7 +125,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const lastMark = Math.max(0, ...starts.filter(isMark));
     const duration = mediaDur || songDuration || (live ? Math.max(180, Math.ceil(lastMark + 30)) : null);
     const marked = markedCount(starts);
-    const dirty = !sameMarks(starts, initialMarks.current) || (media || "") !== (mediaIn || "") || end !== endStart || (end !== null && endFade !== fadeStart) || intro !== (introIn || "");
+    const dirty = !sameMarks(starts, initialMarks.current) || (media || "") !== (mediaIn || "") || end !== endStart || (end !== null && endFade !== fadeStart) || intro !== (introIn || "") || partsIn > 0;
     // Detached (/Janela), unsaved changes hold the window: closing it asks.
     useUnloadGuard(dirty);
     const playingIdx = indexAt(starts, t);
@@ -133,7 +142,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const slideAt = (i) => slideOf.findIndex((g) => i >= g.first && i < g.end);
     const slidesMarked = slideOf.filter((g) => isMark(g.start)).length;
     // The lyrics are one long slide: offer the split before marking.
-    const oneSlide = byLine && !split && (groups || []).length === 1 && n > 4;
+    const oneSlide = byLine && !split && (groupRows || []).length === 1 && n > 4;
     // Where Espaço goes after line `i`: the next slide's first line (one
     // press per slide); slide by slide on the old page.
     const after = (marks, i) => (byLine ? nextSlideStart(firsts, i) : nextToMark(marks, i));
@@ -204,7 +213,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
 
     // Every change of the marks can be undone (Backspace, Desfazer). Any
     // change ends the dashed marks (they are ordinary now) and the tap's note.
-    const snapshot = () => setUndo((u) => [...u.slice(-49), { starts, end, endFade }]);
+    const snapshot = () => setUndo((u) => [...u.slice(-49), { starts, end, endFade, lineRows, groupRows }]);
     const change = (next) => { snapshot(); setStarts(next); setSug(null); setDone(null); setFinished(false); };
     // The Fim moves (undoable, as a mark): after the last slide, inside the file.
     const changeEnd = (v) => { snapshot(); setEnd(v === null ? null : clampEnd(starts, v, duration)); setEndRec(false); };
@@ -228,6 +237,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         setStarts(before);
         setEnd(entry.end);
         if (entry.endFade !== undefined) setEndFade(entry.endFade);
+        if (entry.lineRows !== undefined && entry.lineRows !== lineRows) { setLineRows(entry.lineRows); setGroupRows(entry.groupRows); setPicked(new Set()); }
         setUndo((u) => u.slice(0, -1));
         // The gold back on the slide whose mark changed (its first line).
         const to = at >= 0 && byLine ? (firsts.filter((f) => f <= at).pop() ?? at) : at;
@@ -312,6 +322,9 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
             ...((media || "") !== (mediaIn || "") ? { audio_url: media } : {}), ...(split > 0 ? { split } : {}),
             ...(end !== endStart || (end !== null && endFade !== fadeStart) ? { end_at: end, end_fade: endFade } : {}),
             ...(intro !== (introIn || "") ? { intro_mode: intro } : {}),
+            // The parts inserted here, each before the sung line of the
+            // lyrics it now precedes (insertParts in songImport.js).
+            ...(partsIn > 0 ? { parts: (lineRows || []).flatMap((r, i) => (r.part ? [{ before: lineRows.slice(0, i).filter((x) => !x.part).length, label: r.label }] : [])) } : {}),
         };
         onApply?.(starts, Object.keys(extra).length ? extra : undefined);
         onClose(false);
@@ -482,10 +495,40 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
             { label: "Selecionar todos", icon: "listChecks", onSelect: () => setPicked(new Set(rows.map((r) => r.k))) },
             picked.size > 0 && { label: "Limpar a seleção", icon: "x", onSelect: () => setPicked(new Set()) },
             "sep",
+            byLine && canInsert && { label: "Inserir depois deste slide", icon: "plus", disabled: split > 0, title: split > 0 ? "Aplique ou desfaça a divisão da letra antes" : "Um slide sem letra: as telas mostram só o fundo; as marcas ficam como estão",
+                sub: PARTS.map((p) => ({ label: p, onSelect: () => insertPart(k, p) })) },
             { label: "Tirar a marca", icon: "x", disabled: !isMark(rows[k]?.value), onSelect: () => (g ? clearSlide(g) : unmark(i)) },
+            { label: "Tirar todas as marcações…", icon: "trash", disabled: !marked, onSelect: clearAll },
         ].filter(Boolean) });
     };
     const openFind = () => { setRec(null); setFind({ auto: true }); };
+    // Tirar todas as marcações (owner 2026-11-14): one undo step; the Fim stays.
+    const clearAll = async () => {
+        if (!marked) return;
+        if (!(await ask({ title: "Tirar todas as marcações?", text: `Os ${marked} tempos marcados de "${title}" saem. O Fim fica. Desfazer (Backspace) traz de volta.`, ok: "Tirar todas", danger: true }))) return;
+        change(starts.map(() => null));
+        setRec(null);
+        setSel(firsts[0] ?? 0);
+    };
+    // A part with no lyrics after slide k (owner 2026-11-14): a new empty
+    // slide with no time; every other mark where it was (spliceMarks).
+    const insertPart = (k, label) => {
+        const g = slideOf[k];
+        if (!g || split > 0 || !lineRows) return;
+        const at = g.end;
+        snapshot();
+        setLineRows((rs) => [...rs.slice(0, at), { text: "", label, part: true }, ...rs.slice(at)]);
+        setGroupRows((gs) => {
+            const out = gs.map((x) => (x.first >= at ? { ...x, first: x.first + 1 } : x));
+            out.splice(k + 1, 0, { first: at, label });
+            return out;
+        });
+        setStarts((s) => spliceMarks(s, at, 0, 1));
+        setSug(null); setDone(null); setFinished(false); setPicked(new Set());
+        setSel((v) => (v >= at ? v + 1 : v));
+        setRec((v) => (v !== null && v >= at ? v + 1 : v));
+        say?.(`${label} depois do slide ${k + 1}: um slide sem letra, sem tempo ainda. Aplicar põe na letra.`);
+    };
 
     return (
         <>

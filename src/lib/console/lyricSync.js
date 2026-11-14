@@ -4,6 +4,8 @@
 // shared/live-state.mjs). `starts` is one entry per slide: seconds, or null
 // for a slide with no mark. Pure: the page (SyncView.jsx) keeps the media.
 
+import { sungLines, lineKey } from "../songImport.js";
+
 export const STEP = 0.1;
 // The Fim's own step: a hundredth (Alt on its − / +, the flag's Alt + ← →).
 export const END_STEP = 0.01;
@@ -131,6 +133,49 @@ export function spliceMarks(lineStarts, first, oldRows, newRows) {
     const range = marks.slice(first, first + oldRows).slice(0, newRows);
     while (range.length < newRows) range.push(null);
     return [...before, ...range, ...marks.slice(first + oldRows)];
+}
+
+// The marks after the lyrics changed (owner 2026-11-14: "ao editar a
+// quantidade de linhas de um verso já com marcação não deve alterar o tempo
+// dos outros slides"): each sung line keeps its time wherever it went. The
+// old and new sung lines are matched by their text (lineKey: no chords,
+// case or accents; a part with no lyrics by its name) as a longest common
+// sequence; between two matched lines, the lines that changed take the old
+// ones' marks in order (a typo fixed keeps its time), an added line comes
+// unmarked and a removed one takes its mark away. Lines nothing changed
+// return the marks as they were.
+export function remapMarks(oldLyrics, newLyrics, marks) {
+    const m = (marks || []).map((v) => (isMark(v) ? v : null));
+    const key = (l) => (l.text ? lineKey(l.text) : `§${l.label}`);
+    const a = sungLines(oldLyrics).map(key);
+    const b = sungLines(newLyrics).map(key);
+    if (a.length === b.length && a.every((k, i) => k === b[i])) return m;
+    const n = a.length, k = b.length;
+    // Too long to diff in full: the common start and end only.
+    let pairs;
+    if (n * k > 400000) {
+        let p = 0;
+        while (p < n && p < k && a[p] === b[p]) p++;
+        let s = 0;
+        while (s < n - p && s < k - p && a[n - 1 - s] === b[k - 1 - s]) s++;
+        pairs = [...Array(p).keys()].map((i) => [i, i]).concat([...Array(s).keys()].reverse().map((j) => [n - 1 - j, k - 1 - j]));
+    } else {
+        const t = Array.from({ length: n + 1 }, () => new Uint16Array(k + 1));
+        for (let i = n - 1; i >= 0; i--) for (let j = k - 1; j >= 0; j--) t[i][j] = a[i] === b[j] ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1]);
+        pairs = [];
+        for (let i = 0, j = 0; i < n && j < k;) {
+            if (a[i] === b[j]) { pairs.push([i, j]); i++; j++; } else if (t[i + 1][j] >= t[i][j + 1]) i++; else j++;
+        }
+    }
+    const out = Array(k).fill(null);
+    let oi = 0, nj = 0;
+    for (const [i, j] of [...pairs, [n, k]]) {
+        // The gap before this match: changed lines keep the old marks in order.
+        for (let g = 0; g < Math.min(i - oi, j - nj); g++) out[nj + g] = m[oi + g] ?? null;
+        if (i < n) out[j] = m[i] ?? null;
+        oi = i + 1; nj = j + 1;
+    }
+    return out;
 }
 
 // A song marked by slide (before 2026-11-10): each slide's mark goes to its

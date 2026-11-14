@@ -880,6 +880,15 @@ test("the song's end: Fim fades its sound out and marks it ended (2026-11-12)", 
     assert.equal(end.fade.ms, 300);
     assert.deepEqual(end.ended, { layer: "audio", id: null, url: "/a.mp3", at: T0 + 200 * S });
     assert.equal(end.background.value, "#112233", "the papel de parede comes in");
+    // A song played from the video channel fades over its own fade too (owner 2026-11-14).
+    const onVideo = run([["video.show", { kind: "video", url: "/v.mp4" }], ["content.show", { ...marked, ends: { url: "/v.mp4", at: 200, fade: 4 } }]]);
+    const vEnd = applyOp(onVideo, "clear", { fade: 300, ended: true, soundFade: 4000 }, T0 + 200 * S);
+    const vLeft = vEnd.leaving.find((e) => e.layer === "video");
+    assert.ok(vLeft, "the video leaves with the song's fade");
+    assert.equal(vLeft.until - vLeft.at, 4000);
+    assert.equal(vEnd.video, null);
+    // Esc alone: only the audio channel rides out (the video's picture fades with the screens).
+    assert.equal(applyOp(onVideo, "clear", { fade: 300 }, T0).leaving?.some((e) => e.layer === "video") || false, false);
     // Esc is not an end, and a soundFade alone never marks one.
     assert.equal(applyOp(s, "clear", { fade: 300 }, T0).ended, s.ended);
     assert.equal(applyOp(s, "clear", { soundFade: 2000 }, T0).ended, s.ended);
@@ -1421,4 +1430,14 @@ test("the Aviso rápido carries the church's look (2026-11-09): valid keys only,
     assert.equal(s.alert.look, undefined, "nothing valid: no look, the bar as always");
     assert.equal(alertLookOf(null), null);
     assert.equal(alertLookOf([1]), null);
+});
+
+test("fadeGain: a leaving sound comes down along a cube, softly to silence (owner 2026-11-14)", async () => {
+    const { fadeGain } = await import("./live-state.mjs");
+    assert.equal(fadeGain(1), 1);
+    assert.equal(fadeGain(0.5), 0.125);
+    assert.equal(fadeGain(0), 0);
+    assert.equal(fadeGain(-1), 0);
+    assert.equal(fadeGain(2), 1);
+    assert.equal(fadeGain(NaN), 0);
 });

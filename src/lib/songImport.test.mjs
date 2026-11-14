@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit, reflowLyrics, sungLines, isNoLyrics, sniffSongFile, decodeSongBytes, splitRepeated, importSummary, readSongFile, importPlan, importedItems, importRowMeta, importRowSize, importSource, importCounts } from "./songImport.js";
+import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit, reflowLyrics, sungLines, isNoLyrics, sniffSongFile, decodeSongBytes, splitRepeated, importSummary, readSongFile, importPlan, importedItems, importRowMeta, importRowSize, importSource, importCounts, insertParts } from "./songImport.js";
 
 test("ChordPro: directives give title/artist, sections and no inline chords", () => {
     const raw = "{title: Algo Novo}\n{artist: Kemuel}\n{sov 1}\n[G]Vem me visitar [D]hoje aqui\n{eov}\n{soc}\nEspírito, [C]vem\n{eoc}";
@@ -278,4 +278,24 @@ test("songSlidesFor: a song never saved with [Parte] lines reads them (no \"[Ref
     const { slides } = songSlidesFor({ lyrics: "[Refrão]\num\ndois\n\n[Ministração]\n\n[Refrão]\ntrês" });
     assert.deepEqual(slides.map((s) => [s.text, s.label]), [["um\ndois", "Refrão"], ["", "Ministração"], ["três", "Refrão"]]);
     assert.deepEqual(songSlidesFor({ lyrics: "um\ndois\n\ntrês" }).slides.map((s) => s.text), ["um\ndois", "três"], "plain lyrics as before");
+});
+
+test("insertParts: a Ministração between slides, the other lines where they were (owner 2026-11-14)", () => {
+    const song = "[Verso]\na1\na2\n\nb1\nb2\n\n[Refrão]\nc1\nc2";
+    // Between two stanzas: a block of its own; the stanza after it names itself again.
+    const between = insertParts(song, [{ before: 2, label: "Ministração" }]);
+    assert.equal(between, "[Verso]\na1\na2\n\n[Ministração]\n\n[Verso]\nb1\nb2\n\n[Refrão]\nc1\nc2");
+    assert.deepEqual(sungLines(between).map((l) => [l.text, l.label]), [["a1", "Verso"], ["a2", "Verso"], ["", "Ministração"], ["b1", "Verso"], ["b2", "Verso"], ["c1", "Refrão"], ["c2", "Refrão"]]);
+    // Before a stanza with its own heading: the heading stays on its stanza.
+    assert.equal(insertParts(song, [{ before: 4, label: "Ministração" }]), "[Verso]\na1\na2\n\nb1\nb2\n\n[Ministração]\n\n[Refrão]\nc1\nc2");
+    // Inside a stanza: it cuts there.
+    const inside = insertParts(song, [{ before: 1, label: "Instrumental" }]);
+    assert.deepEqual(sungLines(inside).map((l) => l.text), ["a1", "", "a2", "b1", "b2", "c1", "c2"]);
+    assert.equal(sungLines(inside)[2].label, "Verso");
+    // At the end, and two at once.
+    assert.deepEqual(sungLines(insertParts(song, [{ before: 6, label: "Solo" }])).map((l) => l.text), ["a1", "a2", "b1", "b2", "c1", "c2", ""]);
+    assert.deepEqual(sungLines(insertParts(song, [{ before: 4, label: "Ministração" }, { before: 6, label: "Interlúdio" }])).map((l) => l.label), ["Verso", "Verso", "Verso", "Verso", "Ministração", "Refrão", "Refrão", "Interlúdio"]);
+    // Chords ride with their line; nothing to insert = the same text.
+    assert.equal(insertParts("[G]a1\n[D]\nb1", [{ before: 1, label: "Solo" }]), "[G]a1\n\n[Solo]\n\n[D]\nb1");
+    assert.equal(insertParts(song, []), song);
 });

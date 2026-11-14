@@ -94,7 +94,7 @@ function ffmpegArgs({ segs, fade = 0, frameFile, audio, out, total, end = null }
     const outFade = end && end.fade > 0 && end.at >= 0;
     if (outFade) chain = `${chain.replace(/\[v\]$/, "[vf]")};[vf]fade=t=out:st=${r3(end.at)}:d=${r3(end.fade)}[v]`;
     args.push("-filter_complex", [...prep, chain].join(";"), "-map", "[v]");
-    if (audio) args.push("-map", `${n}:a:0?`, ...(outFade ? ["-af", `afade=t=out:st=${r3(end.at)}:d=${r3(end.fade)}`] : []), "-c:a", "aac", "-b:a", "192k");
+    if (audio) args.push("-map", `${n}:a:0?`, ...(outFade ? ["-af", `afade=t=out:st=${r3(end.at)}:d=${r3(end.fade)}:curve=cub`] : []), "-c:a", "aac", "-b:a", "192k");
     args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-t", String(r3(total)), "-movflags", "+faststart", out);
     return args;
 }

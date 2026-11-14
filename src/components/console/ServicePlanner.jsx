@@ -501,13 +501,17 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
                                 );
                             }
                             const open = sel === it.id;
+                            // Only the row itself drags (owner 2026-11-14): the
+                            // open details' fields select text with the mouse.
+                            // The wrapper keeps the slot, so the open card moves whole.
+                            const { draggable, onDragStart, ...sortAttrs } = dragProps;
                             return (
-                                <div key={it.id} className="pl-sortrow" {...dragProps}>
+                                <div key={it.id} className="pl-sortrow" {...sortAttrs}>
                                     <Row className={`pl-item ${it.enabled === false ? "is-done" : ""}`} state={`${open ? "is-selected" : ""} ${ms.has(it.id) ? "is-marked" : ""}`} expanded={open}
                                         lead={<>{ms.picking && <RowMark />}<span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span></>}
                                         icon={typeIcon(it.type)} title={it.title}
                                         meta={[typeLabel(it.type), it.enabled === false ? "desativado" : "", endChoice(it) === "loop" ? "repete" : endChoice(it) === "stop" ? "para ao terminar" : "", it.notes && it.type !== "TEXT" ? it.notes : ""].filter(Boolean).join(" · ")}
-                                        onClick={(e) => { if (!ms.click(it.id, e)) setSel(open ? null : it.id); }} onKey={step.onKey(i)} dragProps={step.rowAttrs(i)}
+                                        onClick={(e) => { if (!ms.click(it.id, e)) setSel(open ? null : it.id); }} onKey={step.onKey(i)} dragProps={{ ...step.rowAttrs(i), draggable, onDragStart }}
                                         onContextMenu={(e) => (picked.length > 1 && ms.has(it.id) ? menu(e, { title: selectionCount(picked.length), items: [
                                             menuItem("tirar", { label: `Tirar ${picked.length} da setlist…`, kbd: keyHint("delete"), onSelect: takeOutPicked }),
                                             { label: "Limpar a seleção", icon: "x", onSelect: ms.clear },
