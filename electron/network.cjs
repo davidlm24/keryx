@@ -3,9 +3,10 @@
 // Wi-Fi is a choice, and Windows asks for firewall permission the first time.
 
 const crypto = require("node:crypto");
-const { createLanServer, lanAddresses } = require("./lan.cjs");
+const { createLanServer, lanAddresses, NETWORK_SCREENS } = require("./lan.cjs");
 const { createFirewall } = require("./firewall.cjs");
 const { createDevices } = require("./phoneDevices.cjs");
+const { createScreens } = require("./screenDevices.cjs");
 
 const SETTINGS_KEY = "network";
 const DEFAULT_PORT = 7701;
@@ -35,7 +36,13 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
         // Invite links (N9): only their hash, kept so a link outlives a restart.
         loadInvites: () => config().invites || [], saveInvites: (rows) => save({ invites: rows }),
     });
-    const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), devices, onRemote, log: (m) => logger.warn(m) });
+    // The screens on the network by their own id ("network".screens, this
+    // computer's alone): their names and the page chosen for each (R1–R3).
+    const screens = createScreens({
+        load: () => config().screens || {}, save: (map) => save({ screens: map }),
+        pages: NETWORK_SCREENS.map((s) => s.path),
+    });
+    const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), devices, screens, onRemote, log: (m) => logger.warn(m) });
     // Whether Windows lets the phones in on this network (firewall.cjs).
     const firewall = createFirewall({ log: (m) => logger.warn(m) });
     // The controle remoto's settings ("network".remote): on/off, its code and
@@ -96,7 +103,7 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
         async startIfEnabled() {
             if (config().enabled) await start();
         },
-        stop: () => { devices.flush(); lan.stop(); },
+        stop: () => { devices.flush(); screens.flush(); lan.stop(); },
         ops: {
             info: async () => info(),
             setEnabled: async (_event, enabled) => {
@@ -158,6 +165,17 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             pairStatus: async (_event, { ticket } = {}) => devices.status(ticket),
             pairCancel: async (_event, { ticket } = {}) => { devices.cancel(ticket); return { ok: true }; },
             renameDevice: async (_event, { id, name } = {}) => { devices.rename(String(id || ""), name); return info(); },
+            // A screen on the network (R1–R3): the page it shows, chosen here
+            // (it goes there now and whenever it connects again), and its name.
+            screenShow: async (_event, { id, path } = {}) => {
+                const told = lan.navigate(String(id || ""), String(path || ""));
+                if (told === null) throw Object.assign(new Error("Esta tela não pode mostrar essa página."), { status: 400 });
+                return { ...info(), told };
+            },
+            screenRename: async (_event, { id, name } = {}) => {
+                if (!screens.rename(String(id || ""), name)) throw Object.assign(new Error("Tela desconhecida."), { status: 400 });
+                return info();
+            },
             removeDevice: async (_event, { id } = {}) => {
                 const key = String(id || "");
                 const d = devices.list().find((x) => x.id === key);

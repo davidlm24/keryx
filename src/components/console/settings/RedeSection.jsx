@@ -4,7 +4,8 @@ import Icon from "../Icon";
 import { Btn, Field, Empty } from "../kx";
 import { Switch, desktopOnly, CfgKey, CfgGroup, Reading } from "./parts";
 import { useNetworkInfo } from "./useDisplays";
-import { byGroup, screenClients } from "@/lib/console/outputs";
+import { byGroup, screenClients, netName } from "@/lib/console/outputs";
+import { NetShow } from "../Popovers";
 import { useOutputLooks, useOutputPrefRows } from "@/hooks/useOutputPref";
 import OutputPreview from "./OutputPreview";
 import { openEditor } from "@/lib/editorWindow";
@@ -95,6 +96,8 @@ export default function RedeSection({ c, askText = null }) {
     const main = info.urls?.[0];
     // The phones are listed in KERYX no celular, never as screens.
     const clients = screenClients(info.clients);
+    // The pages a screen may show, with the operator's names ("Mostra").
+    const screenNames = (info.screens || []).map((s) => ({ path: s.path, label: look(s.path).custom || s.label }));
 
     return (
         <>
@@ -173,7 +176,15 @@ export default function RedeSection({ c, askText = null }) {
                         {pref
                             ? <span className="cfg-net-thumb"><OutputPreview path={path} pref={pref} design={designOf(pref, layoutRows)} themes={themes} live={c.live} church={church} /></span>
                             : <span className="kx-glyph"><Icon name="tv" /></span>}
-                        <div className="kx-row-main"><div className="kx-row-title">{cl.label || "Página inicial"}</div><div className="kx-row-meta">{cl.ip} · conectada desde {new Date(cl.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>
+                        <div className="kx-row-main"><div className="kx-row-title">{cl.screenId ? netName(cl) : cl.label || "Página inicial"}</div><div className="kx-row-meta">{cl.ip}{cl.screenId && !cl.name ? " · ainda sem nome" : ""} · conectada desde {new Date(cl.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>
+                        {/* A screen with its own id (owner 2026-11-15, R1 = A, R2 = A):
+                            what it shows, chosen here, and its name. */}
+                        {cl.screenId && (
+                            <span className="cfg-net-acts">
+                                <NetShow row={{ ...cl, name: netName(cl), page: cl.label }} screens={screenNames} onShow={(id, to, name) => run("screenShow", { id, path: to }, `${name} vai mostrar ${to === "/" ? "a página inicial" : screenNames.find((s) => s.path === to)?.label || to}.`)} />
+                                {askText && <Btn small disabled={busy} onClick={async () => { const name = await askText({ title: "Nome desta tela", initial: cl.name || "", placeholder: "TV do palco", ok: "Salvar", hint: "Fica neste computador; aparece em Saídas e aqui" }); if (name != null) run("screenRename", { id: cl.screenId, name }, "Nome salvo."); }} title="Dar um nome a esta tela">Renomear…</Btn>}
+                            </span>
+                        )}
                     </div>
                 );
             })}

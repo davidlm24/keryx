@@ -870,3 +870,45 @@ test("parear: a code typed later wins over the pairing, which stays underneath",
     f.cfg.team = { ...f.cfg.team, code: "864201", secret: "x" };
     assert.equal((await (await send(f, { v: 2, action: "state" }, { cookie: both })).json()).data.result.role, "control");
 });
+
+test("screens by their own id: the console sends one to a page, and it goes back there when it connects again (2026-11-15)", async (t) => {
+    const { createScreens } = require("./screenDevices.cjs");
+    const f = await fixture();
+    const box = { saved: {} };
+    const screens = createScreens({ load: () => box.saved, save: (m) => { box.saved = m; }, pages: ["/Projection", "/StageView", "/LyricProjection"] });
+    const lan = createLanServer({ distDir: path.join(path.dirname(f.live.file || os.tmpdir()), "dist"), mediaDir: os.tmpdir(), bundledDir: null, store: f.store, live: f.live, getConfig: () => f.cfg, screens });
+    const { port } = await lan.start({ port: 0, host: "127.0.0.1" });
+    const base = `http://127.0.0.1:${port}`;
+    t.after(() => { lan.stop(); f.lan.stop(); });
+    const ID = "tvdopalco0001";
+    const a = new AbortController();
+    const res = await fetch(`${base}/api/events?screen=%2FLyricProjection&id=${ID}`, { signal: a.signal });
+    await new Promise((r) => setTimeout(r, 100));
+    const row = lan.clients().find((c) => c.screenId === ID);
+    assert.equal(row.screen, "/LyricProjection");
+    assert.equal(row.name, "");
+    assert.equal(lan.navigate(ID, "/Console"), null, "only a page the network serves");
+    assert.equal(lan.navigate("bad id", "/StageView"), null);
+    assert.equal(lan.navigate(ID, "/StageView"), 1);
+    const text = await framesUntil(res, (s) => s.includes("event: nav"));
+    assert.match(text, /event: nav\ndata: \{"path":"\/StageView"\}/);
+    a.abort();
+    // Connecting again on another page (a TV turned on again): sent back.
+    const b = new AbortController();
+    const again = await fetch(`${base}/api/events?screen=%2F&id=${ID}`, { signal: b.signal });
+    assert.match(await framesUntil(again, (s) => s.includes("event: nav")), /"path":"\/StageView"/);
+    b.abort();
+    // A page picked on the device itself becomes the one kept; no nav.
+    const c = new AbortController();
+    const picked = await fetch(`${base}/api/events?screen=%2FProjection&id=${ID}&picked=1`, { signal: c.signal });
+    assert.doesNotMatch(await framesUntil(picked, (s) => s.includes("event: nav"), 300), /event: nav/);
+    assert.equal(screens.get(ID).page, "/Projection");
+    c.abort();
+    // A phone never takes an id.
+    const d = new AbortController();
+    await fetch(`${base}/api/events?screen=%2FRemote&id=${ID}`, { signal: d.signal });
+    await new Promise((r) => setTimeout(r, 100));
+    assert.ok(!lan.clients().some((cl) => cl.screen === "/Remote" && cl.screenId));
+    d.abort();
+    await new Promise((r) => setTimeout(r, 100));
+});

@@ -202,6 +202,9 @@ export function useServiceMessages(serviceId) {
 export function useOutputs() {
     const [local, setLocal] = useState({ displays: [], outputs: [] });
     const [seen, setSeen] = useState({});
+    // The pages a network screen may show, with the operator's names (the
+    // Saídas rows' "Mostra ▾", 2026-11-15).
+    const [netScreens, setNetScreens] = useState([]);
     // The operator's own names (Telas e saídas › Ajustes) go onto every row
     // here, so the popover, the banner and Verificar all say them.
     const look = useOutputLooks();
@@ -226,6 +229,10 @@ export function useOutputs() {
             // The same answer keeps the old object: no re-render every 5 s.
             if (data) setLocal((prev) => (sameAnswer(prev, data) ? prev : data));
             const clients = n?.data ? (n.data.clients || []).map((cl) => ({ ...cl, label: name(cl.screen, cl.label) })) : null;
+            if (n?.data?.screens) {
+                const list = n.data.screens.map((s) => ({ path: s.path, label: name(s.path, s.label) }));
+                setNetScreens((prev) => (JSON.stringify(prev) === JSON.stringify(list) ? prev : list));
+            }
             // A removed output leaves the session memory too: a window closed
             // by removal is no "Fechada" nag, and re-adding starts clean.
             setSeen((prev) => {
@@ -255,5 +262,16 @@ export function useOutputs() {
         role: v.screen === "/VideoProjection" ? "media" : "lyrics",
     })), [seen]);
     const forgetOutput = useCallback((id) => setSeen((prev) => forget(prev, id)), []);
-    return { displays: local.displays, outputs: local.outputs, network, seen, forgetOutput, refresh };
+    // "Mostra ▾" (R1 = A): the screen with this id goes to `path` ("/" its
+    // start page), now and whenever it connects again. -> the error message, or "".
+    const showOnScreen = useCallback(async (id, path) => {
+        const bridge = window.keryxDesktop;
+        if (!bridge?.network) return "As telas na rede só funcionam no aplicativo.";
+        const res = await bridge.network.call("screenShow", { id, path }).catch((err) => ({ error: { message: err?.message } }));
+        if (res?.error) return res.error.message || "Não foi possível trocar a tela.";
+        // The screen reloads on its new page and says so in a moment.
+        setTimeout(() => readRef.current?.(), 1500);
+        return "";
+    }, []);
+    return { displays: local.displays, outputs: local.outputs, network, seen, forgetOutput, refresh, netScreens, showOnScreen };
 }

@@ -543,7 +543,7 @@ export default function Console() {
         const live = c.live;
         if (fundoPadrao && fundoGoesOnNow(live)) c.liveOp("background.set", fundoPadrao).catch(() => {});
     }, [liveReady, padraoKey]); // eslint-disable-line react-hooks/exhaustive-deps
-    const { displays: monitors, outputs, network, seen, forgetOutput, refresh: refreshOutputs } = useOutputs();
+    const { displays: monitors, outputs, network, seen, forgetOutput, refresh: refreshOutputs, netScreens, showOnScreen } = useOutputs();
     // Outputs: the projector window missing its display, or closed, is the warning.
     const projector = outputs.find((o) => o.key === "/Projection");
     // Where the sound comes out: the sound engine on the desktop, always
@@ -1681,7 +1681,7 @@ export default function Console() {
             <SyncPop open={open} setOpen={setOpen} onSettings={openSettings} say={c.say} songsHere={data.songs.length} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} onIdentify={window.keryxDesktop ? identifyScreens : null} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} displays={monitors} outputs={outputs} onPlace={window.keryxDesktop ? placeOutput : null} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} onIdentify={window.keryxDesktop ? identifyScreens : null} onSettings={openSettings} ruleOf={outputRules.ruleFor} onRule={ruleMenu} displays={monitors} outputs={outputs} onPlace={window.keryxDesktop ? placeOutput : null} netScreens={netScreens} onNetShow={async (id, path, name) => { const err = await showOnScreen(id, path); c.say(err || `${name} vai mostrar ${path === "/" ? "a página inicial" : netScreens.find((s) => s.path === path)?.label || path}.`); }} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)}
                 songLine={songLine} onSongLine={(k, v) => setLayout({ ...layout, [SONG_LINE_KEYS[k]]: v })}
                 group={canGroup(libTabNow) ? layout.libGroup?.[libTabNow] === true : null} onGroup={(on) => setLibGroup(libTabNow, on)} />
