@@ -35,6 +35,12 @@ export function sampleNotice(now) {
     }, now);
 }
 
+// A video on air (the Editor de telas' "Vídeo" state, owner 2026-11-15):
+// the Palco's "Com vídeo no ar" elements show; the canvas draws its still.
+export function sampleVideo(now) {
+    return applyOp(emptyState(now), "media.show", { kind: "video", url: "keryx-media://exemplo.mp4", title: "Vídeo de exemplo" }, now);
+}
+
 // A timer on air, as tool.show leaves it (the Editor de telas' "Timer"
 // state, Rodada G2): ten minutes from `now`, nothing else on air.
 export function sampleTimer(now) {

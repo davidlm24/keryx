@@ -92,8 +92,8 @@ test("the Palco's and the Pastor's own switches: missing keys are the screen as 
     assert.deepEqual(stageOptions(normalizePref(null)), STAGE_DEFAULTS);
     assert.deepEqual(pastorOptions(normalizePref(null)), PASTOR_DEFAULTS);
     const p = normalizePref({ options: { chords: false, clock: "sim", next_count: 99 } });
-    assert.deepEqual(stageOptions(p), { chords: false, labels: true, clock: true, notes: true, next: true }, "a non-boolean counts as unset");
-    assert.deepEqual(pastorOptions(p), { chords: false, labels: false, clock: true, next_count: 5 }, "next_count clamps to 0..5");
+    assert.deepEqual(stageOptions(p), { chords: false, labels: true, clock: true, notes: true, next: true, video: true }, "a non-boolean counts as unset");
+    assert.deepEqual(pastorOptions(p), { chords: false, labels: false, clock: true, video: true, next_count: 5 }, "next_count clamps to 0..5");
     assert.equal(pastorOptions(normalizePref({ options: { next_count: 0 } })).next_count, 0, "0 is a choice (hide the list)");
     assert.deepEqual(normalizePref({ options: ["x"] }).options, {}, "an array is not options");
     assert.ok(!isDefaultPref(normalizePref({ options: { chords: false } })), "an option counts as an adjustment");

@@ -18,10 +18,10 @@ test("Destino: where the screen opens, in one line", () => {
 
 test("Conteúdo of the Palco and the Pastor: the parts of the design that are on", () => {
     assert.equal(partsSummary("/StageView", normalizePref(null)), "Todas as partes");
-    assert.equal(partsSummary("/StageView", normalizePref({ options: { chords: false } })), "4 de 5 partes");
-    assert.equal(partsSummary("/PastorView", normalizePref(null)), "2 de 4 partes", "the Pastor shows no chords or part names unless asked");
+    assert.equal(partsSummary("/StageView", normalizePref({ options: { chords: false } })), "5 de 6 partes");
+    assert.equal(partsSummary("/PastorView", normalizePref(null)), "3 de 5 partes", "the Pastor shows no chords or part names unless asked");
     assert.equal(partsSummary("/PastorView", normalizePref({ options: { chords: true, labels: true } })), "Todas as partes");
-    assert.equal(partsSummary("/PastorView", normalizePref({ options: { clock: false, next_count: 0 } })), "Nenhuma parte");
+    assert.equal(partsSummary("/PastorView", normalizePref({ options: { clock: false, next_count: 0, video: false } })), "Nenhuma parte");
 });
 
 test("Aparência: theme, text scale and margins", () => {

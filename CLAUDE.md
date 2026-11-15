@@ -2684,6 +2684,20 @@ pausada) são os pontos de antes: nada finge saber (P3 = B); o último slide
 sem Fim fica cheio e sem número. O Palco de fábrica usa `props.line` (a
 linha de ponta a ponta no topo da faixa de baixo, o tempo à direita; a chave
 "Linha" do Editor); o Pastor, a barra dele com o tempo ao lado.
+**O Palco mostra o vídeo** (owner 2026-11-15, mockup "Palco com vídeo e
+telas na rede", V1–V3 = A): enquanto um vídeo ou um link do YouTube é o que
+a igreja vê (`videoOnAir` em layouts.js: a camada de mídia é a principal;
+imagem e PDF não contam), o `palco_video` (um elemento Projeção com a regra
+nova "Com vídeo no ar", `when: "video"`) toca entre as faixas, mudo e no
+mesmo segundo, e a letra dá o lugar a ele mesmo com uma música carregada
+por baixo: `layoutContext` (com `elements`) lê o que está no ar como o vídeo
+(o título dele, "No vídeo" com quanto tocou, o próximo item da Setlist como
+o Próximo). Ajustes › Conteúdo › **Vídeo** (`stageOptions.video`, ligado
+por padrão; `PALCO_PARTS.video`); sem o elemento (desligado ou um desenho
+próprio sem ele) tudo fica como antes. O Pastor tem a mesma chave
+(`pastorOptions.video`): o Monitor da projeção toca o vídeo
+(`monitor.props.video` → `motion`), desligado volta à imagem parada. O
+Editor de telas tem "Mostrar com › Vídeo" (`sampleVideo`).
 Um design salvo do Palco antigo
 (ids `f_`, sem Faixa: `fromOldDesign`) fica como está e o Editor diz "Este
 desenho é anterior ao Palco novo" com Voltar ao padrão. **O Pastor também**

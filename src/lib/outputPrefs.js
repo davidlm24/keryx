@@ -323,7 +323,7 @@ function pastorDesign(pref) {
     return { ...base, elements: base.elements.map((e) => {
         if (off.has(e.id)) return { ...e, hidden: true };
         if (e.id === "pastor_next") return { ...e, props: { ...e.props, count: opts.next_count } };
-        if (e.id === "pastor_monitor") return { ...e, props: { ...e.props, chords: opts.chords, labels: opts.labels } };
+        if (e.id === "pastor_monitor") return { ...e, props: { ...e.props, chords: opts.chords, labels: opts.labels, video: opts.video } };
         return e;
     }) };
 }
@@ -343,8 +343,10 @@ export function screenDesign(path, pref, layoutRows) {
 // Palco and Pastor draw their own layouts; OutputPref.options says which
 // parts (Configurações › Telas e saídas › Ajustes). Missing keys are the
 // screen as it always was.
-export const STAGE_DEFAULTS = { chords: true, labels: true, clock: true, notes: true, next: true };
-export const PASTOR_DEFAULTS = { chords: false, labels: false, clock: true, next_count: 3 };
+// `video` (owner 2026-11-15, V3 = A): the video on air in the lyrics' place
+// (Palco) and playing in the Pastor's monitor, on unless switched off.
+export const STAGE_DEFAULTS = { chords: true, labels: true, clock: true, notes: true, next: true, video: true };
+export const PASTOR_DEFAULTS = { chords: false, labels: false, clock: true, next_count: 3, video: true };
 const onOff = (v, d) => (typeof v === "boolean" ? v : d);
 export const stageOptions = (pref) => ({
     chords: onOff(pref?.options?.chords, true),
@@ -352,6 +354,7 @@ export const stageOptions = (pref) => ({
     clock: onOff(pref?.options?.clock, true),
     notes: onOff(pref?.options?.notes, true),
     next: onOff(pref?.options?.next, true),
+    video: onOff(pref?.options?.video, true),
 });
 export const pastorOptions = (pref) => {
     const n = Number(pref?.options?.next_count);
@@ -359,6 +362,7 @@ export const pastorOptions = (pref) => {
         chords: onOff(pref?.options?.chords, false),
         labels: onOff(pref?.options?.labels, false),
         clock: onOff(pref?.options?.clock, true),
+        video: onOff(pref?.options?.video, true),
         next_count: Number.isFinite(n) ? Math.min(5, Math.max(0, Math.round(n))) : 3,
     };
 };
