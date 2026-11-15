@@ -10,14 +10,16 @@
 // w, h), each with a rule for when it shows, a text look (size in cqmin,
 // font, weight, colour, alignment) and the options of its type. Pure (no
 // React, tested in layouts.test.mjs): the renderer and the editor only draw.
-import { toolTime, slideProgress } from "../../shared/live-state.mjs";
+import { toolTime, slideProgress, mainLayer, livePosition } from "../../shared/live-state.mjs";
 import { captionParts, airFor } from "./console/caption.js";
 
 export const LAYOUT_CATEGORIES = [["palco", "Palco"], ["pastor", "Pastor"], ["publico", "Público"], ["outro", "Outros"]];
 // When an element shows: always, only with content on air (a song, a
 // passage, a text), only with a clock or timer on air, or only when nothing
 // is on air (an idle clock, "Aguardando projeção").
-export const WHEN = [["always", "Sempre"], ["content", "Com algo no ar"], ["tool", "Com relógio ou timer no ar"], ["idle", "Sem nada no ar"]];
+// "Com vídeo no ar" (owner 2026-11-15, mockup "Palco com vídeo"): while a
+// video is what the congregation sees (videoOnAir).
+export const WHEN = [["always", "Sempre"], ["content", "Com algo no ar"], ["tool", "Com relógio ou timer no ar"], ["idle", "Sem nada no ar"], ["video", "Com vídeo no ar"]];
 // The same families every theme offers (FONT_MAP in deviceStyles); the
 // screens' designs knew only three until the Rodada C (fase d2).
 export const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["georgia", "Georgia"], ["times", "Times"], ["arial", "Arial"], ["verdana", "Verdana"], ["mono", "Monoespaçada"], ["cursive", "Cursiva"]];
@@ -54,7 +56,7 @@ export const ELEMENT_TYPES = [
     { id: "song_time", name: "Tempo na música", icon: "clock", group: "musica", w: 12, h: 10, size: 3.4, weight: "bold", when: "content", label: "Na música", box: true, props: {} },
     { id: "chords", name: "Cifra", icon: "music", group: "musica", w: 31, h: 50, size: 2.2, font: "mono", when: "content", label: "Cifra", box: true, props: {} },
     { id: "notes", name: "Notas para músicos", icon: "edit", group: "musica", w: 94, h: 8, size: 2.4, when: "content", props: {} },
-    { id: "monitor", name: "Monitor da projeção", icon: "projector", group: "tela", w: 60, h: 58, size: 2, when: "always", props: { chords: false, labels: false } },
+    { id: "monitor", name: "Monitor da projeção", icon: "projector", group: "tela", w: 60, h: 58, size: 2, when: "always", props: { chords: false, labels: false, video: false } },
     { id: "progress", name: "Progresso dos slides", icon: "dot", group: "setlist", w: 94, h: 3, size: 1, when: "content", props: { line: false } },
     { id: "logo", name: "Logo da igreja", icon: "logo", group: "tela", w: 10, h: 16, size: 2, when: "always", props: {} },
     { id: "text", name: "Texto fixo", icon: "text", group: "tela", w: 40, h: 8, size: 3, when: "always", props: { text: "Texto" } },
@@ -185,6 +187,7 @@ export const PALCO_PARTS = {
     clock: ["palco_clock", "palco_song_time"],
     notes: ["palco_notes"],
     next: ["palco_next", "palco_next_page"],
+    video: ["palco_video"],
 };
 // The Pastor's (pastorOptions): the Relógio hides the clock and the
 // service's time; Próximos itens "Não" hides the list (its count is the
@@ -216,6 +219,10 @@ export const FACTORY_LAYOUTS = [
             { id: "palco_current", type: "current", x: 3, y: 18, w: 61, h: 69, size: 7.4, weight: "bold", align: "center", valign: "middle", grow: true, props: { chords: true } },
             { id: "palco_chords", type: "chords", x: 66, y: 18, w: 31, h: 69 },
             { id: "palco_next_page", type: "next", x: 66, y: 18, w: 31, h: 69, size: 2.4, label: "Próxima", props: { show: "page" } },
+            // A video the congregation sees, muted and in step, between the
+            // strip and the bar (owner 2026-11-15, V1 = A): the lyrics give it
+            // their place (layoutContext's videoTakes).
+            { id: "palco_video", type: "screen", x: 3, y: 11.5, w: 94, h: 76.5, when: "video" },
             { id: "palco_bar", type: "band", x: 0, y: 89, w: 100, h: 11 },
             // The slides as segments along the bar's top edge, the time left at
             // its right (owner 2026-11-14, mockup "Pontos do Palco", P1 A, P2 A,
@@ -310,9 +317,37 @@ export const formatSpan = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}:${two(Mat
 const clockOf = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${two(Math.floor(s / 3600))}:${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}`; };
 const upperFirst = (t) => (t ? t[0].toUpperCase() + t.slice(1) : t);
 
+// A video the congregation sees: the media layer is the main one and plays
+// a video file or a YouTube link (an image or a PDF does not count). Null
+// otherwise.
+export function videoOnAir(live) {
+    const m = live?.media;
+    return m && mainLayer(live) === "media" && (m.kind === "video" || m.kind === "youtube") ? m : null;
+}
+
 // Everything the elements read, computed once per frame from the live state
 // (and what the page adds: the Setlist's next items, the church). Pure.
-export function layoutContext({ live, now, upcoming = [], hasService = false, church = null } = {}) {
+// `elements`: the drawing's — with a "Com vídeo no ar" element in it (not
+// hidden) and a video on air, the video takes the lyrics' place (owner
+// 2026-11-15, V2 = A): what is on air reads as the video (its title, how
+// far it played, the Setlist's next item as the Próximo), so the lyrics,
+// chords and parts leave and the strip and the bar stay.
+export function layoutContext({ live, now, upcoming = [], hasService = false, church = null, elements = null } = {}) {
+    const base = baseContext({ live, now, upcoming, hasService, church });
+    const video = videoOnAir(live);
+    const videoTakes = Boolean(video) && (elements || []).some((e) => e.when === "video" && !e.hidden);
+    if (!videoTakes) return { ...base, video };
+    const title = video.title || (video.kind === "youtube" ? "YouTube" : "Vídeo");
+    const nextItem = base.upcoming[0];
+    return {
+        ...base, video, videoTakes,
+        content: { kind: "video", title }, slides: [], index: 0, song: { title }, intro: false, progress: null, presentation: false,
+        current: null, next: nextItem ? { text: nextItem.title || "" } : null, slideNote: "",
+        elapsed: video.playback ? Math.max(0, Math.floor(livePosition(video.playback, now))) : 0,
+    };
+}
+
+function baseContext({ live, now, upcoming, hasService, church }) {
     const content = live?.content || null;
     const slides = content ? (content.slides?.length ? content.slides : [{ text: "" }]) : [];
     const index = content ? Math.min(content.index || 0, slides.length - 1) : 0;
@@ -350,6 +385,7 @@ export function elementVisible(el, ctx) {
     if (el.when === "content") return Boolean(ctx.content);
     if (el.when === "tool") return Boolean(ctx.tool);
     if (el.when === "idle") return !ctx.content && !ctx.tool;
+    if (el.when === "video") return Boolean(ctx.video);
     return true;
 }
 
@@ -399,7 +435,9 @@ export const oneLine = (t) => String(t || "").split("\n").map((l) => l.trim()).f
 // presentation on air the type's own words change ("No ar", "Página").
 export function elementLabel(el, ctx) {
     const t = typeOf(el.type);
-    if (!ctx?.presentation || el.label !== (t?.label || "")) return el.label;
+    if (el.label !== (t?.label || "")) return el.label;
+    if (ctx?.videoTakes && el.type === "song_time") return "No vídeo";
+    if (!ctx?.presentation) return el.label;
     if (el.type === "song_time") return "No ar";
     if (el.type === "part") return "Página";
     return el.label;
@@ -517,7 +555,7 @@ export function elementState(el, ctx, extra) {
 // The rule as the editor's list says it, "" for Sempre (the Aparece select's words).
 export const whenLabel = (when) => (when && when !== "always" ? WHEN.find(([k]) => k === when)?.[1] || "" : "");
 // The editor's "Mostrar com" state where a rule shows its element.
-export const WHEN_STATE = { content: "Exemplo (letra)", tool: "Timer", idle: "Sem nada no ar" };
+export const WHEN_STATE = { content: "Exemplo (letra)", tool: "Timer", idle: "Sem nada no ar", video: "Vídeo" };
 // Why the editor draws an element faint, and what to do about it; "" when
 // it is drawn (the canvas's tooltip and the line under it).
 export function ghostReason(el, state) {

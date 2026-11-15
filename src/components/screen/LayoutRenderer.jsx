@@ -41,7 +41,7 @@ export default function LayoutRenderer({ layout, live, screenState, alert, nowMs
     const ownNow = useLiveNow(1000, givenNow === undefined);
     const nowMs = givenNow ?? ownNow;
     // `scale` (Escala do texto) rides along so the lyrics' fit is measured again.
-    const ctx = useMemo(() => ({ ...layoutContext({ live, now: nowMs, upcoming, hasService, church }), scale }), [live, nowMs, upcoming, hasService, church, scale]);
+    const ctx = useMemo(() => ({ ...layoutContext({ live, now: nowMs, upcoming, hasService, church, elements: layout.elements }), scale }), [live, nowMs, upcoming, hasService, church, scale, layout.elements]);
     const base = screenState === undefined ? live : screenState;
     const screen = useMemo(() => {
         let s = base?.tool && layoutHasTimer(layout) ? { ...base, tool: null } : base;
@@ -210,9 +210,11 @@ function Body({ el, ctx, logoUrl, embed, motion, transpose, setTranspose, screen
         }
         case "monitor": {
             // The congregation's screen, plus the chords and part names when
-            // the element asks (the Pastor's Cifra / Nome da parte).
+            // the element asks (the Pastor's Cifra / Nome da parte); its
+            // video plays, muted, when it asks too (the Pastor's Vídeo,
+            // owner 2026-11-15), only on the screen itself.
             const live = ctx.live?.content && (el.props.chords || el.props.labels) ? { ...ctx.live, content: { ...ctx.live.content, show: { chords: Boolean(el.props.chords), labels: Boolean(el.props.labels) } } } : ctx.live;
-            return <div className="kl-mon"><ScreenRenderer state={live} now={ctx.now} logoUrl={logoUrl} preview audio={false} /></div>;
+            return <div className="kl-mon"><ScreenRenderer state={live} now={ctx.now} logoUrl={logoUrl} preview motion={Boolean(el.props.video) && !embed} audio={false} /></div>;
         }
         case "progress":
             return <Progress el={el} ctx={ctx} embed={embed} />;

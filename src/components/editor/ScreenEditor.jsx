@@ -24,7 +24,7 @@ import { useOutputPrefRows } from "@/hooks/useOutputPref";
 import { PREF_OUTPUTS, outputLook, normalizePref, screenDesign, pageDesign, stageOptions, pastorOptions, prefState, prefVars, ruleOf, noticeOnly, alertOf, churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
 import { usePrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
-import { sampleLive, sampleNotice, sampleAlert, sampleTimer, SAMPLE_ITEMS } from "../console/settings/sample";
+import { sampleLive, sampleNotice, sampleAlert, sampleTimer, sampleVideo, SAMPLE_ITEMS } from "../console/settings/sample";
 import { ConfirmContext, deleteQuestion } from "../console/ConfirmDialog";
 import useSortable from "../console/useSortable";
 import { moveTo } from "@/lib/console/dropOrder";
@@ -44,7 +44,7 @@ const readGrid = () => { try { return cleanGrid(JSON.parse(localStorage.getItem(
 // "Mostrar com" (Rodada G2): the states the canvas can draw the screen in,
 // so an element shown only without anything on air or with a timer can be
 // seen where it appears. "No ar" is the real live state (else the example).
-const SOURCES = [["sample", "Exemplo (letra)"], ["idle", "Sem nada no ar"], ["tool", "Timer"], ["auto", "No ar"]];
+const SOURCES = [["sample", "Exemplo (letra)"], ["idle", "Sem nada no ar"], ["tool", "Timer"], ["video", "Vídeo"], ["auto", "No ar"]];
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // The screens the Editor edits (every page with settings; Transmissão has
 // no canvas, only its settings). Each starts from its page's ready design
@@ -121,7 +121,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     // one-question guard; a host without one (null) gets the two-step toast.
     const askCtx = useContext(ConfirmContext);
     const [busy, setBusy] = useState(false);
-    const [source, setSource] = useState("auto"); // SOURCES: "sample" | "idle" | "tool" | "auto"
+    const [source, setSource] = useState("auto"); // SOURCES: "sample" | "idle" | "tool" | "video" | "auto"
     const [guides, setGuides] = useState([]);
     const [pickImage, setPickImage] = useState(false);
     // The middle column's two halves (Rodada C, fase d2): the drawing, and
@@ -352,7 +352,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const madeAt = useRef(keryx.live.now());
     const sampleDoc = useMemo(() => {
         const session = { startedAt: madeAt.current - 42 * 60000 };
-        return { sample: { ...sampleLive(madeAt.current), session }, idle: { ...emptyState(madeAt.current), session } };
+        return { sample: { ...sampleLive(madeAt.current), session }, idle: { ...emptyState(madeAt.current), session }, video: { ...sampleVideo(madeAt.current), session } };
     }, []);
     // The timer starts again each time "Timer" is picked, so it never sits
     // at 00:00:00 in an editor left open.
@@ -360,7 +360,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     const toolDoc = useMemo(() => ({ ...sampleTimer(toolAt), session: sampleDoc.idle.session }), [toolAt, sampleDoc]);
     const pickSource = (v) => { if (v === "tool") setToolAt(keryx.live.now()); setSource(v); };
     const liveOn = liveState && mainLayer(liveState) !== "none" ? liveState : null;
-    const shown = source === "tool" ? toolDoc : source === "idle" ? sampleDoc.idle : source === "sample" || !liveOn ? sampleDoc.sample : { ...liveOn, session: liveOn.session || sampleDoc.sample.session };
+    const shown = source === "tool" ? toolDoc : source === "idle" ? sampleDoc.idle : source === "video" ? sampleDoc.video : source === "sample" || !liveOn ? sampleDoc.sample : { ...liveOn, session: liveOn.session || sampleDoc.sample.session };
     // A screen that shows only avisos (Comunicação) gets an example aviso
     // when none is on air, as Telas e saídas' still does: a song would
     // leave it on the idle look. "Sem nada no ar" and "Timer" mean just that.
@@ -386,7 +386,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     // Why each element is drawn or faint in this state (elementState: the
     // eye, the Aparece rule, nothing to say), as the canvas computes it.
     // The rules read no clock: the time now is enough (the canvas ticks its own).
-    const elCtx = layoutContext({ live, now: keryx.live.now(), upcoming: SAMPLE_ITEMS, hasService: true, church });
+    const elCtx = layoutContext({ live, now: keryx.live.now(), upcoming: SAMPLE_ITEMS, hasService: true, church, elements: draft?.elements || [] });
     const stateOf = (el) => elementState(el, elCtx, { logoUrl: church.logo, elements: draft?.elements || [] });
     // A part of the Palco's default drawing switched off in its Ajustes says so.
     const reasonOf = (el, st) => switchReason(el, path, own) || ghostReason(el, st);

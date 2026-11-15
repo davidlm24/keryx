@@ -134,6 +134,10 @@ export default function ConteudoBlock({ ctx }) {
                         <FormRow k="Próximo slide">
                             <Switch on={stage.next} onChange={(on) => saveOpt("next", on)} label="Próximo slide no Palco" />
                         </FormRow>
+                        <FormRow k="Vídeo">
+                            <Switch on={stage.video} onChange={(on) => saveOpt("video", on)} label="Vídeo no Palco" />
+                            <span className="kx-meta">o vídeo no ar no lugar da letra, mudo</span>
+                        </FormRow>
                     </>}
                     {!design && !oldView && isPastor && <>
                         <FormRow k="Relógio">
@@ -151,6 +155,10 @@ export default function ConteudoBlock({ ctx }) {
                         <FormRow k="Nome da parte">
                             <Switch on={lyrics.labels} onChange={(on) => saveOpt("labels", on)} label="Nome da parte no Pastor" />
                             <span className="kx-meta">Verso, Refrão, Ponte… sobre a letra</span>
+                        </FormRow>
+                        <FormRow k="Vídeo">
+                            <Switch on={pastor.video} onChange={(on) => saveOpt("video", on)} label="Vídeo no Pastor" />
+                            <span className="kx-meta">o monitor toca o vídeo no ar, mudo (desligado: uma imagem parada)</span>
                         </FormRow>
                     </>}
                     {isStage && (

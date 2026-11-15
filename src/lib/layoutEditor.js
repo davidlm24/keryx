@@ -41,7 +41,7 @@ export const ELEMENT_HINTS = {
 // switches (outputPrefs pageDesign): which ids each switch hides, and the
 // switch's name in Ajustes › Conteúdo.
 export const PAGE_PARTS = {
-    "/StageView": { parts: PALCO_PARTS, words: { chords: "Cifra", labels: "Nome da parte", clock: "Relógio e tempo", notes: "Notas para músicos", next: "Próximo" } },
+    "/StageView": { parts: PALCO_PARTS, words: { chords: "Cifra", labels: "Nome da parte", clock: "Relógio e tempo", notes: "Notas para músicos", next: "Próximo", video: "Vídeo" } },
     "/PastorView": { parts: PASTOR_PARTS, words: { clock: "Relógio", next: "Próximos itens" } },
 };
 export const drawsItself = (path) => Boolean(PAGE_PARTS[path]);
