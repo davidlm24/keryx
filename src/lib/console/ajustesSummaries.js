@@ -26,8 +26,8 @@ export function destinoSummary({ name, assignment = null, number, network = fals
 export function partsSummary(page, pref) {
     const o = page === "/StageView" ? stageOptions(pref) : pastorOptions(pref);
     const parts = page === "/StageView"
-        ? [o.chords, o.labels, o.next, o.notes, o.clock]
-        : [o.clock, o.next_count > 0, o.chords, o.labels];
+        ? [o.chords, o.labels, o.next, o.notes, o.clock, o.video]
+        : [o.clock, o.next_count > 0, o.chords, o.labels, o.video];
     const on = parts.filter(Boolean).length;
     return on === parts.length ? "Todas as partes" : on === 0 ? "Nenhuma parte" : `${on} de ${parts.length} partes`;
 }

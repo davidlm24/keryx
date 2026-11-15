@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 import {
     ELEMENT_TYPES, TEXT_TYPES, LOOK_TYPES, ELEMENT_GROUPS, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
-    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, elementState, whenLabel, ghostReason, slidePage, layoutHasTimer, seedLayoutId, NEXT_SHOWS, PALCO_PARTS, oneLine, elementLabel, grownRect, alertDock, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
+    findLayout, layoutChoices, layoutContext, videoOnAir, elementVisible, elementText, elementItems, elementHasContent, elementState, whenLabel, ghostReason, slidePage, layoutHasTimer, seedLayoutId, NEXT_SHOWS, PALCO_PARTS, oneLine, elementLabel, grownRect, alertDock, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
 } from "./layouts.js";
 
 const T0 = Date.UTC(2026, 9, 12, 19, 30, 0);
@@ -382,7 +382,7 @@ test("factory:pastor: a strip, the monitor 16:9, the next items, stable ids", ()
     assert.ok(pastor.elements.every((e) => !e.box), "no cards");
     const mon = pastor.elements.find((e) => e.id === "pastor_monitor");
     assert.equal(mon.w, mon.h, "on a 16:9 screen, equal % keep the monitor 16:9");
-    assert.deepEqual(mon.props, { chords: false, labels: false });
+    assert.deepEqual(mon.props, { chords: false, labels: false, video: false });
 });
 
 test("progress: the context carries how far the slide is through its time; the Palco's bar is a line (2026-11-14)", () => {
@@ -396,4 +396,41 @@ test("progress: the context carries how far the slide is through its time; the P
     const palco = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco").elements.find((e) => e.type === "progress");
     assert.equal(palco.props.line, true);
     assert.equal(normalizeElement({ type: "progress" }).props.line, false, "the Pastor's and old designs keep the row");
+});
+
+test("a video on air takes the lyrics' place on the Palco (owner 2026-11-15, V1–V3 = A)", () => {
+    const palco = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco");
+    const vid = palco.elements.find((e) => e.id === "palco_video");
+    assert.equal(vid.type, "screen");
+    assert.equal(vid.when, "video");
+    const song = { title: "Canção", slides: [{ text: "um" }, { text: "dois" }], stage: { song_key: "G", chords: "G D" } };
+    let live = applyOp(emptyState(T0), "content.show", song, T0);
+    live = applyOp(live, "media.show", { kind: "youtube", url: "https://youtu.be/abc", title: "Santo" }, T0);
+    const upcoming = [{ id: "a", title: "Avisos da semana", type: "ANNOUNCEMENT" }];
+    const ctx = layoutContext({ live, now: T0 + 84_000, upcoming, elements: palco.elements });
+    assert.ok(ctx.videoTakes);
+    assert.equal(elementText(palco.elements.find((e) => e.id === "palco_title"), ctx), "Santo");
+    assert.equal(elementText(palco.elements.find((e) => e.id === "palco_next"), ctx), "Avisos da semana", "the Setlist's next item");
+    assert.equal(elementText(palco.elements.find((e) => e.id === "palco_song_time"), ctx), "1:24");
+    assert.equal(elementLabel(palco.elements.find((e) => e.id === "palco_song_time"), ctx), "No vídeo");
+    const state = (id) => elementState(palco.elements.find((e) => e.id === id), ctx, { elements: palco.elements });
+    assert.equal(state("palco_video"), "shown");
+    assert.notEqual(state("palco_current"), "shown", "the lyrics give way");
+    assert.notEqual(state("palco_chords"), "shown");
+    assert.notEqual(state("palco_key"), "shown");
+    assert.equal(state("palco_strip"), "shown");
+    // Without a video element (switched off, or another drawing): as before.
+    const off = palco.elements.map((e) => (e.id === "palco_video" ? { ...e, hidden: true } : e));
+    const before = layoutContext({ live, now: T0, upcoming, elements: off });
+    assert.ok(!before.videoTakes && before.video);
+    assert.equal(before.content.title, "Canção");
+    // An image over the lyrics is not a video.
+    const img = applyOp(applyOp(emptyState(T0), "content.show", song, T0), "media.show", { kind: "image", url: "keryx-media://a.jpg" }, T0);
+    assert.equal(videoOnAir(img), null);
+    // Only a video, no lyrics: the idle clock gives way too.
+    const only = applyOp(emptyState(T0), "media.show", { kind: "video", url: "keryx-media://v.mp4" }, T0);
+    const octx = layoutContext({ live: only, now: T0, upcoming, elements: palco.elements });
+    const idle = palco.elements.find((e) => e.when === "idle");
+    assert.equal(elementState(idle, octx, { elements: palco.elements }), "rule");
+    assert.equal(octx.song.title, "Vídeo");
 });
