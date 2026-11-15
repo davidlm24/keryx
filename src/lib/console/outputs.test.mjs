@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, localId, DROP_GRACE_MS, isPhone, screenClients, showsOn, byGroup, groupOf, outputsSummary, outputStatusText, openLocalKeys, closeAllQuestion } from "./outputs.js";
+import { remember, forget, sameAnswer, outputHealth, rowStatus, netId, netName, localId, DROP_GRACE_MS, isPhone, screenClients, showsOn, byGroup, groupOf, outputsSummary, outputStatusText, openLocalKeys, closeAllQuestion } from "./outputs.js";
 
 test("Fechar todas as saídas: only the local windows that exist, and its question", () => {
     const rows = [
@@ -288,4 +288,21 @@ test("a full-screen output names its monitor by its number, never Electron's id 
     assert.equal(outputHealth({ outputs: [big], displays }).rows[0].meta, "Tela 2");
     assert.equal(outputHealth({ outputs: [big] }).rows[0].meta, "Tela cheia");
     assert.equal(outputHealth({ outputs: [stage(true)], displays }).rows[0].meta, "Janela");
+});
+
+test("network screens by their own id: changing the page keeps the row; its name (2026-11-15, R2 = A)", () => {
+    const tv = { ip: "::ffff:192.168.0.12", screen: "/LyricProjection", label: "Letras", agent: "SmartTV", screenId: "tvdopalco0001", name: "" };
+    assert.equal(netId(tv), "net:tvdopalco0001");
+    assert.equal(netId({ ip: "192.168.0.12", screen: "/StageView" }), "net:192.168.0.12|/StageView", "no id: by address and page, as before");
+    assert.equal(netName(tv), "Tela na rede · 192.168.0.12");
+    assert.equal(netName({ ...tv, name: "TV do palco" }), "TV do palco");
+    assert.equal(netName({ ip: "192.168.0.12", label: "Palco" }), "Palco", "no id: the page's name, as before");
+    let seen = remember({}, { clients: [tv] }, 1000);
+    seen = remember(seen, { clients: [{ ...tv, screen: "/StageView", label: "Palco" }] }, 2000);
+    const rows = Object.values(seen).filter((v) => v.kind === "net");
+    assert.equal(rows.length, 1, "one row whatever the page");
+    assert.equal(rows[0].screen, "/StageView");
+    assert.equal(rows[0].page, "Palco");
+    const row = outputHealth({ outputs: [], seen, air: null }).rows.find((r) => r.screenId === "tvdopalco0001");
+    assert.equal(row.name, "Tela na rede · 192.168.0.12");
 });

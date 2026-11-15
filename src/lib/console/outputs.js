@@ -15,9 +15,19 @@
 const LOCAL = "local:";
 const NET = "net:";
 
-// A network screen is the same screen when it reconnects from the same
-// address showing the same page (its "since" changes on every reconnect).
-export const netId = (client) => `${NET}${String(client.ip || "").replace(/^::ffff:/, "")}|${client.screen || ""}`;
+// A network screen is the same screen when it reconnects with the same id
+// (its page keeps one, 2026-11-15: changing its page keeps its row); one
+// without an id (an older page, a private tab) when it reconnects from the
+// same address showing the same page (its "since" changes on every reconnect).
+export const netId = (client) => (client.screenId ? `${NET}${client.screenId}` : `${NET}${String(client.ip || "").replace(/^::ffff:/, "")}|${client.screen || ""}`);
+// A network screen's name (R2 = A): the one the operator gave it, else
+// "Tela na rede · <ip>" for one with an id (its page is on its "Mostra"),
+// else its page's name as before.
+export function netName(client) {
+    const ip = String(client.ip || "").replace(/^::ffff:/, "");
+    if (client.screenId) return client.name || `Tela na rede · ${ip}`;
+    return client.label || "Tela na rede";
+}
 export const localId = (key) => `${LOCAL}${key}`;
 
 // A phone on /Remote (the Controle or the Equipe) is a companion, never a
@@ -59,7 +69,7 @@ export function remember(seen, { outputs = [], clients = null }, now) {
     for (const cl of screenClients(clients)) {
         const id = netId(cl);
         present.add(id);
-        put(id, { kind: "net", key: id, name: cl.label || "Tela na rede", ip: String(cl.ip || "").replace(/^::ffff:/, ""), screen: cl.screen || "", agent: cl.agent || "", missingAt: null, droppedAt: null });
+        put(id, { kind: "net", key: id, name: netName(cl), ip: String(cl.ip || "").replace(/^::ffff:/, ""), screen: cl.screen || "", page: cl.label || "", screenId: cl.screenId || null, agent: cl.agent || "", missingAt: null, droppedAt: null });
     }
     for (const [id, v] of Object.entries(seen)) {
         if (v.kind !== "net" || present.has(id) || v.droppedAt) continue;
@@ -198,7 +208,7 @@ export function outputHealth({ outputs = [], displays = [], seen = {}, locked = 
         if (v.kind !== "net") continue;
         const state = v.droppedAt ? "disconnected" : "connected";
         rows.push({
-            id: v.key, local: false, key: v.key, name: v.name, ip: v.ip, screen: v.screen,
+            id: v.key, local: false, key: v.key, name: v.name, ip: v.ip, screen: v.screen, screenId: v.screenId || null, page: v.page || "",
             kind: isTablet(v.agent) ? "tablet" : "tv",
             role: v.screen === "/VideoProjection" ? "media" : "lyrics", group: groupOf(v.screen),
             state, problem: state === "disconnected", droppedAt: v.droppedAt,

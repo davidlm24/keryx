@@ -396,7 +396,9 @@ function readBody(req, limit = MAX_BODY) {
 }
 
 // devices: the phones paired by QR (phoneDevices.cjs createDevices), or null.
-function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, devices = null, onRemote = null, log = () => {}, heartbeatMs = HEARTBEAT_MS }) {
+// `screens`: the network screens by their own id (screenDevices.cjs): their
+// names and the page the operator chose for each (R1–R3, 2026-11-15).
+function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, devices = null, screens = null, onRemote = null, log = () => {}, heartbeatMs = HEARTBEAT_MS }) {
     // NETWORK_SCREENS with the operator's names on them (NetworkHome, Rede).
     const screensOf = () => { const names = screenLabels(store); return NETWORK_SCREENS.map((sc) => ({ ...sc, label: names[sc.path] || sc.label })); };
     const dist = path.resolve(distDir);
@@ -594,8 +596,19 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         return html(res, 401, pinPage(next, "PIN incorreto."));
     }
 
+    // Tells one screen to go to another page (the console's "Mostra ▾",
+    // owner 2026-11-15): a named event its page follows with a full load, so
+    // its stream comes back saying the new page. Only to screens (never a
+    // phone), only to a page the network serves or the start page "/".
+    const navFrame = (to) => `event: nav\ndata: ${JSON.stringify({ path: to })}\n\n`;
+    const navigable = (to) => to === "/" || SCREEN_PATHS.has(to);
+
     // Each screen says which page it shows (?screen=/StageView): the
-    // console lists the screens connected right now from this.
+    // console lists the screens connected right now from this. A screen
+    // also says its own id (&id=, kept by its page): with a page chosen for
+    // it from the console it is sent there as it connects (R3: a TV turned
+    // on again goes back by itself), unless the page was just picked on the
+    // device (&picked=1, from its start page), which becomes the one kept.
     function handleEvents(req, res, url) {
         if (clients.size >= MAX_CLIENTS) return json(res, 503, { error: { message: "Telas demais ligadas." } });
         res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
@@ -605,9 +618,19 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         const { role } = who;
         const screen = SCREEN_PATHS.has(asked) || (asked === REMOTE_PATH && role) ? asked : "";
         const phone = screen === REMOTE_PATH;
-        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen, role: phone ? role : null, deviceId: phone ? who.device?.id || null : null, remoteOnly: remoteOnly(req) };
+        const askedId = url ? String(url.searchParams.get("id") || "") : "";
+        const screenId = !phone && screens && screens.validId(askedId) ? askedId : null;
+        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen, role: phone ? role : null, deviceId: phone ? who.device?.id || null : null, screenId, remoteOnly: remoteOnly(req) };
         clients.add(client);
         req.on("close", () => clients.delete(client));
+        if (screenId) {
+            if (url.searchParams.get("picked") === "1" && screen) screens.setPage(screenId, screen);
+            else {
+                screens.seen(screenId);
+                const kept = screens.get(screenId)?.page || "";
+                if (kept && kept !== screen && SCREEN_PATHS.has(kept)) writeFrame(client, navFrame(kept));
+            }
+        }
     }
 
     async function handleDb(req, res) {
@@ -776,7 +799,31 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         },
         running: () => Boolean(server && server.listening),
         port: () => (server && server.listening ? server.address().port : null),
-        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen, role, deviceId }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), ...(deviceId ? { deviceId } : {}), label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
+        clients: () => {
+            const names = screenLabels(store);
+            const kept = screens ? screens.list() : {};
+            return [...clients].map(({ ip, agent, since, screen, role, deviceId, screenId }) => ({
+                ip: ip.replace(/^::ffff:/, ""), agent, since, screen, ...(role ? { role } : {}), ...(deviceId ? { deviceId } : {}),
+                // A screen's own id and the name the operator gave it (R2).
+                ...(screenId ? { screenId, name: kept[screenId]?.name || "" } : {}),
+                label: screen === REMOTE_PATH ? (role === "team" ? "Equipe" : "Controle") : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "",
+            }));
+        },
+        // "Mostra ▾" (R1): the screen with this id goes to `to` ("/" = its
+        // start page), now if it is connected and when it connects again.
+        // -> how many of its streams were told (0: not connected now), or
+        // null when the id or the page is not one.
+        navigate(id, to) {
+            if (!screens || !screens.validId(id) || !navigable(to)) return null;
+            screens.setPage(id, to === "/" ? "" : to);
+            let told = 0;
+            for (const client of [...clients]) {
+                if (client.screenId !== id || client.screen === REMOTE_PATH) continue;
+                if (writeFrame(client, navFrame(to))) told += 1;
+                else clients.delete(client);
+            }
+            return told;
+        },
         // Desconectar todos: the phones' event streams close now (their
         // cookie stops working with the new key the caller saves). role:
         // only the Controle's ("control") or only the Equipe's ("team").

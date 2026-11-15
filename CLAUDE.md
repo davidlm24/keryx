@@ -2497,7 +2497,28 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   or a lost link = "Não sei se foi"). "Manter a tela ligada" loops
   `public/nosleep.mp4` (made by `scripts/nosleep-mp4.mjs`). Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
-  the screens connected right now from that (`useOutputs`). Links and QR
+  the screens connected right now from that (`useOutputs`). **A screen has
+  an id of its own and the console chooses its page** (owner 2026-11-15,
+  mockup "Palco com vídeo e telas na rede", R1–R3 = A): its page keeps
+  random letters in localStorage `keryx.screenId` and sends `&id=` with the
+  stream (`screenId` in src/api/backends/network.js; a private tab sends
+  none and is known by address and page, as before). `electron/screenDevices.cjs`
+  (tested) keeps `{ name, page, lastSeen }` per id in settings.json
+  `network.screens` (this computer's, never synced, 30 at most, 180 days).
+  The console's row of such a screen is keyed by the id (`netId`, so a new
+  page keeps the row), named by the operator ("TV do palco") or "Tela na
+  rede · <ip>" (`netName`), and has **"Mostra ▾"** (`NetShow` in
+  Popovers.jsx: Saídas and Configurações › Telas na rede, with Renomear…
+  there): network ops `screenShow { id, path }` / `screenRename`, which
+  `lan.navigate` turns into a named SSE frame `event: nav` `{ path }` to that
+  screen alone (never a phone; only `NETWORK_SCREENS` or "/"); the page
+  reloads on it. The page chosen is kept: a screen connecting on another
+  page is sent back at once (R3: a TV turned on again), unless the page was
+  picked on the device from its start page (NetworkHome loads `<page>?pick=1`
+  in full, and the stream says `&picked=1`), which becomes the one kept.
+  Nothing on the network can send a screen anywhere: only the console's IPC.
+  Only `desktop:dev` with a real device confirms it (the preview has no
+  network screens). Links and QR
   codes meant for other devices come from the network info's `urls`
   (Configurações › Telas na rede), never `window.location.origin` (that is
   127.0.0.1 on desktop). `keryx.isNetworkScreen` is true in such a browser.

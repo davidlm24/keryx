@@ -7,6 +7,44 @@
 import { initialConnection, nextConnection } from "../../lib/network/connection.js";
 
 const RELOAD_AFTER_AUTH_LOSS_MS = 2000;
+const SCREEN_ID = "keryx.screenId";
+
+// This screen's own id (owner 2026-11-15, R2 = A): random letters and digits
+// kept in this browser, so the console can name it and choose what it shows
+// (electron/screenDevices.cjs). "" where storage is closed (a private tab):
+// then the screen is known by its address, as before.
+export function screenId() {
+    try {
+        let id = localStorage.getItem(SCREEN_ID) || "";
+        if (!/^[a-z0-9]{12,32}$/.test(id)) {
+            const bytes = new Uint8Array(10);
+            crypto.getRandomValues(bytes);
+            id = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 16);
+            localStorage.setItem(SCREEN_ID, id);
+        }
+        return id;
+    } catch {
+        return "";
+    }
+}
+
+// A page picked on this device from its start page (NetworkHome adds
+// ?pick=1): said once to the server, which keeps it as this screen's page,
+// then taken off the address.
+function pickedHere() {
+    try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("pick") !== "1") return false;
+        url.searchParams.delete("pick");
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Where the console sends this screen: a page of the network's (or "/").
+const navigable = (to) => typeof to === "string" && /^\/[A-Za-z]*$/.test(to);
 
 export function createNetworkBridge() {
     const listeners = new Set();
@@ -60,8 +98,11 @@ export function createNetworkBridge() {
 
     function connect() {
         if (source) return;
-        // Which page this screen shows, for the console's list of screens.
-        source = new EventSource(`/api/events?screen=${encodeURIComponent(window.location.pathname)}`);
+        // Which page this screen shows, for the console's list of screens,
+        // and this screen's own id (the console names it and sends it to a page).
+        const id = screenId();
+        const picked = pickedHere();
+        source = new EventSource(`/api/events?screen=${encodeURIComponent(window.location.pathname)}${id ? `&id=${id}` : ""}${picked ? "&picked=1" : ""}`);
         source.onmessage = (event) => {
             heard();
             let change;
@@ -79,6 +120,14 @@ export function createNetworkBridge() {
             }
         };
         source.addEventListener("hb", heard);
+        // The console chose another page for this screen ("Mostra ▾"): a full
+        // load, so the stream comes back saying the new page.
+        source.addEventListener("nav", (event) => {
+            heard();
+            let to = "";
+            try { to = JSON.parse(event.data).path; } catch { return; }
+            if (navigable(to) && to !== window.location.pathname) window.location.assign(to);
+        });
         source.addEventListener("live", (event) => {
             heard();
             try {

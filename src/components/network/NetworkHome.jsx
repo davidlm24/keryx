@@ -12,6 +12,18 @@ export const rememberScreen = (path) => {
     try { localStorage.setItem(LAST, path); } catch { /* private mode */ }
 };
 
+// Opening a screen from here loads the page whole, saying it was picked on
+// this device (?pick=1, network.js): the event stream then opens on that
+// page (a client-side link kept it on "Página inicial" in the console's
+// list) and the KERYX computer keeps it as this screen's page (2026-11-15).
+// The dev preview (`given` screens) keeps the in-app link.
+const openHere = (e, path, preview) => {
+    rememberScreen(path);
+    if (preview) return;
+    e.preventDefault();
+    window.location.assign(`${path}?pick=1`);
+};
+
 // The start page for a tablet, TV or stage monitor on the church network:
 // pick what this screen shows, grouped by what it is for (Público, Palco,
 // Transmissão). The list comes from the KERYX computer (electron/lan.cjs),
@@ -44,7 +56,7 @@ export default function NetworkHome({ screens: given = null }) {
                 {error && <p className="net-home-err" role="alert">{error}</p>}
                 {!error && !screens && <p className="net-home-f" role="status">Procurando as telas…</p>}
                 {lastScreen && (
-                    <Link className="net-again" to={lastScreen.path} onClick={() => rememberScreen(lastScreen.path)}>
+                    <Link className="net-again" to={lastScreen.path} onClick={(e) => openHere(e, lastScreen.path, Boolean(given))}>
                         <span>Da última vez: <b>{lastScreen.label}</b></span><em>Abrir de novo</em>
                     </Link>
                 )}
@@ -53,7 +65,7 @@ export default function NetworkHome({ screens: given = null }) {
                         <h2 className="net-section">{g.label}</h2>
                         <div className="net-cards">
                             {g.items.map((s) => (
-                                <Link key={s.path} className="net-card" to={s.path} onClick={() => rememberScreen(s.path)}>
+                                <Link key={s.path} className="net-card" to={s.path} onClick={(e) => openHere(e, s.path, Boolean(given))}>
                                     <b>{s.label}</b>
                                     <span>{s.hint}</span>
                                 </Link>

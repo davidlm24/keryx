@@ -147,7 +147,24 @@ export function useAnchor(selector, width, active) {
 const TONE_DOT = { ok: "var(--ok)", rh: "var(--rh)", warn: "var(--warn)", off: "var(--fg-3)" };
 const TONE_CLS = { ok: "", rh: "is-rh", warn: "is-warn", off: "is-off" };
 
-export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, onIdentify = null, onSettings, ruleOf = null, onRule = null, displays = [], outputs = [], onPlace = null }) {
+// "Mostra ▾" on a network screen's row (Saídas, Telas na rede): the pages the
+// network serves, by group, and its start page. The same look as Destino.
+export function NetShow({ row, screens, onShow }) {
+    const label = row.screen ? row.page || screens.find((s) => s.path === row.screen)?.label || row.screen : "Página inicial";
+    return (
+        <span className="kx-out-recv kx-out-dest" title={`O que ${row.name} mostra: escolha e ela troca de tela`}>
+            <Icon name="monitor" size={12} /><b>{label}</b><Icon name="chevron-down" size={12} />
+            <select value={row.screen || "/"} onChange={(e) => onShow(row.screenId, e.target.value, row.name)} aria-label={`O que ${row.name} mostra: ${label}`}>
+                {byGroup(screens, (s) => s.path).map((g) => (
+                    <optgroup key={g.key} label={g.label}>{g.items.map((s) => <option key={s.path} value={s.path}>{s.label}</option>)}</optgroup>
+                ))}
+                <option value="/">Página inicial</option>
+            </select>
+        </span>
+    );
+}
+
+export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, onIdentify = null, onSettings, ruleOf = null, onRule = null, displays = [], outputs = [], onPlace = null, netScreens = [], onNetShow = null }) {
     const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
     const box = useFocusFirst(open === "outs");
@@ -215,6 +232,13 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                                 Recebe and Destino share one line, each its glyph and
                                 value, no word (owner 2026-11-08, mockup P1 = A): the
                                 eye what it receives, the monitor where it opens. */}
+                            {/* A screen on the network (owner 2026-11-15, R1 = A): what it
+                                shows, chosen here; it reloads on that page and keeps it. */}
+                            {!r.local && r.screenId && r.state === "connected" && onNetShow && netScreens.length > 0 && (
+                                <div className="kx-out-ctl">
+                                    <NetShow row={r} screens={netScreens} onShow={onNetShow} />
+                                </div>
+                            )}
                             {(() => {
                                 const recv = ruleOf && onRule && PREF_OUTPUTS.includes(page);
                                 // Where it opens (owner 2026-11-02, D1 = A): every local
