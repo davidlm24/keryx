@@ -2701,16 +2701,24 @@ andando): os passados cheios, o do ar enchendo com o tempo dele (de uma marca
 à seguinte, o último até o Fim; a introdução é o primeiro segmento),
 **âmbar e pulsando nos últimos 5 s** (de um slide de 10 s ou mais) e o tempo
 que falta à direita. Sem tempo (slide passado à mão, música sem marcas, letra
-pausada) são os pontos de antes: nada finge saber (P3 = B); o último slide
+pausada) nada enche: nada finge saber (P3 = B); o último slide
 sem Fim fica cheio e sem número. O Palco de fábrica usa `props.line` (a
 linha de ponta a ponta no topo da faixa de baixo, o tempo à direita; a chave
-"Linha" do Editor); o Pastor, a barra dele com o tempo ao lado.
+"Linha" do Editor) **sempre, com tempo ou sem** (owner 2026-11-16: sem tempo
+são os mesmos segmentos na linha, os passados cheios e o do ar aceso —
+nunca pontos ao lado do Próximo, espremidos por um título longo); o Pastor,
+a barra dele com o tempo ao lado (sem tempo, os pontos).
 **O Palco mostra o vídeo** (owner 2026-11-15, mockup "Palco com vídeo e
 telas na rede", V1–V3 = A): enquanto um vídeo ou um link do YouTube é o que
-a igreja vê (`videoOnAir` em layouts.js: a camada de mídia é a principal;
-imagem e PDF não contam), o `palco_video` (um elemento Projeção com a regra
-nova "Com vídeo no ar", `when: "video"`) toca entre as faixas, mudo e no
-mesmo segundo, e a letra dá o lugar a ele mesmo com uma música carregada
+a igreja vê (`videoOnAir` em layouts.js: a camada de mídia como a principal,
+ou **o canal de vídeo** — um link do YouTube mandado pelo console, um vídeo
+mandado às telas de Vídeo; owner 2026-11-16 — enquanto nada cobre o projetor
+e ele veio depois do item no ar (uma música mandada com o próprio clipe fica
+na letra); imagem e PDF não contam), o `palco_video` (um elemento Projeção
+com a regra nova "Com vídeo no ar", `when: "video"`) toca entre as faixas,
+mudo e no mesmo segundo, o próprio arquivo ou link (`PalcoVideo` em
+LayoutRenderer.jsx: um `LiveVideo` contido na caixa do elemento, nunca o
+ScreenRenderer `fill`, que é `position: fixed`), e a letra dá o lugar a ele mesmo com uma música carregada
 por baixo: `layoutContext` (com `elements`) lê o que está no ar como o vídeo
 (o título dele, "No vídeo" com quanto tocou, o próximo item da Setlist como
 o Próximo). Ajustes › Conteúdo › **Vídeo** (`stageOptions.video`, ligado

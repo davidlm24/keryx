@@ -317,12 +317,21 @@ export const formatSpan = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}:${two(Mat
 const clockOf = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${two(Math.floor(s / 3600))}:${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}`; };
 const upperFirst = (t) => (t ? t[0].toUpperCase() + t.slice(1) : t);
 
-// A video the congregation sees: the media layer is the main one and plays
-// a video file or a YouTube link (an image or a PDF does not count). Null
-// otherwise.
+// A video the church is watching now: the media layer as the main one
+// playing a video file or a YouTube link (an image or a PDF does not count),
+// or the video channel (a YouTube link sent from the console, a video sent to
+// the video screens; owner 2026-11-16: "vídeo no palco não funciona" — the
+// lyric video from YouTube goes there) while nothing covers the projector,
+// unless the item on air came with it (a song sent with its own clip: its
+// lyrics are KERYX's, the band reads them). Null otherwise.
+const isVideo = (m) => Boolean(m) && (m.kind === "video" || m.kind === "youtube");
 export function videoOnAir(live) {
-    const m = live?.media;
-    return m && mainLayer(live) === "media" && (m.kind === "video" || m.kind === "youtube") ? m : null;
+    const main = mainLayer(live);
+    if (main === "media") return isVideo(live.media) ? live.media : null;
+    const v = live?.video;
+    if (!isVideo(v) || (main !== "none" && main !== "content")) return null;
+    if (main === "content" && !((v.shownAt || 0) > (live.content.startedAt || 0))) return null;
+    return v;
 }
 
 // Everything the elements read, computed once per frame from the live state

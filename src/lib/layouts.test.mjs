@@ -433,4 +433,17 @@ test("a video on air takes the lyrics' place on the Palco (owner 2026-11-15, V1â
     const idle = palco.elements.find((e) => e.when === "idle");
     assert.equal(elementState(idle, octx, { elements: palco.elements }), "rule");
     assert.equal(octx.song.title, "VÃ­deo");
+    // The video channel (a YouTube link from the console, owner 2026-11-16):
+    // alone, it is the video on air.
+    const yt = applyOp(emptyState(T0), "video.show", { kind: "youtube", url: "https://youtu.be/abc", title: "Lyric video" }, T0);
+    assert.equal(videoOnAir(yt)?.title, "Lyric video");
+    // Sent after the song on air: it takes the lyrics' place.
+    const sung = applyOp(emptyState(T0), "content.show", song, T0);
+    const over = applyOp(sung, "video.show", { kind: "youtube", url: "https://youtu.be/abc" }, T0 + 5000);
+    assert.equal(videoOnAir(over)?.url, "https://youtu.be/abc");
+    // A song sent with its own clip (the clip first, then the lyrics): the lyrics stay.
+    const clip = applyOp(applyOp(emptyState(T0), "video.show", { kind: "video", url: "keryx-media://clip.mp4" }, T0), "content.show", song, T0);
+    assert.equal(videoOnAir(clip), null);
+    // Something covering the projector (Tela preta, a timer): no video.
+    assert.equal(videoOnAir(applyOp(yt, "screen.set", { mode: "black" }, T0)), null);
 });
