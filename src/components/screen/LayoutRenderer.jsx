@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ScreenRenderer from "./ScreenRenderer";
+import LiveVideo from "@/components/projection/LiveVideo";
+import VideoStill from "./VideoStill";
 import { useLiveNow } from "@/hooks/useLiveState";
 import AlertBar from "./AlertBar";
 import ChordedLines, { chordedOf, Transpose } from "@/components/network/ChordedLines";
@@ -164,7 +166,17 @@ function Progress({ el, ctx, embed }) {
     const p = ctx.progress;
     const line = Boolean(el.props.line);
     const label = `Slide ${ctx.index + 1} de ${ctx.slides.length}`;
-    if (!p) return <div className={`kl-dots ${line ? "is-end" : ""}`} aria-label={label}>{ctx.slides.map((_, i) => <i key={i} className={i === ctx.index ? "is-on" : i < ctx.index ? "is-done" : ""} />)}</div>;
+    // The bar's line without a time (owner 2026-11-16): the same segments
+    // along the top, the passed ones full and the one on air lit, nothing
+    // filling — never dots beside the Próximo, squeezed by a long title.
+    if (!p && line) {
+        return (
+            <div className="kl-prog is-line" aria-label={label}>
+                <div className="kl-segs">{ctx.slides.map((_, i) => <span key={i} className={`kl-seg ${i < ctx.index ? "is-done" : i === ctx.index && !ctx.intro ? "is-cur is-lit" : ""}`} />)}</div>
+            </div>
+        );
+    }
+    if (!p) return <div className="kl-dots" aria-label={label}>{ctx.slides.map((_, i) => <i key={i} className={i === ctx.index ? "is-on" : i < ctx.index ? "is-done" : ""} />)}</div>;
     const hasIntro = Number.isFinite(ctx.slides[0]?.start) && ctx.slides[0].start > 0;
     const seg = (i) => {
         const state = i < p.index ? "is-done" : i === p.index ? "is-cur" : "";
@@ -180,10 +192,27 @@ function Progress({ el, ctx, embed }) {
     );
 }
 
+// The video on air in a "Com vídeo no ar" element (the Palco's, owner
+// 2026-11-15): the file or the YouTube link itself, muted (the sound engine
+// plays the sound), in step with the console, contained in the element's own
+// box — whichever layer plays it (videoOnAir). A still in the editor's canvas
+// and the console's previews.
+function PalcoVideo({ video, embed, motion }) {
+    if (embed && !motion) {
+        return (
+            <div className="kl-vid">
+                {video.poster ? <img className="kl-vid-v" src={video.poster} alt="" draggable={false} /> : video.kind === "video" ? <VideoStill src={video.url} className="kl-vid-v" /> : null}
+            </div>
+        );
+    }
+    return <div className="kl-vid"><LiveVideo item={video} muted className="kl-vid-v" /></div>;
+}
+
 function Body({ el, ctx, logoUrl, embed, motion, transpose, setTranspose, screen, audio, cut }) {
     const song = ctx.song || {};
     switch (el.type) {
         case "screen":
+            if (el.when === "video" && ctx.video) return <PalcoVideo video={ctx.video} embed={embed} motion={motion} />;
             return <ScreenRenderer fill state={screen} now={ctx.now} logoUrl={logoUrl} preview={embed} motion={embed && motion} audio={audio && !embed} />;
         case "current":
             return <CurrentBody el={el} ctx={ctx} song={song} embed={embed} transpose={transpose} setTranspose={setTranspose} cut={cut} />;
