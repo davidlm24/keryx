@@ -507,3 +507,41 @@ test("the Vídeo screen writes the clip's name only when asked (owner 2026-11-12
     assert.equal(videoTitleOn(normalizePref({ options: { video_title: true } })), true);
     assert.equal(videoTitleOn(normalizePref({ options: { video_title: "sim" } })), false);
 });
+
+// Owner 2026-11-17 (A): a Palco design of its own saved before the video and
+// the line (a Letra atual widened on 12/11) gets them when read; one saved
+// again (v) is left as it is.
+test("a Palco saved before the video gets the video and the line", () => {
+    const old = {
+        background: { color: "#000000" },
+        elements: [
+            { id: "palco_strip", type: "band", x: 0, y: 0, w: 100, h: 10 },
+            { id: "palco_current", type: "current", x: 3.5, y: 18, w: 94, h: 69, size: 10.4 },
+            { id: "palco_bar", type: "band", x: 0, y: 89, w: 100, h: 11 },
+            { id: "palco_next", type: "next", x: 1.5, y: 90, w: 80, h: 9, props: { show: "text" } },
+            { id: "palco_progress", type: "progress", x: 85, y: 90, w: 12, h: 9 },
+        ],
+    };
+    const d = normalizePref({ screen_path: "/StageView", design: old }).design;
+    const ids = d.elements.map((e) => e.id);
+    assert.deepEqual(ids, ["palco_strip", "palco_current", "palco_video", "palco_bar", "palco_next", "palco_progress"]);
+    assert.equal(d.elements.find((e) => e.id === "palco_video").when, "video");
+    const prog = d.elements.find((e) => e.id === "palco_progress");
+    assert.deepEqual([prog.x, prog.y, prog.w, prog.props.line], [0, 89, 100, true]);
+    // The operator's own changes stay.
+    const cur = d.elements.find((e) => e.id === "palco_current");
+    assert.deepEqual([cur.w, cur.size], [94, 10.4]);
+    assert.equal(d.background.color, "#000000");
+    assert.equal(screenDesign("/StageView", normalizePref({ screen_path: "/StageView", design: old }), []).own, true);
+    // Saved again (v 2): the video deleted stays deleted, the dots moved stay.
+    const kept = normalizePref({ screen_path: "/StageView", design: { ...old, v: 2 } }).design;
+    assert.equal(kept.elements.some((e) => e.when === "video"), false);
+    assert.equal(kept.elements.find((e) => e.id === "palco_progress").x, 85);
+    // Dots the operator moved stay where they are; another screen is untouched.
+    const moved = { ...old, elements: old.elements.map((e) => (e.id === "palco_progress" ? { ...e, x: 50 } : e)) };
+    assert.equal(normalizePref({ screen_path: "/StageView", design: moved }).design.elements.find((e) => e.id === "palco_progress").x, 50);
+    assert.equal(normalizePref({ screen_path: "/LyricProjection", design: old }).design.elements.some((e) => e.when === "video"), false);
+    // A design of before the one-drawing Palco (f_ ids) is not touched.
+    const older = { elements: [{ id: "f_current_3_18", type: "current", x: 3, y: 18, w: 61, h: 69 }] };
+    assert.equal(normalizePref({ screen_path: "/StageView", design: older }).design.elements.length, 1);
+});
