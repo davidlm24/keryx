@@ -2722,8 +2722,14 @@ ScreenRenderer `fill`, que é `position: fixed`), e a letra dá o lugar a ele me
 por baixo: `layoutContext` (com `elements`) lê o que está no ar como o vídeo
 (o título dele, "No vídeo" com quanto tocou, o próximo item da Setlist como
 o Próximo). Ajustes › Conteúdo › **Vídeo** (`stageOptions.video`, ligado
-por padrão; `PALCO_PARTS.video`); sem o elemento (desligado ou um desenho
-próprio sem ele) tudo fica como antes. O Pastor tem a mesma chave
+por padrão; `PALCO_PARTS.video`); sem o elemento (desligado, ou apagado
+de um desenho próprio) tudo fica como antes. **Um desenho próprio do Palco
+salvo antes do vídeo e da linha os ganha ao ser lido** (owner 2026-11-17,
+A; `upgradeDesign` em layouts.js, por `normalizePref`, nada gravado): o
+`palco_video` de fábrica antes da faixa de baixo (se não há elemento "Com
+vídeo no ar") e os pontos ainda no lugar antigo de fábrica viram a linha; o
+design salvo de novo leva `v: 2` (`designRow`: o Editor e o arquivo de
+ajustes) e fica como está. O Pastor tem a mesma chave
 (`pastorOptions.video`): o Monitor da projeção toca o vídeo
 (`monitor.props.video` → `motion`), desligado volta à imagem parada. O
 Editor de telas tem "Mostrar com › Vídeo" (`sampleVideo`).

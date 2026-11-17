@@ -277,6 +277,35 @@ export const FACTORY_LAYOUTS = [
 // The ready design a screen starts from in the Editor de telas, before it
 // has one of its own: the Palco's and the Pastor's, the Projeção with the
 // timer in the corner, every other output its view full screen.
+// A screen's saved design, as the row keeps it: `v` says which Palco it
+// was drawn against (upgradeDesign). 2 = with the video and the line.
+export const DESIGN_V = 2;
+export const designRow = (d) => { const n = normalizeLayout(d); return { elements: n.elements, background: n.background, v: DESIGN_V }; };
+
+// A Palco design of its own saved before the video and the line (owner
+// 2026-11-17, A: a Letra atual widened on 12/11 kept the old Palco, no video,
+// the dots beside the Próximo) gets them when it is read, nothing written:
+// the Vídeo element where the factory has it (unless it already has one with
+// "Com vídeo no ar"), and the dots still in the factory's old place become
+// the line. A design saved again carries `v` and is left as it is, so what
+// the operator deletes afterwards stays deleted. The designs of before the
+// one-drawing Palco (f_ ids) are not touched: the Editor offers them
+// Voltar ao padrão.
+const OLD_PROGRESS = { x: 85, y: 90, w: 12, h: 9 };
+export function upgradeDesign(path, design, v) {
+    if (path !== "/StageView" || !design?.elements?.length || Number(v) >= DESIGN_V) return design;
+    if (!design.elements.some((e) => String(e.id || "").startsWith("palco_"))) return design;
+    const factory = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco").elements;
+    const fab = (id) => factory.find((e) => e.id === id);
+    let elements = design.elements.map((e) => (e.id === "palco_progress" && !e.props?.line && Object.keys(OLD_PROGRESS).every((k) => e[k] === OLD_PROGRESS[k]) ? fab("palco_progress") : e));
+    if (!elements.some((e) => e.when === "video") && elements.length < MAX_ELEMENTS) {
+        const at = elements.findIndex((e) => e.id === "palco_bar");
+        const video = fab("palco_video");
+        elements = at < 0 ? [...elements, video] : [...elements.slice(0, at), video, ...elements.slice(at)];
+    }
+    return { ...design, elements };
+}
+
 const SEEDS = { "/StageView": "factory:palco", "/PastorView": "factory:pastor", "/Projection": "factory:projecao" };
 export const seedLayoutId = (path) => SEEDS[path] || "factory:tela";
 // A layout with a timer element shows the tool (clock, timer, texto livre)

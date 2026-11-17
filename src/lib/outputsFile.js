@@ -9,7 +9,7 @@
 // through the same calls Configurações uses, so every window and network
 // screen follows at once.
 import { normalizePref, outputMeta, cleanAlertOptions } from "./outputPrefs.js";
-import { findLayout, normalizeLayout } from "./layouts.js";
+import { findLayout, normalizeLayout, designRow } from "./layouts.js";
 
 export const FILE_KIND = "keryx-saidas";
 export const FILE_VERSION = 1;
@@ -58,7 +58,7 @@ function prefFields(row, themes, layouts) {
         theme_name: theme ? theme.name || "" : "",
         // The screen's own drawing travels whole (owner 2026-10-13); the old
         // layout fields ride along so an old KERYX still matches by name.
-        design: p.design ? { elements: p.design.elements, background: p.design.background } : layout ? { elements: layout.elements, background: layout.background } : null,
+        design: p.design ? designRow(p.design) : layout ? { elements: layout.elements, background: layout.background } : null,
         layout_id: p.layoutId,
         layout_name: layout ? layout.name : "",
         // The page switches and the Aviso rápido bar (alert_*, checked).
@@ -138,7 +138,7 @@ export function readOutputsFile(text, { themes = [], layouts = [], displays = []
         }
         // The drawing: the file's own design wins (2026-10-13); an old file
         // still matches its layout by id, else by name.
-        let design = p.design ? { elements: p.design.elements, background: p.design.background } : null;
+        let design = p.design ? designRow(p.design) : null;
         let layoutId = "";
         if (!design && p.layoutId) {
             const same = findLayout(p.layoutId, layouts);
