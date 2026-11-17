@@ -107,6 +107,16 @@ export function themeInUseSeed(cultoTheme, { reopening = false, inUse = null } =
 export const themeName = (t, fallback = "Tema sem nome") => (typeof t?.name === "string" && t.name.trim()) || fallback;
 // A theme's comment (ProjectionTheme.note, Rodada HF2): what it is for, in
 // its tooltip in Temas; never on air. At most 500 characters.
+// Duplicar (owner 2026-11-17, "botão duplicar para temas salvos"): a theme
+// saved again as a new row, the same look and background, named
+// "<nome> (cópia)" (an unnamed one stays unnamed: no made-up names); never
+// the padrão, and fixed in the console only when the original was.
+const ROW_ONLY = new Set(["id", "created_date", "updated_date", "created_by", "created_by_id", "is_default", "pinned", "name"]);
+export function themeCopy(t) {
+    const out = Object.fromEntries(Object.entries(t || {}).filter(([k]) => !ROW_ONLY.has(k)));
+    const name = themeName(t, "");
+    return { ...out, name: name ? `${name} (cópia)` : "", is_default: false, pinned: Boolean(t?.pinned) };
+}
 export const themeNote = (t) => (typeof t?.note === "string" ? t.note.trim().slice(0, 500) : "");
 
 // The themes Camadas › Temas offers as presets (owner's decision 2026-10-13,

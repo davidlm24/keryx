@@ -66,6 +66,8 @@ export const MENU_LABELS = {
     favoritar: { label: "Favoritar", icon: "star" },
     tirarDosFavoritos: { label: "Tirar dos favoritos", icon: "star" },
     renomear: { label: "Renomear", icon: "edit", key: "rename" },
+    // A saved theme copied as a new one (owner 2026-11-17): it acts at once.
+    duplicar: { label: "Duplicar", icon: "copy" },
     excluir: { label: "Excluir…", icon: "trash" },
     tirar: { label: "Tirar…", icon: "x" },
     encerrar: { label: "Encerrar…", icon: "stop", key: "end" },

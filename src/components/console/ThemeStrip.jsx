@@ -6,7 +6,7 @@ import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { PENDING_SAY } from "@/lib/pendingMedia";
 import { consoleThemes, defaultTheme, defaultChanges, themeName, themeNote, themeHasBackground } from "@/lib/console/themes";
 import { bgFields } from "@/lib/console/backgroundSpec";
-import { pickTheme, applyThemeOnAir } from "./themeActions";
+import { pickTheme, applyThemeOnAir, duplicateTheme } from "./themeActions";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
@@ -90,6 +90,7 @@ export default function ThemeStrip({ c, themes, service, ensureService, menuRef,
     const themeMenu = (e, t) => menu(e, { title: themeName(t), items: [
         { label: "Aplicar no ar", icon: "play", onSelect: () => (themePending(t, pending) ? c.say(PENDING_SAY) : applyThemeOnAir(c, t)) },
         { label: "Editar tema…", icon: "edit", onSelect: () => edit(t.id) },
+        menuItem("duplicar", { onSelect: () => duplicateTheme(c, t, edit) }),
         ...(themeHasBackground(t) ? [] : [{ label: "Escolher fundo…", icon: "image", onSelect: () => chooseBg(t) }]),
         { label: t.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: t.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, t.id)), `${named(t)} é o tema padrão.`) },
         { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), `Bíblia: tema ${themeName(t)}.`) },

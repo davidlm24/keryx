@@ -23,6 +23,8 @@ import FundoCategories from "./FundoCategories";
 import FilterChips from "./FilterChips";
 import { cleanSpec, bgArgs, bgSpec, bgLabel, sameBg } from "@/lib/console/backgroundSpec";
 import { themeStyle, themeBackgroundArgs, themeName, themeHasBackground } from "@/lib/console/themes";
+import { duplicateTheme } from "../themeActions";
+import { menuItem } from "@/lib/console/menuLabels";
 import { GENERATORS } from "@/lib/generators";
 import { ALL_KINDS } from "./libraryContext";
 import { useContextMenu } from "../ContextMenu";
@@ -318,6 +320,7 @@ export default function BackgroundLibrary({ c, request, onDone, escRef = null })
                                             onDoubleClick={() => { if (!themePending(t, pending)) (themeMode ? takeTheme(t) : take(bgSpec(t))); }}
                                             onContextMenu={(e) => menu(e, { title: themeName(t), items: [
                                                 { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }).catch(() => {}) },
+                                                menuItem("duplicar", { onSelect: () => duplicateTheme(c, t) }),
                                             ] })}>
                                             <span className="fg-img"><ThemeThumb theme={t} />{themeMode && <NoBgMark theme={t} label />}</span>
                                             {(t.is_default || t.pinned || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.pinned && <Icon name="pin" size={12} />}{themeName(t, "")}</span>}

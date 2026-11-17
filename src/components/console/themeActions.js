@@ -1,4 +1,5 @@
-import { themeStyle, themeBackgroundArgs, themeName, themeForKind } from "@/lib/console/themes";
+import { keryx } from "@/api/keryxClient";
+import { themeStyle, themeBackgroundArgs, themeName, themeForKind, themeCopy } from "@/lib/console/themes";
 import { getPrefs, updateUser } from "@/hooks/useUser";
 import { STYLE_KEYS, layerLocked } from "@shared/live-state.mjs";
 
@@ -74,4 +75,17 @@ function bibleAirOpen(c) {
 export function songInHand(c, songs) {
     const id = c.cur?.content?.ref?.songId || c.prev?.args?.ref?.songId || null;
     return id ? (songs || []).find((s) => s.id === id) || null : null;
+}
+
+// Duplicar (owner 2026-11-17): the copy is saved at once (themeCopy); the
+// toast's Editar opens it in the Editor de temas when the host gives `edit`.
+export async function duplicateTheme(c, theme, edit = null) {
+    try {
+        const row = await keryx.entities.ProjectionTheme.create(themeCopy(theme));
+        c.say(`Cópia de ${themeName(theme)} criada.`, row?.id && edit ? { label: "Editar", run: () => edit(row.id) } : null);
+        return row;
+    } catch (err) {
+        c.say(err?.message || "Não foi possível duplicar o tema.");
+        return null;
+    }
 }

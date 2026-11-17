@@ -829,7 +829,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   rules and the CSS are `shared/idleLook.mjs` (tested); `Idle` in
   ScreenRenderer draws it. In the library, Gerados shows the
   background big. A right click on a Temas card offers Aplicar, Editar,
-  Tornar padrão, Usar na Bíblia, Usar neste culto.
+  Duplicar, Tornar padrão, Usar na Bíblia, Usar neste culto. **Duplicar**
+  (owner 2026-11-17; MENU_LABELS `duplicar`: the Temas panel, Configurações ›
+  Temas and the library's Temas tab) saves a copy at once, "<nome> (cópia)"
+  (an unnamed theme stays unnamed), never the padrão, fixed only when the
+  original was (`themeCopy` in themes.js, tested; `duplicateTheme` in
+  themeActions.js, its toast's Editar opens the copy).
 
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built

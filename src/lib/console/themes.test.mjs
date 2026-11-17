@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeGenerator } from "../../../shared/generators.mjs";
-import { consoleThemes, themeInUseSeed, themeName, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, themeHasBackground, newThemeBackground, THEME_FONTS, FAMILY_SET } from "./themes.js";
+import { consoleThemes, themeInUseSeed, themeName, themeCopy, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, themeHasBackground, newThemeBackground, THEME_FONTS, FAMILY_SET } from "./themes.js";
 
 test("themeStyle: classics defaulted, extras empty unless saved", () => {
     const t = { font_family: "serif", text_box: "band", transition: "slide", transition_ms: 300 };
@@ -315,4 +315,23 @@ test("the text bar's keys (Rodada P, P8-1) are part of the look and fill like th
     assert.equal(out.style.text_case, "capitalize");
     assert.equal(withThemeDefaults("content.show", { style: { text_case: "upper" }, inherit: { look: true } }, t).style.text_case, "upper", "the item's own wins");
     assert.ok(isFactoryLook({ text_decoration: "underline" }), "a song or passage row has no such keys: the factory check reads the classics");
+});
+
+// Duplicar (owner 2026-11-17): the same look and background in a new row.
+test("themeCopy: a new row, the same look, never the padrão", () => {
+    const t = { id: "t1", created_date: "x", updated_date: "y", created_by: "z", name: "Culto da noite", is_default: true, pinned: true, font_size: "5.2", text_color: "#ffcc00", background: { kind: "color", value: "#000000" }, note: "domingo" };
+    const copy = themeCopy(t);
+    assert.equal(copy.id, undefined);
+    assert.equal(copy.created_date, undefined);
+    assert.equal(copy.updated_date, undefined);
+    assert.equal(copy.created_by, undefined);
+    assert.equal(copy.name, "Culto da noite (cópia)");
+    assert.equal(copy.is_default, false);
+    assert.equal(copy.pinned, true);
+    assert.deepEqual([copy.font_size, copy.text_color, copy.note], ["5.2", "#ffcc00", "domingo"]);
+    assert.deepEqual(copy.background, t.background);
+    // An unnamed theme stays unnamed; one not pinned is not pinned.
+    const plain = themeCopy({ id: "t2", name: "  " });
+    assert.equal(plain.name, "");
+    assert.equal(plain.pinned, false);
 });
