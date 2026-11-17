@@ -106,7 +106,74 @@ export const dockEnv = (d) => (d?.env === "biblia" ? "biblia" : "culto");
 // A dock object for an environment (the culto's carries no env).
 // `from`: the dock it came from — its Livre | Por % | Exato mode and its
 // Travar fora da edição ride along (modeOf).
-const make = (env, tree, hidden, from = null) => ({ ...(env === "culto" ? { tree, hidden } : { env, tree, hidden }), ...modeOf(from) });
+const make = (env, tree, hidden, from = null) => ({ ...(env === "culto" ? { tree, hidden } : { env, tree, hidden }), ...modeOf(from), ...wasOf(from, hidden) });
+
+// ---------- Where a module in the tray was (owner 2026-11-17) ----------
+// A module sent to the tray leaves a note of its place, `was[id]`: the
+// modules of the neighbour it sat beside (`near`, the whole sibling node, so
+// a column stays a column), the side it was on and its size; or, as a tab,
+// the tabs it sat with. returnModule puts it back there, beside the smallest
+// node holding those neighbours now, before falling back to the default
+// place (the Slides came back over the Prévia instead of as its column).
+// Only modules still in the tray keep a note; it rides with the dock.
+function wasOf(from, hidden) {
+    const w = from?.was;
+    if (!w || typeof w !== "object") return {};
+    const out = {};
+    for (const id of hidden || []) {
+        const e = w[id];
+        if (!e || !Array.isArray(e.near)) continue;
+        const near = e.near.filter((m) => MODULES[m] && m !== id);
+        if (!near.length) continue;
+        if (e.tab) { out[id] = { near, tab: true }; continue; }
+        const px = pxOrNull(e.px);
+        const nearPx = pxOrNull(e.nearPx);
+        out[id] = { near, side: SIDES.includes(e.side) ? e.side : "left", ...(px !== null ? { px } : nearPx !== null ? { nearPx } : {}) };
+    }
+    return Object.keys(out).length ? { was: out } : {};
+}
+const SIDES = ["left", "right", "top", "bottom"];
+// The note for `id` in `tree` (null when it has no neighbour).
+function placeOf(tree, id) {
+    const p = pathOf(tree, id);
+    if (!p) return null;
+    const own = nodeAt(tree, p);
+    if (own.tabs.length > 1) return { near: own.tabs.filter((m) => m !== id), tab: true };
+    if (!p.length) return null;
+    const parent = nodeAt(tree, p.slice(0, -1));
+    const i = p[p.length - 1];
+    const row = parent.dir === "row";
+    const after = i + 1 < parent.children.length;
+    const sib = parent.children[after ? i + 1 : i - 1];
+    if (!sib) return null;
+    const side = row ? (after ? "left" : "right") : (after ? "top" : "bottom");
+    // The split's flexible child: its neighbour's size is what comes back.
+    const px = parent.sizes[i];
+    return px === null ? { near: leaves(sib), side, nearPx: parent.sizes[after ? i + 1 : i - 1] } : { near: leaves(sib), side, px };
+}
+// A module that was its split's flexible child takes the rest again, and its
+// neighbour the size it had then.
+function flexBack(dock, id, was) {
+    const p = pathOf(dock.tree, id);
+    if (!p?.length) return dock;
+    const tree = clone(dock.tree);
+    const parent = nodeAt(tree, p.slice(0, -1));
+    const i = p[p.length - 1];
+    const j = was.side === "left" || was.side === "top" ? i + 1 : i - 1;
+    if (!parent.children[j] || parent.dir !== (was.side === "left" || was.side === "right" ? "row" : "col")) return dock;
+    if (!leaves(parent.children[j]).some((m) => was.near.includes(m))) return dock;
+    parent.sizes = parent.sizes.map((x, k) => (k === i ? null : k === j ? was.nearPx : x === null ? NEW_PX : x));
+    return normalizeDock(make(dockEnv(dock), tree, dock.hidden, dock));
+}
+// The smallest node of `tree` holding every one of `ids` that is there
+// (their paths' common start), or null when none is.
+function commonPath(tree, ids) {
+    const ps = ids.map((m) => pathOf(tree, m)).filter(Boolean);
+    if (!ps.length) return null;
+    const out = [];
+    for (let k = 0; ps.every((q) => k < q.length && q[k] === ps[0][k]); k++) out.push(ps[0][k]);
+    return out;
+}
 export const MODULE_IDS = envModules("culto");
 
 // ---------- Livre | Por % | Exato (owner 2026-10-15, Rodada D; Exato 2026-10-22, Rodada P4-2) ----------
@@ -691,8 +758,10 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
         if (list.some((m) => MODULES[m].required)) return d;
         if (target.kind === "home" && list.some((m) => !MODULES[m].home)) return d;
         const tree = clone(d.tree);
+        const was = { ...(d.was || {}) };
+        if (target.kind === "tray") for (const m of list) { const at = placeOf(d.tree, m); if (at) was[m] = at; }
         strip(tree, list);
-        return normalizeDock(make(dockEnv(d), tree, [...d.hidden, ...list.filter((m) => !MODULES[m].home)], d));
+        return normalizeDock(make(dockEnv(d), tree, [...d.hidden, ...list.filter((m) => !MODULES[m].home)], { ...d, was }));
     }
     if (target.kind === "edge") {
         const zone = ZONES.includes(target.zone) && target.zone !== "center" ? target.zone : "bottom";
@@ -705,13 +774,15 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
         const next = split(axis, before ? [fresh, tree] : [tree, fresh], before ? [size, null] : [null, size]);
         return normalizeDock(make(dockEnv(d), next, d.hidden.filter((m) => !list.includes(m)), d));
     }
-    if (target.kind !== "group") return d;
+    // { kind: "node", path, zone }: beside any node (a whole column), never "center".
+    if (target.kind !== "group" && target.kind !== "node") return d;
     const tg = nodeAt(d.tree, target.path);
-    if (!isGroup(tg)) return d;
+    if (target.kind === "group" ? !isGroup(tg) : !tg) return d;
     const zone = ZONES.includes(target.zone) ? target.zone : "center";
-    const rest = tg.tabs.filter((m) => !list.includes(m));
+    if (target.kind === "node" && (zone === "center" || leaves(tg).some((m) => list.includes(m)))) return d;
+    const rest = isGroup(tg) ? tg.tabs.filter((m) => !list.includes(m)) : [];
     // Onto the group it comes from: as tabs there, or all of it beside itself.
-    if (rest.length < tg.tabs.length && (zone === "center" || !rest.length)) return d;
+    if (isGroup(tg) && rest.length < tg.tabs.length && (zone === "center" || !rest.length)) return d;
     let tree = clone(d.tree);
     strip(tree, list); // paths stay valid: nothing is restructured before normalizing
     const node = nodeAt(tree, target.path);
@@ -764,8 +835,16 @@ export function returnModule(dock, id, opts) {
         const tree = d.tree ? withBand(d.tree, id, env, opts?.onairSpan) : group([id]);
         return normalizeDock(make(env, tree, d.hidden.filter((m) => m !== id), d));
     }
-    const def = defaultDock({ ...opts, tier: "wide", env: dockEnv(d) }).tree;
     const onScreen = (m) => m !== id && pathOf(d.tree, m);
+    // Where it was: beside the same neighbours (or among the same tabs).
+    const was = d.was?.[id];
+    const near = was ? commonPath(d.tree, was.near.filter(onScreen)) : null;
+    if (near && was.tab) return moveModules(d, [id], { kind: "group", path: pathOf(d.tree, was.near.find(onScreen)), zone: "center" });
+    if (near) {
+        const back = moveModules(d, [id], { kind: "node", path: near, zone: was.side }, { px: was.px ?? NEW_PX, share: false });
+        return was.px == null && was.nearPx != null ? flexBack(back, id, was) : back;
+    }
+    const def = defaultDock({ ...opts, tier: "wide", env: dockEnv(d) }).tree;
     let p = pathOf(def, id);
     while (p && p.length) {
         const parent = nodeAt(def, p.slice(0, -1));
@@ -778,10 +857,14 @@ export function returnModule(dock, id, opts) {
             const zone = row ? (i === 0 ? "left" : "right") : (i === 0 ? "top" : "bottom");
             return moveModules(d, [id], { kind: "edge", zone }, { px });
         }
-        const after = parent.children.slice(i + 1).flatMap(leaves).find(onScreen);
-        if (after) return moveModules(d, [id], { kind: "group", path: pathOf(d.tree, after), zone: row ? "left" : "top" }, { px, share: false });
-        const before = parent.children.slice(0, i).flatMap(leaves).reverse().find(onScreen);
-        if (before) return moveModules(d, [id], { kind: "group", path: pathOf(d.tree, before), zone: row ? "right" : "bottom" }, { px, share: false });
+        // Beside the whole sibling as it is now (the smallest node holding
+        // its modules), never one module inside it: the Slides beside the
+        // centre column, not beside the Programa over the Prévia.
+        const sideOf = (kids) => kids.map((c) => commonPath(d.tree, leaves(c).filter(onScreen))).find(Boolean);
+        const after = sideOf(parent.children.slice(i + 1));
+        if (after) return moveModules(d, [id], { kind: "node", path: after, zone: row ? "left" : "top" }, { px, share: false });
+        const before = sideOf(parent.children.slice(0, i).reverse());
+        if (before) return moveModules(d, [id], { kind: "node", path: before, zone: row ? "right" : "bottom" }, { px, share: false });
         p = p.slice(0, -1);
     }
     return moveModules(d, [id], { kind: "group", path: firstGroupPath(d.tree), zone: "left" }, { share: false });

@@ -203,6 +203,40 @@ test("back from the tray: to the default place, beside what is on screen", () =>
     assert.deepEqual(returnModule(moved, "onair", W).tree, split("col", [moved.tree, g("onair")], [null, ONAIR_H]));
 });
 
+test("back from the tray: where it was, beside the same neighbours (owner 2026-11-17)", () => {
+    // Every module that can leave comes back exactly where it was, at every width.
+    for (const tier of ["wide", "medium", "narrow"]) {
+        const opts = { ...W, width: 1600, height: 900, tier };
+        const d = defaultDock(opts);
+        for (const id of leaves(d.tree).filter((m) => !MODULES[m].required && !MODULES[m].home)) {
+            const out = hideModule(d, id);
+            assert.ok(out.was?.[id], `${tier}: ${id} leaves a note of its place`);
+            const back = returnModule(out, id, opts);
+            assert.deepEqual(back.tree, d.tree, `${tier}: ${id} back in its place`);
+            assert.equal(back.was, undefined, `${tier}: the note goes with it`);
+        }
+    }
+    // The bug: the Slides came back beside the Programa, over the Prévia.
+    const d = defaultDock(W);
+    const slides = returnModule(hideModule(d, "slides"), "slides", W);
+    assert.deepEqual(slides.tree, d.tree);
+    assert.deepEqual(nodeAt(slides.tree, [0]).children.slice(0, 3).map(leaves), [["lib"], ["slides"], leaves(nodeAt(d.tree, [0, 2]))], "a column of its own beside the centre");
+    // A dock arranged by hand: the Slides on the right of the centre comes back there.
+    const moved = moveModules(d, ["slides"], { kind: "group", path: pathOf(d.tree, "abas"), zone: "right" });
+    const at = pathOf(moved.tree, "slides");
+    assert.deepEqual(pathOf(returnModule(hideModule(moved, "slides"), "slides", W).tree, "slides"), at);
+    // As a tab beside Camadas: back as that tab.
+    const tabs = moveModules(d, ["temas"], { kind: "group", path: pathOf(d.tree, "camadas"), zone: "center" });
+    assert.deepEqual(nodeAt(returnModule(hideModule(tabs, "temas"), "temas", W).tree, pathOf(tabs.tree, "camadas")).tabs, ["camadas", "temas"]);
+    // Its neighbours gone too: the default place, beside the whole column.
+    const both = hideModule(hideModule(d, "slides"), "lib");
+    const noNote = { ...both, was: { lib: both.was.lib } };
+    assert.deepEqual(nodeAt(returnModule(noNote, "slides", W).tree, [0]).children.map(leaves)[0], ["slides"]);
+    // The note rides the save and is dropped for a module not in the tray.
+    assert.deepEqual(normalizeDock(JSON.parse(JSON.stringify(hideModule(d, "slides")))).was.slides.near, leaves(nodeAt(d.tree, [0, 2])));
+    assert.equal(normalizeDock({ ...d, was: { lib: { near: ["slides"], side: "left" } } }).was, undefined);
+});
+
 test("switching tabs and resizing", () => {
     const tabs = moveModules(defaultDock(W), ["camadas"], { kind: "group", path: [0, 2, 0], zone: "center" });
     assert.equal(setActive(tabs, [0, 2, 0], "programa").tree.children[0].children[2].children[0].active, "programa");

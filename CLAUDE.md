@@ -994,7 +994,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   one share the list: each saves only its own changes and takes the
   other's (`adoptTabs`: its cultos, this window's tab in front). Closing a
   tab never deletes the culto. Modelos and Exportar PDF are the Culto panel's
-  header.
+  header. **Its items** (owner 2026-11-17): a new item comes in closed (a
+  click opens its details); an open item folds as its drag starts and moves
+  as a row; the Adicionar list's rows drag into a slot of the setlist
+  (`pickDrag`, never a stage: the Prévia and Programa ignore it), a click
+  still adds at the end; **Salvar** on the bar (and Ctrl+S) ends the field
+  being edited — its blur saves it, as everything here saves as it changes —
+  and closes the page.
   **One floating window over the live console**, the Configurações frame
   on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2 at the
   bar's left, before the title — no border, the arrow and the words, a
@@ -1296,7 +1302,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Programa until it is placed (× sends it home). The tray is this
   computer's (owner 2026-10-13): Ver's and Configurações › Console's module
   switches move a module in or out of it (`uiLayout`/`setUiLayout` in
-  Console.jsx); the church's old `console_hidden_modules` only seeds a
+  Console.jsx); **a module comes back where it was** (owner 2026-11-17: the
+  Slides came back over the Prévia): going to the tray it leaves `was[id]`
+  on the dock (the modules of the sibling node it sat beside, the side, its
+  size, or the tabs it sat with; `placeOf`), and `returnModule` puts it
+  beside the smallest node holding them now (`commonPath`, `moveModules`
+  `kind: "node"`), a flexible child flexible again (`flexBack`); without a
+  note it goes to its default place, beside the whole sibling node, never
+  one module inside it. `was` rides `normalizeDock` for modules still in the
+  tray and never makes an arrangement "· alterada"; the church's old `console_hidden_modules` only seeds a
   console whose arrangement was never changed (after a restore every
   module comes back, `trayFromChurch`), and nothing writes it any more.
   Until the operator changes it, the culto's dock follows the width as the
@@ -1569,7 +1583,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `.sw2`; role=switch, every one: SwitchRow, the
   Saídas rows, the Setlist's Autoplay, Abrir ao iniciar) are 32 × 20 —
   `kx-switch-sm`, 24 × 14, in a panel header (the Autoplay) —, on = an
-  `fg-1` track with a `bg-0` knob (never the Prévia's green). The No ar strip
+  `fg-1` track with a `bg-0` knob (never the Prévia's green). **Sliders**
+  (`.ap-range`, `.le-range`: Escurecer, the generators, the editors, the
+  logo's width) are the player's volume: a white dot (`fg-1`) on a thin
+  track (owner 2026-11-17; they were the browser's thumb in gold). The No ar strip
   (low, across the window) keeps its cards. The classes stay
   `.kx-slide`/`.kx-verse` with `is-prev`/`is-air`/`has-note` (the smoke
   reads them); No ar's are `.onair-card`, so `.kx-slide` is only the Slides
@@ -1801,8 +1818,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   run, off with `KERYX_NO_SPLASH=1`. No React, no network: Geist from the
   source in dev, the built asset installed (`fontFile`).
   The console's title strip (`.winbar`, the drag strip beside Windows'
-  buttons) says "KERYX · v0.2.28", the version dimmed (owner 2026-11-10,
-  mockup B), read from package.json as `app.getVersion()` is.
+  buttons) says "KERYX · v0.2.32", the version dimmed (owner 2026-11-10,
+  mockup B), read from package.json as `app.getVersion()` is. **KERYX is in
+  beta** (owner 2026-11-17): a gold-ringed BETA badge (`.kx-beta`) beside
+  the version in the title strip, Configurações › Sobre (with the line
+  "Versão de teste: algumas coisas ainda podem mudar.") and the opening
+  window; the word is `RELEASE_STAGE` in `src/lib/appStage.js` ("" when it
+  leaves beta), splash.html writes its own.
 - **After a crash the screens come back lit** (owner 2026-10-20; a normal
   start still reopens on Tela preta): `running.json` (`electron/runMarker.cjs`,
   tested) lives in the data folder while KERYX runs, rewritten every 15 s

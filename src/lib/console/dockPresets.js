@@ -64,5 +64,5 @@ export const presetOf = (list, id) => (id ? list.find((p) => p.id === id) || nul
 // The dock differs from its preset (tabs in front do not count, nor
 // Travar fora da edição: the environment's switch, carried from one
 // arrangement to the next, withLockOf).
-const canon = (dock) => JSON.stringify(normalizeDock(dock), (k, v) => (k === "active" || k === "lock" ? undefined : v));
+const canon = (dock) => JSON.stringify(normalizeDock(dock), (k, v) => (k === "active" || k === "lock" || k === "was" ? undefined : v));
 export const presetChanged = (preset, dock) => Boolean(preset) && canon(preset.dock) !== canon(dock);

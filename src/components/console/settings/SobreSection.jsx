@@ -4,6 +4,7 @@ import { Btn } from "../kx";
 import { FormRow, useBridge, usePoll } from "./parts";
 import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
 import { editionCredit } from "@/lib/bibleEditions";
+import { RELEASE_STAGE, STAGE_NOTE } from "@/lib/appStage";
 
 // The font's license ships in the build (public/fonts, see src/fonts.css).
 const FONT_LICENSE = "/fonts/Geist-OFL.txt";
@@ -50,10 +51,16 @@ export default function SobreSection({ onWhatsNew, onSection }) {
             <div className="frm">
                 <FormRow k="Versão">
                     <span className="kx-content">{preview ? "Prévia de desenvolvimento" : info?.version ? `KERYX ${info.version}` : "lendo…"}</span>
+                    {RELEASE_STAGE && <span className="kx-beta" title={STAGE_NOTE}>{RELEASE_STAGE}</span>}
                     <Btn kind="outline" onClick={() => onWhatsNew?.()}>Ver novidades</Btn>
                     <Btn onClick={() => onSection?.("backup")}>Backup e atualizações</Btn>
                     <span className="kx-meta">as atualizações ficam em Backup e atualizações</span>
                 </FormRow>
+                {RELEASE_STAGE && (
+                    <FormRow k="Fase">
+                        <span className="kx-meta">{STAGE_NOTE}</span>
+                    </FormRow>
+                )}
                 <FormRow k="Igreja">
                     <span className="kx-content">{user?.church_name || "Sem nome ainda"}</span>
                     <Btn onClick={() => onSection?.("igreja")}>Mudar em Igreja</Btn>
