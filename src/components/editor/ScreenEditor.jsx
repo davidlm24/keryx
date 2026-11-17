@@ -13,7 +13,7 @@ import { mainLayer, emptyState } from "@shared/live-state.mjs";
 import {
     ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
     normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, FACTORY_LAYOUTS, seedLayoutId,
-    layoutContext, elementState, whenLabel, ghostReason, NEXT_SHOWS,
+    layoutContext, elementState, designRow, whenLabel, ghostReason, NEXT_SHOWS,
 } from "@/lib/layouts";
 import {
     ELEMENT_HINTS, elementBar, barToElement, ALIGN_ACTIONS, alignElements, distributeElements, moveElements, gridRect, cleanGrid, GRID_STEPS,
@@ -212,7 +212,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
         if (!draft || !dirty) return null;
         setBusy(true);
         try {
-            const fields = { design: designFields(draft), layout_id: "" };
+            const fields = { design: designRow(draft), layout_id: "" };
             const next = row ? await keryx.entities.OutputPref.update(row.id, fields) : await keryx.entities.OutputPref.create({ screen_path: path, ...fields });
             setSaved(normalizeLayout({ ...draft }));
             history.reset();

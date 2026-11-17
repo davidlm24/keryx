@@ -5,7 +5,7 @@
 // or a row with nothing set, is the output exactly as before.
 import { RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
 import { themeBackgroundArgs } from "./console/themeCore.js";
-import { normalizeLayout, findLayout, seedLayoutId, PALCO_PARTS, PASTOR_PARTS } from "./layouts.js";
+import { normalizeLayout, findLayout, seedLayoutId, upgradeDesign, PALCO_PARTS, PASTOR_PARTS } from "./layouts.js";
 import { RULE_KIND_IDS, TEXT_KINDS, ruleKind, ruleKindOf, stageRuleKind } from "./contentKinds.js";
 import { mainLayer, alertLookOf } from "../../shared/live-state.mjs";
 
@@ -268,7 +268,8 @@ export function normalizePref(row) {
         // The screen's own drawing (owner 2026-10-13: each screen owns its
         // design; the layout catalog died). layoutId is only the old field,
         // read by designOf when design is empty.
-        design: row?.design && typeof row.design === "object" && !Array.isArray(row.design) ? normalizeLayout({ ...row.design, id: "design", name: "" }) : null,
+        // A Palco saved before the video and the line gets them (upgradeDesign).
+        design: row?.design && typeof row.design === "object" && !Array.isArray(row.design) ? upgradeDesign(row.screen_path, normalizeLayout({ ...row.design, id: "design", name: "" }), row.design.v) : null,
         layoutId: typeof row?.layout_id === "string" ? row.layout_id.slice(0, 80) : "",
         name: typeof row?.name === "string" ? row.name.trim().slice(0, 40) : "",
         icon: typeof row?.icon === "string" && ICON_RE.test(row.icon) ? row.icon : "",
