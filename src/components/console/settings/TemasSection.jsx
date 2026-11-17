@@ -21,6 +21,8 @@ import { fontStack, themesUsingFont } from "@/lib/fonts";
 import { useChurchFonts } from "../useConsoleData";
 import { useChurch } from "@/hooks/useChurch";
 import { TEMAS_SLOTS } from "../ThemeStrip";
+import { duplicateTheme } from "../themeActions";
+import { menuItem } from "@/lib/console/menuLabels";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
 import { emptyState } from "@shared/live-state.mjs";
@@ -144,6 +146,7 @@ export default function TemasSection({ c, onOpenScreen, escRef = null }) {
         { label: "Excluir…", icon: "trash", onSelect: () => removeMany() },
     ] }) : menu(e, { title: themeName(t), items: [
         { label: "Editar", icon: "edit", onSelect: () => edit(t.id) },
+        menuItem("duplicar", { onSelect: () => duplicateTheme(c, t, edit).then((row) => { if (row) reload(); }) }),
         ...(themeHasBackground(t) ? [] : [{ label: "Escolher fundo…", icon: "image", onSelect: () => chooseBg(t) }]),
         { label: t.is_default ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: Boolean(t.is_default), onSelect: () => makeDefault(t) },
         { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${themeName(t)} saiu do console.` : `${themeName(t)} fixado no console.`) },
