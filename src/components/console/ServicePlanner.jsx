@@ -159,8 +159,8 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
 
     // Salvar (owner 2026-11-17): everything already saves as it changes; the
     // button (and Ctrl+S) ends the field still being edited — its blur saves
-    // it — and closes the page.
-    const save = () => { document.activeElement?.blur?.(); onClose(); };
+    // it — and says so; the page stays open (owner 2026-11-17: "apenas salva").
+    const save = () => { document.activeElement?.blur?.(); c.say("Culto salvo."); };
     const saveRef = useRef(save);
     saveRef.current = save;
     useEffect(() => {
@@ -175,7 +175,7 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
         return () => window.removeEventListener("keydown", onKey);
     }, [active]);
     const bar = (
-        <WinBar title="Planejar o culto" actions={<Btn small kind="brand" onClick={save} title="Salvar e fechar · Ctrl+S"><Icon name="check" />Salvar</Btn>} tools={<span className="pl-tabs">
+        <WinBar title="Planejar o culto" actions={<Btn small kind="brand" onClick={save} title="Salvar · Ctrl+S"><Icon name="check" />Salvar</Btn>} tools={<span className="pl-tabs">
             <TabRow label="Cultos abertos" tabs={tabList} active={front || "new"} onPick={(id) => (id === "new" ? setChoosing(true) : show(id))} onClose={close} onMenu={tabMenu} />
             <IconBtn name="plus" small title="Nova aba: abrir ou criar um culto" onClick={() => setChoosing(true)} />
         </span>} />

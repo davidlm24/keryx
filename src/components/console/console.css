@@ -13,7 +13,8 @@
 .console { padding-top: calc(env(titlebar-area-height, 0px) + var(--gutter)); }
 .console .winbar { position: absolute; top: 0; left: 0; right: 0; height: env(titlebar-area-height, 0px); -webkit-app-region: drag; overflow: hidden; display: flex; align-items: center; padding-left: var(--space-3); font-size: var(--fs-meta); font-weight: 500; letter-spacing: .08em; color: var(--fg-3); }
 .console .winbar-v { margin-left: var(--space-1); font-size: .92em; font-weight: 400; letter-spacing: 0; opacity: .6; font-variant-numeric: tabular-nums; } /* "· v0.2.32", owner 2026-11-10 (mockup B) */
-.console .kx-beta { margin-left: var(--space-2); padding: 0 5px; line-height: 14px; border: 1px solid var(--brand); border-radius: var(--radius-control); color: var(--brand); font-size: var(--fs-meta); font-weight: 600; letter-spacing: .08em; } /* the BETA badge (title strip, Sobre; the splash draws its own), owner 2026-11-17 */
+.console .kx-beta { margin-left: var(--space-2); padding: 0 5px; line-height: 14px; border: 1px solid currentColor; border-radius: var(--radius-control); color: inherit; font-size: var(--fs-meta); font-weight: 600; letter-spacing: .08em; } /* the BETA badge (title strip, Sobre; the splash draws its own), owner 2026-11-17: the version's colour, not gold */
+.console .winbar .kx-beta { opacity: .6; }
 .console .cfg .kx-beta { margin-left: 0; }
 .console .main { flex: 1; min-height: 0; display: flex; align-items: stretch; overflow: hidden; }
 /* Side columns shrink down to their minimum (inline flex-basis/min-width

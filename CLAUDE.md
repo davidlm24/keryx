@@ -1000,7 +1000,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`pickDrag`, never a stage: the Prévia and Programa ignore it), a click
   still adds at the end; **Salvar** on the bar (and Ctrl+S) ends the field
   being edited — its blur saves it, as everything here saves as it changes —
-  and closes the page.
+  and says "Culto salvo."; it never closes the page (owner 2026-11-17).
   **One floating window over the live console**, the Configurações frame
   on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2 at the
   bar's left, before the title — no border, the arrow and the words, a
@@ -1820,7 +1820,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   The console's title strip (`.winbar`, the drag strip beside Windows'
   buttons) says "KERYX · v0.2.32", the version dimmed (owner 2026-11-10,
   mockup B), read from package.json as `app.getVersion()` is. **KERYX is in
-  beta** (owner 2026-11-17): a gold-ringed BETA badge (`.kx-beta`) beside
+  beta** (owner 2026-11-17): a BETA badge in the version's colour (an outline, never gold) (`.kx-beta`) beside
   the version in the title strip, Configurações › Sobre (with the line
   "Versão de teste: algumas coisas ainda podem mudar.") and the opening
   window; the word is `RELEASE_STAGE` in `src/lib/appStage.js` ("" when it
