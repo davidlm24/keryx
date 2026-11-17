@@ -97,8 +97,8 @@ export default function IgrejaSection({ c }) {
             </FormRow>
             {/* The logo's whole look lives here (owner 2026-10-28, Camadas K4 = A). */}
             <FormRow k="Largura e margem do logo">
-                <input type="range" min={4} max={30} step={1} value={width ?? WIDTH_OF[prefs.logo_size] ?? 8} aria-label="Largura do logo (% da tela)"
-                    onChange={(e) => setWidth(Number(e.target.value))} onPointerUp={commitWidth} onKeyUp={commitWidth} onBlur={commitWidth} style={{ width: 140 }} />
+                <input type="range" className="le-range" min={4} max={30} step={1} value={width ?? WIDTH_OF[prefs.logo_size] ?? 8} aria-label="Largura do logo (% da tela)"
+                    onChange={(e) => setWidth(Number(e.target.value))} onPointerUp={commitWidth} onKeyUp={commitWidth} onBlur={commitWidth} style={{ width: 140, flex: "none" }} />
                 <span className="kx-meta" style={{ minWidth: 34 }}>{width != null ? `${width}%` : "pelo tamanho"}</span>
                 <Seg small label="Margem do logo" value={String(prefs.logo_margin)} options={[["1.5", "Junto"], ["3", "Normal"], ["6", "Afastado"]]} onChange={(v) => setLogo({ logo_margin: Number(v) }, { margin: Number(v) === 3 ? null : Number(v) })} />
             </FormRow>

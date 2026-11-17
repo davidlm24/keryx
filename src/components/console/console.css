@@ -12,7 +12,9 @@
    variable is unset, the strip has no height and nothing changes. */
 .console { padding-top: calc(env(titlebar-area-height, 0px) + var(--gutter)); }
 .console .winbar { position: absolute; top: 0; left: 0; right: 0; height: env(titlebar-area-height, 0px); -webkit-app-region: drag; overflow: hidden; display: flex; align-items: center; padding-left: var(--space-3); font-size: var(--fs-meta); font-weight: 500; letter-spacing: .08em; color: var(--fg-3); }
-.console .winbar-v { margin-left: var(--space-1); font-size: .92em; font-weight: 400; letter-spacing: 0; opacity: .6; font-variant-numeric: tabular-nums; } /* "· v0.2.28", owner 2026-11-10 (mockup B) */
+.console .winbar-v { margin-left: var(--space-1); font-size: .92em; font-weight: 400; letter-spacing: 0; opacity: .6; font-variant-numeric: tabular-nums; } /* "· v0.2.32", owner 2026-11-10 (mockup B) */
+.console .kx-beta { margin-left: var(--space-2); padding: 0 5px; line-height: 14px; border: 1px solid var(--brand); border-radius: var(--radius-control); color: var(--brand); font-size: var(--fs-meta); font-weight: 600; letter-spacing: .08em; } /* the BETA badge (title strip, Sobre; the splash draws its own), owner 2026-11-17 */
+.console .cfg .kx-beta { margin-left: 0; }
 .console .main { flex: 1; min-height: 0; display: flex; align-items: stretch; overflow: hidden; }
 /* Side columns shrink down to their minimum (inline flex-basis/min-width
    from Console.jsx); the center keeps room for the monitors. */
@@ -892,6 +894,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console [data-sort-row][draggable="true"]:active { cursor: grabbing; }
 /* Planejar o culto: only an item's row drags, never its open details (owner 2026-11-14). */
 .console .pl-sortrow > .kx-row[draggable="true"] { cursor: grab; }
+.console .pl-sortrow.is-folding > .pl-detail { display: none; } /* an open item folds as its drag starts (owner 2026-11-17) */
+.console .pl-adder-list > .kx-row[draggable="true"] { cursor: grab; }
 .console .pl-sortrow > .kx-row[draggable="true"]:active { cursor: grabbing; }
 /* The card that follows the pointer (dragGhost.js): the row's size, its
    icon, title and time, lifted; it lands in the lit slot (.is-land) or
@@ -2011,7 +2015,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .cfg .frm .cfg-frm-head .grow { flex: 1; }
 
 /* Configurações' sliders and sample screens (Fundos, Gerados, a tema's length). */
-.console .ap-range { width: 180px; accent-color: var(--brand); } /* one slider accent, gold: green is the Prévia's colour (POL-13) */
+.console .ap-range { width: 180px; } /* drawn with .le-range below: a white dot on a thin track (owner 2026-11-17; was gold, POL-13) */
 .console .ap-ms { min-width: 64px; font-variant-numeric: tabular-nums; }
 .console .ap-sample { width: 240px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; container-type: inline-size; background: var(--screen-bg); box-shadow: inset 0 0 0 1px var(--line); }
 .console .ap-sample > .ks-box { width: 100%; }
@@ -2233,7 +2237,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .lyr-gen i { position: relative; display: block; aspect-ratio: 16 / 10; border-radius: 3px; overflow: hidden; background: var(--bg-2); }
 .console .lyr-gen.is-on { color: var(--fg-1); box-shadow: 0 0 0 2px var(--fg-1); }
 .console .lyr-slider { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
-.console .lyr-slider .ap-range { flex: 1 1 80px; width: auto; min-width: 60px; accent-color: var(--brand); }
+.console .lyr-slider .ap-range { flex: 1 1 80px; width: auto; min-width: 60px; }
 .console .lyr-slider .kx-meta { flex: none; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
 .console .lyr-colors { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
 /* A generator's colourways as round dots (owner's mockup "Fundos em loop", 2026-11-12). */
@@ -2297,7 +2301,15 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .le-types { max-height: 320px; }
 .console .le-nums label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-meta); color: var(--fg-3); }
 .console .le-num { width: 58px; }
-.console .le-range { flex: 1 1 80px; min-width: 60px; accent-color: var(--brand); }
+.console .le-range { flex: 1 1 80px; min-width: 60px; }
+/* Every settings slider (Escurecer, the generators, the Editor de temas and
+   de telas, Igreja's logo) is the player's volume: a white dot on a thin
+   track (owner 2026-11-17, "dots brancos"; they were the browser's thumb in gold). */
+.console :is(.ap-range, .le-range) { -webkit-appearance: none; appearance: none; height: 16px; background: transparent; cursor: pointer; }
+.console :is(.ap-range, .le-range)::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: var(--fg-3); }
+.console :is(.ap-range, .le-range)::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; margin-top: -5px; border-radius: var(--radius-round); background: var(--fg-1); box-shadow: 0 0 0 1px var(--bg-0); }
+.console :is(.ap-range, .le-range):disabled { opacity: var(--dim); cursor: default; }
+.console :is(.ap-range, .le-range):focus-visible { outline: var(--bar) solid var(--brand); outline-offset: 2px; }
 
 /* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
    for every picker, above Configurações (it opens from there too), below the
@@ -2781,6 +2793,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
   .console .player .pl-spk-dot { background: Highlight; box-shadow: none; }
   .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
   .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
+  .console :is(.ap-range, .le-range)::-webkit-slider-runnable-track { background: CanvasText; }
+  .console :is(.ap-range, .le-range)::-webkit-slider-thumb { background: Highlight; box-shadow: none; }
   .console .topbar .tb-bell-dot { background: Highlight; }
   /* The sync's dot in the bar, its summary and Configurações' rows (Drive
      direto, PR 3): em dia a system highlight, esperando the text colour,

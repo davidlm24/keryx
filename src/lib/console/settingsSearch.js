@@ -130,6 +130,7 @@ export const SETTINGS_INDEX = [
     e("backup", "Atualizar automaticamente", "baixar e instalar as atualizações sozinho", ["automático", "atualizações"]),
 
     e("sobre", "Versão", "a versão do KERYX, Ver novidades e o caminho para as atualizações", ["novidades", "sobre", "atualizar", "atualização", "KERYX", "Ver novidades"]),
+    e("sobre", "Fase", "o KERYX está em beta: algumas coisas ainda podem mudar", ["beta", "teste", "versão de teste"]),
     e("sobre", "Igreja", "o nome da igreja, que se muda em Igreja", ["nome", "Mudar em Igreja"]),
     e("sobre", "Feito com", "as versões do Electron e do Chromium do aplicativo", ["electron", "chromium", "chrome"]),
     e("sobre", "Fontes", "a fonte Geist e a licença que a acompanha", ["geist", "licença", "ofl", "fonte", "Ver a licença", "direitos autorais"]),

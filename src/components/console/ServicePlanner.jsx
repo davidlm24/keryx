@@ -17,6 +17,7 @@ import useRowStep from "./useRowStep";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { takeOut, takeOutQuestion, takeOutMany } from "./setlistActions";
 import useSortable from "./useSortable";
+import { setDragGhost } from "./dragGhost";
 import { moveTo, moveManyTo } from "@/lib/console/dropOrder";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readChapter } from "@/lib/bibleText";
@@ -156,8 +157,25 @@ export default function ServicePlanner({ c, data, openId = null, focusId = null,
     });
     if (choosing || !tabs.ids.length) tabList.push({ id: "new", name: "Nova aba", title: "Abrir ou criar um culto" });
 
+    // Salvar (owner 2026-11-17): everything already saves as it changes; the
+    // button (and Ctrl+S) ends the field still being edited — its blur saves
+    // it — and closes the page.
+    const save = () => { document.activeElement?.blur?.(); onClose(); };
+    const saveRef = useRef(save);
+    saveRef.current = save;
+    useEffect(() => {
+        if (!active) return undefined;
+        const onKey = (e) => {
+            if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
+            if (document.querySelector(".scrim:not(.win-scrim)")) return;
+            e.preventDefault();
+            saveRef.current();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [active]);
     const bar = (
-        <WinBar title="Planejar o culto" tools={<span className="pl-tabs">
+        <WinBar title="Planejar o culto" actions={<Btn small kind="brand" onClick={save} title="Salvar e fechar · Ctrl+S"><Icon name="check" />Salvar</Btn>} tools={<span className="pl-tabs">
             <TabRow label="Cultos abertos" tabs={tabList} active={front || "new"} onPick={(id) => (id === "new" ? setChoosing(true) : show(id))} onClose={close} onMenu={tabMenu} />
             <IconBtn name="plus" small title="Nova aba: abrir ou criar um culto" onClick={() => setChoosing(true)} />
         </span>} />
@@ -251,9 +269,22 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
     const add = async (row) => {
         setAdding(null);
         setPick("");
-        const created = await run(keryx.entities.ServiceItem.create({ serviceId, order: items.length, enabled: true, ...row }), `${row.title} na setlist.`);
-        if (created?.id) setSel(created.id);
+        // It comes in closed (owner 2026-11-17: "o item já arrasta aberto");
+        // a click on it opens its details.
+        await run(keryx.entities.ServiceItem.create({ serviceId, order: items.length, enabled: true, ...row }), `${row.title} na setlist.`);
     };
+    // A row of the Adicionar list dropped at a slot of the setlist (owner
+    // 2026-11-17): it goes there, closed; the list stays open for the next.
+    const addAt = async (row, over) => {
+        const list = items.slice();
+        const created = await run(keryx.entities.ServiceItem.create({ serviceId, order: over, enabled: true, ...row }), `${row.title} na setlist.`);
+        if (!created?.id) return;
+        list.splice(over, 0, created);
+        await run(renumber(list));
+    };
+    // What a row of the Adicionar list carries while it is dragged (never a
+    // stage: the console's Prévia and Programa must not take it).
+    const pickDrag = useRef(null);
     const renumber = async (list) => {
         for (const [i, it] of list.entries()) if (it.order !== i) await keryx.entities.ServiceItem.update(it.id, { order: i });
     };
@@ -281,7 +312,16 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
     // (useSortable; dropOrder.js). A marked row grabbed with others marked
     // takes them all, in the list's order, one renumber (Rodada O2).
     const markedIdxs = (k) => (picked.length > 1 && !isSection(items[k]) && ms.has(items[k]?.id) ? items.flatMap((it, i) => (ms.has(it.id) && !isSection(it) ? [i] : [])) : null);
-    const sort = useSortable({ keys: items.map((it) => it.id), group: markedIdxs, onDrop: (from, over, _carry, group) => { if (group) run(renumber(moveManyTo(items, group, over))); else if (from >= 0) run(renumber(moveTo(items, from, over))); } });
+    const sort = useSortable({
+        keys: items.map((it) => it.id), group: markedIdxs,
+        accepts: () => Boolean(pickDrag.current),
+        carry: () => { const row = pickDrag.current; pickDrag.current = null; return row; },
+        onDrop: (from, over, carried, group) => {
+            if (group) run(renumber(moveManyTo(items, group, over)));
+            else if (from >= 0) run(renumber(moveTo(items, from, over)));
+            else if (carried) addAt(carried, over);
+        },
+    });
     // Without dragging (C-16): the row's menu (Subir, Descer) and Alt+↑ /
     // Alt+↓ on a focused row; Enter or Space opens its details (Row).
     const step = useRowStep({ ids: items.map((it) => it.id), listRef: sort.listProps.ref, onMove: (from, over) => run(renumber(moveTo(items, from, over))) });
@@ -505,13 +545,21 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
                             // open details' fields select text with the mouse.
                             // The wrapper keeps the slot, so the open card moves whole.
                             const { draggable, onDragStart, ...sortAttrs } = dragProps;
+                            // An open item closes as its drag starts, so it moves
+                            // as a row (owner 2026-11-17): its details are hidden
+                            // before the list is measured, then unmounted.
+                            const startDrag = (e) => {
+                                const wrap = open ? e.currentTarget.closest(".pl-sortrow") : null;
+                                if (wrap) { wrap.classList.add("is-folding"); setSel(null); requestAnimationFrame(() => wrap.classList.remove("is-folding")); }
+                                onDragStart(e);
+                            };
                             return (
                                 <div key={it.id} className="pl-sortrow" {...sortAttrs}>
                                     <Row className={`pl-item ${it.enabled === false ? "is-done" : ""}`} state={`${open ? "is-selected" : ""} ${ms.has(it.id) ? "is-marked" : ""}`} expanded={open}
                                         lead={<>{ms.picking && <RowMark />}<span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span></>}
                                         icon={typeIcon(it.type)} title={it.title}
                                         meta={[typeLabel(it.type), it.enabled === false ? "desativado" : "", endChoice(it) === "loop" ? "repete" : endChoice(it) === "stop" ? "para ao terminar" : "", it.notes && it.type !== "TEXT" ? it.notes : ""].filter(Boolean).join(" · ")}
-                                        onClick={(e) => { if (!ms.click(it.id, e)) setSel(open ? null : it.id); }} onKey={step.onKey(i)} dragProps={{ ...step.rowAttrs(i), draggable, onDragStart }}
+                                        onClick={(e) => { if (!ms.click(it.id, e)) setSel(open ? null : it.id); }} onKey={step.onKey(i)} dragProps={{ ...step.rowAttrs(i), draggable, onDragStart: startDrag }}
                                         onContextMenu={(e) => (picked.length > 1 && ms.has(it.id) ? menu(e, { title: selectionCount(picked.length), items: [
                                             menuItem("tirar", { label: `Tirar ${picked.length} da setlist…`, kbd: keyHint("delete"), onSelect: takeOutPicked }),
                                             { label: "Limpar a seleção", icon: "x", onSelect: ms.clear },
@@ -567,7 +615,18 @@ function CultoPlan({ c, services, serviceId, data, focusId = null, onFocused, es
                             <div className="pl-adder-list">
                                 {/* Novo aviso (2026-11-09): the editor of avisos, the new one added to this culto when saved. */}
                                 {adding === "ANNOUNCEMENT" && onNewNotice && <Row icon="plus" title="Novo aviso" meta="abre o editor de aviso" onClick={() => { setAdding(null); onNewNotice(serviceId); }} />}
-                                {pickList.map((r) => <Row key={r.key} icon={r.icon} title={r.title} meta={r.meta} onClick={() => add(r.row)} />)}
+                                {pickList.map((r) => <Row key={r.key} icon={r.icon} title={r.title} meta={r.meta} onClick={() => add(r.row)}
+                                    dragProps={{
+                                        draggable: true,
+                                        title: "Clique para pôr no fim, ou arraste para o lugar na setlist",
+                                        onDragStart: (e) => {
+                                            pickDrag.current = r.row;
+                                            e.dataTransfer.effectAllowed = "copy";
+                                            try { e.dataTransfer.setData("text/plain", ""); } catch { /* Chromium does not mind */ }
+                                            setDragGhost(e, { label: r.title, icon: r.icon, time: r.row.duration ? span(r.row.duration) : "" });
+                                        },
+                                        onDragEnd: () => { pickDrag.current = null; },
+                                    }} />)}
                                 {!["BIBLE", "TEXT", "SECTION", "TIMER"].includes(adding) && !pickList.length && <Empty title="Nada encontrado">{adding === "SONG" ? "Cadastre a música na Biblioteca › Letras." : adding === "MATERIAL" ? "Crie o material em Escola bíblica (menu KERYX)." : adding === "ANNOUNCEMENT" ? (onNewNotice ? "Nenhum aviso ainda: use Novo aviso, acima." : "Crie o aviso em Painel › Avisos.") : "Adicione o arquivo na Biblioteca › Mídia."}</Empty>}
                             </div>
                         </div>
