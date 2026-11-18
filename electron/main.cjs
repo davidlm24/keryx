@@ -29,6 +29,7 @@ const { createYouTube } = require("./youtube.cjs");
 const { importMedia } = require("./mediaImport.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const { createGerarLink } = require("./gerarLink.cjs");
+const { createGerarInbox, supabaseRealtime } = require("./gerarInbox.cjs");
 const { gerarConfig } = require("./gerarConfig.cjs");
 const { createGoogleAuth } = require("./googleAuth.cjs");
 const { installedVersions, installFromSource, SOURCES: BIBLE_SOURCES } = require("./bible.cjs");
@@ -116,6 +117,7 @@ let live = null;
 let sync = null;
 // The GERAR on this computer (electron/gerarLink.cjs; owner 2026-11-18).
 let gerar = null;
+let gerarInbox = null;
 let youtube = null;
 // The hidden window that plays every sound (electron/soundEngine.cjs).
 let soundEngine = null;
@@ -903,7 +905,37 @@ app.whenReady().then(async () => {
         notify: (n) => notifications.add(n),
         dismiss: (key) => notifications.remove((n) => n.key === key),
         log: (m) => logger.warn(m),
-        onStatus: (status) => broadcast("keryx:gerar", status),
+        onStatus: (status) => {
+            broadcast("keryx:gerar", status);
+            if (gerarInbox) gerarInbox.follow();
+        },
+    });
+    // What the GERAR sends (electron/gerarInbox.cjs): handed to the console,
+    // which writes the rows in the culto it shows (useGerarImport); with the
+    // console closed nothing is taken and it waits in the GERAR.
+    const gerarPending = new Map();
+    let gerarSeq = 0;
+    ipcMain.on("keryx:gerar:imported", (event, answer = {}) => {
+        if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return;
+        const done = gerarPending.get(answer.id);
+        if (!done) return;
+        gerarPending.delete(answer.id);
+        done(Array.isArray(answer.results) ? { results: answer.results.map((r) => ({ key: String(r && r.key || ""), id: String(r && r.id || "") })) } : { error: "refused" });
+    });
+    const gerarDeliver = (payload) => new Promise((resolve) => {
+        if (!mainWindow || mainWindow.isDestroyed()) return resolve({ error: "closed" });
+        const id = ++gerarSeq;
+        gerarPending.set(id, resolve);
+        setTimeout(() => { if (gerarPending.delete(id)) resolve({ error: "timeout" }); }, 15000).unref();
+        mainWindow.webContents.send("keryx:gerar:import", { id, ...payload });
+    });
+    const gerarSettingsConfig = gerarConfig();
+    gerarInbox = createGerarInbox({
+        link: gerar,
+        deliver: gerarDeliver,
+        settings,
+        realtime: gerarSettingsConfig.configured ? supabaseRealtime({ config: gerarSettingsConfig, link: gerar, createClient: require("@supabase/supabase-js").createClient }) : null,
+        log: (m) => logger.warn(m),
     });
 
     registerDataIpc({
@@ -985,6 +1017,7 @@ app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
     if (soundEngine) soundEngine.stop();
     if (sync) sync.stop();
+    if (gerarInbox) gerarInbox.stop();
     if (gerar) gerar.stop();
     if (youtube) youtube.stop();
     if (network) network.stop();

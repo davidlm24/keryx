@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Icon from "./Icon";
 import { Btn, Empty } from "./kx";
-import { chatOf, chatHead, isOperator, operatorChat, PEDIDO_MAX } from "@/lib/console/pedidos";
+import { chatOf, chatHead, isOperator, operatorChat, PEDIDO_MAX, isGerar } from "@/lib/console/pedidos";
 import { usePinnedList, useMessageTools, TrashBtn, YouTubeCard } from "./PedidosTab";
 
 // The Chat tab of the panel beside the Prévia (Rodada Q; S12 = B, the
@@ -36,7 +36,7 @@ export default function ChatTab({ c, data, messages, onPrepare, onWrite }) {
                             return (
                                 <div key={r.id} className={`ped-msg ${op ? "is-op" : ""}`}>
                                     <span className="ped-row">
-                                        <span className="ped-h">{chatHead(r)}</span>
+                                        <span className="ped-h">{chatHead(r)}{isGerar(r) && <span className="ped-badge is-kind" title="Veio do GERAR">GERAR</span>}</span>
                                         <span className="ped-x"><TrashBtn r={r} onRemove={tools.remove} /></span>
                                     </span>
                                     {r.text && !(r.link && r.text === "Vídeo do YouTube") && <span className="ped-t">{r.text}</span>}

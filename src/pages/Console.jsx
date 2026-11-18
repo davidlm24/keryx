@@ -80,6 +80,7 @@ import { commandRows } from "@/lib/console/paletteSearch";
 import { useSyncStatusSelect, syncNow, currentSyncStatus } from "@/hooks/useSyncStatus";
 import { useSyncJoinNote, signInWithGoogle } from "@/hooks/useGoogleSync";
 import { useGerar } from "@/hooks/useGerar";
+import { useGerarImport } from "@/components/console/useGerarImport";
 import { syncsHere, cloudView, googlePage } from "@/lib/console/syncView";
 import SyncPop from "@/components/console/SyncPop";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
@@ -857,6 +858,8 @@ export default function Console() {
     // command as the console's own key or palette would; the Equipe's
     // messages are the culto's ServiceMessage rows (Rodada Q).
     const messages = useServiceMessages(serviceId);
+    // What the GERAR sends: written here, in the culto on screen (wave 2).
+    useGerarImport({ ensureService });
     useRemote({ c, data, service, items, rows: setPlan.rows, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses, messages, ensureService, addPassage, addToSetlist: (stage) => addStageToSetlist(stage, undefined, { silent: true }) });
 
     // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
