@@ -1,5 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
+import { pushToGerar } from "@/hooks/useGerar";
+import { statusBack, removeBack } from "@/lib/console/gerarBack";
 import Icon from "./Icon";
 import { Btn, IconBtn, Empty, Seg } from "./kx";
 import { useConfirm } from "./ConfirmDialog";
@@ -47,6 +49,8 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
     const setDone = async (r, done) => {
         try {
             await keryx.entities.ServiceMessage.update(r.id, { status: done ? "done" : "open" });
+            // From the GERAR: Atendido = completed there, Desfazer = in_review (wave 3).
+            pushToGerar(statusBack(r, done));
             if (done) c.say("Pedido atendido.", { label: "Desfazer", run: () => setDone(r, false) });
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
@@ -283,6 +287,8 @@ export function useMessageTools(c, data) {
                 : [];
             const ids = new Set([r.id, ...(Array.isArray(copies) ? copies.map((x) => x.id) : [])]);
             for (const id of ids) await keryx.entities.ServiceMessage.delete(id);
+            // From the GERAR: cancelled there, "Excluído na mesa" (wave 3).
+            pushToGerar(removeBack(r));
         } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
     };
     const saveLink = async (r) => {

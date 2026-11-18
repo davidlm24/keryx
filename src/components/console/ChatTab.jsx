@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import Icon from "./Icon";
 import { Btn, Empty } from "./kx";
 import { chatOf, chatHead, isOperator, operatorChat, PEDIDO_MAX, isGerar } from "@/lib/console/pedidos";
+import { replyTarget, replyBack, replyLine } from "@/lib/console/gerarBack";
+import { pushToGerar } from "@/hooks/useGerar";
 import { usePinnedList, useMessageTools, TrashBtn, YouTubeCard } from "./PedidosTab";
 
 // The Chat tab of the panel beside the Prévia (Rodada Q; S12 = B, the
@@ -22,8 +24,14 @@ export default function ChatTab({ c, data, messages, onPrepare, onWrite }) {
     const send = async () => {
         const fields = operatorChat(text);
         if (!fields || busy) return;
+        // D7 = A: also to the GERAR's culto of its last message here.
+        const target = replyTarget(rows);
         setBusy(true);
-        try { await onWrite(fields); setText(""); } catch (err) { c.say(err?.message || "Não foi possível enviar."); } finally { setBusy(false); }
+        try {
+            const row = await onWrite(target ? { ...fields, gerar_event: target } : fields);
+            setText("");
+            if (target) pushToGerar(replyBack(row, target, globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`));
+        } catch (err) { c.say(err?.message || "Não foi possível enviar."); } finally { setBusy(false); }
     };
     return (
         <div className="ped-view">
@@ -40,6 +48,7 @@ export default function ChatTab({ c, data, messages, onPrepare, onWrite }) {
                                         <span className="ped-x"><TrashBtn r={r} onRemove={tools.remove} /></span>
                                     </span>
                                     {r.text && !(r.link && r.text === "Vídeo do YouTube") && <span className="ped-t">{r.text}</span>}
+                                    {(() => { const line = replyLine(r); return line ? <span className={`ped-up is-${line.tone}`}><Icon name={line.tone === "ok" ? "check" : "clock"} size={12} />{line.words}</span> : null; })()}
                                     <YouTubeCard r={r} onPrepare={onPrepare} onSave={tools.saveLink} />
                                 </div>
                             );

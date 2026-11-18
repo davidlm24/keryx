@@ -245,3 +245,14 @@ test("Desconectar forgets here; Receber can be turned off", async () => {
     assert.equal(t.timers.next(), undefined);
     assert.throws(() => t.link.ops.setReceive({ on: true }), /Conecte/);
 });
+
+test("a new code keeps what waits to go back (the outbox); the count is in the status", async () => {
+    const t = make({ link: [LINKED(), { status: 200, body: { ok: true, device_id: "dev-2", device_name: "PC do som", access_token: jwt(2e9), refresh_token: "r9" } }] });
+    await t.link.ops.link({ code: "K7M-4QX" });
+    t.settings.data.gerar.outbox = [{ type: "chat", eventId: "ev", clientMessageId: "c", text: "oi" }];
+    t.link.setPending(() => t.settings.data.gerar.outbox.length);
+    assert.equal(t.link.status().pending, 1);
+    await t.link.ops.link({ code: "ABC-DEF" });
+    assert.equal(t.settings.data.gerar.outbox.length, 1);
+    assert.equal(t.settings.data.gerar.device.id, "dev-2");
+});

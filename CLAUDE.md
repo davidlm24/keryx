@@ -2596,8 +2596,21 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   "GERAR" badge, the GERAR's culto on line 2, cancelled/declined there
   dimmed with only Excluir, a request that is not music "Fulano pede: …"
   with its category's glyph (mic, lightbulb, radio…) and no Prévia, Setlist
-  or Procurar a letra. The way back (Atendido/Desfazer/Excluir → the GERAR,
-  the operator's chat reply, D7) and the attached files are the next waves.
+  or Procurar a letra. **The way back** (wave 3, `electron/gerarOutbox.cjs`,
+  tested; the entries are `src/lib/console/gerarBack.js`, tested): on a
+  request from the GERAR, Atendido = `completed` there, Desfazer =
+  `in_review`, Excluir… = `cancelled` with "Excluído na mesa" (never for one
+  already closed there); the operator's chat reply goes ALSO to the GERAR's
+  culto of the last GERAR message in that conversation (D7 = A,
+  `replyTarget`; none = the phones only), its row keeps `gerar_event` and,
+  once sent, the GERAR's id as `external_id` ("enviada ao GERAR" under the
+  bubble, else "esperando para ir ao GERAR"; idempotent by its client id).
+  The Painel pushes through `pushToGerar` (useGerar.js, the `keryx:gerar`
+  op `push`); the queue lives in settings.json `gerar.outbox` (a new code
+  keeps it, Desconectar drops it), goes in order when the connection is on
+  (status: the version read just before, 40001 once more; unreachable =
+  later; 42501 = precisa de você; any other refusal drops that entry,
+  logged), and Andamento counts it. The attached files are the next wave.
 - **YouTube links** (owner 2026-10-27, mockup "YouTube · checar o link e
   baixar para a Mídia", Y1–Y5): "Este vídeo não está disponível" on the
   projector is the VIDEO refusing embeds (its owner, or gone), never the

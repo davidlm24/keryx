@@ -83,6 +83,8 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
     let tries = 0;
     let lastError = "";
     let stopped = false;
+    // How many answers wait to go back (gerarOutbox.cjs), for Andamento.
+    let pendingOf = () => 0;
 
     const told = () => { if (onStatus) try { onStatus(status()); } catch { /* the page asks again */ } };
     const setState = (next, error = "") => {
@@ -104,6 +106,7 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
             needs: state === "needs" ? (c.needs || { reason: "session" }) : null,
             error: lastError || null,
             safe: Boolean(protect && protect.safe && protect.safe()),
+            pending: c.device ? pendingOf() : 0,
         };
     }
 
@@ -269,7 +272,10 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
             if (res.status === 200 && b.ok && b.refresh_token && b.access_token && b.device_id) {
                 access = { token: b.access_token, until: tokenExpiry(b.access_token) || now() + 3600 * 1000 };
                 const at = new Date(now()).toISOString();
+                const kept = read().outbox;
                 settings.set(KEY, {
+                    // A new code keeps what waits to go back (gerarOutbox.cjs).
+                    ...(Array.isArray(kept) && kept.length ? { outbox: kept } : {}),
                     device: { id: String(b.device_id), name: String(b.device_name || "") },
                     refresh: protect.seal(b.refresh_token),
                     receive: true, // D5 = A: on when connecting
@@ -326,6 +332,9 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
         // A refusal of the GERAR as precisa de você (gerarInbox: a 42501 on a
         // read means this device was disconnected there).
         refused: (reason = "revoked") => needs(reason),
+        setPending(fn) { pendingOf = typeof fn === "function" ? fn : () => 0; },
+        // The outbox changed: the pages see the count.
+        changed: () => told(),
         // At launch, and when the PC wakes or the network comes back.
         start() { stopped = false; return beat(); },
         resume() { tries = 0; return beat(); },

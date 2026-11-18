@@ -29,3 +29,12 @@ export function useGerar() {
 
     return { status, call, available: Boolean(bridge.current) };
 }
+
+// Something for the GERAR's way back (src/lib/console/gerarBack.js makes the
+// entry; electron/gerarOutbox.cjs keeps and sends it). Quiet: a computer not
+// connected to the GERAR keeps nothing, and the console never waits.
+export function pushToGerar(entry) {
+    const g = typeof window !== "undefined" ? window.keryxDesktop?.gerar : null;
+    if (!entry || !g) return;
+    g.call("push", entry).catch(() => {});
+}

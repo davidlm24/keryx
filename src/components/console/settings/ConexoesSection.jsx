@@ -93,6 +93,7 @@ export default function ConexoesSection({ c }) {
                     <div className="cfg-sync-box is-need" role="alert">
                         <span className="cfg-sync-box-t">O GERAR desconectou este computador</span>
                         <span>{needsWords(st)}</span>
+                        {st.pending > 0 && <span>{st.pending === 1 ? "1 resposta do operador não subiu e fica guardada" : `${st.pending} respostas do operador não subiram e ficam guardadas`} até conectar de novo.</span>}
                         <div className="cfg-gerar-acts">
                             <Btn kind="air" onClick={() => field.current?.focus()}>Conectar de novo…</Btn>
                             <Btn kind="outline" disabled={Boolean(busy)} onClick={() => forget(true)}>Esquecer a conexão…</Btn>
