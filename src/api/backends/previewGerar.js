@@ -27,7 +27,7 @@ function status(state = read()) {
     const base = { configured: true, device: null, receive, linkedAt: null, lastSeen: null, needs: null, error: null, safe: true, preview: true };
     switch (state) {
         case "nao-preparado": return { ...base, configured: false, state: "off" };
-        case "conectado": return { ...base, state: "on", device, linkedAt: ago(86400), lastSeen: ago(12) };
+        case "conectado": return { ...base, state: "on", device, linkedAt: ago(86400), lastSeen: ago(12), library: receive ? { count: 132, at: ago(120) } : null };
         case "sem-contato": return { ...base, state: "offline", device, linkedAt: ago(86400), lastSeen: ago(1800) };
         case "precisa": return { ...base, state: "needs", device, linkedAt: ago(86400), lastSeen: ago(7200), needs: { reason: "revoked", at: ago(600) } };
         default: return { ...base, state: "off" };

@@ -101,3 +101,10 @@ test("a file attached in the GERAR: its Mídia type by name, and its row (wave 4
     assert.deepEqual(row, { title: "Bondade de Deus", type: "audio", file_url: "http://127.0.0.1:7700/media/u.mp3", duration: 0, description: "Do GERAR · pedido de Ana · Culto de domingo" });
     assert.equal(gerarMediaRow({ name: "x.docx", fileUrl: "u" }), null);
 });
+
+test("a request picked from the KERYX library (C8) is tied to the file", () => {
+    const row = gerarRequestRow({ ...REQ, title: "", resource_kind: null, resource_url: null, category: "playback", keryx_media_id: "media-42", keryx_media_title: "Bondade de Deus (playback)" }, EV);
+    assert.equal(row.mediaId, "media-42");
+    assert.equal(row.song, "Bondade de Deus (playback)", "the index's title when the request has none");
+    assert.equal(gerarRequestRow(REQ, EV).mediaId, undefined, "a request from before C8 has none");
+});

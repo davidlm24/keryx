@@ -2624,6 +2624,22 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   ties the first video or audio to the pedido (`mediaId`). The card says
   "baixando…" / "arquivo não veio" (`ServiceMessage.gerar_file`); a download
   cut short goes on at the next pass, never twice the same attachment.
+  **The KERYX library in the GERAR** (contract C8, owner 2026-11-18; the
+  GERAR's `docs/agent-tasks/codex-keryx-biblioteca.md`; `electron/gerarLibrary.cjs`,
+  tested): a TEXT index of the Mídia's videos, audios and YouTube links (id,
+  title, kind, duration, category — never a file, file name, description,
+  path, still, background, font or picture; `libraryItem`), published by the
+  computer connected with Receber on (one writer) when it starts receiving
+  and 30 s after the Mídia stops changing (`store.onChange`), in pages of 500
+  (`upsert_keryx_library`) then the whole list of ids that stay
+  (`prune_keryx_library`); an index the same as the last one is not sent
+  (`gerar.library.sig`); a GERAR without C8 yet (PGRST202) is said once. The
+  GERAR reads it only by RPC, only for whoever may request in that culto. A
+  request picked from it carries `keryx_media_id`: `gerarRequestRow` makes it
+  the pedido's `mediaId` (kept only if this computer has that video or audio),
+  so the card plays the file. The inbox asks the requests' columns as `*`, so
+  a GERAR before and after C8 both answer. Andamento says "Biblioteca no
+  GERAR: n itens · publicada há …" (`gerarLibraryLine`).
 - **YouTube links** (owner 2026-10-27, mockup "YouTube · checar o link e
   baixar para a Mídia", Y1–Y5): "Este vídeo não está disponível" on the
   projector is the VIDEO refusing embeds (its owner, or gone), never the

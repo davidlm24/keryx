@@ -54,6 +54,12 @@ export function useGerarImport({ ensureService }) {
                 const isMessage = it?.type === "message" && it.message?.id;
                 if (!isRequest && !isMessage) continue;
                 const fields = isRequest ? gerarRequestRow(it.request) : gerarMessageRow(it.message);
+                // A library pick (C8) stays tied only to a video or an audio this
+                // computer has; otherwise the pedido keeps its title, as typed.
+                if (fields.mediaId) {
+                    const m = await keryx.entities.Media.filter({ id: fields.mediaId }).catch(() => []);
+                    if (!(Array.isArray(m) && m[0] && (m[0].type === "video" || m[0].type === "audio"))) delete fields.mediaId;
+                }
                 const have = await here(fields.kind, fields.external_id);
                 const row = have[0] || await db.create({ ...fields, serviceId: await ensure.current() });
                 if (row?.id) results.push({ key: fields.external_id, id: row.id });

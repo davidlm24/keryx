@@ -35,7 +35,9 @@ const ACTIVE = "not.in.(completed,declined,cancelled)";
 // How far back the state of what this computer brought is kept in step.
 const STATUS_DAYS = 3;
 
-const REQUEST_COLS = "id,event_id,sequence,requester_name,title,category,details,resource_kind,resource_url,status,status_note,version,created_at,updated_at";
+// Every column ("*"): a GERAR before C8 has no keryx_media_id, one after
+// has it; naming it would break the query on the first.
+const REQUEST_COLS = "*";
 const EVENT_EMBED = "events(id,title,date)";
 
 function createGerarInbox({ link, deliver, settings, realtime = null, files = null, log = console.warn, now = () => Date.now(), timers = { setTimeout, clearTimeout, setInterval, clearInterval } }) {

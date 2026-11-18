@@ -3,7 +3,7 @@ import { Btn } from "../kx";
 import { useConfirm } from "../ConfirmDialog";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { useGerar } from "@/hooks/useGerar";
-import { gerarPage, gerarWho, gerarBadge, gerarProgress, needsWords, linkErrorTone, gerarSummary } from "@/lib/console/gerarView";
+import { gerarPage, gerarWho, gerarBadge, gerarProgress, needsWords, linkErrorTone, gerarSummary, gerarLibraryLine } from "@/lib/console/gerarView";
 import { FormRow, CfgGroup, Switch, desktopOnly } from "./parts";
 
 const DOT = { ok: "is-ok", wait: "is-wait", need: "is-need", off: "is-off" };
@@ -122,6 +122,7 @@ export default function ConexoesSection({ c }) {
                                     <i className={`cfg-sync-dot ${DOT[prog.tone]}`} aria-hidden="true" />
                                     <span className={prog.tone === "ok" ? "kx-content" : "kx-warn"}>{prog.line}</span>
                                     <Btn kind="outline" className="cfg-sync-end" disabled={Boolean(busy)} onClick={() => run("check", undefined, "Buscar agora")}>{busy === "check" ? "Buscando…" : "Buscar agora"}</Btn>
+                                    {gerarLibraryLine(st, now) && <span className="kx-meta cfg-sync-full">{gerarLibraryLine(st, now)}</span>}
                                 </FormRow>
                             );
                         })()}

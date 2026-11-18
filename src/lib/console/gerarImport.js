@@ -61,7 +61,9 @@ export function gerarRequestRow(req, ev = null) {
         sender: who,
         // Music: who asks is who sings ("Ana canta …"); the rest names no singer.
         singer: GERAR_MUSIC.has(category) ? who : "",
-        song: clean(req.title, 180),
+        song: clean(req.title, 180) || clean(req.keryx_media_title, 180),
+        // Picked from the KERYX library in the GERAR (C8): the file itself.
+        ...(req.keryx_media_id ? { mediaId: clean(req.keryx_media_id, 160) } : {}),
         text,
         ...(link ? { link } : {}),
         status: statusOf(req.status),

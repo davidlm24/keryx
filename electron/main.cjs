@@ -32,6 +32,7 @@ const { createGerarLink } = require("./gerarLink.cjs");
 const { createGerarInbox, supabaseRealtime } = require("./gerarInbox.cjs");
 const { createGerarOutbox } = require("./gerarOutbox.cjs");
 const { createGerarFiles } = require("./gerarFiles.cjs");
+const { createGerarLibrary } = require("./gerarLibrary.cjs");
 const { gerarConfig } = require("./gerarConfig.cjs");
 const { createGoogleAuth } = require("./googleAuth.cjs");
 const { installedVersions, installFromSource, SOURCES: BIBLE_SOURCES } = require("./bible.cjs");
@@ -122,6 +123,8 @@ let gerar = null;
 let gerarInbox = null;
 let gerarOutbox = null;
 let gerarWasOn = false;
+let gerarLibrary = null;
+let gerarWasPublishing = false;
 let youtube = null;
 // The hidden window that plays every sound (electron/soundEngine.cjs).
 let soundEngine = null;
@@ -917,6 +920,10 @@ app.whenReady().then(async () => {
             const on = status.state === "on";
             if (gerarOutbox && on && !gerarWasOn) gerarOutbox.flush().then(() => gerar.changed()).catch(() => {});
             gerarWasOn = on;
+            // The library index (C8) goes when this computer starts receiving.
+            const publishing = on && Boolean(status.receive);
+            if (gerarLibrary && publishing && !gerarWasPublishing) gerarLibrary.publish();
+            gerarWasPublishing = publishing;
         },
     });
     // What the GERAR sends (electron/gerarInbox.cjs): handed to the console,
@@ -963,6 +970,10 @@ app.whenReady().then(async () => {
     // Desfazer, Excluir and the operator's reply, queued until they can go.
     gerarOutbox = createGerarOutbox({ link: gerar, settings, store, log: (m) => logger.warn(m) });
     gerar.setPending(() => gerarOutbox.pending());
+    // The KERYX library in the GERAR (contract C8, gerarLibrary.cjs): published
+    // by the computer that receives, again 30 s after the Mídia stops changing.
+    gerarLibrary = createGerarLibrary({ link: gerar, store, settings, log: (m) => logger.warn(m) });
+    store.onChange((change) => { if (change && change.entity === "Media") gerarLibrary.schedule(); });
     gerar.ops.push = (args) => {
         const out = gerarOutbox.add(args);
         gerar.changed();
@@ -1051,6 +1062,7 @@ app.on("will-quit", () => {
     if (sync) sync.stop();
     if (gerarInbox) gerarInbox.stop();
     if (gerarOutbox) gerarOutbox.stop();
+    if (gerarLibrary) gerarLibrary.stop();
     if (gerar) gerar.stop();
     if (youtube) youtube.stop();
     if (network) network.stop();
