@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { keryx } from "@/api/keryxClient";
-import { gerarRequestRow, gerarMessageRow, gerarStatusPatch } from "@/lib/console/gerarImport";
+import { gerarRequestRow, gerarMessageRow, gerarStatusPatch, gerarMediaRow } from "@/lib/console/gerarImport";
+import { codecFields, rangeReader, readVideoCodec } from "@/lib/videoCodec";
 
 // What the GERAR sends (electron/gerarInbox.cjs; owner 2026-11-18, wave 2):
 // the console writes each request and chat message as a ServiceMessage of
@@ -24,6 +25,24 @@ export function useGerarImport({ ensureService }) {
         return g.onImport(async (items) => {
             const results = [];
             for (const it of items || []) {
+                // The files attached in the GERAR (wave 4): the card's state, then
+                // each one as a Media row; the first video or audio is the pedido's.
+                if (it?.type === "fileState" && it.requestId) {
+                    for (const local of await here("pedido", it.requestId)) await db.update(local.id, { gerar_file: it.state || "" });
+                    continue;
+                }
+                if (it?.type === "file" && it.requestId && it.fileName) {
+                    const pedidos = await here("pedido", it.requestId);
+                    const fileUrl = `${window.keryxDesktop?.mediaBaseUrl || ""}${it.fileName}`;
+                    const fields = gerarMediaRow({ name: it.name, fileUrl }, pedidos[0]);
+                    if (!fields) continue;
+                    // A video's codec, as on every import (a HEVC one wears its mark).
+                    const codec = fields.type === "video" ? await readVideoCodec(rangeReader(fileUrl)).catch(() => null) : null;
+                    const media = await keryx.entities.Media.create({ ...fields, ...(codec ? codecFields(codec) : {}) });
+                    const playable = fields.type === "video" || fields.type === "audio";
+                    for (const local of pedidos) if (playable && media?.id && !local.mediaId && !local.songId) await db.update(local.id, { mediaId: media.id });
+                    continue;
+                }
                 if (it?.type === "status" && it.request?.id) {
                     for (const local of await here("pedido", it.request.id)) {
                         const patch = gerarStatusPatch(local, it.request);
