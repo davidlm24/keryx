@@ -28,6 +28,11 @@ const { createLyrics } = require("./lyrics.cjs");
 const { createYouTube } = require("./youtube.cjs");
 const { importMedia } = require("./mediaImport.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const { createGerarLink } = require("./gerarLink.cjs");
+const { createGerarInbox, supabaseRealtime } = require("./gerarInbox.cjs");
+const { createGerarOutbox } = require("./gerarOutbox.cjs");
+const { createGerarFiles } = require("./gerarFiles.cjs");
+const { gerarConfig } = require("./gerarConfig.cjs");
 const { createGoogleAuth } = require("./googleAuth.cjs");
 const { installedVersions, installFromSource, SOURCES: BIBLE_SOURCES } = require("./bible.cjs");
 const { createBibleSetup } = require("./bibleSetup.cjs");
@@ -112,6 +117,10 @@ let system = null;
 let network = null;
 let live = null;
 let sync = null;
+// The GERAR on this computer (electron/gerarLink.cjs; owner 2026-11-18).
+let gerar = null;
+let gerarInbox = null;
+let gerarOutbox = null;
 let youtube = null;
 // The hidden window that plays every sound (electron/soundEngine.cjs).
 let soundEngine = null;
@@ -887,12 +896,82 @@ app.whenReady().then(async () => {
         log: (m) => logger.warn(m),
     });
 
+    // The GERAR (owner 2026-11-18, "a mesa do culto"): this computer as a
+    // device of the church's GERAR, only outgoing requests (Chromium's network
+    // stack, as the Google sign-in). Off until someone connects it in
+    // Configurações › Conexões; "precisa de você" never retries by itself.
+    gerar = createGerarLink({
+        settings,
+        protect,
+        config: gerarConfig(),
+        fetchImpl: googleFetch,
+        notify: (n) => notifications.add(n),
+        dismiss: (key) => notifications.remove((n) => n.key === key),
+        log: (m) => logger.warn(m),
+        onStatus: (status) => {
+            broadcast("keryx:gerar", status);
+            if (gerarInbox) gerarInbox.follow();
+            if (gerarOutbox && status.state === "on") gerarOutbox.flush().then(() => gerar.changed()).catch(() => {});
+        },
+    });
+    // What the GERAR sends (electron/gerarInbox.cjs): handed to the console,
+    // which writes the rows in the culto it shows (useGerarImport); with the
+    // console closed nothing is taken and it waits in the GERAR.
+    const gerarPending = new Map();
+    let gerarSeq = 0;
+    ipcMain.on("keryx:gerar:imported", (event, answer = {}) => {
+        if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return;
+        const done = gerarPending.get(answer.id);
+        if (!done) return;
+        gerarPending.delete(answer.id);
+        done(Array.isArray(answer.results) ? { results: answer.results.map((r) => ({ key: String(r && r.key || ""), id: String(r && r.id || "") })) } : { error: "refused" });
+    });
+    const gerarDeliver = (payload) => new Promise((resolve) => {
+        if (!mainWindow || mainWindow.isDestroyed()) return resolve({ error: "closed" });
+        const id = ++gerarSeq;
+        gerarPending.set(id, resolve);
+        setTimeout(() => { if (gerarPending.delete(id)) resolve({ error: "timeout" }); }, 15000).unref();
+        mainWindow.webContents.send("keryx:gerar:import", { id, ...payload });
+    });
+    const gerarSettingsConfig = gerarConfig();
+    // The files attached to a request (gerarFiles.cjs): into the media folder
+    // by importMedia, then the console makes the Media row.
+    const gerarFiles = createGerarFiles({
+        link: gerar,
+        settings,
+        config: gerarSettingsConfig,
+        deliver: gerarDeliver,
+        importFile: ({ sourcePath, name }) => importMedia({ mediaDir, sourcePath, name }, { log: (m) => logger.warn(m) }),
+        tmpDir: path.join(dataDir, "gerar-anexos"),
+        fetchImpl: googleFetch,
+        log: (m) => logger.warn(m),
+    });
+    gerarInbox = createGerarInbox({
+        link: gerar,
+        deliver: gerarDeliver,
+        files: gerarFiles,
+        settings,
+        realtime: gerarSettingsConfig.configured ? supabaseRealtime({ config: gerarSettingsConfig, link: gerar, createClient: require("@supabase/supabase-js").createClient }) : null,
+        log: (m) => logger.warn(m),
+    });
+    // What goes back to the GERAR (electron/gerarOutbox.cjs): Atendido,
+    // Desfazer, Excluir and the operator's reply, queued until they can go.
+    gerarOutbox = createGerarOutbox({ link: gerar, settings, store, log: (m) => logger.warn(m) });
+    gerar.setPending(() => gerarOutbox.pending());
+    gerar.ops.push = (args) => {
+        const out = gerarOutbox.add(args);
+        gerar.changed();
+        gerarOutbox.flush().then(() => gerar.changed()).catch(() => {});
+        return out;
+    };
+
     registerDataIpc({
         store,
         outputs,
         system,
         network,
         sync,
+        gerar,
         live,
         lyrics: createLyrics(),
         youtube,
@@ -927,6 +1006,8 @@ app.whenReady().then(async () => {
         : { error: { message: "Origem não autorizada.", status: 403 } }));
     sync.start();
     powerMonitor.on("resume", () => sync.poke());
+    if (!SMOKE) gerar.start();
+    powerMonitor.on("resume", () => { gerar.resume(); });
 
     if (splash) await splash.step("console");
     const win = createMainWindow(settings);
@@ -963,6 +1044,9 @@ app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
     if (soundEngine) soundEngine.stop();
     if (sync) sync.stop();
+    if (gerarInbox) gerarInbox.stop();
+    if (gerarOutbox) gerarOutbox.stop();
+    if (gerar) gerar.stop();
     if (youtube) youtube.stop();
     if (network) network.stop();
     if (live) live.flush();

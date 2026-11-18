@@ -60,6 +60,8 @@
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
 .console .topbar .tb-new-dot { background: var(--brand); }
 .console .ver-new-dot { display: inline-block; width: 6px; height: 6px; border-radius: var(--radius-round); background: var(--brand); }
+/* A red one: something needs you (Ferramentas › Conexões › GERAR, D4 = A). */
+.console .ver-new-dot.is-danger { background: var(--danger); }
 .console .topbar .tb-bell-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
 .console .topbar .tb-outs-l { font-variant-numeric: tabular-nums; }
 /* The sync's cloud (TopBar): a dot in the state's colour on its corner. */
@@ -435,6 +437,12 @@
 .console .ped-badge.is-kind { background: var(--bg-4); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-2); }
 .console .ped-badge.is-done { background: var(--ok-tint); color: var(--ok-fg); }
 .console .ped-badge.is-warn { background: var(--warn-tint); color: var(--warn-fg); }
+/* Closed in the GERAR without being done (D3 = A): a quiet badge, the title struck. */
+.console .ped-badge.is-off { background: var(--bg-4); color: var(--fg-3); }
+/* Under an operator's reply that goes to the GERAR (wave 3, D7 = A): sent, or waiting. */
+.console .ped-up { display: inline-flex; align-items: center; gap: var(--space-1); align-self: flex-end; font-size: var(--fs-meta); }
+.console .ped-msg.is-op .ped-up { color: var(--on-brand); opacity: .8; }
+.console .ped-card.is-cancelled .ped-c-l1 b { text-decoration: line-through; }
 .console .ped-link { display: flex; align-items: center; gap: var(--space-2); margin-top: 2px; }
 /* A trimmable tab row's dot (Pedidos' "novos"): after the name, the brand's gold. */
 .console .tabrow:not(.tabrow-close) .kx-t { display: inline-flex; align-items: center; gap: 6px; }
@@ -1410,6 +1418,18 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .cfg .cfg-sync-box.is-warn { background: var(--warn-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 40%, transparent); color: var(--fg-1); }
 .console .cfg .cfg-sync-box.is-warn .cfg-sync-box-t { color: var(--warn-fg); }
 .console .cfg .cfg-sync-box.is-row { flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+/* Configurações › Conexões › GERAR (owner 2026-11-18, mockup "KERYX · GERAR na
+   mesa"): "precisa de você" is a box with a red border and its title in red
+   (the Banner rule: the state's colour all round), the code field, the
+   refused code's line. */
+.console .cfg .cfg-sync-box.is-need { background: color-mix(in srgb, var(--danger) 10%, transparent); box-shadow: inset 0 0 0 1px var(--danger); color: var(--fg-1); }
+.console .cfg .cfg-sync-box.is-need .cfg-sync-box-t { color: var(--danger-fg); }
+.console .cfg .cfg-gerar-err { color: var(--danger-fg); }
+.console .cfg .cfg-gerar-form { display: flex; align-items: center; gap: var(--space-2); }
+.console .cfg .cfg-gerar-code { width: 112px; text-transform: uppercase; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+.console .cfg .cfg-gerar-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.console .cfg .cfg-gerar-how { display: flex; flex-direction: column; gap: var(--space-1); margin: 0 var(--space-3) var(--space-2); padding-left: 18px; color: var(--fg-2); font-size: var(--fs-ui); line-height: 1.55; }
+.console .cfg .cfg-gerar-note { margin: var(--space-3); }
 .console .cfg .cfg-sync-box-t { font-size: var(--fs-content); font-weight: 600; color: var(--fg-1); }
 .console .cfg .cfg-sync-box-s { flex: 1 1 280px; min-width: 0; color: var(--fg-1); }
 .console .cfg .cfg-sync-box-s b { font-weight: 600; }
@@ -2810,6 +2830,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
   .console .cfg .cfg-sync-bar > i.is-other { background: CanvasText; }
   .console .cfg :is(.cfg-sync-hero, .cfg-sync-banner, .cfg-sync-box, .cfg-sync-dev) { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .ver-new-dot { background: LinkText; }
+  .console .ver-new-dot.is-danger { background: Highlight; }
+  .console .cfg .cfg-sync-box.is-need { outline: 2px solid Highlight; outline-offset: -2px; }
   /* The Setlist automática's countdown and its stop (Rodada N2). */
   .console .rund-cd { outline: 1px solid CanvasText; outline-offset: -1px; }
   .console .rund-cd > button { outline: 1px solid ButtonText; outline-offset: -1px; }

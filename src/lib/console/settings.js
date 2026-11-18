@@ -14,6 +14,8 @@ export const SECTIONS = [
     { id: "biblia", icon: "book", name: "Bíblia e músicas" },
     { id: "culto", icon: "clock", name: "Culto" },
     { id: "console", icon: "keyboard", name: "Console" },
+    // Other programs of the church (owner 2026-11-18, D1 = A): the GERAR first.
+    { id: "conexoes", icon: "link", name: "Conexões" },
     // Between the church's computers, through a shared folder (§8b; owner 2026-10-16).
     { id: "sincronizacao", icon: "cloud", name: "Sincronização" },
     { id: "backup", icon: "save", name: "Backup e atualizações" },

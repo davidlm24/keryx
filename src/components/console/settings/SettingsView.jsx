@@ -17,6 +17,7 @@ import ConsoleSection from "./ConsoleSection";
 import DadosSection from "./DadosSection";
 import SobreSection from "./SobreSection";
 import SyncSection from "./SyncSection";
+import ConexoesSection from "./ConexoesSection";
 
 const BODIES = {
     sobre: SobreSection,
@@ -27,6 +28,7 @@ const BODIES = {
     culto: CultoSection,
     backup: DadosSection,
     sincronizacao: SyncSection,
+    conexoes: ConexoesSection,
 };
 const ICON = Object.fromEntries(SECTIONS.map((s) => [s.id, s.icon]));
 

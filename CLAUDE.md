@@ -2549,6 +2549,80 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   codes meant for other devices come from the network info's `urls`
   (Configurações › Telas na rede), never `window.location.origin` (that is
   127.0.0.1 on desktop). `keryx.isNetworkScreen` is true in such a browser.
+- **The GERAR on this computer** (owner 2026-11-18, mockup "KERYX · GERAR
+  na mesa", D1–D7 = A; the contract is the GERAR's C7, davidlm24/Gerar-planner
+  PR #356; the brief is the GERAR's `docs/agent-tasks/keryx-lado-do-keryx.md`):
+  the church's GERAR (cultos, escalas) sends its pedidos and chat to the
+  Painel. This computer is a DEVICE of the GERAR, never a person: an
+  administrator there makes a one-time code (it names the computer), typed in
+  Configurações › **Conexões** (a section of its own, the GERAR its first
+  group, D1 = A; `settings/ConexoesSection.jsx`), traded at the GERAR's Edge
+  Function `keryx-link` for a session; `electron/gerarLink.cjs` (tested
+  against a fake GERAR) keeps only the refresh token, sealed (`sealWith`, as
+  the Google token; no system protection = refused), the access token in
+  memory, and touches `touch_keryx_device` every 5 min (offline: a backoff).
+  **Only outgoing requests, nothing listens.** "Precisa de você" =
+  `invalid_grant` on the refresh OR 42501 from `touch_keryx_device` (an
+  administrator disconnected it there: the refresh may still work): kept in
+  settings.json `gerar.needs`, the bell once, a red dot on Ferramentas ›
+  Conexões › GERAR (`dotKind: "danger"`, D4 = A), and NOTHING retried until a
+  new code (no loop, across restarts too). Desconectar… only forgets here (the
+  device cannot revoke itself). "Receber os pedidos" is on when connecting
+  (D5 = A). The GERAR's URL and anon key are public (`electron/gerarConfig.cjs`,
+  `KERYX_GERAR_URL`/`KERYX_GERAR_ANON_KEY` until written there; without them
+  the page says "não preparado"). The words are `src/lib/console/gerarView.js`
+  (tested); the preview fakes the states (`previewGerar.js`, localStorage
+  `keryx.preview.gerar`). **What the GERAR sends** (wave 2,
+  `electron/gerarInbox.cjs`, tested against a fake GERAR): while connected
+  and Receber is on, a catch-up (and every 60 s) then the GERAR's Realtime
+  (`@supabase/supabase-js` in main ONLY, as transport: `accessToken` is
+  gerarLink's token, never its auth). A request is LOCKED first (an insert in
+  `keryx_request_links` with this device's id; 23505 = another computer took
+  it, not tried again), handed to the console (`keryx:gerar:import` →
+  `useGerarImport`, console only: the culto on screen, `ensureService`), then
+  the link gets the row's id and a "new" request becomes "in_review"
+  (40001: read the version, once more); with the console closed nothing is
+  locked; a lock without its row is finished on the next catch-up. The rows
+  are ServiceMessage with `source: "gerar"`, `external_id` (the GERAR id: the
+  store makes every id, so a row is found by it), `gerar_event`,
+  `gerar_category`, `gerar_status` (`src/lib/console/gerarImport.js`, tested;
+  the GERAR cuts nothing, neither does the import: 120/180/2000 chars; only a
+  YouTube link is a link, any other stays text). The chat has no lock: a
+  message two computers both brought shows once (`oneGerarCopy` in
+  `messagesInOrder`) and Excluir takes its copy too; the chat's cursor is
+  `gerar.msgCursor`. A GERAR change of a request this computer has updates
+  its state (`gerarStatusPatch`: completed = atendido; never undoes the
+  operator's atendido). The cards (D2/D3/D6 = A, PedidosTab/ChatTab): the
+  "GERAR" badge, the GERAR's culto on line 2, cancelled/declined there
+  dimmed with only Excluir, a request that is not music "Fulano pede: …"
+  with its category's glyph (mic, lightbulb, radio…) and no Prévia, Setlist
+  or Procurar a letra. **The way back** (wave 3, `electron/gerarOutbox.cjs`,
+  tested; the entries are `src/lib/console/gerarBack.js`, tested): on a
+  request from the GERAR, Atendido = `completed` there, Desfazer =
+  `in_review`, Excluir… = `cancelled` with "Excluído na mesa" (never for one
+  already closed there); the operator's chat reply goes ALSO to the GERAR's
+  culto of the last GERAR message in that conversation (D7 = A,
+  `replyTarget`; none = the phones only), its row keeps `gerar_event` and,
+  once sent, the GERAR's id as `external_id` ("enviada ao GERAR" under the
+  bubble, else "esperando para ir ao GERAR"; idempotent by its client id).
+  The Painel pushes through `pushToGerar` (useGerar.js, the `keryx:gerar`
+  op `push`); the queue lives in settings.json `gerar.outbox` (a new code
+  keeps it, Desconectar drops it), goes in order when the connection is on
+  (status: the version read just before, 40001 once more; unreachable =
+  later; 42501 = precisa de você; any other refusal drops that entry,
+  logged), and Andamento counts it. **The attached files** (wave 4,
+  `electron/gerarFiles.cjs`, tested): every request this computer brought
+  is queued in settings.json `gerar.files`; its `attachments` (owner_type
+  live_request, the private bucket service-attachments, read as the device
+  through its RLS at `/storage/v1/object/authenticated/…`) that the Mídia
+  takes (video, audio, picture, PDF; `gerarMediaType`) come down one at a
+  time to `<data>/gerar-anexos`, are copied in by `importMedia` (1 GB at
+  most) and handed to the console, which makes the Media row (`gerarMediaRow`:
+  the file's name, "Do GERAR · pedido de X · culto" in the description; a
+  video's codec read as on every import, so a HEVC one wears its mark) and
+  ties the first video or audio to the pedido (`mediaId`). The card says
+  "baixando…" / "arquivo não veio" (`ServiceMessage.gerar_file`); a download
+  cut short goes on at the next pass, never twice the same attachment.
 - **YouTube links** (owner 2026-10-27, mockup "YouTube · checar o link e
   baixar para a Mídia", Y1–Y5): "Este vídeo não está disponível" on the
   projector is the VIDEO refusing embeds (its owner, or gone), never the

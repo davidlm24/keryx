@@ -11,6 +11,7 @@ import { fold } from "../bibleSearch.js";
 import { mediaIcon, mmss } from "./libraryRows.js";
 import { getYouTubeId, getYouTubeThumbnail } from "../../utils/youtube.js";
 import { linkNote, youtubeLink } from "../youtubeLinks.js";
+import { GERAR_MUSIC, GERAR_CATEGORY, oneGerarCopy } from "./gerarImport.js";
 
 const REQ = PROTOCOL.actions["request.send"].args;
 
@@ -22,7 +23,7 @@ const at = (r) => String(r?.sentAt || "");
 const ms = (r) => Date.parse(at(r)) || 0;
 
 // In the order they came (oldest first, the newest at the bottom, as a chat).
-export const messagesInOrder = (rows = []) => rows.slice().sort((a, b) => at(a).localeCompare(at(b)) || String(a.id).localeCompare(String(b.id)));
+export const messagesInOrder = (rows = []) => oneGerarCopy(rows.slice().sort((a, b) => at(a).localeCompare(at(b)) || String(a.id).localeCompare(String(b.id))));
 
 export const isPedido = (r) => r?.kind === "pedido";
 export const isDone = (r) => r?.status === "done";
@@ -36,6 +37,21 @@ export const pedidosOf = (rows = []) => messagesInOrder(rows).filter(isPedido);
 export const chatOf = (rows = []) => messagesInOrder(rows).filter((r) => !isPedido(r));
 // The panel's tab a row belongs to.
 export const tabOf = (r) => (isPedido(r) ? "pedidos" : "chat");
+
+// From the church's GERAR (owner 2026-11-18, src/lib/console/gerarImport.js):
+// the card wears the "GERAR" badge and the GERAR's culto on its 2nd line
+// (D2 = A); closed there without being done = "cancelado no GERAR", dimmed,
+// only Excluir (D3 = A); a request that is not music says "Fulano pede: …"
+// with its category's glyph and no Prévia nor Setlist (D6 = A).
+export const isGerar = (r) => r?.source === "gerar";
+export const gerarClosed = (r) => isGerar(r) && (r.gerar_status === "cancelled" || r.gerar_status === "declined");
+export const gerarNotMusic = (r) => isGerar(r) && Boolean(r.gerar_category) && !GERAR_MUSIC.has(r.gerar_category);
+export const gerarGlyph = (r) => (GERAR_CATEGORY[r?.gerar_category] || GERAR_CATEGORY.other).glyph;
+export function gerarEventLabel(ev) {
+    if (!ev) return "";
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ev.date || ""));
+    return [String(ev.title || "").trim(), m ? `${m[3]}/${m[2]}` : ""].filter(Boolean).join(" · ");
+}
 
 // "19:05", the time it was sent on this computer's clock.
 export function sentTime(r) {

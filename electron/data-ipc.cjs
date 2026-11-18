@@ -12,6 +12,8 @@
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
 //   keryx:sync          invoke  { op, args } sync between the church's computers (syncControl.cjs)
+//   keryx:gerar         invoke  { op, args } the GERAR on this computer (gerarLink.cjs: status, link, forget,
+//                               setReceive, check); its status comes to every window as the event keryx:gerar
 //   keryx:lyrics        invoke  { op: search | get | recordings, args } lyrics from the web
 //   keryx:youtube       invoke  { op: check | status | update | download | cancel | list, args } YouTube links:
 //                               may it play here, Baixar para a Mídia (youtube.cjs); each job's
@@ -33,7 +35,7 @@ const { createSystemFonts } = require("./systemFonts.cjs");
 const { importMedia, MAX_IMPORT_BYTES } = require("./mediaImport.cjs");
 const { createPackages } = require("./keryxPackage.cjs");
 
-function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, youtube, bibleSetup = null, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, system, network, sync, gerar = null, live, lyrics, youtube, bibleSetup = null, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -294,6 +296,18 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
             // code: googleAuth's ("canceled", "denied", "timeout", …), so the
             // page tells a Cancelar from a failure.
             return { error: { message: err.message || "Falha na sincronização.", status: err.status || 500, ...(typeof err.code === "string" ? { code: err.code } : {}) } };
+        }
+    });
+
+    ipcMain.handle("keryx:gerar", async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const { op, args } = payload || {};
+        if (!gerar || !Object.prototype.hasOwnProperty.call(gerar.ops, op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
+        try {
+            return { data: await gerar.ops[op](args || {}) };
+        } catch (err) {
+            if (!err.status) log(`[keryx-gerar] ${op}: ${err && err.stack}`);
+            return { error: { message: err.message || "Falha na conexão com o GERAR.", status: err.status || 500, ...(typeof err.code === "string" ? { code: err.code } : {}) } };
         }
     });
 

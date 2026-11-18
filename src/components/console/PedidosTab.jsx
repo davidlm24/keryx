@@ -1,5 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
+import { pushToGerar } from "@/hooks/useGerar";
+import { statusBack, removeBack } from "@/lib/console/gerarBack";
 import Icon from "./Icon";
 import { Btn, IconBtn, Empty, Seg } from "./kx";
 import { useConfirm } from "./ConfirmDialog";
@@ -10,7 +12,7 @@ import { youtubeRow, repeatQuestion } from "@/lib/mediaRepeats";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { setDragGhost, stageGhost } from "./dragGhost";
 import { youtubeTitle } from "@/lib/console/youtubeTitle";
-import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, pedidoThumb, pedidoMediaTag, pedidoMediaWarn, pedidoBy, operatorPedido, pickRows, PICK_TABS, pedidoItem, PEDIDO_MAX, withPedido, pedidoYouTube } from "@/lib/console/pedidos";
+import { pedidosOf, isPedido, isDone, sentTime, songOfPedido, mediaOfPedido, pedidoThumb, pedidoMediaTag, pedidoMediaWarn, pedidoBy, operatorPedido, pickRows, PICK_TABS, pedidoItem, PEDIDO_MAX, withPedido, pedidoYouTube, isGerar, gerarClosed, gerarNotMusic, gerarGlyph, gerarEventLabel } from "@/lib/console/pedidos";
 
 // The Pedidos tab of the panel beside the Prévia (Rodada Q, PR2; the
 // owner's mockup "Q8 · Aba Pedidos no console", S6 = A, S8 = A; S12 = B
@@ -47,6 +49,8 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
     const setDone = async (r, done) => {
         try {
             await keryx.entities.ServiceMessage.update(r.id, { status: done ? "done" : "open" });
+            // From the GERAR: Atendido = completed there, Desfazer = in_review (wave 3).
+            pushToGerar(statusBack(r, done));
             if (done) c.say("Pedido atendido.", { label: "Desfazer", run: () => setDone(r, false) });
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
@@ -61,21 +65,30 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                         <div className="ped-list" ref={listRef} role="log" aria-label="Pedidos de louvor">
                             {rows.map((r) => {
                                 const done = isDone(r);
-                                const media = mediaOfPedido(r, data.media || []);
-                                const song = media ? null : songOfPedido(r, data.songs || []);
+                                // From the GERAR (D2/D3/D6 = A): its badge, its culto on the
+                                // 2nd line; closed there = dimmed with only Excluir; not music
+                                // = "Fulano pede: …", no Prévia nor Setlist.
+                                const gerar = isGerar(r);
+                                const closed = gerarClosed(r);
+                                const ask = gerarNotMusic(r);
+                                const quiet = done || closed;
+                                const media = ask ? null : mediaOfPedido(r, data.media || []);
+                                const song = media || ask ? null : songOfPedido(r, data.songs || []);
                                 const tag = pedidoMediaTag(media);
-                                const warn = pedidoMediaWarn(media);
+                                // A GERAR file still coming, or one that did not come (wave 4).
+                                const warn = pedidoMediaWarn(media) || (r.gerar_file === "downloading" ? "baixando…" : r.gerar_file === "failed" ? "arquivo não veio" : "");
                                 const by = pedidoBy(r);
                                 const what = r.song || "um louvor";
-                                const line = r.singer ? `${r.singer} canta ${what}` : what;
-                                const sub = [`${by.lead}${by.who}`, r.text && `“${r.text}”`].filter(Boolean).join(" · ");
-                                const ready = song || media;
-                                const yt = pedidoYouTube(r);
+                                const asker = String(r.sender || "").trim() || "Alguém";
+                                const line = ask ? `${asker} pede: ${what}` : r.singer ? `${r.singer} canta ${what}` : what;
+                                const sub = [gerar ? gerarEventLabel(r.gerar_event) : `${by.lead}${by.who}`, r.text && `“${r.text}”`].filter(Boolean).join(" · ");
+                                const ready = closed ? null : song || media;
+                                const yt = closed ? null : pedidoYouTube(r);
                                 const ytStage = yt ? stageFromYouTube(yt.url, yt.title) : null;
                                 const stage = withPedido(song ? stageFromSong(song, {}, data.themes) : media ? stageFromMedia(media) : ytStage, r);
                                 const thumb = pedidoThumb(r, media);
-                                const glyph = media ? mediaIcon(media) : !ready && yt ? "youtube" : "music";
-                                const drag = !done && stage ? {
+                                const glyph = ask ? gerarGlyph(r) : media ? mediaIcon(media) : !ready && yt ? "youtube" : "music";
+                                const drag = !quiet && stage ? {
                                     draggable: true,
                                     onDragStart: (e) => {
                                         setDragStage(stage);
@@ -86,17 +99,20 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                     onDragEnd: () => clearDragStage(),
                                 } : {};
                                 return (
-                                    <div key={r.id} className={`ped-card ${done ? "is-done" : ""} ${by.operator ? "is-op" : ""} ${thumb ? "has-thumb" : ""}`} {...drag}>
+                                    <div key={r.id} className={`ped-card ${quiet ? "is-done" : ""} ${closed ? "is-cancelled" : ""} ${by.operator ? "is-op" : ""} ${thumb ? "has-thumb" : ""}`} {...drag}>
                                         <PedidoPic url={thumb} glyph={glyph} />
-                                        <span className="ped-c-l1" title={line}>{r.singer ? <><span className="ped-c-who">{r.singer} canta </span><b>{what}</b></> : <b>{what}</b>}</span>
+                                        <span className="ped-c-l1" title={line}>{ask ? <><span className="ped-c-who">{asker} pede: </span><b>{what}</b></> : r.singer ? <><span className="ped-c-who">{r.singer} canta </span><b>{what}</b></> : <b>{what}</b>}</span>
                                         <span className="ped-c-meta">
                                             {tag && <span className="ped-badge is-kind">{tag}</span>}
+                                            {gerar && <span className="ped-badge is-kind" title="Veio do GERAR">GERAR</span>}
                                             {by.operator && <span className="ped-badge is-op">operador</span>}
-                                            {done
+                                            {closed
+                                                ? <span className="ped-badge is-off">{r.gerar_status === "declined" ? "recusado no GERAR" : "cancelado no GERAR"}</span>
+                                                : done
                                                 ? <span className="ped-badge is-done"><Icon name="check" size={12} />atendido</span>
                                                 : warn ? <span className="ped-badge is-warn">{warn}</span>
                                                     : !ready && yt ? <span className="ped-badge is-kind">YouTube</span>
-                                                        : !ready && r.song ? <span className="ped-badge is-warn" title="Não está na biblioteca">fora da biblioteca</span> : null}
+                                                        : !ready && r.song && !ask ? <span className="ped-badge is-warn" title="Não está na biblioteca">fora da biblioteca</span> : null}
                                             <span className="ped-c-time">{sentTime(r)}</span>
                                         </span>
                                         <span className="ped-c-l2" title={sub}>{sub}</span>
@@ -111,8 +127,8 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                                 {onAddStage && <IconBtn name="plus" small title={r.singer ? `Adicionar à setlist, com ${r.singer}` : "Adicionar à setlist"} aria-label={`Adicionar ${yt.title} à setlist`} onClick={() => onAddStage(stage)} />}
                                                 <IconBtn name="media" small title="Adicionar à Mídia" aria-label={`Guardar ${yt.title} na Mídia`} onClick={() => tools.saveLink(r)} />
                                             </>}
-                                            {!done && !ready && !yt && r.song && <IconBtn name="search" small title="Procurar a letra na internet…" aria-label={`Procurar a letra de ${r.song} na internet`} onClick={() => onLyricsSearch(r.song)} />}
-                                            {!done && <IconBtn name="check" small title="Marcar como atendido" aria-label={`Marcar o pedido de ${what} como atendido`} onClick={() => setDone(r, true)} />}
+                                            {!quiet && !ask && !ready && !yt && r.song && <IconBtn name="search" small title="Procurar a letra na internet…" aria-label={`Procurar a letra de ${r.song} na internet`} onClick={() => onLyricsSearch(r.song)} />}
+                                            {!quiet && <IconBtn name="check" small title="Marcar como atendido" aria-label={`Marcar o pedido de ${what} como atendido`} onClick={() => setDone(r, true)} />}
                                             <TrashBtn r={r} onRemove={tools.remove} />
                                         </span>
                                     </div>
@@ -265,7 +281,16 @@ export function useMessageTools(c, data) {
             ? (isPedido(r) ? "O pedido que você anotou" : "A sua mensagem")
             : `${isPedido(r) ? "O pedido" : "A mensagem"} de ${r.sender || "alguém da equipe"}`;
         if (!(await confirm({ title: `Excluir ${what}?`, text: `${whose} sai desta lista e dos celulares da equipe.` }))) return;
-        try { await keryx.entities.ServiceMessage.delete(r.id); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
+        try {
+            // A GERAR row two computers both brought goes with its copy (oneGerarCopy shows one).
+            const copies = r.source === "gerar" && r.external_id
+                ? await keryx.entities.ServiceMessage.filter({ source: "gerar", kind: r.kind, external_id: r.external_id }).catch(() => [])
+                : [];
+            const ids = new Set([r.id, ...(Array.isArray(copies) ? copies.map((x) => x.id) : [])]);
+            for (const id of ids) await keryx.entities.ServiceMessage.delete(id);
+            // From the GERAR: cancelled there, "Excluído na mesa" (wave 3).
+            pushToGerar(removeBack(r));
+        } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
     };
     const saveLink = async (r) => {
         // By the video's id, in any form of the link and once downloaded too

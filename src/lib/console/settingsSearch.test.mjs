@@ -29,6 +29,7 @@ const FILES = {
     "SyncSection.jsx": "sincronizacao",
     "SyncDuplicates.jsx": "sincronizacao",
     "SobreSection.jsx": "sobre",
+    "ConexoesSection.jsx": "conexoes",
 };
 // A FormRow's label, a CfgKey's and a CfgGroup's (Rodada H0: a group's
 // header is a search target too, and a jump into a closed group opens it).
