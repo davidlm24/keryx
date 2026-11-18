@@ -96,6 +96,15 @@
       "type": "string",
       "description": "A categoria do pedido no GERAR (song, playback, video, microphone, announcement, stage, lighting, streaming, other): fora das três de música o cartão diz \"pede:\" (D6 = A)"
     },
+    "gerar_file": {
+      "type": "string",
+      "enum": [
+        "",
+        "downloading",
+        "failed"
+      ],
+      "description": "Os arquivos anexados ao pedido no GERAR (onda 4): downloading = baixando para a Mídia (\"baixando…\" no cartão); failed = um não veio; vazio = nenhum ou todos chegaram"
+    },
     "gerar_status": {
       "type": "string",
       "description": "O estado do pedido no GERAR (new, in_review, preparing, ready, completed, declined, cancelled): cancelled ou declined = \"cancelado no GERAR\", apagado na fila (D3 = A)"

@@ -26,6 +26,8 @@ test("the lines of a connected computer", () => {
     assert.deepEqual(gerarBadge("needs"), { dot: "need", words: "precisa de você" });
     assert.equal(gerarProgress(on, NOW).line, "Em dia · último contato há 12 s");
     assert.equal(gerarProgress({ ...on, state: "offline" }, NOW).tone, "wait");
+    assert.equal(gerarProgress({ ...on, pending: 2 }, NOW).line, "Subindo · último contato há 12 s · 2 respostas esperando para subir");
+    assert.equal(gerarProgress({ ...on, state: "offline", pending: 1 }, NOW).line, "Sem contato com o GERAR · 1 resposta esperando para subir");
 });
 
 test("precisa de você says why: disconnected there, or the session refused", () => {

@@ -38,7 +38,7 @@ const STATUS_DAYS = 3;
 const REQUEST_COLS = "id,event_id,sequence,requester_name,title,category,details,resource_kind,resource_url,status,status_note,version,created_at,updated_at";
 const EVENT_EMBED = "events(id,title,date)";
 
-function createGerarInbox({ link, deliver, settings, realtime = null, log = console.warn, now = () => Date.now(), timers = { setTimeout, clearTimeout, setInterval, clearInterval } }) {
+function createGerarInbox({ link, deliver, settings, realtime = null, files = null, log = console.warn, now = () => Date.now(), timers = { setTimeout, clearTimeout, setInterval, clearInterval } }) {
     let running = false;
     let reserve = null;
     let reauth = null;
@@ -142,7 +142,10 @@ function createGerarInbox({ link, deliver, settings, realtime = null, log = cons
                 log(`[gerar] link ${req.id}: ${err.status} ${err.pg || ""} ${err.message}`);
             }
             await review(req);
+            // Its attached files come down next (gerarFiles.cjs).
+            if (files) files.queue(req.id);
         }
+        if (files) files.run().catch((err) => { if (!guard(err)) log(`[gerar] anexos: ${err.message}`); });
     }
 
     async function importMessages(list) {
@@ -191,6 +194,7 @@ function createGerarInbox({ link, deliver, settings, realtime = null, log = cons
                 again = false;
                 try {
                     await catchUp();
+                    if (files) await files.run();
                 } catch (err) {
                     if (!guard(err)) log(`[gerar] busca: ${err.status || ""} ${err.pg || ""} ${err.message}`);
                 }

@@ -58,6 +58,7 @@ export async function previewGerarCall(op, args = {}) {
         case "forget": write("sem-conexao"); told(); return { data: status() };
         case "setReceive": receive = Boolean(args.on); told(); return { data: status() };
         case "check": return { data: status() };
+        case "push": return { data: { queued: read() === "conectado" } };
         default: return fail(`Operação desconhecida: ${op}.`, 400);
     }
 }

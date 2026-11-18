@@ -1729,6 +1729,9 @@
         "gerar_category": {
           "type": "text"
         },
+        "gerar_file": {
+          "type": "text"
+        },
         "gerar_status": {
           "type": "text"
         }

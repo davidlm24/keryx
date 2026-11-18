@@ -50,9 +50,11 @@ export function gerarBadge(page) {
 // Andamento, until the requests come (the next wave): the heartbeat.
 export function gerarProgress(st, now = Date.now()) {
     const page = gerarPage(st);
-    if (page === "offline") return { tone: "wait", line: "Sem contato com o GERAR · o KERYX tenta de novo sozinho" };
+    const n = Number(st?.pending) || 0;
+    const waiting = n ? ` · ${n === 1 ? "1 resposta esperando" : `${n} respostas esperando`} para subir` : "";
+    if (page === "offline") return { tone: "wait", line: `Sem contato com o GERAR${waiting || " · o KERYX tenta de novo sozinho"}` };
     const seen = agoWords(st?.lastSeen, now);
-    return { tone: "ok", line: seen ? `Em dia · último contato ${seen}` : "Em dia" };
+    return { tone: n ? "wait" : "ok", line: `${n ? "Subindo" : "Em dia"}${seen ? ` · último contato ${seen}` : ""}${waiting}` };
 }
 
 // Why "precisa de você" (the page's text under its title).
