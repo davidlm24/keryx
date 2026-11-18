@@ -2549,6 +2549,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   codes meant for other devices come from the network info's `urls`
   (Configurações › Telas na rede), never `window.location.origin` (that is
   127.0.0.1 on desktop). `keryx.isNetworkScreen` is true in such a browser.
+- **The GERAR on this computer** (owner 2026-11-18, mockup "KERYX · GERAR
+  na mesa", D1–D7 = A; the contract is the GERAR's C7, davidlm24/Gerar-planner
+  PR #356; the brief is the GERAR's `docs/agent-tasks/keryx-lado-do-keryx.md`):
+  the church's GERAR (cultos, escalas) sends its pedidos and chat to the
+  Painel. This computer is a DEVICE of the GERAR, never a person: an
+  administrator there makes a one-time code (it names the computer), typed in
+  Configurações › **Conexões** (a section of its own, the GERAR its first
+  group, D1 = A; `settings/ConexoesSection.jsx`), traded at the GERAR's Edge
+  Function `keryx-link` for a session; `electron/gerarLink.cjs` (tested
+  against a fake GERAR) keeps only the refresh token, sealed (`sealWith`, as
+  the Google token; no system protection = refused), the access token in
+  memory, and touches `touch_keryx_device` every 5 min (offline: a backoff).
+  **Only outgoing requests, nothing listens.** "Precisa de você" =
+  `invalid_grant` on the refresh OR 42501 from `touch_keryx_device` (an
+  administrator disconnected it there: the refresh may still work): kept in
+  settings.json `gerar.needs`, the bell once, a red dot on Ferramentas ›
+  Conexões › GERAR (`dotKind: "danger"`, D4 = A), and NOTHING retried until a
+  new code (no loop, across restarts too). Desconectar… only forgets here (the
+  device cannot revoke itself). "Receber os pedidos" is on when connecting
+  (D5 = A). The GERAR's URL and anon key are public (`electron/gerarConfig.cjs`,
+  `KERYX_GERAR_URL`/`KERYX_GERAR_ANON_KEY` until written there; without them
+  the page says "não preparado"). The words are `src/lib/console/gerarView.js`
+  (tested); the preview fakes the states (`previewGerar.js`, localStorage
+  `keryx.preview.gerar`). The requests, the chat and the way back are the
+  next waves (D2/D3/D6/D7 = A in the mockup).
 - **YouTube links** (owner 2026-10-27, mockup "YouTube · checar o link e
   baixar para a Mídia", Y1–Y5): "Este vídeo não está disponível" on the
   projector is the VIDEO refusing embeds (its owner, or gone), never the

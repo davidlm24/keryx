@@ -28,6 +28,8 @@ const { createLyrics } = require("./lyrics.cjs");
 const { createYouTube } = require("./youtube.cjs");
 const { importMedia } = require("./mediaImport.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const { createGerarLink } = require("./gerarLink.cjs");
+const { gerarConfig } = require("./gerarConfig.cjs");
 const { createGoogleAuth } = require("./googleAuth.cjs");
 const { installedVersions, installFromSource, SOURCES: BIBLE_SOURCES } = require("./bible.cjs");
 const { createBibleSetup } = require("./bibleSetup.cjs");
@@ -112,6 +114,8 @@ let system = null;
 let network = null;
 let live = null;
 let sync = null;
+// The GERAR on this computer (electron/gerarLink.cjs; owner 2026-11-18).
+let gerar = null;
 let youtube = null;
 // The hidden window that plays every sound (electron/soundEngine.cjs).
 let soundEngine = null;
@@ -887,12 +891,28 @@ app.whenReady().then(async () => {
         log: (m) => logger.warn(m),
     });
 
+    // The GERAR (owner 2026-11-18, "a mesa do culto"): this computer as a
+    // device of the church's GERAR, only outgoing requests (Chromium's network
+    // stack, as the Google sign-in). Off until someone connects it in
+    // Configurações › Conexões; "precisa de você" never retries by itself.
+    gerar = createGerarLink({
+        settings,
+        protect,
+        config: gerarConfig(),
+        fetchImpl: googleFetch,
+        notify: (n) => notifications.add(n),
+        dismiss: (key) => notifications.remove((n) => n.key === key),
+        log: (m) => logger.warn(m),
+        onStatus: (status) => broadcast("keryx:gerar", status),
+    });
+
     registerDataIpc({
         store,
         outputs,
         system,
         network,
         sync,
+        gerar,
         live,
         lyrics: createLyrics(),
         youtube,
@@ -927,6 +947,8 @@ app.whenReady().then(async () => {
         : { error: { message: "Origem não autorizada.", status: 403 } }));
     sync.start();
     powerMonitor.on("resume", () => sync.poke());
+    if (!SMOKE) gerar.start();
+    powerMonitor.on("resume", () => { gerar.resume(); });
 
     if (splash) await splash.step("console");
     const win = createMainWindow(settings);
@@ -963,6 +985,7 @@ app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
     if (soundEngine) soundEngine.stop();
     if (sync) sync.stop();
+    if (gerar) gerar.stop();
     if (youtube) youtube.stop();
     if (network) network.stop();
     if (live) live.flush();

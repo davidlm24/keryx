@@ -101,6 +101,10 @@ ipcRenderer.on("keryx:zoom", (_event, zoom) => {
 // Sync between the church's computers: media files rows name that have not
 // come down yet (electron/sync.cjs), as keryx-media names.
 const syncMissingListeners = new Set();
+const gerarListeners = new Set();
+ipcRenderer.on("keryx:gerar", (_event, status) => {
+    for (const listener of gerarListeners) listener(status);
+});
 ipcRenderer.on("keryx:sync:missing", (_event, names) => {
     for (const listener of syncMissingListeners) {
         try { listener(names); } catch (err) { console.error("[keryx] sync listener failed:", err); }
@@ -315,6 +319,15 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     },
     // Configurações › Sincronização (electron/syncControl.cjs), and the media
     // rows name that have not come down yet.
+    // The GERAR on this computer (electron/gerarLink.cjs): its status comes
+    // pushed on every change.
+    gerar: {
+        call: (op, args) => ipcRenderer.invoke("keryx:gerar", { op, args }),
+        onStatus(listener) {
+            gerarListeners.add(listener);
+            return () => gerarListeners.delete(listener);
+        },
+    },
     sync: {
         call: (op, args) => ipcRenderer.invoke("keryx:sync", { op, args }),
         missing: () => ipcRenderer.invoke("keryx:sync:missing"),

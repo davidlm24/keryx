@@ -106,6 +106,12 @@ export const SETTINGS_INDEX = [
     e("console", "Iniciar com o Windows", "abrir o KERYX quando o computador liga", ["windows", "iniciar", "ligar", "automático", "inicialização"]),
     e("console", "Atalhos", "as teclas do console: Enter, setas, B, L, C, Esc", ["teclado", "teclas", "atalho", "enter", "esc"]),
 
+    e("conexoes", "GERAR", "os pedidos e o chat dos cultos do GERAR no Painel; o estado da conexão deste computador", ["gerar", "planejamento", "escala", "pedidos", "chat", "mesa", "conectar", "desconectar", "precisa de você", "conexão"]),
+    e("conexoes", "Código do GERAR", "o código de uso único que um administrador do GERAR gera para este computador", ["código", "vincular", "conectar", "gerar"]),
+    e("conexoes", "Receber os pedidos", "receber os pedidos do GERAR neste computador; os outros recebem pela Sincronização", ["receber", "pedidos", "gerar", "neste computador", "computador do operador"]),
+    e("conexoes", "Andamento", "o último contato com o GERAR e Buscar agora", ["andamento", "buscar agora", "último contato", "sem internet"]),
+    e("conexoes", "Como funciona", "o que vem do GERAR e como cortar o acesso", ["como funciona", "segurança", "desconectar", "revogar"]),
+
     e("sincronizacao", "Entrar com Google", "entrar com a conta Google da igreja para os computadores ficarem iguais; nada é apagado", ["google", "conta", "conta google", "entrar", "login", "gmail", "drive", "google drive", "nuvem", "sincronizar", "sincronização", "outro computador", "notebook"]),
     e("sincronizacao", "Conta Google", "a conta da igreja neste computador; quem sincronizava pela pasta de antes entra com ela", ["conta", "e-mail", "email", "google", "migrar", "pasta antiga", "trocar de conta", "Trocar de conta", "É esta mesmo", "entre de novo", "recusou"]),
     e("sincronizacao", "Conta", "o e-mail da conta Google da igreja", ["e-mail", "email", "gmail"]),

@@ -79,6 +79,7 @@ import { resolveSection, SECTIONS } from "@/lib/console/settings";
 import { commandRows } from "@/lib/console/paletteSearch";
 import { useSyncStatusSelect, syncNow, currentSyncStatus } from "@/hooks/useSyncStatus";
 import { useSyncJoinNote, signInWithGoogle } from "@/hooks/useGoogleSync";
+import { useGerar } from "@/hooks/useGerar";
 import { syncsHere, cloudView, googlePage } from "@/lib/console/syncView";
 import SyncPop from "@/components/console/SyncPop";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
@@ -1395,13 +1396,15 @@ export default function Console() {
     // Ajuda's support items need the desktop app (the browser preview has no data folder or updater).
     const desktopApp = useRef(!keryx.isPreview && Boolean(window.keryxDesktop?.system)).current;
     const helpCall = (op, done) => upd.call(op).then((r) => { const m = done?.(r); if (m) c.say(m); }).catch((err) => c.say(err?.message || "Não foi possível."));
+    // Ferramentas › Conexões › GERAR: its red dot while it needs you (D4 = A).
+    const gerar = useGerar().status;
     const menus = buildMenus({
         desktop: desktopApp, helpKey: keyHint("help", letters), update: upd.update,
         services: cultosOf(services), serviceId, activeId: active.activeId, itemsCount: items.length, locked: c.locked,
         songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null, songOnAir: c.cur?.content?.kind === "lyrics" && Boolean(c.cur.content.ref?.songId),
         playerOn: Boolean(barLayer), playing: Boolean(barLayer && !c.cur[barLayer]?.playback?.paused),
         timers: timerChoices(data.timerPresets).map((t) => ({ minutes: t.minutes, label: minutesLabel(t.minutes) })),
-        teamUnread, sync: { act: syncAct, running: syncRunning, signing: syncSigning },
+        teamUnread, sync: { act: syncAct, running: syncRunning, signing: syncSigning }, gerar,
         act: {
             activate: (id) => active.activate(id ? services.find((s) => s.id === id) || null : null),
             endService: () => active.endService(view.active ? service : null),

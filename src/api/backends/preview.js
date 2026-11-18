@@ -14,6 +14,7 @@ import { reportCode, reportMail } from "@shared/support.mjs";
 import { emptySetup, chooseSetup, dismissSetup, pendingSetup, afterInstall, setupStatus } from "@shared/bibleSetup.mjs";
 import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
 import { previewSyncCall } from "./previewSync";
+import { previewGerarCall, previewGerarOnStatus } from "./previewGerar";
 import { previewPhonesCall } from "./previewPhones";
 
 const API = "/__keryx/";
@@ -264,6 +265,9 @@ export function createPreviewBridge() {
         // sign-in here, so made-up states, one per board of the mockup
         // (previewSync.js; localStorage keryx.preview.sync picks one).
         sync: { call: previewSyncCall },
+        // Configurações › Conexões › GERAR: made-up states (previewGerar.js;
+        // localStorage keryx.preview.gerar picks one).
+        gerar: { call: previewGerarCall, onStatus: previewGerarOnStatus },
         // The controle remoto (the /Remote tab posts to /api/remote): the
         // console tab hears its commands as the desktop console hears
         // keryx:remote, and answers (scripts/preview/server.cjs).

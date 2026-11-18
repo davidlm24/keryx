@@ -29,6 +29,7 @@
 
 import { hasUpdate } from "./updates.js";
 import { menuItem as mi } from "./menuLabels.js";
+import { gerarMenuItem } from "./gerarView.js";
 
 const sep = { sep: true };
 const head = (text) => ({ head: text });
@@ -56,6 +57,15 @@ function syncItem(sync, call) {
         title: act ? "Envia o que mudou aqui e traz o que mudou nos outros computadores" : sync?.signing ? "Termine a entrada no navegador" : "Este computador não sincroniza · veja em Sincronização",
         onSelect: call("syncNow"),
     };
+}
+
+// Ferramentas › Conexões › GERAR (owner 2026-11-18): opens Configurações ›
+// Conexões; a red dot while the GERAR needs you (D4 = A, gerarMenuItem).
+// None on a KERYX not prepared for the GERAR.
+function gerarItem(gerar, call) {
+    const item = gerarMenuItem(gerar);
+    if (!item) return null;
+    return { label: "GERAR", icon: "link", ...item, onSelect: call("settings", "conexoes") };
 }
 
 export function buildMenus(ctx) {
@@ -152,6 +162,7 @@ export function buildMenus(ctx) {
         // between the church's computers. Never Ajuda (learning, support).
         sep,
         head("Conexões"),
+        ...[gerarItem(ctx.gerar, call)].filter(Boolean),
         { label: "KERYX no celular", icon: "tablet", title: "O Controle e a Equipe pelo celular: conectar um aparelho, os códigos · Configurações › Telas na rede", onSelect: call("settings", "rede") },
         syncItem(ctx.sync, call),
         { label: "Sincronização", icon: "cloud", title: "Configurações › Sincronização", onSelect: call("settings", "sincronizacao") },
