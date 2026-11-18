@@ -2572,8 +2572,32 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `KERYX_GERAR_URL`/`KERYX_GERAR_ANON_KEY` until written there; without them
   the page says "não preparado"). The words are `src/lib/console/gerarView.js`
   (tested); the preview fakes the states (`previewGerar.js`, localStorage
-  `keryx.preview.gerar`). The requests, the chat and the way back are the
-  next waves (D2/D3/D6/D7 = A in the mockup).
+  `keryx.preview.gerar`). **What the GERAR sends** (wave 2,
+  `electron/gerarInbox.cjs`, tested against a fake GERAR): while connected
+  and Receber is on, a catch-up (and every 60 s) then the GERAR's Realtime
+  (`@supabase/supabase-js` in main ONLY, as transport: `accessToken` is
+  gerarLink's token, never its auth). A request is LOCKED first (an insert in
+  `keryx_request_links` with this device's id; 23505 = another computer took
+  it, not tried again), handed to the console (`keryx:gerar:import` →
+  `useGerarImport`, console only: the culto on screen, `ensureService`), then
+  the link gets the row's id and a "new" request becomes "in_review"
+  (40001: read the version, once more); with the console closed nothing is
+  locked; a lock without its row is finished on the next catch-up. The rows
+  are ServiceMessage with `source: "gerar"`, `external_id` (the GERAR id: the
+  store makes every id, so a row is found by it), `gerar_event`,
+  `gerar_category`, `gerar_status` (`src/lib/console/gerarImport.js`, tested;
+  the GERAR cuts nothing, neither does the import: 120/180/2000 chars; only a
+  YouTube link is a link, any other stays text). The chat has no lock: a
+  message two computers both brought shows once (`oneGerarCopy` in
+  `messagesInOrder`) and Excluir takes its copy too; the chat's cursor is
+  `gerar.msgCursor`. A GERAR change of a request this computer has updates
+  its state (`gerarStatusPatch`: completed = atendido; never undoes the
+  operator's atendido). The cards (D2/D3/D6 = A, PedidosTab/ChatTab): the
+  "GERAR" badge, the GERAR's culto on line 2, cancelled/declined there
+  dimmed with only Excluir, a request that is not music "Fulano pede: …"
+  with its category's glyph (mic, lightbulb, radio…) and no Prévia, Setlist
+  or Procurar a letra. The way back (Atendido/Desfazer/Excluir → the GERAR,
+  the operator's chat reply, D7) and the attached files are the next waves.
 - **YouTube links** (owner 2026-10-27, mockup "YouTube · checar o link e
   baixar para a Mídia", Y1–Y5): "Este vídeo não está disponível" on the
   projector is the VIDEO refusing embeds (its owner, or gone), never the

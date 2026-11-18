@@ -105,6 +105,17 @@ const gerarListeners = new Set();
 ipcRenderer.on("keryx:gerar", (_event, status) => {
     for (const listener of gerarListeners) listener(status);
 });
+// What the GERAR sends, for the console to write (gerarInbox.cjs); one
+// listener answers.
+let gerarImporter = null;
+ipcRenderer.on("keryx:gerar:import", async (_event, message) => {
+    if (!gerarImporter || !message) return;
+    let results = null;
+    try {
+        results = await gerarImporter(message.items || []);
+    } catch { /* answered as refused */ }
+    ipcRenderer.send("keryx:gerar:imported", { id: message.id, results });
+});
 ipcRenderer.on("keryx:sync:missing", (_event, names) => {
     for (const listener of syncMissingListeners) {
         try { listener(names); } catch (err) { console.error("[keryx] sync listener failed:", err); }
@@ -326,6 +337,11 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         onStatus(listener) {
             gerarListeners.add(listener);
             return () => gerarListeners.delete(listener);
+        },
+        // The console writes what the GERAR sends: listener(items) -> [{ key, id }].
+        onImport(listener) {
+            gerarImporter = listener;
+            return () => { if (gerarImporter === listener) gerarImporter = null; };
         },
     },
     sync: {

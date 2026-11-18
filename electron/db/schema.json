@@ -1716,6 +1716,21 @@
         },
         "sentAt": {
           "type": "text"
+        },
+        "source": {
+          "type": "text"
+        },
+        "external_id": {
+          "type": "text"
+        },
+        "gerar_event": {
+          "type": "json"
+        },
+        "gerar_category": {
+          "type": "text"
+        },
+        "gerar_status": {
+          "type": "text"
         }
       }
     },

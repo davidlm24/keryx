@@ -189,15 +189,18 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
         }
     }
 
-    // A PostgREST call as the device. A 401 with an expired JWT renews once.
-    async function rpc(name, args = {}, retried = false) {
+    // A PostgREST call as the device: `path` under /rest/v1/ (a table with
+    // its query, or rpc/<name>), `body` for POST/PATCH, `prefer` its Prefer
+    // header. A 401 with an expired JWT renews once. A refusal carries the
+    // Postgres code as `pg` (42501, 23505, 40001…).
+    async function rest(method, path, { body, prefer } = {}, retried = false) {
         const bearer = await token();
         let res;
         try {
-            res = await request(`${config.url}/rest/v1/rpc/${name}`, {
-                method: "POST",
-                headers: { apikey: config.anonKey, Authorization: `Bearer ${bearer}`, "Content-Type": "application/json" },
-                body: JSON.stringify(args),
+            res = await request(`${config.url}/rest/v1/${path}`, {
+                method,
+                headers: { apikey: config.anonKey, Authorization: `Bearer ${bearer}`, "Content-Type": "application/json", ...(prefer ? { Prefer: prefer } : {}) },
+                ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
             });
         } catch {
             throw fail("O GERAR não respondeu.", 503, "offline");
@@ -206,12 +209,13 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
         const code = String((res.body && res.body.code) || "");
         if (res.status === 401 && !retried && /PGRST30[13]|jwt/i.test(`${code} ${res.body && res.body.message}`)) {
             access = null;
-            return rpc(name, args, true);
+            return rest(method, path, { body, prefer }, true);
         }
         const err = fail((res.body && res.body.message) || "O GERAR recusou o pedido.", res.status, code || "http");
         err.pg = code;
         throw err;
     }
+    const rpc = (name, args = {}) => rest("POST", `rpc/${name}`, { body: args });
 
     // touch_keryx_device: the sign of life, and THE test of revocation.
     async function touch() {
@@ -317,7 +321,11 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
         ops,
         status,
         rpc,
+        rest,
         token,
+        // A refusal of the GERAR as precisa de você (gerarInbox: a 42501 on a
+        // read means this device was disconnected there).
+        refused: (reason = "revoked") => needs(reason),
         // At launch, and when the PC wakes or the network comes back.
         start() { stopped = false; return beat(); },
         resume() { tries = 0; return beat(); },

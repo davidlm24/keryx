@@ -972,6 +972,7 @@ const NOT_A_FILE = {
     "ServiceMessage.mediaId": "a Media row's id (a pedido of a video or an audio, Rodada Q S15); the Media row carries the file",
     "Media.video_codec": "the codec read from the video's bytes (src/lib/videoCodec.js)",
     "Media.video_chroma": "how the video's colour is sampled, read from its bytes (src/lib/videoCodec.js)",
+    "ServiceMessage.source": "where a row came from (\"\" or \"gerar\")",
 };
 // Fields of the entities kept on each computer that hold files: they stay
 // there on purpose (syncScope.cjs ON_EACH_COMPUTER).
