@@ -2568,9 +2568,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Conexões › GERAR (`dotKind: "danger"`, D4 = A), and NOTHING retried until a
   new code (no loop, across restarts too). Desconectar… only forgets here (the
   device cannot revoke itself). "Receber os pedidos" is on when connecting
-  (D5 = A). The GERAR's URL and anon key are public (`electron/gerarConfig.cjs`,
-  `KERYX_GERAR_URL`/`KERYX_GERAR_ANON_KEY` until written there; without them
-  the page says "não preparado"). The words are `src/lib/console/gerarView.js`
+  (D5 = A). The GERAR's URL and anon key are public and written in
+  `electron/gerarConfig.cjs` (copied from the GERAR's .env, owner 2026-11-18;
+  `KERYX_GERAR_URL`/`KERYX_GERAR_ANON_KEY` override them for a test GERAR; a
+  test fails if the key is not of role anon). The words are `src/lib/console/gerarView.js`
   (tested); the preview fakes the states (`previewGerar.js`, localStorage
   `keryx.preview.gerar`). **What the GERAR sends** (wave 2,
   `electron/gerarInbox.cjs`, tested against a fake GERAR): while connected
