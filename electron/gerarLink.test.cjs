@@ -88,8 +88,13 @@ test("the code is the GERAR's: 6 of its letters and digits, the dash optional", 
     assert.equal(tokenExpiry("not a jwt"), 0);
 });
 
-test("the config is public values only; without them the GERAR is off", () => {
-    assert.equal(gerarConfig({}).configured, false);
+test("the config is public values only: the GERAR's URL and a key of role anon, never the service role", () => {
+    const own = gerarConfig({});
+    assert.equal(own.configured, true, "the GERAR's public values are written in");
+    assert.match(own.url, /^https:\/\/[a-z0-9]+\.supabase\.co$/);
+    const role = JSON.parse(Buffer.from(own.anonKey.split(".")[1], "base64url").toString()).role;
+    assert.equal(role, "anon", "never a service_role key in the app");
+    assert.equal(gerarConfig({ KERYX_GERAR_URL: "https://x", KERYX_GERAR_ANON_KEY: "short" }).configured, false, "an override too short is off");
     const c = gerarConfig({ KERYX_GERAR_URL: "https://abc.supabase.co/", KERYX_GERAR_ANON_KEY: "eyJ-anon-key-publica-0123456789" });
     assert.equal(c.configured, true);
     assert.equal(c.url, "https://abc.supabase.co");
