@@ -31,6 +31,7 @@ const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const { createGerarLink } = require("./gerarLink.cjs");
 const { createGerarInbox, supabaseRealtime } = require("./gerarInbox.cjs");
 const { createGerarOutbox } = require("./gerarOutbox.cjs");
+const { createGerarFiles } = require("./gerarFiles.cjs");
 const { gerarConfig } = require("./gerarConfig.cjs");
 const { createGoogleAuth } = require("./googleAuth.cjs");
 const { installedVersions, installFromSource, SOURCES: BIBLE_SOURCES } = require("./bible.cjs");
@@ -933,9 +934,22 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send("keryx:gerar:import", { id, ...payload });
     });
     const gerarSettingsConfig = gerarConfig();
+    // The files attached to a request (gerarFiles.cjs): into the media folder
+    // by importMedia, then the console makes the Media row.
+    const gerarFiles = createGerarFiles({
+        link: gerar,
+        settings,
+        config: gerarSettingsConfig,
+        deliver: gerarDeliver,
+        importFile: ({ sourcePath, name }) => importMedia({ mediaDir, sourcePath, name }, { log: (m) => logger.warn(m) }),
+        tmpDir: path.join(dataDir, "gerar-anexos"),
+        fetchImpl: googleFetch,
+        log: (m) => logger.warn(m),
+    });
     gerarInbox = createGerarInbox({
         link: gerar,
         deliver: gerarDeliver,
+        files: gerarFiles,
         settings,
         realtime: gerarSettingsConfig.configured ? supabaseRealtime({ config: gerarSettingsConfig, link: gerar, createClient: require("@supabase/supabase-js").createClient }) : null,
         log: (m) => logger.warn(m),

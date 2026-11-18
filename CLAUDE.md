@@ -2610,7 +2610,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   keeps it, Desconectar drops it), goes in order when the connection is on
   (status: the version read just before, 40001 once more; unreachable =
   later; 42501 = precisa de você; any other refusal drops that entry,
-  logged), and Andamento counts it. The attached files are the next wave.
+  logged), and Andamento counts it. **The attached files** (wave 4,
+  `electron/gerarFiles.cjs`, tested): every request this computer brought
+  is queued in settings.json `gerar.files`; its `attachments` (owner_type
+  live_request, the private bucket service-attachments, read as the device
+  through its RLS at `/storage/v1/object/authenticated/…`) that the Mídia
+  takes (video, audio, picture, PDF; `gerarMediaType`) come down one at a
+  time to `<data>/gerar-anexos`, are copied in by `importMedia` (1 GB at
+  most) and handed to the console, which makes the Media row (`gerarMediaRow`:
+  the file's name, "Do GERAR · pedido de X · culto" in the description; a
+  video's codec read as on every import, so a HEVC one wears its mark) and
+  ties the first video or audio to the pedido (`mediaId`). The card says
+  "baixando…" / "arquivo não veio" (`ServiceMessage.gerar_file`); a download
+  cut short goes on at the next pass, never twice the same attachment.
 - **YouTube links** (owner 2026-10-27, mockup "YouTube · checar o link e
   baixar para a Mídia", Y1–Y5): "Este vídeo não está disponível" on the
   projector is the VIDEO refusing embeds (its owner, or gone), never the

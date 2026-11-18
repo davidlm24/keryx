@@ -75,7 +75,8 @@ export default function PedidosTab({ c, data, messages, onPrepare, onAddSong, on
                                 const media = ask ? null : mediaOfPedido(r, data.media || []);
                                 const song = media || ask ? null : songOfPedido(r, data.songs || []);
                                 const tag = pedidoMediaTag(media);
-                                const warn = pedidoMediaWarn(media);
+                                // A GERAR file still coming, or one that did not come (wave 4).
+                                const warn = pedidoMediaWarn(media) || (r.gerar_file === "downloading" ? "baixando…" : r.gerar_file === "failed" ? "arquivo não veio" : "");
                                 const by = pedidoBy(r);
                                 const what = r.song || "um louvor";
                                 const asker = String(r.sender || "").trim() || "Alguém";

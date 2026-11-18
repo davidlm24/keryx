@@ -1,7 +1,7 @@
 // node --test src/lib/console/gerarImport.test.mjs   (npm test)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gerarRequestRow, gerarMessageRow, gerarStatusPatch, gerarEvent, oneGerarCopy, GERAR_CATEGORY } from "./gerarImport.js";
+import { gerarRequestRow, gerarMessageRow, gerarStatusPatch, gerarEvent, oneGerarCopy, gerarMediaType, gerarMediaRow, GERAR_CATEGORY } from "./gerarImport.js";
 
 const EV = { id: "ev-1", title: "Culto de domingo", date: "2026-11-23" };
 const REQ = {
@@ -89,4 +89,15 @@ test("a GERAR row two computers both brought is shown once (the oldest)", () => 
         { id: "d", kind: "pedido", source: "gerar", external_id: "m1", sentAt: "3" },
     ];
     assert.deepEqual(oneGerarCopy(rows).map((r) => r.id), ["a", "c", "d"]);
+});
+
+test("a file attached in the GERAR: its Mídia type by name, and its row (wave 4)", () => {
+    assert.equal(gerarMediaType("Playback.MP3"), "audio");
+    assert.equal(gerarMediaType("clipe.mov"), "video");
+    assert.equal(gerarMediaType("foto.jpeg"), "image");
+    assert.equal(gerarMediaType("cifra.pdf"), "pdf");
+    assert.equal(gerarMediaType("letra.docx"), null, "the Mídia does not take it");
+    const row = gerarMediaRow({ name: "Bondade de Deus.mp3", fileUrl: "http://127.0.0.1:7700/media/u.mp3" }, { sender: "Ana", gerar_event: { title: "Culto de domingo" } });
+    assert.deepEqual(row, { title: "Bondade de Deus", type: "audio", file_url: "http://127.0.0.1:7700/media/u.mp3", duration: 0, description: "Do GERAR · pedido de Ana · Culto de domingo" });
+    assert.equal(gerarMediaRow({ name: "x.docx", fileUrl: "u" }), null);
 });

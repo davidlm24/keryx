@@ -189,3 +189,16 @@ test("Realtime: a message and a request come at once, a change updates the state
     assert.deepEqual(cons.got.find((i) => i.type === "request").request.events, EV, "the culto read when Realtime did not bring it");
     inbox.stop();
 });
+
+test("what this computer brought queues its files (wave 4)", async () => {
+    const g = fakeGerar({ requests: [req("r11")] });
+    const cons = fakeConsole();
+    const queued = [];
+    let ran = 0;
+    const files = { queue: (id) => queued.push(id), run: async () => { ran += 1; } };
+    const settings = memorySettings({ device: { id: "dev-1" }, linkedAt: "2026-11-23T18:00:00Z" });
+    const inbox = createGerarInbox({ link: g.link, deliver: cons.deliver, settings, files, log: () => {}, timers: manual() });
+    await inbox.pass();
+    assert.deepEqual(queued, ["r11"]);
+    assert.ok(ran >= 1);
+});

@@ -116,3 +116,31 @@ export function gerarStatusPatch(local, req) {
     if (local.gerar_status === "completed" && gs && gs !== "completed" && !GERAR_CLOSED.has(gs) && local.status === "done") patch.status = "open";
     return Object.keys(patch).length ? patch : null;
 }
+
+// The Media type of a file attached in the GERAR, by its name (the same list
+// electron/gerarFiles.cjs downloads); null = the Mídia does not take it.
+export function gerarMediaType(name) {
+    const n = String(name || "").toLowerCase();
+    if (/\.(mp4|mov|m4v|webm|mkv)$/.test(n)) return "video";
+    if (/\.(mp3|m4a|wav|ogg|aac|flac)$/.test(n)) return "audio";
+    if (/\.gif$/.test(n)) return "gif";
+    if (/\.(jpe?g|png|webp)$/.test(n)) return "image";
+    if (/\.pdf$/.test(n)) return "pdf";
+    return null;
+}
+
+// The Media row of a file the GERAR attached to a request: its name as the
+// title, where it came from in the description (the Mídia's search reads it).
+export function gerarMediaRow(file, pedido = null) {
+    const type = gerarMediaType(file?.name);
+    if (!type || !file?.fileUrl) return null;
+    const who = String(pedido?.sender || "").trim();
+    const culto = String(pedido?.gerar_event?.title || "").trim();
+    return {
+        title: String(file.name).replace(/\.[^.]+$/, "").slice(0, 180) || "Arquivo do GERAR",
+        type,
+        file_url: file.fileUrl,
+        duration: 0,
+        description: ["Do GERAR", who && `pedido de ${who}`, culto].filter(Boolean).join(" · "),
+    };
+}
