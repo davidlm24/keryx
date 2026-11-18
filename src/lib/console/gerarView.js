@@ -96,3 +96,15 @@ export function gerarSummary(st) {
     if (page === "offline") return `${where} · sem contato`;
     return `${where} · ${st.receive ? "recebe os pedidos aqui" : "não recebe aqui"}`;
 }
+
+// Andamento's second line: the library index in the GERAR (C8).
+export function gerarLibraryLine(st, now = Date.now()) {
+    if (!st?.device) return null;
+    if (!st.receive) return "Biblioteca no GERAR: publicada pelo computador que recebe os pedidos";
+    const lib = st.library;
+    if (!lib) return "Biblioteca no GERAR: ainda não publicada";
+    const n = Number(lib.count) || 0;
+    const items = n === 1 ? "1 item" : `${n} itens`;
+    const ago = agoWords(lib.at, now);
+    return `Biblioteca no GERAR: ${items}${ago ? ` · publicada ${ago}` : ""}`;
+}

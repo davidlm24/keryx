@@ -118,6 +118,8 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
             error: lastError || null,
             safe: Boolean(protect && protect.safe && protect.safe()),
             pending: c.device ? pendingOf() : 0,
+            // The library index published to the GERAR (gerarLibrary.cjs, C8).
+            library: c.device && c.library ? { count: Number(c.library.count) || 0, at: c.library.at || null } : null,
         };
     }
 

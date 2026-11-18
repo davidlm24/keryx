@@ -25,7 +25,7 @@ function fakeGerar({ requests = [], linked = [], messages = [], lock = () => nul
         token: async () => "token",
         async rest(method, path, opts = {}) {
             calls.push({ method, path, body: opts.body });
-            if (method === "GET" && path.startsWith("event_live_requests?select=id,")) return requests;
+            if (method === "GET" && path.startsWith("event_live_requests?select=*")) return requests;
             if (method === "GET" && path.startsWith("event_live_requests?select=status,version")) return fresh ? [fresh] : [];
             if (method === "GET" && path.startsWith("keryx_request_links?")) return linked;
             if (method === "GET" && path.startsWith("event_live_messages?")) return messages;
