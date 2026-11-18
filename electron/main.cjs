@@ -121,6 +121,7 @@ let sync = null;
 let gerar = null;
 let gerarInbox = null;
 let gerarOutbox = null;
+let gerarWasOn = false;
 let youtube = null;
 // The hidden window that plays every sound (electron/soundEngine.cjs).
 let soundEngine = null;
@@ -911,7 +912,11 @@ app.whenReady().then(async () => {
         onStatus: (status) => {
             broadcast("keryx:gerar", status);
             if (gerarInbox) gerarInbox.follow();
-            if (gerarOutbox && status.state === "on") gerarOutbox.flush().then(() => gerar.changed()).catch(() => {});
+            // What waits to go back goes when the connection COMES on (never on
+            // every status: flush -> changed -> status -> flush hung main, 18/11).
+            const on = status.state === "on";
+            if (gerarOutbox && on && !gerarWasOn) gerarOutbox.flush().then(() => gerar.changed()).catch(() => {});
+            gerarWasOn = on;
         },
     });
     // What the GERAR sends (electron/gerarInbox.cjs): handed to the console,

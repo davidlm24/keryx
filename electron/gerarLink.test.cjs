@@ -261,3 +261,20 @@ test("a new code keeps what waits to go back (the outbox); the count is in the s
     assert.equal(t.settings.data.gerar.outbox.length, 1);
     assert.equal(t.settings.data.gerar.device.id, "dev-2");
 });
+
+test("a listener that answers each status by asking for another never loops (the 18/11 hang)", async () => {
+    const settings = memorySettings();
+    const g = fakeGerar({ link: [LINKED()], touch_keryx_device: [{ status: 200, body: "2026-11-18T09:31:30Z" }] });
+    let told = 0;
+    let link = null;
+    // main.cjs's wiring of wave 3: every status asks the outbox to flush,
+    // and the flush ends by saying the status changed.
+    const onStatus = () => { told += 1; if (told < 100) Promise.resolve().then(() => link.changed()); };
+    link = createGerarLink({ settings, protect: protection(), config: CONFIG, fetchImpl: g.fetchImpl, timers: manualTimers(), notify: () => {}, dismiss: () => {}, log: () => {}, onStatus });
+    await link.ops.link({ code: "K7M-4QX" });
+    for (let i = 0; i < 50; i += 1) await Promise.resolve();
+    assert.ok(told <= 3, `told ${told} times: a status nobody changed is not told again`);
+    link.ops.setReceive({ on: false });
+    for (let i = 0; i < 50; i += 1) await Promise.resolve();
+    assert.ok(told <= 4, "a real change is told once");
+});
