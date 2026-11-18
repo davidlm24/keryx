@@ -86,7 +86,18 @@ function createGerarLink({ settings, protect, config, fetchImpl = globalThis.fet
     // How many answers wait to go back (gerarOutbox.cjs), for Andamento.
     let pendingOf = () => 0;
 
-    const told = () => { if (onStatus) try { onStatus(status()); } catch { /* the page asks again */ } };
+    // Only a status that really changed is told: a listener that answers a
+    // status by asking for another (main's flush -> changed) must never loop
+    // (it hung the main process on 18/11, right after connecting).
+    let lastTold = "";
+    const told = () => {
+        if (!onStatus) return;
+        const s = status();
+        const key = JSON.stringify(s);
+        if (key === lastTold) return;
+        lastTold = key;
+        try { onStatus(s); } catch { /* the page asks again */ }
+    };
     const setState = (next, error = "") => {
         const changed = next !== state || error !== lastError;
         state = next;
