@@ -1369,7 +1369,10 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(200);
         await dblclick(".kx-row", "BBB aviso fundo");
         const noticeOnAir = await waitFor(() => Boolean(live.get().communication), 5000);
-        const noticeLost = !noticeOnAir && !BrowserWindow.getFocusedWindow();
+        // BrowserWindow.getFocusedWindow() can be another KERYX output; only
+        // the console itself receiving focus proves the injected double click
+        // could reach it.
+        const noticeLost = !noticeOnAir && (!operatorWin?.isFocused() || !BrowserWindow.getFocusedWindow());
         result.noticeOnAir = noticeOnAir; // what a failure was: never on air, or on air without the look
         result.noticePrefStamped = noticeLost ? verdict("noticePrefStamped", "outro programa na frente") : noticeOnAir && await waitFor(() => { const it = live.get().communication && live.get().communication.item; return Boolean(it && it.background_dim === 0.7 && it.background_blur === 6); }, 5000);
         result.noticePrefDrawn = noticeLost ? verdict("noticePrefDrawn", "outro programa na frente") : Boolean(main) && noticeOnAir && await waitFor(() => main.webContents.executeJavaScript("(() => { const d = document.querySelector('.ks-bg-dim'); const i = document.querySelector('.ks-bg-img'); return Boolean(d && i && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(i).filter.startsWith('blur(')); })()").catch(() => false), 3000);
@@ -3320,14 +3323,22 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         if (webContents) {
             const consoleText = () => bodyText(webContents);
             await sleep(5500); // one outputs poll with the stage tablet connected
+            // Named network screens use their saved name; an unnamed modern
+            // screen (one with a screenId) is deliberately identified by its
+            // address instead of the page's old "Palco" label.
+            const stageClient = network.info().clients.find((client) => client.screen === "/StageView");
+            const stageName = stageClient?.screenId
+                ? stageClient.name || `Tela na rede · ${stageClient.ip}`
+                : stageClient?.label || "Palco";
+            const dropped = `${stageName} desconectada`;
             stage.close();
             // A screen is judged gone only 10 s after the first poll that
             // missed it (DROP_GRACE_MS: its stream's retry is no drop), so
             // up to one 5 s poll + 10 s + a poll's slack.
             const end = Date.now() + 24000;
-            while (Date.now() < end && !(await consoleText()).includes("Palco desconectada")) await sleep(300);
+            while (Date.now() < end && !(await consoleText()).includes(dropped)) await sleep(300);
             const text = await consoleText();
-            result.dropBanner = text.includes("Palco desconectada");
+            result.dropBanner = text.includes(dropped);
             // The status button shows the compact "1 com problema" (Rodada E1);
             // its title carries the whole label, so read the title too.
             result.dropLabel = await webContents.executeJavaScript("(() => { const b = document.querySelector('.kx-status'); const t = document.querySelector('.topbar'); return { title: b ? b.title : null, shown: b ? b.innerText : null, bar: t ? Math.round(t.getBoundingClientRect().width) : null, hidden: document.hidden }; })()").catch(() => null);

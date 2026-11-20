@@ -74,7 +74,7 @@ test("a refusal is kept, marked and never tried again; the e-mail takes it", asy
 });
 
 test("a pass stops at the first offline report, and never runs twice at once", async () => {
-    const { q, calls } = rig(["offline"]);
+    const { q, calls } = rig(["offline"], { now: () => Date.parse("2026-10-20T12:00:00.000Z") });
     q.add(report(ID, { writtenAt: "2026-10-20T10:00:00.000Z" }));
     q.add(report(ID2, { writtenAt: "2026-10-20T11:00:00.000Z" }));
     const a = q.flush();
