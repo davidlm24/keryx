@@ -3,7 +3,7 @@
 // GERAR faked: the two RPCs of the device record what they get.
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createGerarLibrary, libraryItem, libraryIndex, PAGE } = require("./gerarLibrary.cjs");
+const { createGerarLibrary, libraryItem, libraryIndex, PAGE, RETRY_MS } = require("./gerarLibrary.cjs");
 
 const media = (id, extra = {}) => ({ id, title: `Item ${id}`, type: "video", file_url: `keryx-media://${id}.mp4`, duration: 241.6, category: "Louvor", updated_date: "2026-11-18T10:00:00Z", description: "segredo da igreja", ...extra });
 
@@ -19,9 +19,9 @@ function setup({ rows = [], on = true, receive = true, rpc = () => ({}) } = {}) 
         changed: () => { state.changed += 1; },
     };
     const store = { call: (entity, op) => { assert.equal(entity, "Media"); assert.equal(op, "list"); return rows; } };
-    let fire = null;
-    const lib = createGerarLibrary({ link, store, settings, log: () => {}, timers: { setTimeout: (fn) => { fire = fn; return 1; }, clearTimeout: () => {} }, now: () => Date.parse("2026-11-18T12:00:00Z") });
-    return { lib, data, calls, state, fire: () => fire && fire() };
+    const timers = [];
+    const lib = createGerarLibrary({ link, store, settings, log: () => {}, timers: { setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimeout: () => {} }, now: () => Date.parse("2026-11-18T12:00:00Z") });
+    return { lib, data, calls, state, fire: () => timers.shift()?.fn(), timers };
 }
 
 test("only videos, audios and YouTube links go, as text; never a background, a font, a picture or a description", () => {
@@ -29,6 +29,7 @@ test("only videos, audios and YouTube links go, as text; never a background, a f
     assert.equal(libraryItem(media("y", { file_url: "https://youtu.be/dQw4w9WgXcQ", duration: 0 })).kind, "youtube");
     assert.equal(libraryItem(media("y", { duration: 0 })).duration_seconds, null);
     assert.equal(libraryItem(media("s", { type: "audio", file_url: "keryx-media://s.mp3", category: "worship" })).category, "Louvor", "an old key reads as the church's name");
+    assert.equal(libraryItem(media("x", { category: "Testemunho" })), null, "only Louvor is shared");
     assert.equal(libraryItem(media("b", { category: "background" })), null);
     assert.equal(libraryItem(media("f", { type: "font", category: "font" })), null);
     assert.equal(libraryItem(media("i", { type: "image" })), null);
@@ -79,4 +80,17 @@ test("42501: precisa de você; no internet: nothing kept as published, the next 
     assert.equal(await u.lib.publish(), false);
     assert.equal(u.data.gerar.library, undefined);
     assert.equal(await u.lib.publish(), true);
+});
+
+test("the missing C8 RPC retries after five minutes without a Mídia change", async () => {
+    let missing = true;
+    const t = setup({ rows: [media("a")], rpc: () => (missing ? Object.assign(new Error("missing"), { pg: "PGRST202", status: 404 }) : {}) });
+    assert.equal(await t.lib.publish(), false);
+    assert.equal(t.timers.length, 1);
+    assert.equal(t.timers[0].ms, RETRY_MS);
+    missing = false;
+    t.fire();
+    await new Promise((r) => setImmediate(r));
+    assert.deepEqual(t.calls.map((c) => c.name), ["upsert_keryx_library", "upsert_keryx_library", "prune_keryx_library"]);
+    assert.equal(t.data.gerar.library.count, 1);
 });

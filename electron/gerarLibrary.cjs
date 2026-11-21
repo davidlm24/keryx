@@ -20,6 +20,7 @@ const crypto = require("node:crypto");
 const KEY = "gerar";
 const PAGE = 500;
 const WAIT_MS = 30 * 1000;
+const RETRY_MS = 5 * 60 * 1000;
 // The Mídia's old category keys, read as the church's names (mediaCategories.js).
 const OLD_KEYS = { sermon: "Pregação", worship: "Louvor", announcement: "Avisos", testimony: "Testemunho", other: "Outros" };
 const NOT_MEDIA = new Set(["background", "font"]);
@@ -37,6 +38,9 @@ function libraryItem(m) {
     if (!title) return null;
     const d = Number(m.duration);
     const category = clean(OLD_KEYS[m.category] || m.category, 60);
+    // The GERAR independently enforces this rule, but keeping it here avoids
+    // sending categories that never belong to the shared worship index.
+    if (category.toLocaleLowerCase("pt-BR") !== "louvor") return null;
     return {
         media_id: String(m.id).slice(0, 160),
         title,
@@ -56,6 +60,7 @@ const signature = (items) => crypto.createHash("sha256").update(JSON.stringify(i
 
 function createGerarLibrary({ link, store, settings, log = console.warn, timers = { setTimeout, clearTimeout }, now = () => Date.now() }) {
     let timer = null;
+    let retryTimer = null;
     let running = null;
     let waitingSaid = false;
 
@@ -66,6 +71,14 @@ function createGerarLibrary({ link, store, settings, log = console.warn, timers 
     const wanted = () => {
         const s = link.status();
         return s.configured && s.state === "on" && Boolean(s.device) && s.receive;
+    };
+
+    const scheduleRetry = () => {
+        if (retryTimer) return;
+        retryTimer = timers.setTimeout(() => {
+            retryTimer = null;
+            publish();
+        }, RETRY_MS);
     };
 
     async function send() {
@@ -92,7 +105,14 @@ function createGerarLibrary({ link, store, settings, log = console.warn, timers 
             .catch((err) => {
                 if (err && err.pg === "42501") link.refused("revoked");
                 // The GERAR without C8 yet (no such function): said once.
-                else if (err && err.pg === "PGRST202") { if (!waitingSaid) log("[gerar] biblioteca: o GERAR ainda não tem o C8 (upsert_keryx_library)"); waitingSaid = true; }
+                else if (err && err.pg === "PGRST202") {
+                    if (!waitingSaid) log("[gerar] biblioteca: o GERAR ainda não tem o C8 (upsert_keryx_library)");
+                    waitingSaid = true;
+                    // A migration may arrive while the KERYX keeps the same
+                    // media signature. Retry without requiring the operator
+                    // to edit the library, reconnect, or restart the app.
+                    scheduleRetry();
+                }
                 else if (!(err && (err.code === "offline" || err.code === "needs"))) log(`[gerar] biblioteca: ${err && err.status ? err.status : ""} ${err && err.pg ? err.pg : ""} ${err && err.message}`);
                 return false;
             })
@@ -112,8 +132,13 @@ function createGerarLibrary({ link, store, settings, log = console.warn, timers 
             const c = cfg();
             if (c.library) { const { library, ...rest } = c; void library; settings.set(KEY, rest); }
         },
-        stop() { if (timer) timers.clearTimeout(timer); timer = null; },
+        stop() {
+            if (timer) timers.clearTimeout(timer);
+            if (retryTimer) timers.clearTimeout(retryTimer);
+            timer = null;
+            retryTimer = null;
+        },
     };
 }
 
-module.exports = { createGerarLibrary, libraryItem, libraryIndex, PAGE };
+module.exports = { createGerarLibrary, libraryItem, libraryIndex, PAGE, RETRY_MS };
