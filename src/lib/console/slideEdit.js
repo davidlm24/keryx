@@ -7,7 +7,7 @@
 // lines (spliceMarks). Pure; the console writes the patch (Song.update) and
 // runs songSaved. Console only.
 import { slidesFromLyrics, linesLimit, withTimings } from "../songImport.js";
-import { hasInlineChords } from "../chords.js";
+import { hasInlineChords, hasNotes } from "../chords.js";
 import { slideSpan } from "./lyricFit.js";
 import { startsFromLines, linesFromStarts, slideFirstLines, lineCount, fitMarks, spliceMarks } from "./lyricSync.js";
 
@@ -15,11 +15,11 @@ const unCR = (s) => String(s || "").replace(/\r\n?/g, "\n");
 const isMark = (v) => Number.isFinite(v);
 
 // The slides as the song keeps them (the song editor's save writes the same
-// shape): each with its chorded twin when the lyrics carry chords.
+// shape): each with its chorded twin when the lyrics carry chords or notes.
 export function slidesToSave(slides) {
     return (slides || []).map(({ text, chorded, duration, is_chorus, start, label }) => ({
         text,
-        ...(chorded && chorded !== text && hasInlineChords(chorded) ? { chorded } : {}),
+        ...(chorded && chorded !== text && (hasInlineChords(chorded) || hasNotes(chorded)) ? { chorded } : {}),
         ...(label ? { label } : {}),
         ...(is_chorus ? { is_chorus } : {}),
         ...(isMark(start) ? { start } : {}),

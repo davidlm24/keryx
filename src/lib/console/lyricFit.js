@@ -1,4 +1,4 @@
-import { stripLine } from "../chords.js";
+import { stripLine, stripNote } from "../chords.js";
 import { sizeCqw } from "../textSize.js";
 
 // Will a slide's lines fit across the screen? The lyrics sit in 84% of the
@@ -73,10 +73,11 @@ export function stanzaAt(text, at) {
 export function slideSpan(lyrics, slides, index) {
     const text = String(lyrics || "").replace(/\r/g, "");
     // Raw lines with offsets; a lyric line matches a slide row by its
-    // chord-stripped text, so chorded lyrics still map to stripped slides.
+    // chord- and note-stripped text, so chorded lyrics still map to stripped
+    // slides (a note alone on a row matches none: it is skipped).
     const lines = [];
     let off = 0;
-    for (const raw of text.split("\n")) { lines.push({ start: off, end: off + raw.replace(/\s+$/, "").length, bare: stripLine(raw).trim() }); off += raw.length + 1; }
+    for (const raw of text.split("\n")) { lines.push({ start: off, end: off + raw.replace(/\s+$/, "").length, bare: stripLine(stripNote(raw)).trim() }); off += raw.length + 1; }
     let li = 0;
     for (let j = 0; j <= index && j < (slides || []).length; j += 1) {
         const rows = String(slides[j]?.text || "").split("\n").map((l) => l.trim()).filter(Boolean);

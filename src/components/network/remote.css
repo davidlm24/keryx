@@ -443,6 +443,8 @@ button.rm-vrow:active { background: var(--bg-2); }
 .rm-lyrics.is-big .rm-part p { font-size: 28px; line-height: 1.3; }
 .rm-ch { color: var(--brand); font-size: 12px; font-weight: 600; white-space: pre; }
 .rm-lyrics.is-big .rm-ch { font-size: 15px; }
+/* A musicians' note ("// suave", owner 2026-11-26): italic, a step down. */
+.rm-note { font-style: italic; font-size: .85em; opacity: .75; }
 
 /* A video or an audio of the Mídia (Músicas, owner 2026-10-28, M6). */
 .rm-poster { flex: none; aspect-ratio: 16 / 9; display: grid; place-items: center; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-2); color: var(--fg-3); }

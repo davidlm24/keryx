@@ -4,7 +4,8 @@ import LiveVideo from "@/components/projection/LiveVideo";
 import VideoStill from "./VideoStill";
 import { useLiveNow } from "@/hooks/useLiveState";
 import AlertBar from "./AlertBar";
-import ChordedLines, { chordedOf, Transpose } from "@/components/network/ChordedLines";
+import ChordedLines, { twinFor, Transpose } from "@/components/network/ChordedLines";
+import { hasInlineChords } from "@/lib/chords";
 import { transposeChords, transposeChord } from "@/utils/chordTranspose";
 import { stageLines } from "@/lib/activity";
 import { typeLabel } from "@/lib/console/setlist";
@@ -139,16 +140,20 @@ function TextBody({ el, ctx, transpose }) {
 // introduction its name, and an Escola question's answer under it.
 function CurrentBody({ el, ctx, song, embed, transpose, setTranspose, cut = "" }) {
     const intro = Boolean(ctx.current?.intro);
-    const chorded = el.props.chords && !intro ? chordedOf(song, ctx.index, ctx.current.text) : null;
+    // The musicians' notes ("// suave") show unless the element says no (an
+    // old design never named them: the Letra atual is the musicians').
+    const chorded = !intro ? twinFor(song, ctx.index, ctx.current.text, { chords: el.props.chords, annotations: el.props.annotations !== false }) : null;
     const answer = intro ? [] : stageLines(ctx.current?.activity);
     const ref = useRef(null);
     // A song's line stays one line, as on the projection (a passage wraps).
-    const oneLine = !intro && !chorded && (ctx.content?.kind ?? "lyrics") === "lyrics";
+    // Chords ride over the syllables and may wrap; a twin with notes only keeps the rule.
+    const withChords = Boolean(chorded) && hasInlineChords(chorded);
+    const oneLine = !intro && !withChords && (ctx.content?.kind ?? "lyrics") === "lyrics";
     useBoxFit(ref, `${ctx.current.text || ""}:${ctx.index}:${intro}:${Boolean(chorded)}:${transpose}:${el.size}:${el.w}:${el.h}:${el.font}:${cut}:${ctx.scale}`, true, oneLine);
     return (
         <>
             <div className="kl-v" ref={ref}>{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (ctx.current.text || (ctx.current.label ? <span className="ns-part">{ctx.current.label}</span> : ""))}{answer.length > 0 && <span className="ns-answer">{answer.map((l) => <span key={l} className={l.startsWith("✓") || l.startsWith("Resposta") ? "is-right" : ""}>{l}</span>)}</span>}</div>
-            {chorded && !embed && <aside className="kl-trans ns-trans" aria-label="Transposição"><Transpose value={transpose} onChange={setTranspose} /></aside>}
+            {withChords && !embed && <aside className="kl-trans ns-trans" aria-label="Transposição"><Transpose value={transpose} onChange={setTranspose} /></aside>}
         </>
     );
 }
@@ -242,7 +247,7 @@ function Body({ el, ctx, logoUrl, embed, motion, transpose, setTranspose, screen
             // the element asks (the Pastor's Cifra / Nome da parte); its
             // video plays, muted, when it asks too (the Pastor's Vídeo,
             // owner 2026-11-15), only on the screen itself.
-            const live = ctx.live?.content && (el.props.chords || el.props.labels) ? { ...ctx.live, content: { ...ctx.live.content, show: { chords: Boolean(el.props.chords), labels: Boolean(el.props.labels) } } } : ctx.live;
+            const live = ctx.live?.content && (el.props.chords || el.props.labels || el.props.annotations) ? { ...ctx.live, content: { ...ctx.live.content, show: { chords: Boolean(el.props.chords), labels: Boolean(el.props.labels), annotations: Boolean(el.props.annotations) } } } : ctx.live;
             return <div className="kl-mon"><ScreenRenderer state={live} now={ctx.now} logoUrl={logoUrl} preview motion={Boolean(el.props.video) && !embed} audio={false} /></div>;
         }
         case "progress":

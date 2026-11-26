@@ -57,3 +57,16 @@ test("keyChords: the chords of the song's key, for the editor's chips", () => {
     assert.deepEqual(keyChords(""), []);
     assert.deepEqual(keyChords("Verso"), []);
 });
+
+test("notes: // marks a musicians' note, alone or after the line; :// is a link", async () => {
+    const { noteOf, stripNote, isNoteLine, hasNotes, stripChords, notesOnly, dropNotes } = await import("./chords.js");
+    assert.equal(noteOf("// suave"), "suave");
+    assert.equal(noteOf("Rompe [G]cadeias // 2x"), "2x");
+    assert.equal(stripNote("Rompe [G]cadeias // 2x"), "Rompe [G]cadeias");
+    assert.equal(isNoteLine("  // suave"), true);
+    assert.equal(isNoteLine("a // b"), false);
+    assert.equal(hasNotes("http://x.org\nhttps://y"), false);
+    assert.equal(stripChords("// suave\n[G]Tua presença // 2x\n[Refrão]"), "Tua presença\n[Refrão]");
+    assert.equal(notesOnly("// suave\n[G]Tua [D]presença // 2x\n[G] [D]"), "// suave\nTua presença // 2x");
+    assert.equal(dropNotes("// suave\n[G]Tua presença // 2x"), "[G]Tua presença");
+});

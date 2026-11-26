@@ -696,16 +696,21 @@ export function teamSetlistRows(state) {
 }
 
 // A song's lyrics on the phone (songText): the chords cut out of each line
-// and shown above it (Cifra), or left out. -> [{ name, lines: [{ chords, text }] }]
+// and shown above it (Cifra), or left out; a musicians' note ("// suave",
+// chords.js) apart, always shown (the Equipe is the musicians).
+// -> [{ name, lines: [{ chords, text, note }] }]
 const CHORD = /\[([^\]\n]{1,12})\]/g;
+const NOTE = /(^|[^:])\/\/(.*)$/;
 export function lyricParts(song, { chords = false } = {}) {
     return (song?.parts || []).map((p) => ({
         name: String(p.name || "").trim(),
-        lines: (p.lines || []).map((line) => {
-            const found = [...String(line).matchAll(CHORD)].map((m) => m[1]);
-            const text = String(line).replace(CHORD, "").replace(/\s{2,}/g, " ").trim();
-            return { chords: chords ? found.join("  ") : "", text };
-        }).filter((l) => l.text || l.chords),
+        lines: (p.lines || []).map((raw) => {
+            const m = NOTE.exec(String(raw));
+            const line = m ? String(raw).slice(0, m.index + m[1].length) : String(raw);
+            const found = [...line.matchAll(CHORD)].map((c) => c[1]);
+            const text = line.replace(CHORD, "").replace(/\s{2,}/g, " ").trim();
+            return { chords: chords ? found.join("  ") : "", text, note: m ? m[2].trim() : "" };
+        }).filter((l) => l.text || l.chords || l.note),
     })).filter((p) => p.lines.length);
 }
 export const hasChords = (song) => (song?.parts || []).some((p) => (p.lines || []).some((l) => /\[[^\]\n]{1,12}\]/.test(l)));

@@ -92,8 +92,8 @@ test("the Palco's and the Pastor's own switches: missing keys are the screen as 
     assert.deepEqual(stageOptions(normalizePref(null)), STAGE_DEFAULTS);
     assert.deepEqual(pastorOptions(normalizePref(null)), PASTOR_DEFAULTS);
     const p = normalizePref({ options: { chords: false, clock: "sim", next_count: 99 } });
-    assert.deepEqual(stageOptions(p), { chords: false, labels: true, clock: true, notes: true, next: true, video: true }, "a non-boolean counts as unset");
-    assert.deepEqual(pastorOptions(p), { chords: false, labels: false, clock: true, video: true, next_count: 5 }, "next_count clamps to 0..5");
+    assert.deepEqual(stageOptions(p), { chords: false, labels: true, annotations: true, clock: true, notes: true, next: true, video: true }, "a non-boolean counts as unset");
+    assert.deepEqual(pastorOptions(p), { chords: false, labels: false, annotations: false, clock: true, video: true, next_count: 5 }, "next_count clamps to 0..5");
     assert.equal(pastorOptions(normalizePref({ options: { next_count: 0 } })).next_count, 0, "0 is a choice (hide the list)");
     assert.deepEqual(normalizePref({ options: ["x"] }).options, {}, "an array is not options");
     assert.ok(!isDefaultPref(normalizePref({ options: { chords: false } })), "an option counts as an adjustment");
@@ -317,16 +317,19 @@ test("Restaurar padrão: the settings alone, the drawing aside", () => {
 
 test("chords and part names: each screen's own choice, on the Palco by default only", () => {
     const none = normalizePref(null);
-    assert.deepEqual(lyricsOptions("/StageView", none), { chords: true, labels: true });
-    for (const page of ["/Projection", "/LyricProjection", "/PastorView"]) assert.deepEqual(lyricsOptions(page, none), { chords: false, labels: false }, page);
+    assert.deepEqual(lyricsOptions("/StageView", none), { chords: true, labels: true, annotations: true });
+    for (const page of ["/Projection", "/LyricProjection", "/PastorView"]) assert.deepEqual(lyricsOptions(page, none), { chords: false, labels: false, annotations: false }, page);
     const on = normalizePref({ options: { chords: true, labels: true } });
-    assert.deepEqual(lyricsOptions("/Projection", on), { chords: true, labels: true });
-    assert.deepEqual(lyricsOptions("/StageView", normalizePref({ options: { labels: false } })), { chords: true, labels: false });
+    assert.deepEqual(lyricsOptions("/Projection", on), { chords: true, labels: true, annotations: false });
+    assert.deepEqual(lyricsOptions("/StageView", normalizePref({ options: { labels: false } })), { chords: true, labels: false, annotations: true });
     // prefState hands the choice to the renderer with the content.
     assert.equal(prefState("/Projection", live, none).content.show, undefined, "nothing added: the congregation sees only the lyrics");
-    assert.deepEqual(prefState("/Projection", live, on).content.show, { chords: true, labels: true });
+    assert.deepEqual(prefState("/Projection", live, on).content.show, { chords: true, labels: true, annotations: false });
     assert.equal(live.content.show, undefined, "the live state itself is untouched");
     assert.equal(prefState("/Projection", { ...live, content: null }, on).content, null);
+    // The musicians' notes (owner 2026-11-26): on in the Palco, off elsewhere; the Palco's design follows its switch.
+    assert.equal(pageDesign("/StageView", normalizePref({ options: { annotations: false } })).elements.find((e) => e.id === "palco_current").props.annotations, false);
+    assert.equal(pageDesign("/StageView", none).elements.find((e) => e.id === "palco_current").props.annotations, undefined, "the factory Palco shows them");
 });
 
 test("Aviso rápido: no choice is the bar as the Projeção always drew it (Rodada E3)", () => {

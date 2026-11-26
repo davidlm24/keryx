@@ -2241,6 +2241,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .wn-li::before { content: ""; position: absolute; left: 3px; top: 7px; width: 4px; height: 4px; border-radius: 2px; background: var(--fg-3); }
 .console .wn-li b, .console .wn-p b { color: var(--fg-1); font-weight: 600; }
 .console .wn-p { margin: 0; font-size: var(--fs-ui); line-height: 18px; color: var(--fg-2); }
+/* A picture of what changed (owner 2026-11-26): the mockup, the popup's width. */
+.console .wn-img { display: block; width: 100%; height: auto; margin: var(--space-1) 0; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line-soft); outline: 1px solid var(--line-soft); outline-offset: -1px; }
 /* The Prévia's badge: its caption mirrors the Programa's (green word while
    something is prepared, blue while the screens are locked). */
 .console .kx-prog-cap.is-prevcap .kx-live-cap { color: var(--prev-fg); }

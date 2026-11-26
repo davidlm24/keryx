@@ -537,7 +537,7 @@ function SongView({ song, back, onBack, onAsk }) {
                 {parts.map((p, i) => (
                     <section key={i} className="rm-part" aria-label={p.name || undefined}>
                         {p.name && <h3>{p.name}</h3>}
-                        {p.lines.map((l, k) => <p key={k}>{l.chords && <span className="rm-ch">{l.chords}</span>}{l.text}</p>)}
+                        {p.lines.map((l, k) => <p key={k}>{l.chords && <span className="rm-ch">{l.chords}</span>}{l.text}{l.note && <em className="rm-note">{l.text ? ` ${l.note}` : l.note}</em>}</p>)}
                     </section>
                 ))}
                 {text?.truncated && <p className="rm-hint">A letra continua no computador.</p>}

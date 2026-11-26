@@ -99,6 +99,10 @@ export default function ConteudoBlock({ ctx }) {
                             <Switch on={lyrics.labels} onChange={(on) => saveOpt("labels", on)} label={`Nome da parte em ${label}`} />
                             <span className="kx-meta">Verso, Refrão, Ponte… sobre a letra</span>
                         </FormRow>
+                        <FormRow k="Anotações">
+                            <Switch on={lyrics.annotations} onChange={(on) => saveOpt("annotations", on)} label={`Anotações em ${label}`} />
+                            <span className="kx-meta">o que vem depois de // na letra, em itálico</span>
+                        </FormRow>
                     </>}
                 </div>
             )}
@@ -123,6 +127,10 @@ export default function ConteudoBlock({ ctx }) {
                         <FormRow k="Nome da parte">
                             <Switch on={stage.labels} onChange={(on) => saveOpt("labels", on)} label="Nome da parte no Palco" />
                             <span className="kx-meta">Verso, Refrão, Ponte… no alto</span>
+                        </FormRow>
+                        <FormRow k="Anotações">
+                            <Switch on={stage.annotations} onChange={(on) => saveOpt("annotations", on)} label="Anotações no Palco" />
+                            <span className="kx-meta">o que vem depois de // na letra, em itálico sobre ela</span>
                         </FormRow>
                         <FormRow k="Relógio e tempo">
                             <Switch on={stage.clock} onChange={(on) => saveOpt("clock", on)} label="Relógio e tempo no Palco" />
@@ -155,6 +163,10 @@ export default function ConteudoBlock({ ctx }) {
                         <FormRow k="Nome da parte">
                             <Switch on={lyrics.labels} onChange={(on) => saveOpt("labels", on)} label="Nome da parte no Pastor" />
                             <span className="kx-meta">Verso, Refrão, Ponte… sobre a letra</span>
+                        </FormRow>
+                        <FormRow k="Anotações">
+                            <Switch on={lyrics.annotations} onChange={(on) => saveOpt("annotations", on)} label="Anotações no Pastor" />
+                            <span className="kx-meta">o que vem depois de // na letra, em itálico</span>
                         </FormRow>
                         <FormRow k="Vídeo">
                             <Switch on={pastor.video} onChange={(on) => saveOpt("video", on)} label="Vídeo no Pastor" />

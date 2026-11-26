@@ -42,16 +42,47 @@ export function hasInlineChords(text) {
 // One line with its inline chords removed; "[x2]" and section markers stay.
 export const stripLine = (line) => String(line ?? "").replace(INLINE_RE, (all, tok) => (isChordToken(tok) ? "" : all));
 
-// A whole text: inline chords out of every line; a line that was only
-// chords ("[G] [D]", "G  D  Em") disappears; markers and plain lines stay.
+// A note for the musicians (owner 2026-11-26): "// suave" alone on a line,
+// or after the line ("Rompe cadeias // 2x"), Holyrics' comment mark. Like a
+// chord it rides only in the chorded twin, so the Palco (and the Pastor, the
+// Equipe's Cifra) draw it in italics where it was written and the projector
+// never shows it. "://" (a link) is not one.
+const NOTE_MARK_RE = /(^|[^:])\/\/(.*)$/;
+export const hasNote = (line) => NOTE_MARK_RE.test(String(line ?? ""));
+export const noteOf = (line) => { const m = NOTE_MARK_RE.exec(String(line ?? "")); return m ? m[2].trim() : ""; };
+// The line without its note (its chords stay).
+export const stripNote = (line) => {
+    const s = String(line ?? "");
+    const m = NOTE_MARK_RE.exec(s);
+    return m ? s.slice(0, m.index + m[1].length).replace(/\s+$/, "") : s;
+};
+// A line that is only a note ("// suave").
+export const isNoteLine = (line) => hasNote(line) && !stripNote(line).trim();
+export const hasNotes = (text) => String(text ?? "").split("\n").some(hasNote);
+
+// A whole text: inline chords and notes out of every line; a line that was
+// only chords ("[G] [D]", "G  D  Em") or only a note disappears; markers and
+// plain lines stay. What the projector shows.
 export function stripChords(text) {
     return String(text ?? "").split("\n").filter((line) => {
         const t = line.trim();
         if (!t) return true;
+        if (isNoteLine(line)) return false;
         if (/^\[[^\][]+\]$/.test(t)) return !isChordToken(t.slice(1, -1)); // a marker stays, [G] goes
-        return !(hasInlineChords(line) && !stripLine(line).trim());
-    }).map(stripLine).join("\n");
+        return !(hasInlineChords(line) && !stripLine(stripNote(line)).trim());
+    }).map((line) => stripLine(stripNote(line))).join("\n");
 }
+
+// A chorded twin with its notes out (a screen whose Anotações is off).
+export const dropNotes = (twin) => String(twin ?? "").split("\n")
+    .filter((line) => !isNoteLine(line)).map(stripNote).join("\n");
+
+// A chorded twin with its chords out and its notes kept: a Palco whose Cifra
+// is off still shows the notes. A chords-only line goes.
+export const notesOnly = (twin) => String(twin ?? "").split("\n")
+    .filter((line) => isNoteLine(line) || !(hasInlineChords(line) && !stripLine(stripNote(line)).trim()))
+    .map((line) => (isNoteLine(line) ? line : `${stripLine(stripNote(line)).replace(/\s+$/, "")}${hasNote(line) ? ` // ${noteOf(line)}` : ""}`))
+    .join("\n");
 
 // "C" -> "D"; a slash chord transposes root AND bass ("G/B" +2 -> "A/C#").
 export function transposeChord(chord, semitones) {

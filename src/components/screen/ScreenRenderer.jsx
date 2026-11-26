@@ -15,7 +15,7 @@ import { usePrefs } from "@/hooks/useUser";
 import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
 import { refLine, refVersion } from "@/lib/bibleDisplay";
 import { fitScale, fitSearch, clampShift, LINE_MIN } from "@/lib/screenFit";
-import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
+import ChordedLines, { twinFor } from "@/components/network/ChordedLines";
 import ActivityView from "./ActivityView";
 import { useContentFit } from "@/hooks/useBoxFit";
 import { useExitGhost } from "@/hooks/useExitGhost";
@@ -427,7 +427,7 @@ function Content({ content, showTitle = true, still = false }) {
     const bible = content.kind === "bible";
     const lyrics = content.kind === "lyrics";
     const show = content.show || {};
-    const chorded = lyrics && show.chords ? chordedOf(content.stage, content.index, slide.text) : null;
+    const chorded = lyrics ? twinFor(content.stage, content.index, slide.text, { chords: show.chords, annotations: show.annotations }) : null;
     const reference = slide.ref || content.ref?.reference || content.title;
     const key = `${content.startedAt}:${content.index}`;
     // Two editions: each block says its sigla, so the reference drops it.

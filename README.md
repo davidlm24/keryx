@@ -96,7 +96,9 @@ npm run desktop:smoke
 #    (docs/release-notes/README.md). It becomes the release text, and KERYX
 #    shows it in the update popup and the bell. Check it fits (1 200
 #    characters as shown) BEFORE the build: the smoke runs no tests, and a
-#    published note is never rewritten (0.2.21 shipped cut off)
+#    published note is never rewritten (0.2.21 shipped cut off). Fold in the
+#    fragments the batch's PRs left in docs/release-notes/next/ (with their
+#    pictures, "![…](img/…)", shown only in Novidades) and delete them
 node --test electron/release-notes.test.cjs
 # 2. build from a clean copy with its own install (npm ci): electron-builder
 #    packs the main process's dependencies from ./node_modules, which a git

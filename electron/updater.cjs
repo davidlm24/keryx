@@ -18,7 +18,8 @@ const path = require("node:path");
 const NOTES_MAX = 1200;
 function notesText(raw) {
     if (Array.isArray(raw)) return notesText(raw.map((r) => (r && r.note) || "").join("\n\n"));
-    let s = String(raw || "");
+    // A note's pictures ("![…](img/…)") are for the Novidades popup only.
+    let s = String(raw || "").replace(/^[ \t]*!\[[^\]\n]*\]\([^)\n]*\)[ \t]*$/gm, "").replace(/<img\b[^>]*>/gi, "");
     if (/<[a-z][\s\S]*>/i.test(s)) {
         s = s
             .replace(/<li[^>]*>/gi, "\n• ")

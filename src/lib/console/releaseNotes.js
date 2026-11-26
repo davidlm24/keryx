@@ -38,13 +38,24 @@ export function inlineParts(text) {
     return out;
 }
 
+// A picture of what changed (owner 2026-11-26: a visual change ships with
+// its mockup): "![texto](img/anotacoes.png)" alone on a line, the file in
+// docs/release-notes/img/. -> { alt, src: its file name } or null.
+export function noteImage(line) {
+    const m = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(String(line || "").trim());
+    return m ? { alt: m[1].trim(), src: m[2].split("/").pop() } : null;
+}
+
 // The note's markdown, as the notes are written (## titles, - items, plain
-// paragraphs, **bold**) -> [{ type: "h" | "li" | "p", parts }].
+// paragraphs, **bold**, a picture alone on its line)
+// -> [{ type: "h" | "li" | "p", parts } | { type: "img", alt, src }].
 export function parseNotes(md) {
     const blocks = [];
     for (const raw of String(md || "").replace(/\r\n/g, "\n").split("\n")) {
         const line = raw.trim();
         if (!line) continue;
+        const img = noteImage(line);
+        if (img) { blocks.push({ type: "img", ...img }); continue; }
         const h = line.match(/^#{1,6}\s+(.*)$/);
         const li = line.match(/^[-*•]\s+(.*)$/);
         if (h) blocks.push({ type: "h", parts: inlineParts(h[1]) });
@@ -52,6 +63,13 @@ export function parseNotes(md) {
         else blocks.push({ type: "p", parts: inlineParts(line) });
     }
     return blocks;
+}
+
+// The notes' pictures keyed by file name, from the paths Vite gives.
+export function imagesByName(files) {
+    const out = {};
+    for (const [path, url] of Object.entries(files || {})) out[path.split("/").pop()] = url;
+    return out;
 }
 
 // The notes keyed by version, from the file paths Vite gives
