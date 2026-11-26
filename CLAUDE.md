@@ -2633,7 +2633,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and 30 s after the Mídia stops changing (`store.onChange`), in pages of 500
   (`upsert_keryx_library`) then the whole list of ids that stay
   (`prune_keryx_library`); an index the same as the last one is not sent
-  (`gerar.library.sig`); a GERAR without C8 yet (PGRST202) is said once. The
+  (`gerar.library.sig`). Only the category Louvor is sent. A GERAR without C8
+  yet (PGRST202) is said once and retried in five minutes, so installing C8
+  does not require a Mídia change. The
   GERAR reads it only by RPC, only for whoever may request in that culto. A
   request picked from it carries `keryx_media_id`: `gerarRequestRow` makes it
   the pedido's `mediaId` (kept only if this computer has that video or audio),
