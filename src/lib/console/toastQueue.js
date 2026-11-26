@@ -32,14 +32,31 @@ export const emptyToasts = { cur: null, queue: [] };
 // A new toast. A plain one over an action toast queues; anything else takes
 // the place (the newest action wins: Esc twice keeps the latest Desfazer),
 // and so does one marked `replace` (the answer to that action's question).
+// A Desfazer is never taken by anything but another Desfazer (audit
+// 2026-11-26, UX-005: a pedido arriving in the 8 s after Esc took the toast
+// and Ctrl+Z with it): an important one (a pedido, a chat message) waits
+// first in line, any other behind.
 export function pushToast(state, toast) {
     const s = state || emptyToasts;
     const t = { ...toast, ms: toast.ms ?? toastMs(toast.text, toast.action, toast.important) };
+    if (s.cur?.action?.undo && !t.action?.undo && !t.replace) {
+        return { cur: s.cur, queue: t.important ? [t, ...s.queue].slice(0, TOAST_QUEUE) : [...s.queue, t].slice(-TOAST_QUEUE) };
+    }
     // An important toast is kept like an action one: a plain toast never
     // swallows it (a plain one queues behind it).
     const keeps = s.cur?.action || s.cur?.important;
     if (keeps && !t.action && !t.important && !t.replace) return { cur: s.cur, queue: [...s.queue, t].slice(-TOAST_QUEUE) };
     return { cur: t, queue: s.queue };
+}
+
+// Something new went on air (FUNC-010): a Desfazer that would put back what
+// Esc took off (`action.air`) is over — Ctrl+Z then put the old item back
+// over the new one. It leaves the screen and the line.
+export function dropAirUndo(state) {
+    const s = state || emptyToasts;
+    const queue = s.queue.filter((t) => !t.action?.air);
+    if (s.cur?.action?.air) return nextToast({ cur: null, queue });
+    return queue.length === s.queue.length ? s : { cur: s.cur, queue };
 }
 
 // The one showing goes now, if it says `text` (the Setlist automática's

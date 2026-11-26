@@ -4,8 +4,8 @@ import { projection } from "@/lib/projection";
 import { useLiveState } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
-import { lastFromEnd, lastStays, airKey } from "@/lib/console/lastOnAir";
-import { emptyToasts, pushToast, nextToast, dropToast, waitsToBeSeen, replaysWave } from "@/lib/console/toastQueue";
+import { lastFromEnd, lastStays, airKey, airSlideStale } from "@/lib/console/lastOnAir";
+import { emptyToasts, pushToast, nextToast, dropToast, dropAirUndo, waitsToBeSeen, replaysWave } from "@/lib/console/toastQueue";
 import { lookDefaults, withLookDefaults } from "@/lib/console/lookDefaults";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
@@ -112,6 +112,8 @@ export function useToast() {
     const done = useCallback(() => setToasts(nextToast), []);
     // The toast showing goes now, if it is this one (a countdown overtaken).
     const unsay = useCallback((text) => setToasts((s) => dropToast(s, text)), []);
+    // Something new went on air: Esc's Desfazer is over (toastQueue.js).
+    const forgetAirUndo = useCallback(() => setToasts(dropAirUndo), []);
     const cur = toasts.cur;
     // The important toast's wave: how many times it started (Toast.jsx
     // restarts the rings on each), and whether its time waits to be seen.
@@ -156,7 +158,7 @@ export function useToast() {
     }, [done]);
     useEffect(() => () => clearTimeout(timer.current), []);
     const toastAction = useMemo(() => (cur?.action ? { ...cur.action, run: () => { done(); cur.action.run(); } } : null), [cur, done]);
-    return { toast: cur?.text || null, toastId: cur?.id ?? 0, toastImportant: Boolean(cur?.important), toastWave: wave, toastAction, say, unsay, holdToast };
+    return { toast: cur?.text || null, toastId: cur?.id ?? 0, toastImportant: Boolean(cur?.important), toastWave: wave, toastAction, say, unsay, holdToast, forgetAirUndo };
 }
 
 // The operations on what is on air that need nothing of the console's own
@@ -225,6 +227,20 @@ export function useConsole() {
     // lives as long as this window: a reopened KERYX starts empty).
     const [prev, setPrevState] = useState(readPrev);
     useEffect(() => { writePrev(prev); }, [prev]);
+    // The item a "slide no ar" took the Prévia from (audit 2026-11-26,
+    // UX-002): jumping to the chorus of the song on air (a click or double
+    // click in No ar, ↑/↓) lost the song prepared next. It comes back when
+    // that slide has done its job (sent, or the air moved on).
+    const behind = useRef(null);
+    const prevRef = useRef(prev);
+    prevRef.current = prev;
+    // Only over a "slide no ar": the send and the air's echo may both ask,
+    // and the second must not clear the item the first brought back.
+    const restoreBehind = useCallback((except = null) => {
+        const back = behind.current && behind.current.id !== except ? behind.current : null;
+        behind.current = null;
+        setPrevState((p) => (p?.airSlide ? back : p));
+    }, []);
     // Media files the sync between the church's computers has not brought
     // yet: an item that needs one is not sent (src/lib/pendingMedia.js).
     const pending = usePendingMedia();
@@ -247,7 +263,7 @@ export function useConsole() {
         return () => window.removeEventListener("storage", on);
     }, []);
     const { stamp, bgPrefs, fitFor } = useStamp(themeId);
-    const { toast, toastId, toastImportant, toastWave, toastAction, say, unsay, holdToast } = useToast();
+    const { toast, toastId, toastImportant, toastWave, toastAction, say, unsay, holdToast, forgetAirUndo } = useToast();
     const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen } = useLiveOps(live, say, bgPrefs);
 
     // Esc takes the song off the screens, not out of the Slides column
@@ -359,8 +375,19 @@ export function useConsole() {
         // A PowerPoint, or a PDF whose pages are being made (or could not
         // be): no toast, the Prévia says it over its screen and keeps saying
         // it until the pages are ready (presentationPreviewStatus; Rodada H).
+        // A slide of the air over a prepared item keeps that item behind it.
+        const was = prevRef.current;
+        if (stage?.airSlide) { if (was && !was.airSlide && !was.theme) behind.current = was; }
+        else behind.current = null;
         setPrevState(stage);
     }, [say, pending]);
+
+    // A "slide no ar" whose item left the air, or whose slide is on air now,
+    // goes, and the item behind it comes back (UX-001, UX-002).
+    const airContent = live?.content || null;
+    useEffect(() => {
+        if (airSlideStale(prev, airContent)) restoreBehind();
+    }, [prev, airContent?.startedAt, airContent?.index, Boolean(airContent), restoreBehind]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Desfazer of a text sent over a video's sound (send, videoSound.js):
     // the video back on the screens at the second it is, the text off.
@@ -372,15 +399,19 @@ export function useConsole() {
     }, [locked, liveOp, say]);
 
     // Send: the Prévia (or the stage given) goes to the screens. Resolves
-    // true when it went. keepPrev: a stage sent from elsewhere (the controle
-    // remoto) leaves the operator's Prévia alone, unless it is that very
-    // item. why: told why it did not go ({ status, code, message }) instead
-    // of the toast.
-    const send = useCallback(async (stage = prev, { keepPrev = false, why = null } = {}) => {
+    // true when it went. The Prévia goes only when it is what was sent (audit
+    // 2026-11-26, UX-023: a verse sent from the search, or anything sent from
+    // elsewhere — the controle remoto, the Setlist's footer, the Autoplay —,
+    // took away the song prepared next); a "slide no ar" sent gives it back to
+    // the item behind it. why: told why it did not go ({ status, code,
+    // message }) instead of the toast. (keepPrev, still passed by some
+    // senders, is now how every send behaves.)
+    const send = useCallback(async (stage = prev, { why = null } = {}) => {
         const refused = (b) => { if (why) why(b); else say(b.message); return false; };
         const block = sendBlock(stage, { locked, pending, progress: pagesProgressOf(stage?.args?.id) });
         if (block) return refused(block);
-        const clearsPrev = !keepPrev || prev?.id === stage.id;
+        const sendsPrev = stage === prev || (Boolean(prev) && prev.id === stage.id);
+        const clearPrev = () => { if (!sendsPrev) return; if (prev?.airSlide) restoreBehind(stage.id); else setPrevState(null); };
         // A theme's example (Camadas › Temas, nothing on air): sending it uses
         // the theme — its background on the Fundo (not past the padlock) —
         // never the example text.
@@ -388,7 +419,7 @@ export function useConsole() {
             const bg = themeBackgroundArgs(stage.theme);
             try { if (bg && !layerLocked(live, "background")) await callOp("background.set", bg); } catch { return false; }
             setThemeId(stage.theme.id);
-            if (clearsPrev) setPrevState(null);
+            clearPrev();
             say(themeName(stage.theme, "") ? `Tema ${themeName(stage.theme)} em uso.` : "Tema em uso.");
             return true;
         }
@@ -418,13 +449,14 @@ export function useConsole() {
             why?.({ status: err?.status || 409, code: err?.status === 423 ? "locked" : undefined, message: err?.message || "Não foi para o ar." });
             return false;
         }
-        if (clearsPrev) setPrevState(null);
+        clearPrev();
+        forgetAirUndo();
         if (sound) {
             const startedAt = shown?.content?.startedAt ?? null;
             say("O vídeo saiu das telas · o som continua.", { label: "Desfazer", undo: true, run: () => undoSound({ url: sound, startedAt }) });
         }
         return true;
-    }, [prev, locked, live, callOp, say, stamp, setThemeId, pending, undoSound]);
+    }, [prev, locked, live, callOp, say, stamp, setThemeId, pending, undoSound, forgetAirUndo, restoreBehind]);
 
     // Desfazer (the toast after Esc / Encerrar): what the screens showed goes
     // straight back, and the player's music at the second Esc stopped it
@@ -455,7 +487,7 @@ export function useConsole() {
         const message = ended ? END_SAY : by ? `${by}: ${what}` : what[0].toUpperCase() + what.slice(1);
         const endedAt = after?.updatedAt;
         const undo = undoEndOps(before, endedAt).length > 0;
-        if (undo) say(message, { label: "Desfazer", undo: true, run: () => undoEnd(before, endedAt) });
+        if (undo) say(message, { label: "Desfazer", undo: true, air: true, run: () => undoEnd(before, endedAt) });
         else say(message);
         // Whether Desfazer can put it back (the controle remoto says so).
         return undo;

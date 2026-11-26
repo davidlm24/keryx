@@ -3,7 +3,7 @@
 // 2026-10-27, mockup "YouTube · checar o link e baixar para a Mídia",
 // Y1–Y5). Pure; the work is electron/youtube.cjs.
 
-import { getYouTubeId } from "../utils/youtube.js";
+import { getYouTubeId, YT_UNREACHABLE } from "../utils/youtube.js";
 
 // A link from the phone or the console's Novo pedido: only YouTube (youtube.com, youtu.be), kept as the
 // one URL rebuilt from its id, never what was typed. -> the URL | null.
@@ -45,10 +45,13 @@ export function linkActions(check) {
 export const stateOfCheck = (check) => (["ok", "blocked", "missing"].includes(check?.state) ? check.state : undefined);
 
 // YouTube's player error numbers: 101/150 the owner blocks embedding, 100
-// gone or private; anything else is not the video's fault.
+// gone or private; YT_UNREACHABLE (utils/youtube.js) the player never loaded,
+// no internet: not the video's fault, never written on its row; anything else
+// is not the video's fault either.
 export function stateOfCode(code) {
     if (code === 101 || code === 150) return "blocked";
     if (code === 100) return "missing";
+    if (code === YT_UNREACHABLE) return "offline";
     return null;
 }
 
@@ -88,6 +91,7 @@ export function refusedWords(refused) {
     const name = refused?.title ? `“${refused.title}”` : "o vídeo";
     if (stateOfCode(refused?.code) === "missing") return `${name} não existe mais ou é privado no YouTube. As telas voltaram ao papel de parede.`;
     if (stateOfCode(refused?.code) === "blocked") return `O YouTube não deixou tocar ${name} fora do site. As telas voltaram ao papel de parede.`;
+    if (stateOfCode(refused?.code) === "offline") return `O YouTube não carregou ${name}: sem internet. As telas voltaram ao papel de parede. Com a internet de volta, envie de novo, ou baixe para a Mídia e toque sem ela.`;
     return `O YouTube não tocou ${name} (erro ${refused?.code || "?"}). As telas voltaram ao papel de parede.`;
 }
 

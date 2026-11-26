@@ -109,12 +109,13 @@ import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presets
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import Toast from "@/components/console/Toast";
 import { useDialogFocus, useWinPageFocus } from "@/components/console/useDialogFocus";
-import { liveAction, quickJumpKey, escapeTarget, keyHint } from "@/lib/console/keys";
+import { liveAction, quickJumpKey, escapeTarget, escEndsAir, keyHint } from "@/lib/console/keys";
 import { selections } from "@/lib/console/selectionStore";
 import { wheelZoomStep } from "@/lib/wheelZoom";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromVerses, stageFromSong, stageFromMedia, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { slideOnAirAfterEdit } from "@/lib/console/slideEdit";
 import { presentationBlock } from "@/lib/presentation";
 import { plan, playableItems, neighbours, itemOnAir, noticeItem } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
@@ -595,7 +596,10 @@ export default function Console() {
         const s = stageFromSong(row, on.ref, data.themes);
         // Its Fim too (owner 2026-11-12): marked, moved or taken off while the
         // song is on air, the watcher (songEnd.js) follows at once.
-        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage, follow: s.args.follow ?? null, ends: s.args.ends ?? null }); } catch { /* callOp said why */ }
+        // The slide on screen stays the same words, wherever the edit moved
+        // them (FUNC-001); in the introduction nothing moves.
+        const index = on.intro ? undefined : slideOnAirAfterEdit(on.slides, on.index, s.args.slides);
+        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage, follow: s.args.follow ?? null, ends: s.args.ends ?? null, ...(index !== undefined ? { index } : {}) }); } catch { /* callOp said why */ }
     }, [c, data.themes]);
 
     const prepareItem = useCallback(async (item, index) => {
@@ -889,6 +893,14 @@ export default function Console() {
     // The church's "Teclas de uma letra" (B, L, C, / and ?: ligadas, com
     // Shift or desligadas; keys.js LETTER_KEYS).
     const letters = prefs.letter_keys;
+    // What is open, as the key handler must see it at once (audit 2026-11-26,
+    // UX-022): the handler below is the one of the last render, so after "/"
+    // the keys typed before the search's render still saw nothing open and
+    // B, L or C reached the screens. "/" writes it here before React does.
+    const openRef = useRef(open);
+    openRef.current = open;
+    // When Esc last only left a text field (UX-004, escEndsAir).
+    const leftFieldAt = useRef(null);
     // Keys (src/lib/console/keys.js). A mouse click never leaves focus on a
     // control (see onMouseClick), so after clicking a song Enter sends it, as
     // in Holyrics; a control focused with Tab keeps its own Enter/Space.
@@ -898,20 +910,21 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && quick === null && !winOpen) {
+            const isOpen = openRef.current;
+            if (env === "biblia" && !isOpen && quick === null && !winOpen) {
                 const ch = quickJumpKey(e, letters);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
             const action = liveAction(e, letters);
             if (!action) return;
-            if (action === "blur") { e.target.blur?.(); return; }
+            if (action === "blur") { if (e.key === "Escape") leftFieldAt.current = performance.now(); e.target.blur?.(); return; }
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
                 // "window": Esc goes to the TOP page's registered request
                 // (nav.js), which pops one level — "← Voltar" — or, at the
                 // first, closes; an unsaved guard may ask instead.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq || pkg.open || bibleAsk, library: libReq, popover: open, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, selection: selections.any(), edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || importReq || pkg.open || bibleAsk, library: libReq, popover: isOpen, window: winOpen, countdown: autoplay.pending?.kind === "count", drawer, selection: selections.any(), edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
@@ -926,9 +939,15 @@ export default function Console() {
                     return;
                 }
             }
-            // With a menu open only Tela preta and Logo reach the screens.
-            if (ctxMenu && !["black", "logo"].includes(action)) return;
-            if (open) return;
+            // With a menu or a popover open only Tela preta and Logo reach the
+            // screens (audit 2026-11-26, UX-003: with Saídas, the bell or
+            // Voltar ao anterior open they did nothing; Encerrar's own text
+            // says to press B). A popover with a field keeps its letters: a
+            // field is typing (liveAction). The search is all typing from the
+            // moment "/" opens it, before its field is there (UX-022: "/b…"
+            // typed fast put the Tela preta on).
+            if (isOpen === "palette") return;
+            if ((ctxMenu || isOpen) && !["black", "logo"].includes(action)) return;
             // The library is a window over everything: only the emergency keys pass.
             if ((libReq || confirmReq || reporting || importReq || pkg.open || bibleAsk) && !["black", "logo"].includes(action)) return;
             // Behind the window only the emergency keys (Tela preta, Logo)
@@ -957,9 +976,11 @@ export default function Console() {
             }
             else if (action === "end") {
                 e.preventDefault();
+                // Right after an Esc that only left a field: nothing ends (UX-004).
+                if (!escEndsAir(leftFieldAt.current, performance.now())) return;
                 c.end(); // nothing open (escapeTarget above); its toast offers Desfazer
             }
-            else if (action === "search") { e.preventDefault(); setOpen("palette"); }
+            else if (action === "search") { e.preventDefault(); openRef.current = "palette"; setOpen("palette"); }
             else if (action === "help") setOpen("atalhos");
             else if (action === "play") {
                 // Space: the player's Tocar/Pausar, for the layer it shows.

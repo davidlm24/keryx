@@ -26,10 +26,10 @@ export function useYouTubeRefused({ c, media, askText }) {
         seen.current = refused.at;
         const state = stateOfCode(refused.code);
         const row = (mediaRef.current || []).find((m) => m.file_url === refused.url) || null;
-        markYouTubeState(row, state);
+        if (state !== "offline") markYouTubeState(row, state);
         const download = async () => {
             try {
-                const target = row || await mediaFromYouTube(refused.url, { title: refused.title || "Vídeo do YouTube", state });
+                const target = row || await mediaFromYouTube(refused.url, { title: refused.title || "Vídeo do YouTube", state: state === "offline" ? undefined : state });
                 await downloadToMedia(target, { askText, say: c.say });
             } catch (err) { c.say(err?.message || "Não foi possível baixar."); }
         };

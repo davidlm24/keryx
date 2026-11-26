@@ -86,6 +86,38 @@ export function editSlide(song, index, text) {
     return { patch: { lyrics: newLyrics, slides: slidesToSave(slides), line_starts: marked ? fitMarks(lineStarts, lineCount(base)) : [] } };
 }
 
+// The song on air saved again (the editor, "Editar este slide…", audit
+// 2026-11-26 FUNC-001): which of the new slides is the one on screen. The
+// live state kept the slide's NUMBER, so splitting slide 1 of a song on
+// slide 3 put slide 2's old words on the projector. The same text first (a
+// repeated chorus: the same copy, the third stays the third), else the slide
+// holding its first line, else the old number. -> index
+const firstLine = (t) => String(t || "").split("\n").map((l) => l.trim()).find(Boolean) || "";
+export function slideOnAirAfterEdit(oldSlides, oldIndex, newSlides) {
+    const at = Number.isInteger(oldIndex) ? oldIndex : 0;
+    const old = oldSlides?.[at];
+    const list = newSlides || [];
+    if (!list.length) return 0;
+    const nearest = (ok) => {
+        let best = -1;
+        list.forEach((s, i) => { if (ok(s) && (best < 0 || Math.abs(i - at) < Math.abs(best - at))) best = i; });
+        return best;
+    };
+    if (old) {
+        const text = String(old.text || "").trim();
+        const isSame = (s) => String(s?.text || "").trim() === text;
+        if (text) {
+            const copy = oldSlides.slice(0, at + 1).filter(isSame).length;
+            const copies = list.map((s, i) => (isSame(s) ? i : -1)).filter((i) => i >= 0);
+            if (copies.length) return copies[Math.min(copy, copies.length) - 1];
+        }
+        const line = firstLine(old.text);
+        const holds = line ? nearest((s) => String(s.text || "").split("\n").some((l) => l.trim() === line)) : -1;
+        if (holds >= 0) return holds;
+    }
+    return Math.min(Math.max(0, at), list.length - 1);
+}
+
 // The words for a refusal, for the box.
 export const REFUSED_WORDS = {
     mismatch: "Não consigo achar este trecho na letra. Edite no editor completo.",

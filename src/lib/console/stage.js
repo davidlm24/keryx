@@ -166,9 +166,14 @@ export function stageFromHistory(entry, restoreArgs) {
 
 // Another slide of what is on air, prepared in the Prévia: sending it only
 // moves the live slide (content.goTo), so the song is not restarted.
+// `airAt`: the startedAt of the item it belongs to. Once something else is on
+// air it is stale: Enter would have moved the NEW song to that slide number
+// (audit 2026-11-26, UX-001), so the console drops it (airSlideStale in
+// lastOnAir.js).
 export function stageAirSlide(content, index, id) {
-    return { kind: content.kind, id, title: content.title, meta: "Slide no ar", slides: content.slides, index, op: "content.goTo", args: {}, airSlide: true };
+    return { kind: content.kind, id, title: content.title, meta: "Slide no ar", slides: content.slides, index, op: "content.goTo", args: {}, airSlide: true, airAt: content.startedAt ?? null };
 }
+
 
 // The operation that puts a stage on air, starting at its chosen slide.
 export function stageOp(stage) {
