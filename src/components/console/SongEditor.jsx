@@ -208,6 +208,21 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         const p = a + (chord ? token.length : 1);
         setTimeout(() => { if (el) { el.focus(); el.setSelectionRange(p, p); } }, 0);
     };
+    // Anotação (owner 2026-11-26): "// " on a row of its own above the
+    // cursor's row (on an empty row, that row), the cursor after it — a note
+    // for the musicians, only on the Palco.
+    const insertNote = () => {
+        const el = lyricsRef.current;
+        const text = song.lyrics || "";
+        const a = el ? el.selectionStart : text.length;
+        const start = text.lastIndexOf("\n", a - 1) + 1;
+        const endAt = text.indexOf("\n", start);
+        const row = text.slice(start, endAt < 0 ? text.length : endAt);
+        const empty = !row.trim();
+        setLyrics(empty ? text.slice(0, start) + "// " + text.slice(start + row.length) : `${text.slice(0, start)}// \n${text.slice(start)}`);
+        const p = start + 3;
+        setTimeout(() => { if (el) { el.focus(); el.setSelectionRange(p, p); } }, 0);
+    };
     // Tom − / +: the whole song a semitone down or up (the chords in the
     // lyrics, the old chords block and the key).
     const transpose = (steps) => {
@@ -574,6 +589,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     </div>
                     <div className="ed-tools ed-chords">
                         <Btn small onClick={() => insertChord()} title="Põe [ ] no cursor: escreva o acorde dentro, antes da sílaba em que ele entra">Acorde</Btn>
+                        <Btn small onClick={insertNote} title="Põe // numa linha acima do cursor: uma anotação para os músicos (suave, 2x…), em itálico só no Palco">Anotação</Btn>
                         {keyChords(song.song_key).map((ch) => <Btn key={ch} small kind="outline" className="ed-chip" onClick={() => insertChord(ch)} title={`Põe [${ch}] no cursor`}>{ch}</Btn>)}
                         {!keyChords(song.song_key).length && <span className="kx-meta">Preencha o Tom para ter os acordes dele aqui.</span>}
                         <span style={{ flex: 1 }} />
@@ -585,7 +601,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small disabled={!cifraText.trim()} onClick={importCifra} title="Monta só a letra; a cifra fica separada, para pôr na letra depois">Só a letra</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifraInline} title="Os acordes entram na própria letra, entre colchetes, sobre as sílabas">Montar com cifra na letra</Btn></div>
                         </div>
                     )}
-                    <p className="kx-meta ed-help">[G] dentro da linha é acorde; [Refrão] sozinho na linha é o nome da parte. Cada tela mostra a cifra e o nome da parte se estiverem ligados nela (Configurações › Telas e saídas); o Palco já vem com os dois.</p>
+                    <p className="kx-meta ed-help">[G] dentro da linha é acorde; [Refrão] sozinho na linha é o nome da parte; // suave é uma anotação para os músicos (em itálico, nunca na projeção). Cada tela mostra a cifra, o nome da parte e as anotações se estiverem ligados nela (Configurações › Telas e saídas); o Palco já vem com os três.</p>
                     <div className="ed-lyrics"><textarea ref={lyricsRef} className="ed-text" value={song.lyrics || ""} onChange={(e) => setLyrics(e.target.value)} aria-label="Letra" placeholder={"[Verso 1]\nPrimeira linha\nsegunda linha\n\n[Refrão]\n…"} spellCheck={false} /></div>
                 </Panel>
             </div>

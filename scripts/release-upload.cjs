@@ -85,7 +85,9 @@ async function main() {
     console.log(`  ✓ ${REPO} ainda não tem v${version}`);
     if (dryRun) { console.log(`--dry-run: criaria o rascunho v${version} e enviaria, um por vez: ${names.join(", ")}`); return; }
 
-    const release = await api("/releases", { method: "POST", body: JSON.stringify({ tag_name: `v${version}`, name: version, body: notes, draft: true }) });
+    // The note's pictures (img/…) live in the app, not on GitHub: out of the body.
+    const body = notes.replace(/^[ \t]*!\[[^\]\n]*\]\([^)\n]*\)[ \t]*\r?\n?/gm, "");
+    const release = await api("/releases", { method: "POST", body: JSON.stringify({ tag_name: `v${version}`, name: version, body, draft: true }) });
     console.log(`  ✓ rascunho v${version} criado`);
     const sent = [];
     for (const name of names) {

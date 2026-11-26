@@ -305,10 +305,12 @@ export function pageDesign(path, pref) {
     const base = findLayout("factory:palco");
     const opts = stageOptions(pref);
     const off = new Set(Object.keys(PALCO_PARTS).filter((k) => !opts[k]).flatMap((k) => PALCO_PARTS[k]));
-    if (!off.size) return base;
+    if (!off.size && opts.annotations) return base;
     return { ...base, elements: base.elements.map((e) => {
         let out = off.has(e.id) ? { ...e, hidden: true } : e;
         if (!opts.chords && e.id === "palco_current") out = { ...out, props: { ...out.props, chords: false } };
+        // Anotações off keeps the musicians' notes ("// suave") off the lyrics.
+        if (!opts.annotations && e.id === "palco_current") out = { ...out, props: { ...out.props, annotations: false } };
         return out;
     }) };
 }
@@ -324,7 +326,7 @@ function pastorDesign(pref) {
     return { ...base, elements: base.elements.map((e) => {
         if (off.has(e.id)) return { ...e, hidden: true };
         if (e.id === "pastor_next") return { ...e, props: { ...e.props, count: opts.next_count } };
-        if (e.id === "pastor_monitor") return { ...e, props: { ...e.props, chords: opts.chords, labels: opts.labels, video: opts.video } };
+        if (e.id === "pastor_monitor") return { ...e, props: { ...e.props, chords: opts.chords, labels: opts.labels, annotations: opts.annotations, video: opts.video } };
         return e;
     }) };
 }
@@ -346,12 +348,15 @@ export function screenDesign(path, pref, layoutRows) {
 // screen as it always was.
 // `video` (owner 2026-11-15, V3 = A): the video on air in the lyrics' place
 // (Palco) and playing in the Pastor's monitor, on unless switched off.
-export const STAGE_DEFAULTS = { chords: true, labels: true, clock: true, notes: true, next: true, video: true };
-export const PASTOR_DEFAULTS = { chords: false, labels: false, clock: true, next_count: 3, video: true };
+// `annotations` (owner 2026-11-26): the musicians' notes in the lyrics
+// ("// suave"), on in the Palco, off in the Pastor, like the Cifra.
+export const STAGE_DEFAULTS = { chords: true, labels: true, annotations: true, clock: true, notes: true, next: true, video: true };
+export const PASTOR_DEFAULTS = { chords: false, labels: false, annotations: false, clock: true, next_count: 3, video: true };
 const onOff = (v, d) => (typeof v === "boolean" ? v : d);
 export const stageOptions = (pref) => ({
     chords: onOff(pref?.options?.chords, true),
     labels: onOff(pref?.options?.labels, true),
+    annotations: onOff(pref?.options?.annotations, true),
     clock: onOff(pref?.options?.clock, true),
     notes: onOff(pref?.options?.notes, true),
     next: onOff(pref?.options?.next, true),
@@ -362,6 +367,7 @@ export const pastorOptions = (pref) => {
     return {
         chords: onOff(pref?.options?.chords, false),
         labels: onOff(pref?.options?.labels, false),
+        annotations: onOff(pref?.options?.annotations, false),
         clock: onOff(pref?.options?.clock, true),
         video: onOff(pref?.options?.video, true),
         next_count: Number.isFinite(n) ? Math.min(5, Math.max(0, Math.round(n))) : 3,
@@ -370,12 +376,13 @@ export const pastorOptions = (pref) => {
 
 // What a screen adds to a song's text (owner 2026-10-14): `chords`, the
 // lyrics' [G] chords over the syllables, and `labels`, the part's name
-// ([Refrão], [Ponte]…) over the slide. Each screen's own choice
-// (OutputPref.options); the Palco shows both unless told otherwise, every
-// other output neither (the congregation sees only the lyrics).
+// ([Refrão], [Ponte]…) over the slide, and `annotations`, the musicians'
+// notes ("// suave", owner 2026-11-26). Each screen's own choice
+// (OutputPref.options); the Palco shows them unless told otherwise, every
+// other output none (the congregation sees only the lyrics).
 export function lyricsOptions(page, pref) {
     const on = page === "/StageView";
-    return { chords: onOff(pref?.options?.chords, on), labels: onOff(pref?.options?.labels, on) };
+    return { chords: onOff(pref?.options?.chords, on), labels: onOff(pref?.options?.labels, on), annotations: onOff(pref?.options?.annotations, on) };
 }
 
 // The Vídeo screen writes the clip's name over it only when asked (owner
@@ -505,7 +512,7 @@ export function prefState(page, live, pref, theme = null) {
     // The renderer draws chords and part names only where this output asks.
     if (state.content) {
         const show = lyricsOptions(page, pref);
-        if (show.chords || show.labels) state = { ...state, content: { ...state.content, show } };
+        if (show.chords || show.labels || show.annotations) state ={ ...state, content: { ...state.content, show } };
     }
     if (ownsTheme(page) && pref.themeId && theme) {
         // The output's theme wins over the song's parts too: their own looks go.

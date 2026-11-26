@@ -57,6 +57,10 @@
 .ns-seg { display: inline-block; vertical-align: bottom; white-space: pre; text-align: left; }
 .ns-ch { display: block; min-height: 1.1em; font-size: .52em; line-height: 1.1; font-weight: 700; color: var(--warn-fg); text-shadow: none; }
 .ns-tx { white-space: pre; }
+/* A musicians' note ("// suave", owner 2026-11-26): italic, smaller, a
+   little faint, the lyrics' own colour; alone on its row or after the line. */
+.ns-note { font-style: italic; font-weight: 500; font-size: .62em; opacity: .75; }
+.ns-line.ns-note { line-height: 1.3; }
 .ns-trans { flex: none; align-self: flex-start; display: flex; align-items: center; gap: 1cqmin; padding: 1cqmin; border-radius: 1.6cqmin; background: color-mix(in srgb, var(--bg-1) 90%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .ns-trans button { width: 5cqmin; height: 5cqmin; min-width: 32px; min-height: 32px; border: 0; border-radius: 999px; background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 2.8cqmin; line-height: 1; cursor: pointer; }
 .ns-trans output { min-width: 6cqmin; text-align: center; font-size: 2cqmin; color: var(--fg-2); }

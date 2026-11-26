@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { compareVersions, versionsBetween, parseNotes, inlineParts, notesByVersion } from "./releaseNotes.js";
+import { compareVersions, versionsBetween, parseNotes, inlineParts, notesByVersion, noteImage, imagesByName } from "./releaseNotes.js";
 
 const notes = { "0.2.12": "a", "0.2.13": "b", "0.2.14": "c", "0.2.9": "z" };
 
@@ -32,9 +32,19 @@ test("the notes' markdown: titles, items, paragraphs and bold", () => {
 
 test("the shipped notes are found by version (README left out)", () => {
     const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "docs", "release-notes");
-    const files = Object.fromEntries(readdirSync(dir).map((f) => [`/docs/release-notes/${f}`, readFileSync(path.join(dir, f), "utf8")]));
+    const files = Object.fromEntries(readdirSync(dir).filter((f) => f.endsWith(".md")).map((f) => [`/docs/release-notes/${f}`, readFileSync(path.join(dir, f), "utf8")]));
     const byVersion = notesByVersion(files);
     assert.ok(!("README" in byVersion));
     assert.ok(byVersion["0.2.14"].includes("0.2.14"));
     for (const md of Object.values(byVersion)) assert.ok(parseNotes(md).length > 0);
+});
+
+test("a picture alone on its line (owner 2026-11-26): a block by its file name", () => {
+    assert.deepEqual(parseNotes("## Palco\n![As anotações no Palco](img/anotacoes.png)\n- item"), [
+        { type: "h", parts: [{ text: "Palco", bold: false }] },
+        { type: "img", alt: "As anotações no Palco", src: "anotacoes.png" },
+        { type: "li", parts: [{ text: "item", bold: false }] },
+    ]);
+    assert.equal(noteImage("veja ![x](img/a.png) aqui"), null);
+    assert.deepEqual(imagesByName({ "../../../docs/release-notes/img/a.png": "/assets/a-123.png" }), { "a.png": "/assets/a-123.png" });
 });

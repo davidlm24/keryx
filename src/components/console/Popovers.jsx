@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { versionsBetween, parseNotes } from "@/lib/console/releaseNotes";
-import { RELEASE_NOTES } from "@/lib/console/releaseNotesData";
+import { RELEASE_NOTES, RELEASE_IMAGES } from "@/lib/console/releaseNotesData";
 import ShortcutList from "./ShortcutList";
 import { keyHint } from "@/lib/console/keys";
 import { firstSteps } from "@/lib/console/firstSteps";
@@ -652,6 +652,8 @@ export function WhatsNew({ open, setOpen, range, onSeen }) {
                     <section key={version} className="wn-ver">
                         {list.length > 1 && <div className="wn-v">Versão {version}</div>}
                         {parseNotes(md).map((b, i) => {
+                            // A picture of what changed; one not shipped is left out.
+                            if (b.type === "img") return RELEASE_IMAGES[b.src] ? <img key={i} className="wn-img" src={RELEASE_IMAGES[b.src]} alt={b.alt} /> : null;
                             const text = b.parts.map((p, k) => (p.bold ? <b key={k}>{p.text}</b> : <React.Fragment key={k}>{p.text}</React.Fragment>));
                             if (b.type === "h") return <div key={i} className="wn-h">{text}</div>;
                             if (b.type === "li") return <div key={i} className="wn-li">{text}</div>;

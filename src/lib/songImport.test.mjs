@@ -299,3 +299,35 @@ test("insertParts: a Ministração between slides, the other lines where they we
     assert.equal(insertParts("[G]a1\n[D]\nb1", [{ before: 1, label: "Solo" }]), "[G]a1\n\n[Solo]\n\n[D]\nb1");
     assert.equal(insertParts(song, []), song);
 });
+
+// Musicians' notes (owner 2026-11-26): "// suave" rides only in the chorded
+// twin, where it was written; the projector's text never has it.
+test("notes: in the twin where written, never in the text", () => {
+    const lyrics = "[Verso]\nPai, me diz\n\n// suave\nTua presença, teu poder\nRompe cadeias // 2x\n\n[Instrumental]\n// só teclado\n\nToma o meu coração\n// segura\n\nFim aqui\n// rall.";
+    const slides = slidesFromLyrics(lyrics, { chorded: true });
+    assert.deepEqual(slides.map((s) => s.text), ["Pai, me diz", "Tua presença, teu poder\nRompe cadeias", "", "Toma o meu coração", "Fim aqui"]);
+    // A block of its own goes on the next stanza's first row; after a row it stays there.
+    assert.equal(slides[1].chorded, "// suave\nTua presença, teu poder\nRompe cadeias // 2x");
+    assert.equal(slides[1].label, "Verso");
+    // A part with no lyrics keeps its note; a note at a stanza's end goes under its last row.
+    assert.equal(slides[2].label, "Instrumental");
+    assert.equal(slides[2].chorded, "// só teclado");
+    assert.equal(slides[3].chorded, "Toma o meu coração\n// segura");
+    assert.equal(slides[4].chorded, "Fim aqui\n// rall.");
+    // Cut in lines: the note goes with the row after it.
+    const two = slidesFromLyrics("a1\n// forte\na2\na3", { lines: 1, chorded: true });
+    assert.deepEqual(two.map((s) => s.chorded), ["a1", "// forte\na2", "a3"]);
+    // Sung lines (the marks) never count a note; a link is not one.
+    assert.deepEqual(sungLines("// suave\nx\ny // 2x").map((l) => l.text), ["x", "y"]);
+    assert.equal(slidesFromLyrics("veja https://x.org")[0].text, "veja https://x.org");
+});
+
+test("notes: songSlidesFor sends the twins; reflow and insertParts keep the note with its row", () => {
+    const { slides, chordedSlides } = songSlidesFor({ lyrics: "// suave\nTua presença\n\nRompe cadeias" });
+    assert.deepEqual(slides.map((s) => s.text), ["Tua presença", "Rompe cadeias"]);
+    assert.deepEqual(chordedSlides, ["// suave\nTua presença", "Rompe cadeias"]);
+    // Saved slides with a stale text still go out without the note.
+    assert.equal(songSlidesFor({ slides: [{ text: "a // 2x" }] }).slides[0].text, "a");
+    assert.equal(reflowLyrics("a\n// suave\nb\nc", 1), "a\n\n// suave\nb\n\nc");
+    assert.equal(insertParts("a\n// suave\nb", [{ before: 1, label: "Solo" }]), "a\n\n[Solo]\n\n// suave\nb");
+});

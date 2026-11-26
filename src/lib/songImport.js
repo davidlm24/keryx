@@ -1,7 +1,7 @@
 // Songs from text: cifra/ChordPro and plain lyrics files from the computer,
 // lyrics pasted or brought from the web. Pure (no React, no I/O), so node
 // --test checks it; the console's "+ › Letras" and ChordImporter use it.
-import { isChordLine, stripLine, stripChords, hasInlineChords } from "./chords.js";
+import { isChordLine, stripLine, stripChords, hasInlineChords, stripNote, isNoteLine, hasNotes } from "./chords.js";
 import { generateSlides } from "../utils/songSections.js";
 import { isOpenLyrics, parseOpenLyrics } from "./songFormats/openlyrics.js";
 import { isHolyrics, parseHolyrics } from "./songFormats/holyrics.js";
@@ -17,6 +17,9 @@ const CHORUS_RE = /refr[ãa]o|coro|chorus/i;
 // slide. Any other name alone keeps naming the stanzas after it.
 export const NO_LYRICS_RE = /^(ministra[çc][ãa]o|instrumental|solo|interl[úu]dio|introdu[çc][ãa]o)(\s+\d+)?$/i;
 export const isNoLyrics = (label) => NO_LYRICS_RE.test(String(label || "").trim());
+
+// A lyrics row as sung: no chords, no musicians' note ("// suave").
+const sungText = (raw) => stripLine(stripNote(raw));
 
 // -> [{ section, text }]
 export function parseChordPro(raw) {
@@ -302,21 +305,37 @@ export const linesLimit = (n) => { const v = Math.round(Number(n)); return Numbe
 // stanzas after it until the next label (chorus labels mark is_chorus);
 // lines > 0 cuts long stanzas. -> [{ text, label, is_chorus? }]
 // With { chorded: true } each slide also carries `chorded`: the same rows
-// with their inline chords, 1:1 with the stripped text (same rows, same
-// cuts), for the Palco. Chords-only rows ("[G] [D]") leave both.
+// with their inline chords and the musicians' notes, for the Palco (same
+// cuts as the text). Chords-only rows ("[G] [D]") leave both. A note alone
+// on a row ("// suave", owner 2026-11-26) rides in `chorded` above the sung
+// row after it (at a stanza's end, after its last row; alone between blank
+// lines, on the next stanza's first row), so the twin may have more rows
+// than the text; a note after a row ("… // 2x") stays on that row.
 export function slidesFromLyrics(lyrics, { lines = 0, chorded = false } = {}) {
     const out = [];
     let label = "";
+    let notes = [];
     String(lyrics || "").replace(/\r/g, "").split(/\n\s*\n/).forEach((block) => {
         let rows = block.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
         if (!rows.length) return;
-        const m = /^\s*\[(.+?)\]\s*$/.exec(rows[0]);
+        while (rows.length && isNoteLine(rows[0])) { notes.push(rows[0].trim()); rows = rows.slice(1); }
+        const m = rows.length ? /^\s*\[(.+?)\]\s*$/.exec(rows[0]) : null;
         if (m && !hasInlineChords(rows[0])) { label = m[1].trim(); rows = rows.slice(1); }
-        const pairs = rows.map((raw) => ({ raw, text: stripLine(raw).replace(/\s+$/, "") })).filter((p) => p.text.trim());
+        const pairs = [];
+        for (const raw of rows) {
+            const text = sungText(raw).replace(/\s+$/, "");
+            if (text.trim()) { pairs.push({ raw: [...notes, raw].join("\n"), text }); notes = []; }
+            else if (isNoteLine(raw)) notes.push(raw.trim());
+        }
+        if (pairs.length && notes.length) { pairs[pairs.length - 1].raw += `\n${notes.join("\n")}`; notes = []; }
         if (!pairs.length) {
-            // A part with no lyrics alone: its own empty slide; the stanzas
-            // after it carry no label of its.
-            if (m && isNoLyrics(label)) { out.push({ text: "", label, ...(chorded ? { chorded: "" } : {}) }); label = ""; }
+            // A part with no lyrics alone: its own empty slide (its notes
+            // with it); the stanzas after it carry no label of its.
+            if (m && isNoLyrics(label)) {
+                out.push({ text: "", label, ...(chorded ? { chorded: notes.join("\n") } : {}) });
+                label = "";
+                notes = [];
+            }
             return;
         }
         const chunks = [];
@@ -330,6 +349,9 @@ export function slidesFromLyrics(lyrics, { lines = 0, chorded = false } = {}) {
             });
         }
     });
+    // Notes after the last stanza: under its last row.
+    const last = out[out.length - 1];
+    if (chorded && notes.length && last) last.chorded = [last.chorded, ...notes].filter(Boolean).join("\n");
     return out;
 }
 
@@ -360,7 +382,7 @@ export function insertParts(lyrics, parts = []) {
         const m = /^\s*\[(.+?)\]\s*$/.exec(rows[0]);
         let head = null;
         if (m && !hasInlineChords(rows[0])) { head = rows[0]; label = m[1].trim(); rows = rows.slice(1); }
-        const sung = rows.map((r, i) => (stripLine(r).trim() ? i : -1)).filter((i) => i >= 0);
+        const sung = rows.map((r, i) => (sungText(r).trim() ? i : -1)).filter((i) => i >= 0);
         if (!sung.length) {
             if (head && isNoLyrics(label)) {
                 // A part already there: one slot of its own.
@@ -378,14 +400,14 @@ export function insertParts(lyrics, parts = []) {
         sung.forEach((ri, s) => {
             const here = at(j + s);
             if (here.length) {
-                // Chords-only rows right above the line go with it.
+                // Chords-only and note rows right above the line go with it.
                 let cut = ri;
-                while (cut > from && !stripLine(rows[cut - 1]).trim() && !(/^\s*\[(.+?)\]\s*$/.test(rows[cut - 1]) && !hasInlineChords(rows[cut - 1]))) cut--;
+                while (cut > from && !sungText(rows[cut - 1]).trim() && !(/^\s*\[(.+?)\]\s*$/.test(rows[cut - 1]) && !hasInlineChords(rows[cut - 1]))) cut--;
                 // What comes before the part, only when it holds a sung line
                 // (a stanza's own heading alone goes with the rest, below).
                 const before = rows.slice(from, cut);
                 piece.push(...before);
-                if (before.some((r) => stripLine(r).trim())) out.push(piece.join("\n"));
+                if (before.some((r) => sungText(r).trim())) out.push(piece.join("\n"));
                 for (const p of here) out.push(partBlock(p));
                 // After a part the label is gone: the rest names itself again.
                 piece = pieceLabel && !isNoLyrics(pieceLabel) ? [`[${pieceLabel}]`] : [];
@@ -405,29 +427,32 @@ export function insertParts(lyrics, parts = []) {
 // lyrics still split into exactly those slides; else the slides as saved.
 function withChordedTwins(song) {
     const saved = song.slides;
-    if (saved.some((s) => s?.chorded) || !hasInlineChords(song.lyrics || "")) return saved;
+    if (saved.some((s) => s?.chorded) || !hasMarks(song.lyrics || "")) return saved;
     const live = slidesFromLyrics(song.lyrics, { lines: linesLimit(song.lines_per_slide), chorded: true });
     const same = live.length === saved.length && live.every((s, i) => s.text === stripChords(String(saved[i]?.text || "")));
     return same ? saved.map((s, i) => ({ ...s, chorded: live[i].chorded })) : saved;
 }
 
+// Lyrics with what only the musicians see: inline chords or notes.
+const hasMarks = (text) => hasInlineChords(text) || hasNotes(text);
+
 // A song's slides as they go on air, with the Palco's chorded twins when the
-// lyrics carry inline chords: saved slides win (their `chorded` twin too,
-// saved by the editor); else the lyrics split as the song asks
-// (lines_per_slide); else one stanza per slide. Every slide text
-// is stripped here, whatever wrote it — the projector never shows a chord.
+// lyrics carry inline chords or notes: saved slides win (their `chorded` twin
+// too, saved by the editor); else the lyrics split as the song asks
+// (lines_per_slide); else one stanza per slide. Every slide text is stripped
+// here, whatever wrote it — the projector never shows a chord or a note.
 export function songSlidesFor(song) {
     let base;
     if (song.slides?.length) base = withChordedTwins(song);
     else if (linesLimit(song.lines_per_slide)) base = slidesFromLyrics(song.lyrics || "", { lines: linesLimit(song.lines_per_slide), chorded: true });
-    else if (hasInlineChords(song.lyrics || "")) base = slidesFromLyrics(song.lyrics || "", { chorded: true });
+    else if (hasMarks(song.lyrics || "")) base = slidesFromLyrics(song.lyrics || "", { chorded: true });
     // A song never saved in the editor with [Parte] lines: the editor's own
     // split (labels, a part with no lyrics), not generateSlides, which showed
     // "[Refrão]" as a line (2026-11-11).
     else if (/^\s*\[[^\]]+\]\s*$/m.test(song.lyrics || "")) base = slidesFromLyrics(song.lyrics || "");
     else base = generateSlides(song.lyrics || "");
     const texts = base.map((s) => String(s.chorded ?? s.text ?? ""));
-    const chordedSlides = texts.some((t) => hasInlineChords(t)) ? texts : null;
+    const chordedSlides = texts.some((t) => hasMarks(t)) ? texts : null;
     return {
         slides: base.map(({ chorded: _c, ...rest }) => ({ ...rest, text: stripChords(String(rest.text || "")) })),
         chordedSlides,
@@ -450,11 +475,12 @@ export function reflowLyrics(lyrics, lines = 0) {
         if (/^\s*\[(.+?)\]\s*$/.test(rows[0]) && !hasInlineChords(rows[0])) { head = rows[0].trim(); rows = rows.slice(1); }
         if (!rows.length) { out.push(head); return; }
         // Only sung rows count toward the block size; a chords-only row
-        // ("[G] [D]") rides with the row after it, never a slide of its own.
+        // ("[G] [D]") or a note ("// suave") rides with the row after it,
+        // never a slide of its own.
         const groups = [];
         let lead = [];
         for (const raw of rows) {
-            if (!stripLine(raw).trim()) { lead.push(raw); continue; }
+            if (!sungText(raw).trim()) { lead.push(raw); continue; }
             groups.push([...lead, raw]);
             lead = [];
         }

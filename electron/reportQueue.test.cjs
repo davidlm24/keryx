@@ -74,7 +74,9 @@ test("a refusal is kept, marked and never tried again; the e-mail takes it", asy
 });
 
 test("a pass stops at the first offline report, and never runs twice at once", async () => {
-    const { q, calls } = rig(["offline"]);
+    // A clock of its own: past 30 days the reports would leave the queue
+    // unsent (the test aged out on 2026-11-19).
+    const { q, calls } = rig(["offline"], { now: () => Date.parse("2026-10-21T00:00:00Z") });
     q.add(report(ID, { writtenAt: "2026-10-20T10:00:00.000Z" }));
     q.add(report(ID2, { writtenAt: "2026-10-20T11:00:00.000Z" }));
     const a = q.flush();

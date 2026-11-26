@@ -493,11 +493,14 @@ test("the Equipe's setlist: on air and the next one marked, songs open", () => {
 
 test("lyrics: chords cut out of the line, shown only with Cifra", () => {
     const s = { artist: "Pedras Vivas", key: "G", parts: [{ name: "Estrofe 1", lines: ["[G]Te amo, [D]Deus", ""] }, { name: "", lines: [] }] };
-    assert.deepEqual(lyricParts(s), [{ name: "Estrofe 1", lines: [{ chords: "", text: "Te amo, Deus" }] }]);
+    assert.deepEqual(lyricParts(s), [{ name: "Estrofe 1", lines: [{ chords: "", text: "Te amo, Deus", note: "" }] }]);
     assert.equal(lyricParts(s, { chords: true })[0].lines[0].chords, "G  D");
     assert.equal(hasChords(s), true);
     assert.equal(hasChords({ parts: [{ lines: ["sem"] }] }), false);
     assert.equal(songSub(s), "Pedras Vivas · Tom G");
+    // A musicians' note (owner 2026-11-26): apart, alone or after the line; a link is not one.
+    assert.deepEqual(lyricParts({ parts: [{ name: "", lines: ["// suave", "[G]Rompe // 2x", "https://x.org"] }] })[0].lines,
+        [{ chords: "", text: "", note: "suave" }, { chords: "", text: "Rompe", note: "2x" }, { chords: "", text: "https://x.org", note: "" }]);
 });
 
 test("SWAP_TO: each side opens the sign-in on the other, never signed in by itself", () => {
