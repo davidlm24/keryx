@@ -28,8 +28,8 @@ Severities are the ones reviewed in `08-backlog.md`; a pass report may rate a fi
 
 | ID | Pass | Sev | Effort | Title | Location | Status |
 |----|------|-----|--------|-------|----------|--------|
-| FUNC-001 | 3 | P1 | S | An edit made on air that changes the slide count shows the wrong slide | shared/live-state.mjs:797; src/pages/Console.jsx:598 | Open |
-| FUNC-002 | 3 | P1 | S | YouTube offline (or one failed script load) is black and silent until the window reloads | src/utils/youtube.js:42 | Open |
+| FUNC-001 | 3 | P1 | S | An edit made on air that changes the slide count shows the wrong slide | shared/live-state.mjs:797; src/pages/Console.jsx:598 | Fixed (PR #484) |
+| FUNC-002 | 3 | P1 | S | YouTube offline (or one failed script load) is black and silent until the window reloads | src/utils/youtube.js:42 | Fixed (PR #484) |
 | FUNC-003 | 3 | P1 | M | Undecodable videos pass the import door; a video that fails on air has no error path | src/lib/mediaImport.js:128; src/components/projection/LiveVideo.jsx:215 | Open |
 | FUNC-004 | 3 | P2 | M | Picture and sound play in two elements; lip sync never corrected on local windows (measure first) | shared/live-state.mjs:1368; LiveVideo.jsx:169 | Open |
 | FUNC-005 | 3 | P2 | S | "This video ended" carries no identity: the first window to finish takes it off every screen | src/components/projection/LiveMediaView.jsx:38; SoundEngine.jsx:60 | Open |
@@ -37,7 +37,7 @@ Severities are the ones reviewed in `08-backlog.md`; a pass report may rate a fi
 | FUNC-007 | 3 | P2 | S | Bible references: cross-chapter ranges and comma lists silently cut; English names unsupported | src/lib/console/quickRef.js:54; src/lib/bibleBooks.js:180 | Open |
 | FUNC-008 | 3 | P2 | S | Desfazer after Esc restarts videos from 0 (only the music keeps its position) | src/lib/console/restore.js:26 | Open |
 | FUNC-009 | 3 | P2 | S | Importing a cifra/ChordPro file drops its chords and part names | src/lib/songImport.js:50, 117 | Open |
-| FUNC-010 | 3 | P3 | S | Desfazer stays armed after something new goes on air | src/components/console/useConsole.js:449; Console.jsx:954 | Open |
+| FUNC-010 | 3 | P3 | S | Desfazer stays armed after something new goes on air | src/components/console/useConsole.js:449; Console.jsx:954 | Fixed (PR #484) |
 | FUNC-011 | 3 | P3 | S | The sound engine gives up silently after 5 crashes a minute | electron/soundEngine.cjs:52 | Open |
 | FUNC-101 | 3 | P3 | S | shadcn folder (48 files), src/lib/utils.js and about 35 runtime deps unused, packed in the installer | src/components/ui/*; package.json:25 | Open |
 | FUNC-102 | 3 | P3 | M | OutputPref (designs, Recebe rules) still per computer though the content rule of G10 landed | electron/db/syncScope.cjs:40 | Open |
@@ -64,11 +64,11 @@ Severities are the ones reviewed in `08-backlog.md`; a pass report may rate a fi
 | PERF-015 | 4 | P3 | S | GROUP BY over all Bible verses on main about once a minute | electron/main.cjs:842 | Open |
 | PERF-016 | 4 | P3 | S | Online Bible chapter cache grows in localStorage without a bound | src/lib/bibleText.js:87 | Open |
 | PERF-017 | 4 | P3 | S | Song editor re-renders and re-fits every slide preview per keystroke | src/components/console/SongEditor.jsx:614 | Open |
-| UX-001 | 5 | P2 | S | Stale "slide no ar" in the Prévia retargets the next song | stage.js:169; useConsole.js:383 | Open |
-| UX-002 | 5 | P1 | S | Click in No ar / No ar tab wipes the prepared item | OnAirPanel.jsx:39; SlidesPanel.jsx:76 | Open |
-| UX-003 | 5 | P2 | S | Tela preta/Logo dead while any popover/dialog is open | Console.jsx:931 | Open |
-| UX-004 | 5 | P1 | S | Esc twice from a search field ends the air; fields keep focus | liveKeys.js:176; Library.jsx:301; QuickTools.jsx:53 | Open |
-| UX-005 | 5 | P2 | S | Pedido/chat toast drops the Desfazer of Esc | toastQueue.js:35 | Open |
+| UX-001 | 5 | P2 | S | Stale "slide no ar" in the Prévia retargets the next song | stage.js:169; useConsole.js:383 | Fixed (PR #484) |
+| UX-002 | 5 | P1 | S | Click in No ar / No ar tab wipes the prepared item | OnAirPanel.jsx:39; SlidesPanel.jsx:76 | Fixed (PR #484) |
+| UX-003 | 5 | P2 | S | Tela preta/Logo dead while any popover/dialog is open | Console.jsx:931 | Fixed (PR #484) |
+| UX-004 | 5 | P1 | S | Esc twice from a search field ends the air; fields keep focus | liveKeys.js:176; Library.jsx:301; QuickTools.jsx:53 | Fixed (PR #484) |
+| UX-005 | 5 | P2 | S | Pedido/chat toast drops the Desfazer of Esc | toastQueue.js:35 | Fixed (PR #484) |
 | UX-006 | 5 | P2 | M | Added items land at the end; reorder drag-only | useSetlistWrites.js:98,143 | Open |
 | UX-007 | 5 | P1 | M | 1366×768: Painel in tray, Setlist ~4 rows | layout.js:25; dock.js:676,700 | Open |
 | UX-008 | 5 | P2 | S | No one-step undo of a wrong send | useConsole.js:379; Popovers.jsx:362 | Open |
@@ -85,8 +85,8 @@ Severities are the ones reviewed in `08-backlog.md`; a pass report may rate a fi
 | UX-019 | 5 | P3 | S | Papel de parede door is a hover-only pencil | console.css:579; Layers.jsx:253 | Open |
 | UX-020 | 5 | P3 | S | Slides footer buttons change meaning after Esc | SlidesPanel.jsx:119 | Open |
 | UX-021 | 5 | P3 | S | Aviso rápido preset × deletes without asking | QuickTools.jsx:47 | Open |
-| UX-022 | 8 | P2 | S | Keys typed right after "/" reach the live keys (B, L, C) until the search mounts | src/pages/Console.jsx:931, 962, 972 | Open |
-| UX-023 | 8 | P2 | S | A direct send (search Ctrl+Enter) wipes another item prepared in the Prévia | src/components/console/useConsole.js:383 | Open |
+| UX-022 | 8 | P2 | S | Keys typed right after "/" reach the live keys (B, L, C) until the search mounts | src/pages/Console.jsx:931, 962, 972 | Fixed (PR #484) |
+| UX-023 | 8 | P2 | S | A direct send (search Ctrl+Enter) wipes another item prepared in the Prévia | src/components/console/useConsole.js:383 | Fixed (PR #484) |
 | UX-024 | 8 | P3 | S | Planejar o culto shows clock times and "termina às" though the church plans order only | src/components/console/ServicePlanner.jsx:522 | Open |
 | UX-025 | 8 | P3 | S | Editor da tela, Palco, "No ar": the hidden video element's content shows behind the lyrics | src/components/console/editor/ScreenEditor.jsx | Open |
 | UX-101 | 5 | P2 | M | Click-again confirm instead of useConfirm (Trocar o código, Remover PIN, Importar/Restaurar) | settings/PhonesBlock.jsx:136; RedeSection.jsx:79; DadosSection.jsx:52 | Open |
