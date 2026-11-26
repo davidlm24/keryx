@@ -60,3 +60,13 @@ export function columnSource({ hand, air, last }) {
     if (last?.slides?.length) return "last";
     return null;
 }
+
+// A "slide no ar" in the Prévia (stageAirSlide in stage.js) whose job is
+// over (audit 2026-11-26, UX-001): the item it belongs to
+// left the air or was replaced, or the air already is on that slide.
+export function airSlideStale(prev, content) {
+    if (!prev?.airSlide) return false;
+    if (!content) return true;
+    if (prev.airAt != null && content.startedAt !== prev.airAt) return true;
+    return content.index === prev.index;
+}

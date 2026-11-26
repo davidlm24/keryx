@@ -37,20 +37,38 @@ export function getYouTubeThumbnail(url) {
     if (!id) return null;
     return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 }
-// The YouTube IFrame API, loaded once (it needs the internet).
+// The YouTube IFrame API, loaded once (it needs the internet). It fails
+// loudly (audit 2026-11-26, FUNC-002): offline, or a script that never
+// answers, the promise rejects (script error, or API_TIMEOUT_MS) and is
+// forgotten, so the next link tries again — before, it waited forever and the
+// screens stayed black until the window was reloaded. The player reports it
+// as YT_UNREACHABLE (the refusal path, youtubeLinks.js says it).
+export const YT_UNREACHABLE = -1;
+export const API_TIMEOUT_MS = 12000;
 let apiPromise = null;
 export function loadYouTubeApi() {
     if (typeof window === "undefined") return Promise.reject(new Error("sem janela"));
     if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
     if (!apiPromise) {
-        apiPromise = new Promise((resolve) => {
+        apiPromise = new Promise((resolve, reject) => {
             const previous = window.onYouTubeIframeAPIReady;
+            const tag = document.createElement("script");
+            let timer = null;
+            const fail = () => {
+                clearTimeout(timer);
+                tag.remove();
+                window.onYouTubeIframeAPIReady = previous;
+                apiPromise = null;
+                reject(new Error("O YouTube não carregou (sem internet?)."));
+            };
             window.onYouTubeIframeAPIReady = () => {
+                clearTimeout(timer);
                 if (typeof previous === "function") previous();
                 resolve(window.YT);
             };
-            const tag = document.createElement("script");
             tag.src = "https://www.youtube.com/iframe_api";
+            tag.onerror = fail;
+            timer = setTimeout(fail, API_TIMEOUT_MS);
             document.head.appendChild(tag);
         });
     }

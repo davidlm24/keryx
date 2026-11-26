@@ -50,7 +50,7 @@ import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { setRelayedProgress, relayPagesRetry } from "@/hooks/usePagesBackfill";
 import { PAGE_TITLES, pageTitle, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
 import { resolveSection } from "@/lib/console/settings";
-import { liveAction, escapeTarget } from "@/lib/console/keys";
+import { liveAction, escapeTarget, escEndsAir } from "@/lib/console/keys";
 import { usePackageHost } from "@/components/console/PackageDialogs";
 import { PackageContext } from "@/components/console/packages";
 import { usePrefs } from "@/hooks/useUser";
@@ -248,13 +248,17 @@ export default function Janela() {
     // — and so is a dock panel in a window of its own (Painéis em janela).
     const letters = usePrefs().letter_keys;
     const keysRef = useRef(null);
+    // When Esc last only left a text field: a dock panel's next Esc within a
+    // second never ends the air (UX-004, escEndsAir).
+    const leftFieldAt = useRef(null);
     keysRef.current = (e) => {
         const action = liveAction(e, letters);
         if (!action) return;
-        if (action === "blur") { e.target.blur?.(); return; }
+        if (action === "blur") { if (e.key === "Escape") leftFieldAt.current = performance.now(); e.target.blur?.(); return; }
         if (action === "end") {
             const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask || reporting || pkg.open, library: libReq, window: stack.length > 0 });
             e.preventDefault();
+            if (top === "window" && winTop?.page === "panel" && !escEndsAir(leftFieldAt.current, performance.now())) return;
             if (top === "menu") setCtxMenu(null);
             else if (top === "confirm") { if (ask) answerAsk(null); else if (confirmReq) answerConfirm(false); else if (pkg.open) pkg.close(); else setReporting(false); }
             else if (top === "library") { if (!libEsc.current?.()) closeLibrary(null); }

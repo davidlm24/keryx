@@ -71,3 +71,30 @@ test("an important toast waits to be seen, and its wave plays again if it ran ou
     assert.equal(replaysWave(1000, 1000 + WAVE_MS), true, "it played out unseen: once more");
     assert.ok(WAVE_MS > 4000 && WAVE_MS < 6000, "about five seconds, three rings");
 });
+
+test("a Desfazer is taken only by another Desfazer; a pedido waits first in line (audit 2026-11-26, UX-005)", async () => {
+    const { pushToast, nextToast, emptyToasts } = await import("./toastQueue.js");
+    const undo = { id: 1, text: "Projeção encerrada.", action: { label: "Desfazer", undo: true, air: true } };
+    let s = pushToast(emptyToasts, undo);
+    s = pushToast(s, { id: 2, text: "Salvo." });
+    s = pushToast(s, { id: 3, text: "Pedido de Ana: Romper", action: { label: "Ver" }, important: true });
+    assert.equal(s.cur.id, 1, "the Desfazer stays on screen");
+    assert.deepEqual(s.queue.map((t) => t.id), [3, 2], "the pedido first, the plain one behind");
+    assert.equal(nextToast(s).cur.id, 3);
+    // Esc twice: the newest Desfazer still wins.
+    const again = pushToast(s, { id: 4, text: "Projeção encerrada.", action: { label: "Desfazer", undo: true, air: true } });
+    assert.equal(again.cur.id, 4);
+});
+
+test("something new on air ends Esc's Desfazer, never another one (FUNC-010)", async () => {
+    const { pushToast, dropAirUndo, emptyToasts } = await import("./toastQueue.js");
+    const air = { id: 1, text: "Projeção encerrada.", action: { label: "Desfazer", undo: true, air: true } };
+    let s = pushToast(pushToast(emptyToasts, air), { id: 2, text: "Pedido", important: true });
+    s = dropAirUndo(s);
+    assert.equal(s.cur.id, 2, "the pedido waiting shows");
+    assert.deepEqual(s.queue, []);
+    const rule = { id: 5, text: "Letras não mostra mais Bíblia.", action: { label: "Desfazer", undo: true } };
+    const r = pushToast(emptyToasts, rule);
+    assert.equal(dropAirUndo(r), r, "a rule's Desfazer is not about the air: it stays");
+    assert.equal(dropAirUndo(emptyToasts), emptyToasts);
+});

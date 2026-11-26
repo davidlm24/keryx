@@ -116,6 +116,14 @@ export function escapeTarget(layers = {}) {
     return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
 }
 
+// An Esc that only left a text field (audit 2026-11-26, UX-004): the next
+// Esc within ESC_GRACE_MS never ends the projection. Two quick Escs from the
+// Biblioteca's search (one to leave it, one "to be sure") took the song off
+// the screens. leftFieldAt: when Esc last left a field (performance.now()),
+// null when it never did.
+export const ESC_GRACE_MS = 1000;
+export const escEndsAir = (leftFieldAt, now) => !(Number.isFinite(leftFieldAt) && now >= leftFieldAt && now - leftFieldAt < ESC_GRACE_MS);
+
 // In the Bible environment, typing a reference opens the quick jump (as in
 // Holyrics): a letter or digit, nothing focused, no modifier. "B" stays Tela
 // preta (no book of the Portuguese canon starts with B); L and C start books

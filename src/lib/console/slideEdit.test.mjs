@@ -71,3 +71,19 @@ test("a song with no saved slides edits the lyrics' own split", () => {
     assert.equal(slideToEdit(s, 1).text, "Três");
     assert.equal(editSlide(s, 1, "Três e quatro").patch.lyrics, "Um\nDois\n\nTrês e quatro");
 });
+
+test("the song on air saved again keeps the same words on screen (audit 2026-11-26, FUNC-001)", async () => {
+    const { slideOnAirAfterEdit } = await import("./slideEdit.js");
+    const old = [{ text: "a1\na2" }, { text: "b1\nb2" }, { text: "c1\nc2" }, { text: "d1\nd2" }];
+    // Slide 1 split in two: the words on air (slide 3, "c") are now slide 4.
+    const split = [{ text: "a1" }, { text: "a2" }, { text: "b1\nb2" }, { text: "c1\nc2" }, { text: "d1\nd2" }];
+    assert.equal(slideOnAirAfterEdit(old, 2, split), 3);
+    // A typo fixed on the slide on air: the slide holding its first line.
+    assert.equal(slideOnAirAfterEdit(old, 2, [old[0], old[1], { text: "c1\nc2 corrigido" }, old[3]]), 2);
+    // A repeated chorus: the copy nearest the old number.
+    const chorus = [{ text: "R" }, { text: "v1" }, { text: "R" }, { text: "v2" }, { text: "R" }];
+    assert.equal(slideOnAirAfterEdit(chorus, 4, [{ text: "intro" }, ...chorus]), 5);
+    // Nothing matches: the old number, within the new list.
+    assert.equal(slideOnAirAfterEdit(old, 3, [{ text: "x" }, { text: "y" }]), 1);
+    assert.equal(slideOnAirAfterEdit(old, 0, []), 0);
+});

@@ -3,7 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import { playbackPlan, playbackGain, fadeGain } from "@shared/live-state.mjs";
 import { createPool } from "@/lib/mediaPool";
 import { applySink } from "@/lib/soundSink";
-import { getYouTubeId, loadYouTubeApi } from "@/utils/youtube";
+import { getYouTubeId, loadYouTubeApi, YT_UNREACHABLE } from "@/utils/youtube";
 import { usePrefs } from "@/hooks/useUser";
 import { clipRate, tapGate } from "@/lib/network/screenStage";
 
@@ -321,7 +321,13 @@ export default function LiveVideo({ item, loop = false, muted: mutedProp = false
                     },
                 },
             });
-        }).catch(() => {});
+        }).catch(() => {
+            // Offline, or YouTube's script never came: the item leaves as a
+            // refused link does, and the console says why (FUNC-002).
+            if (cancelled) return;
+            setYtPlaying(false);
+            callbacks.current.onRefused?.(YT_UNREACHABLE);
+        });
         return () => {
             cancelled = true;
             try { ytRef.current?.destroy(); } catch { /* already gone */ }

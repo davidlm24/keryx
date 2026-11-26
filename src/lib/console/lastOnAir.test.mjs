@@ -57,3 +57,14 @@ test("the column: the Prévia, else the air, else the item kept", () => {
     assert.equal(columnSource({ hand: false, air: null, last }), "last");
     assert.equal(columnSource({ hand: false, air: null, last: null }), null);
 });
+
+test("a 'slide no ar' in the Prévia goes stale with its item (audit 2026-11-26, UX-001)", async () => {
+    const { airSlideStale } = await import("./lastOnAir.js");
+    const air = { kind: "lyrics", title: "Romper", slides: [{ text: "a" }, { text: "b" }, { text: "c" }, { text: "d" }], index: 0, startedAt: 100 };
+    const pick = { kind: "lyrics", id: "song:1", slides: air.slides, index: 3, op: "content.goTo", airSlide: true, airAt: 100 };
+    assert.equal(airSlideStale(pick, air), false, "still the same song, another slide");
+    assert.equal(airSlideStale(pick, { ...air, startedAt: 200, index: 0 }), true, "another item went on air (the Setlist's footer, the Autoplay, the phone)");
+    assert.equal(airSlideStale(pick, null), true, "nothing on air");
+    assert.equal(airSlideStale(pick, { ...air, index: 3 }), true, "the air is on that slide now: its job is done");
+    assert.equal(airSlideStale({ id: "song:2", slides: [] }, air), false, "an item of its own is never stale");
+});

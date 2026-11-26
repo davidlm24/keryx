@@ -51,3 +51,10 @@ test("refusedWords and linkNote", () => {
     assert.equal(linkNote({ ...link, youtube_state: "ok" }), "");
     assert.equal(linkNote({ type: "video", file_url: "keryx-media://a.mp4", youtube_state: "blocked" }), "");
 });
+
+test("a player that never loaded (no internet) is said as such, never as the video's fault (audit 2026-11-26, FUNC-002)", async () => {
+    const { YT_UNREACHABLE } = await import("../utils/youtube.js");
+    assert.equal(stateOfCode(YT_UNREACHABLE), "offline");
+    assert.match(refusedWords({ code: YT_UNREACHABLE, title: "Romper" }), /“Romper”: sem internet/);
+    assert.doesNotMatch(refusedWords({ code: YT_UNREACHABLE }), /erro/);
+});

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { liveAction, focusKind, quickJumpKey, escapeTarget, ESC_ORDER, SHORTCUTS, shortcutsFor, LETTER_KEYS, letterKeys, keyHint, LETTER_KEYS_HINT } from "./keys.js";
+import { liveAction, focusKind, quickJumpKey, escapeTarget, escEndsAir, ESC_GRACE_MS, ESC_ORDER, SHORTCUTS, shortcutsFor, LETTER_KEYS, letterKeys, keyHint, LETTER_KEYS_HINT } from "./keys.js";
 
 // A stand-in element: its own selector matches and those of its ancestors.
 const el = (tagName, self = [], ancestors = []) => ({
@@ -280,4 +280,12 @@ test("the shortcut list and the keys never drift apart, for every choice of the 
     }
     assert.deepEqual(SHORTCUTS, shortcutsFor("on"));
     assert.ok(shortcutsFor("on").some((s) => s.keys.startsWith("Ctrl+=")), "the console's zoom is listed");
+});
+
+test("Esc right after leaving a field never ends the air (audit 2026-11-26, UX-004)", () => {
+    assert.equal(escEndsAir(null, 5000), true, "no field left: Esc ends");
+    assert.equal(escEndsAir(1000, 1000 + 300), false, "a second Esc 0.3 s after leaving the search: nothing ends");
+    assert.equal(escEndsAir(1000, 1000 + ESC_GRACE_MS - 1), false);
+    assert.equal(escEndsAir(1000, 1000 + ESC_GRACE_MS), true, "past the grace: Esc ends again");
+    assert.equal(escEndsAir(9000, 1000), true, "a clock that went back never holds Esc");
 });
