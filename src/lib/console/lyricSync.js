@@ -312,7 +312,9 @@ export const timedLength = (slides, each) => round((slides || []).reduce((t, s) 
 // them, the ones after the last up to `length` (else at the marks' mean
 // pace). Before P7 the follow skipped an unmarked slide, and Iniciar on
 // one went back to the first.
-export function followStarts(slides, { each = null, length = null } = {}) {
+// `from` is the song's Início (songStart): slides with no mark before the
+// first marked one count from it, not from the file's 0.
+export function followStarts(slides, { each = null, length = null, from = 0 } = {}) {
     const list = slides || [];
     if (each > 0) {
         let t = 0;
@@ -324,7 +326,11 @@ export function followStarts(slides, { each = null, length = null } = {}) {
     const spread = (from, to, t0, t1) => { for (let k = from + 1; k < to; k++) out[k] = round(t0 + ((t1 - t0) * (k - from)) / (to - from)); };
     const first = marked[0];
     const last = marked[marked.length - 1];
-    if (first > 0) { const t1 = out[first]; out[0] = 0; spread(0, first, 0, t1); }
+    if (first > 0) {
+        const t1 = out[first];
+        const t0 = from > 0 && from < t1 ? round(from) : 0;
+        out[0] = t0; spread(0, first, t0, t1);
+    }
     marked.forEach((i, n) => { if (n) spread(marked[n - 1], i, out[marked[n - 1]], out[i]); });
     if (last < list.length - 1) {
         const pace = last > first ? (out[last] - out[first]) / (last - first) : null;
@@ -335,19 +341,36 @@ export function followStarts(slides, { each = null, length = null } = {}) {
 }
 
 // The slides a song sends with its follow: every slide's start filled in.
-export function withFollowStarts(slides, follow) {
+export function withFollowStarts(slides, follow, from = 0) {
     if (!follow) return slides;
-    const at = followStarts(slides, { each: follow.source === "time" ? follow.each : null, length: follow.length });
+    const at = followStarts(slides, { each: follow.source === "time" ? follow.each : null, length: follow.length, from });
     return slides.map((s, i) => (isMark(at[i]) ? { ...s, start: at[i] } : s));
 }
 
 // The song's Fim (owner 2026-11-12): after the last mark (a tenth past it),
 // never past the file, to a hundredth of a second (finer than the marks: the
-// owner tunes it by ear, "mais fine tuned"). null clears it.
-export function clampEnd(starts, t, length = null) {
+// owner tunes it by ear, "mais fine tuned"), and after the Início (`from`).
+// null clears it.
+export function clampEnd(starts, t, length = null, from = null) {
     if (t === null || t === undefined || !Number.isFinite(Number(t))) return null;
     const last = Math.max(0, ...(starts || []).filter(isMark));
-    const lo = (starts || []).some(isMark) ? last + STEP : 0;
+    let lo = (starts || []).some(isMark) ? last + STEP : 0;
+    if (Number(from) > 0) lo = Math.max(lo, Number(from) + STEP);
     const hi = Number.isFinite(length) && length > lo ? length : Infinity;
     return snap(Math.min(hi, Math.max(lo, Number(t))), END_STEP);
+}
+
+// The song's Início (owner 2026-11-28, mockup "Cortar o começo da música",
+// C1 A): where the file starts playing on air, never past the first marked
+// slide nor a tenth before the Fim (`end`), never past the file, to a
+// hundredth. The operator's raw value is kept; this is the one used. null
+// (nothing, or 0) = the file from its start.
+export function clampStart(starts, t, end = null, length = null) {
+    if (t === null || t === undefined || !Number.isFinite(Number(t))) return null;
+    const marks = (starts || []).filter(isMark);
+    let hi = marks.length ? Math.min(...marks) : Infinity;
+    if (Number.isFinite(end) && end > 0) hi = Math.min(hi, end - STEP);
+    if (Number.isFinite(length) && length > 0) hi = Math.min(hi, length);
+    const at = snap(Math.min(hi, Math.max(0, Number(t))), END_STEP);
+    return at > 0 ? at : null;
 }

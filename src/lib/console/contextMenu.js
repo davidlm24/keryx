@@ -45,6 +45,29 @@ export function placeBox({ anchor, w, h, vw, vh, bounds, margin = 8, gap = 4, al
     return { left: Math.round(left), top: Math.round(top), maxHeight: maxHeight == null ? null : Math.floor(maxHeight), above };
 }
 
+// Where a submenu of size w × h opens beside its item `anchor` (owner
+// 2026-11-28: in the right-click menus it opened inside the menu and pushed
+// the items under it down, so the pointer missed the next one): to the
+// item's right, `gap` apart, its first item level with the item (`lift`, the
+// menu's padding); turned to the left where the bounds end on the right;
+// moved up to stay inside them, with a `maxHeight` when taller than they are.
+// It never covers the items of its own menu but the one it hangs from.
+export function placeSub({ anchor, w, h, vw, vh, bounds, margin = 8, gap = 2, lift = 6 }) {
+    const b = bounds || { left: 0, top: 0, right: vw, bottom: vh };
+    const right = anchor.right + gap;
+    const left = anchor.left - gap - w;
+    // Turned when the right runs out and the left has room (or more of it).
+    const flipped = right + w > b.right - margin && (left >= b.left + margin || anchor.left - b.left > b.right - anchor.right);
+    let x = flipped ? left : right;
+    x = Math.max(b.left + margin, Math.min(x, b.right - w - margin));
+    const room = b.bottom - b.top - 2 * margin;
+    const maxHeight = h > room ? Math.max(0, Math.floor(room)) : null;
+    const tall = maxHeight ?? h;
+    let y = anchor.top - lift;
+    y = Math.max(b.top + margin, Math.min(y, b.bottom - margin - tall));
+    return { left: Math.round(x), top: Math.round(y), maxHeight, flipped };
+}
+
 // The items in the order shown. Live safety: anything that changes what is
 // on air (`air: true`: Enviar ao ar, Encerrar…) goes last, after a
 // separator, never first and never mixed with the safe ones; separators the

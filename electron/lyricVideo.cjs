@@ -66,17 +66,35 @@ function fadePlan(segs, fade) {
 
 const r3 = (n) => Math.round(n * 1000) / 1000;
 
+// The song's Início (owner 2026-11-28, "Cortar o começo da música"): the
+// video leaves out the part before `from` (s in the file). Every time in
+// the file's time -> the video's: the slides' starts, the length, the Fim.
+// -> { starts, total, end }
+function trimmed(starts, total, end, from) {
+    const f = Number(from) > 0 && Number(from) < Number(total) ? Number(from) : 0;
+    if (!f) return { starts, total, end };
+    return {
+        starts: (starts || []).map((v) => (Number.isFinite(v) ? Math.max(0, r3(v - f)) : v)),
+        total: r3(Number(total) - f),
+        end: end ? { ...end, at: Math.max(0, r3(end.at - f)) } : end,
+    };
+}
+// The sound comes in over this much after the Início (songEnd.js START_FADE_MS).
+const START_FADE = 0.15;
+
 // ffmpeg's arguments: one looped PNG input per segment, cut (concat) or
 // crossfaded (xfade), the sound from the playback (a video's sound stream
 // too; none = a silent video), H.264 yuv420p + AAC, `total` seconds, the
 // progress on stdout. `frameFile(frame)` -> the PNG of "bg" or a slide.
 // `end` ({ at, fade } seconds, the song's Fim, owner 2026-11-12): from
 // `at` the picture fades to black and the sound out, over `fade`.
-function ffmpegArgs({ segs, fade = 0, frameFile, audio, out, total, end = null }) {
+// `from` (the song's Início, s in the file): the sound starts there, coming
+// in over START_FADE; the times above are already the video's (trimmed).
+function ffmpegArgs({ segs, fade = 0, frameFile, audio, out, total, end = null, from = 0 }) {
     const plan = fadePlan(segs, fade);
     const args = ["-y", "-hide_banner", "-nostats", "-progress", "pipe:1"];
     segs.forEach((s, k) => args.push("-loop", "1", "-framerate", String(FPS), "-t", String(r3(plan.lens[k])), "-i", frameFile(s.frame)));
-    if (audio) args.push("-i", audio);
+    if (audio) args.push(...(from > 0 ? ["-ss", String(r3(from))] : []), "-i", audio);
     const n = segs.length;
     const prep = segs.map((_, k) => `[${k}:v]scale=1920:1080,setsar=1,fps=${FPS},format=yuv420p[s${k}]`);
     let chain;
@@ -94,7 +112,8 @@ function ffmpegArgs({ segs, fade = 0, frameFile, audio, out, total, end = null }
     const outFade = end && end.fade > 0 && end.at >= 0;
     if (outFade) chain = `${chain.replace(/\[v\]$/, "[vf]")};[vf]fade=t=out:st=${r3(end.at)}:d=${r3(end.fade)}[v]`;
     args.push("-filter_complex", [...prep, chain].join(";"), "-map", "[v]");
-    if (audio) args.push("-map", `${n}:a:0?`, ...(outFade ? ["-af", `afade=t=out:st=${r3(end.at)}:d=${r3(end.fade)}:curve=cub`] : []), "-c:a", "aac", "-b:a", "192k");
+    const af = [from > 0 ? `afade=t=in:st=0:d=${START_FADE}` : "", outFade ? `afade=t=out:st=${r3(end.at)}:d=${r3(end.fade)}:curve=cub` : ""].filter(Boolean).join(",");
+    if (audio) args.push("-map", `${n}:a:0?`, ...(af ? ["-af", af] : []), "-c:a", "aac", "-b:a", "192k");
     args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(FPS), "-t", String(r3(total)), "-movflags", "+faststart", out);
     return args;
 }
@@ -135,7 +154,7 @@ function createLyricVideo({ BrowserWindow, dialog, url, webPreferences, toolsDir
         cleanup(j);
     }
 
-    async function start({ title, doc, total, fade, audioUrl, end = null }, owner) {
+    async function start({ title, doc, total, fade, audioUrl, end = null, start: from = null }, owner) {
         if (!hasFfmpeg()) throw Object.assign(new Error("Este KERYX não trouxe o ffmpeg: o vídeo com a letra não pode ser feito aqui."), { status: 503 });
         const slides = doc?.content?.slides || [];
         if (!slides.length) throw Object.assign(new Error("A música não tem slides."), { status: 400 });
@@ -152,7 +171,8 @@ function createLyricVideo({ BrowserWindow, dialog, url, webPreferences, toolsDir
         const id = crypto.randomUUID();
         const dir = fs.mkdtempSync(path.join(tmpRoot, "keryx-video-"));
         const endAt = end && Number(end.at) > 0 && Number(end.at) < len ? { at: Number(end.at), fade: Math.max(0, Math.min(10, Number(end.fade) || 0)) } : null;
-        const j = { id, title: title || "Música", doc, total: len, fade: Number(fade) || 0, end: endAt, audio, out: save.filePath, dir, phase: "frames", pct: 0, frames: new Set(), win: null, proc: null };
+        const startAt = Number(from) > 0 && Number(from) < len ? Number(from) : 0;
+        const j = { id, title: title || "Música", doc, total: len, fade: Number(fade) || 0, end: endAt, from: startAt, audio, out: save.filePath, dir, phase: "frames", pct: 0, frames: new Set(), win: null, proc: null };
         jobs.set(id, j);
         tell(j, {});
         const win = new BrowserWindow({
@@ -167,13 +187,14 @@ function createLyricVideo({ BrowserWindow, dialog, url, webPreferences, toolsDir
     }
 
     function encode(j) {
-        const starts = (j.doc.content.slides || []).map((s) => s.start);
-        const segs = segments(starts, j.total);
+        // Without the part before the Início: the video's own times.
+        const cut = trimmed((j.doc.content.slides || []).map((s) => s.start), j.total, j.end, j.from);
+        const segs = segments(cut.starts, cut.total);
         if (!segs.length) return fail(j, "Nada a gravar: confira as marcas.");
         const frameFile = (frame) => path.join(j.dir, frame === "bg" ? "bg.png" : `slide-${frame}.png`);
         const missing = segs.find((s) => !fs.existsSync(frameFile(s.frame)));
         if (missing) return fail(j, "Um slide não foi desenhado.");
-        const args = ffmpegArgs({ segs, fade: j.fade, frameFile, audio: j.audio, out: j.out, total: j.total, end: j.end });
+        const args = ffmpegArgs({ segs, fade: j.fade, frameFile, audio: j.audio, out: j.out, total: cut.total, end: cut.end, from: j.from });
         tell(j, { phase: "encode", pct: 0 });
         const proc = spawn(ffmpegPath(), args, { windowsHide: true });
         j.proc = proc;
@@ -185,7 +206,7 @@ function createLyricVideo({ BrowserWindow, dialog, url, webPreferences, toolsDir
             buf = lines.pop();
             for (const line of lines) {
                 const m = /^out_time_(?:us|ms)=(\d+)/.exec(line);
-                if (m) tell(j, { pct: Math.min(99, Math.round((Number(m[1]) / 1e6 / j.total) * 100)) });
+                if (m) tell(j, { pct: Math.min(99, Math.round((Number(m[1]) / 1e6 / cut.total) * 100)) });
             }
         });
         proc.stderr.on("data", (d) => { err = (err + d.toString()).slice(-4000); });
@@ -261,4 +282,4 @@ function registerLyricVideo({ ipcMain, BrowserWindow, isTrusted, video, log = co
     });
 }
 
-module.exports = { segments, fadePlan, ffmpegArgs, mediaPathOf, fileNameFor, createLyricVideo, registerLyricVideo, FPS };
+module.exports = { segments, fadePlan, ffmpegArgs, trimmed, mediaPathOf, fileNameFor, createLyricVideo, registerLyricVideo, FPS };

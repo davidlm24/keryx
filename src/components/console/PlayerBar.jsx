@@ -8,7 +8,7 @@ import { levelsNow, useReportedDuration, useMeterFeed } from "./meterStore";
 import { useFramePreview } from "./useFramePreview";
 import { slideNameAt, tipLeft, tipPicture, FRAME_W, FRAME_H } from "@/lib/console/seekPreview";
 import { followLabel, followAction } from "@/lib/console/followWords";
-import { endLength } from "@/lib/console/songEnd";
+import { endLength, startFrom, fromOp } from "@/lib/console/songEnd";
 import { followStart } from "@/lib/console/lyricSync";
 
 const HOT = 0.95; // about -3 dBFS
@@ -144,7 +144,9 @@ const SEEK_KEYS = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 };
 // offline) — and a light band runs up to it. Nothing seeks until a press; the tip goes
 // when the pointer leaves. While the hand holds the bar the tip follows the
 // thumb as before. Nothing at all while the length is unknown.
-function Seek({ value, duration, can, scrubbing, ticks, frames, cover, onScrub, onSeek }) {
+// `from` (the song's Início, s in the file) only for the frame the tip
+// draws: the bar counts from it.
+function Seek({ value, duration, from = 0, can, scrubbing, ticks, frames, cover, onScrub, onSeek }) {
     const held = useRef(false);
     const tipRef = useRef(null);
     const [hover, setHover] = useState(null); // { x, w, t }: the pointer, in the bar's px
@@ -177,7 +179,7 @@ function Seek({ value, duration, can, scrubbing, ticks, frames, cover, onScrub, 
         const w = hover?.w || tip.parentElement?.getBoundingClientRect().width || 0;
         const x = scrubbing ? (pct / 100) * w : hover?.x ?? 0;
         tip.style.left = `${tipLeft(x, w, tip.offsetWidth / 2)}px`;
-        if (showFrame) show(tipT);
+        if (showFrame) show(tipT + from);
     });
     return (
         <span className={`pl-seek is-live ${duration ? "" : "is-unknown"} ${can ? "is-can" : ""} ${scrubbing ? "is-drag" : ""}`} role="slider" tabIndex={can ? 0 : -1}
@@ -242,18 +244,23 @@ export default function PlayerBar({ c, picked, setPicked, projectorOpen }) {
     // The song's Fim is its end on the bar (owner 2026-11-12): the total, the
     // remaining time, the seek and the marks stop there (within the file).
     const fim = clockOnly ? null : endLength(cur, media);
-    const duration = fim ? (fileLength ? Math.min(fim, fileLength) : fim) : fileLength;
+    const fileEnd = fim ? (fileLength ? Math.min(fim, fileLength) : fim) : fileLength;
+    // The song's Início (owner 2026-11-28, C3 A): the bar counts from it, 0:00
+    // there, and nothing seeks before it; the ops stay in the file's time.
+    const from = clockOnly ? 0 : startFrom(cur, media);
+    const duration = fileEnd ? Math.max(0, fileEnd - from) : fileEnd;
     const pb = item?.playback;
     // The position counts on the player's own clock, only while it plays:
     // its tick re-renders the player, not the console.
     const now = useLiveNow(1000, Boolean(pb && !pb.paused));
-    const pos = pb ? livePosition(pb, now) : 0;
+    const filePos = pb ? livePosition(pb, now) : 0;
+    const pos = Math.max(0, filePos - from);
     const followOp = (action) => c.callOp("content.follow", { action }).catch(() => {});
-    const ticks = followsItem(follow, media) || clockOnly ? followTicks(cur.content.slides, follow, duration) : [];
+    const ticks = followsItem(follow, media) || clockOnly ? followTicks(cur.content.slides, from ? { ...follow, offset: (follow.offset || 0) + from } : follow, duration) : [];
     const run = (action, extra) => {
         // The live clock: its play/pause is the follow's.
         if (clockOnly) { if (action === "toggle") followOp(followAction(follow)); return; }
-        const op = playerOp(cur, layer, action, { pos, duration, ...extra });
+        const op = fromOp(playerOp(cur, layer, action, { pos: filePos, duration: fileEnd, ...extra }), from);
         if (op) c.callOp(op[0], op[1]).catch(() => {});
     };
     const off = !item;
@@ -272,9 +279,9 @@ export default function PlayerBar({ c, picked, setPicked, projectorOpen }) {
         return () => clearTimeout(t);
     }, [scrub]);
     const seekTo = (t) => {
-        const op = canSeek ? playerOp(cur, layer, "seek", { pos: t, duration }) : null;
+        const op = canSeek ? fromOp(playerOp(cur, layer, "seek", { pos: t + from, duration: fileEnd }), from) : null;
         if (!op) { setScrub(null); return; }
-        setScrub({ t: op[1].time, held: false, key: pbKey });
+        setScrub({ t: op[1].time - from, held: false, key: pbKey });
         c.callOp(op[0], op[1]).catch(() => setScrub(null));
     };
     const livePos = duration ? Math.min(pos, duration) : pos;
@@ -315,7 +322,7 @@ export default function PlayerBar({ c, picked, setPicked, projectorOpen }) {
                     {listPos && <span className="pl-n">{listPos}</span>}
                 </span>
                 <span className="kx-time pl-time">{clock(shownPos)}</span>
-                <Seek value={shownPos} duration={duration} can={canSeek} scrubbing={Boolean(scrub?.held)} ticks={ticks} frames={picture?.frames || null} cover={picture?.cover || null}
+                <Seek value={shownPos} duration={duration} from={from} can={canSeek} scrubbing={Boolean(scrub?.held)} ticks={ticks} frames={picture?.frames || null} cover={picture?.cover || null}
                     onScrub={(t) => setScrub(t == null ? null : { t, held: true })} onSeek={seekTo} />
                 <span className="kx-time pl-left" title="Tempo restante · duração">{duration ? `-${clock(Math.max(0, duration - shownPos))}` : "--:--"}<small>{duration ? clock(duration) : ""}</small></span>
             </div>

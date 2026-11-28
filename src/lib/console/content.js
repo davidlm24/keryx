@@ -35,6 +35,27 @@ export function songEnd(song) {
     return { url, at, fade };
 }
 
+// Where the song starts (owner 2026-11-28, mockup "Cortar o começo da
+// música", C1–C3 A): the mirror of the Fim, its media and the second the
+// file starts playing on air (Song.start_at). The file is never re-encoded
+// and the marks stay in the file's time; the Início never passes the first
+// marked slide (by the marks) nor a tenth before the Fim. Only a file of
+// the computer, like the Fim. null = the file from its start.
+export function songStart(song, slides = song?.slides) {
+    const url = song?.audio_url || "";
+    const raw = Number(song?.start_at);
+    if (!url || isYouTubeUrl(url) || blank(song?.start_at) || !Number.isFinite(raw) || raw <= 0) return null;
+    let at = raw;
+    if (followModeOf(song, slides) === "marks") {
+        const marks = (slides || []).map((s) => s?.start).filter(Number.isFinite);
+        if (marks.length) at = Math.min(at, ...marks);
+    }
+    const end = songEnd(song);
+    if (end) at = Math.min(at, end.at - 0.1);
+    at = Math.round(at * 100) / 100;
+    return at > 0 ? { url, at } : null;
+}
+
 // The beginning a song asks for (owner 2026-11-12): one that follows its
 // media by the marks takes its own (Song.intro_mode: "" only the background,
 // "title", "slide"); any other is the church's (withManualIntro).
@@ -74,17 +95,25 @@ export function songFollow(song, slides) {
 export function songContent(song, ref = {}, _themes = []) {
     const built = songSlidesFor(song);
     const follow = songFollow(song, built.slides);
+    const start = songStart(song, built.slides);
+    const slides = withFollowStarts(built.slides, follow, start?.at || 0);
+    // An Início that leaves under half a second before the first slide has
+    // no introduction to show: the slide comes in at once (no flash of the
+    // title or the background).
+    let intro = introOf(song, follow);
+    if (intro && start && Number.isFinite(slides[0]?.start) && slides[0].start - start.at < 0.5) intro = "slide";
     return {
         title: song.title || "",
         artist: song.artist || "",
         // Every slide with the start the follow goes by (lyricSync.js).
-        slides: withFollowStarts(built.slides, follow),
+        slides,
         // The playback goes to the audio channel (stage.playback), never
         // content.audio any more (it played on every output, untransported).
         audio: null,
         ...(follow ? { follow } : {}),
-        ...(introOf(song, follow) ? { introMode: introOf(song, follow) } : {}),
+        ...(intro ? { introMode: intro } : {}),
         ...(songEnd(song) ? { ends: songEnd(song) } : {}),
+        ...(start ? { starts: start } : {}),
         // The size is a step from the theme's (songSize.js, Rodada P): over
         // the factory look here; withThemeDefaults moves the theme's.
         style: {

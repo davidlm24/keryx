@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Seg, NumBox, WinBar, useUnloadGuard, Empty } from "./kx";
-import SyncTimeline from "./SyncTimeline";
+import SyncTimeline, { useWaveform } from "./SyncTimeline";
 import { DEFAULT_SPAN, SPANS, spanOf, clampFrom, fracOf, timeOf, followView, zoomTo, stepAfter, spanWord } from "@/lib/console/timelineView";
-import { endGain } from "@/lib/console/songEnd";
+import { endGain, START_FADE_MS } from "@/lib/console/songEnd";
+import { leadStart } from "@/lib/console/waveform";
 import { useConfirm } from "./ConfirmDialog";
 import { useWinCol } from "./winLayout";
 import SyncMarks from "./SyncMarks";
@@ -11,7 +12,7 @@ import PlaybackPicker, { useMediaFromComputer } from "./PlaybackPicker";
 import { useLibrary } from "./useConsoleData";
 import { useContextMenu } from "./ContextMenu";
 import { isVideoUrl } from "@/lib/console/content";
-import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, clampEnd, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, spliceMarks, SPEEDS, SEEK_SECONDS, STEP, END_STEP } from "@/lib/console/lyricSync";
+import { fmtTime, parseTime, indexAt, nextUnmarked, nextToMark, nextSlideStart, firstUnmarkedSlide, chunkGroups, distributeSlides, onFirsts, shiftMarks, clampEnd, clampStart, setMark, nudge, recordMark, distribute, markedCount, sameMarks, fitMarks, spliceMarks, SPEEDS, SEEK_SECONDS, STEP, END_STEP } from "@/lib/console/lyricSync";
 import { anchorIndex, anchorMarks, fmtDelta } from "@/lib/console/lrcPick";
 
 // The parts with no lyrics Marcar os tempos inserts (songImport.js NO_LYRICS_RE).
@@ -22,7 +23,7 @@ const firstLine = (text) => String(text || "").split("\n").find((l) => l.trim())
 
 // A time typed in the slide's row (m:ss.cc); Enter or leaving the field
 // keeps it, Esc puts back what was there, empty clears the mark.
-function TimeField({ value, onCommit, sug = false }) {
+function TimeField({ value, onCommit, sug = false, label = "Tempo do slide" }) {
     const [text, setText] = useState(null);
     const shown = text ?? (isMark(value) ? fmtTime(value) : "");
     const commit = () => {
@@ -32,7 +33,7 @@ function TimeField({ value, onCommit, sug = false }) {
         if (v !== undefined) onCommit(v);
     };
     return (
-        <input className={`sync-time ${text !== null && parseTime(text) === undefined ? "is-bad" : ""} ${sug && isMark(value) ? "is-sug" : ""}`} value={shown} placeholder="—" aria-label="Início da linha (m:ss.cc)" spellCheck={false}
+        <input className={`sync-time ${text !== null && parseTime(text) === undefined ? "is-bad" : ""} ${sug && isMark(value) ? "is-sug" : ""}`} value={shown} placeholder="—" aria-label={`${label} (m:ss.cc)`} spellCheck={false}
             onClick={(e) => e.stopPropagation()} onChange={(e) => setText(e.target.value)} onBlur={commit}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); e.currentTarget.blur(); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setText(null); e.currentTarget.blur(); } }} />
     );
@@ -63,7 +64,13 @@ function TimeField({ value, onCommit, sug = false }) {
 // Backspace bring it back there; at the last line the media pauses and says
 // so. The video or playback can be chosen here too (PlaybackPicker, the
 // computer's files entering the Mídia); Aplicar takes it with the marks.
-export default function SyncView({ title = "", artist = "", slides: slideRows = [], lines = null, groups = null, media: mediaIn = "", duration: songDuration = null, starts: initial = [], end: endIn = null, endFade: endFadeIn = null, introMode: introIn = "", canInsert = false, onApply, onClose, escRef, active = true, say }) {
+// The Início (owner 2026-11-28, mockup "Cortar o começo da música", C1–C3
+// A): where the file starts playing on air (Song.start_at), a white flag
+// with the part before it hatched; "Achar o som" puts it a little before the
+// first sound. The page keeps the FILE's time (the marks never move); the
+// raw value is kept and the one used is clamped (clampStart) to the first
+// marked slide and the Fim at every render.
+export default function SyncView({ title = "", artist = "", slides: slideRows = [], lines = null, groups = null, media: mediaIn = "", duration: songDuration = null, starts: initial = [], end: endIn = null, endFade: endFadeIn = null, start: startIn = null, introMode: introIn = "", canInsert = false, onApply, onClose, escRef, active = true, say }) {
     const col = useWinCol("sync.slides", { name: "Slides", def: 440, min: 340, max: 760, sign: -1 });
     const ask = useConfirm();
     // The lines and their slides as they are now: a part with no lyrics
@@ -106,6 +113,8 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const [endFade, setEndFade] = useState(fadeStart);
     const [intro, setIntro] = useState(introIn || "");
     const [endRec, setEndRec] = useState(false); // after the last slide: Espaço marks the Fim
+    const startFirst = Number.isFinite(Number(startIn)) && startIn !== null && startIn !== "" && Number(startIn) > 0 ? Number(startIn) : null;
+    const [start, setStart] = useState(startFirst); // the Início as the operator put it
     // Undo entries carry the marks and the Fim together.
     const [undo, setUndo] = useState([]);
     const [sel, setSel] = useState(() => (lines && groups?.length ? firstUnmarkedSlide(groups.map((g) => g.first), initial, lines.length) : Math.max(0, nextUnmarked(initial))));
@@ -125,7 +134,10 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     const lastMark = Math.max(0, ...starts.filter(isMark));
     const duration = mediaDur || songDuration || (live ? Math.max(180, Math.ceil(lastMark + 30)) : null);
     const marked = markedCount(starts);
-    const dirty = !sameMarks(starts, initialMarks.current) || (media || "") !== (mediaIn || "") || end !== endStart || (end !== null && endFade !== fadeStart) || intro !== (introIn || "") || partsIn > 0;
+    // The Início used: never past the first marked slide nor the Fim.
+    const inicio = live ? null : clampStart(starts, start, end, duration);
+    const zero = inicio || 0;
+    const dirty = !sameMarks(starts, initialMarks.current) || (media || "") !== (mediaIn || "") || end !== endStart || start !== startFirst || (end !== null && endFade !== fadeStart) || intro !== (introIn || "") || partsIn > 0;
     // Detached (/Janela), unsaved changes hold the window: closing it asks.
     useUnloadGuard(dirty);
     const playingIdx = indexAt(starts, t);
@@ -192,13 +204,14 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     // it), so playing from past the Fim to move it still works; never while
     // recording marks or while Espaço is about to mark the Fim.
     const endArmed = useRef(false);
+    const rampUntil = useRef(0); // Ouvir o início's fade in runs until then
     useEffect(() => {
         const el = mediaRef.current;
         if (live || !el) return;
         const watching = playing && isMark(end) && rec === null && !endRec;
         if (!watching || t < end) {
             endArmed.current = watching && t < end;
-            if (el.volume !== 1) el.volume = 1;
+            if (el.volume !== 1 && performance.now() > rampUntil.current) el.volume = 1;
             return;
         }
         if (!endArmed.current) return;
@@ -213,10 +226,13 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
 
     // Every change of the marks can be undone (Backspace, Desfazer). Any
     // change ends the dashed marks (they are ordinary now) and the tap's note.
-    const snapshot = () => setUndo((u) => [...u.slice(-49), { starts, end, endFade, lineRows, groupRows }]);
+    const snapshot = () => setUndo((u) => [...u.slice(-49), { starts, end, endFade, start, lineRows, groupRows }]);
     const change = (next) => { snapshot(); setStarts(next); setSug(null); setDone(null); setFinished(false); };
     // The Fim moves (undoable, as a mark): after the last slide, inside the file.
-    const changeEnd = (v) => { snapshot(); setEnd(v === null ? null : clampEnd(starts, v, duration)); setEndRec(false); };
+    const changeEnd = (v) => { snapshot(); setEnd(v === null ? null : clampEnd(starts, v, duration, inicio)); setEndRec(false); };
+    // The Início moves the same way (undoable): before the first marked
+    // slide and the Fim, inside the file; null (or 0) the file's start.
+    const changeStart = (v) => { snapshot(); setStart(v === null ? null : clampStart(starts, v, end, duration)); };
     // The Fim's fine tuning: 0,1 s; Shift 1 s; Alt 0,01 s (the buttons and the flag's ← →).
     const endStep = (e) => (e?.shiftKey ? 1 : e?.altKey ? END_STEP : STEP);
     const onEndKey = (e) => {
@@ -224,6 +240,38 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         e.preventDefault();
         e.stopPropagation();
         changeEnd(end + (e.key === "ArrowRight" ? 1 : -1) * endStep(e));
+    };
+    const onStartKey = (e) => {
+        if (!isMark(inicio) || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        changeStart(inicio + (e.key === "ArrowRight" ? 1 : -1) * endStep(e));
+    };
+    // Achar o som (C2 A): the Início a little before the first sound of the
+    // file (waveform.js leadSilence), or why it cannot.
+    const waveRead = useWaveform(live ? "" : media);
+    const lead = waveRead.state === "ready" ? leadStart(waveRead.wave.lead) : null;
+    const findWhy = live ? "Sem vídeo ou playback" : waveRead.state === "reading" ? "Lendo o som do arquivo…" : waveRead.state === "failed" ? "Não deu para ler o som deste arquivo" : lead?.why || "";
+    const findSound = () => {
+        if (!lead || !isMark(lead.at)) return;
+        const at = clampStart(starts, lead.at, end, duration);
+        changeStart(at);
+        if (isMark(at)) seek(at);
+        say?.(isMark(at) ? `Início em ${fmtTime(at).replace(".", ",")}, um pouco antes do primeiro som.` : "O primeiro slide marcado vem antes do som: o Início fica no começo do arquivo.");
+    };
+    // Ouvir o início: from the Início with the short fade in it has on air.
+    const hearStart = () => {
+        if (!isMark(inicio)) return;
+        const el = mediaRef.current;
+        seek(inicio);
+        if (el) {
+            el.volume = 0;
+            const t0 = performance.now();
+            rampUntil.current = t0 + START_FADE_MS + 50;
+            const up = () => { const k = Math.min(1, (performance.now() - t0) / START_FADE_MS); el.volume = k; if (k < 1) requestAnimationFrame(up); };
+            requestAnimationFrame(up);
+        }
+        play();
     };
     // Ouvir o fim: the 4 s before it, then the fade, stopping by itself.
     const hearEnd = () => { if (!isMark(end)) return; seek(Math.max(0, end - 4)); play(); };
@@ -237,6 +285,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         setStarts(before);
         setEnd(entry.end);
         if (entry.endFade !== undefined) setEndFade(entry.endFade);
+        if (entry.start !== undefined) setStart(entry.start);
         if (entry.lineRows !== undefined && entry.lineRows !== lineRows) { setLineRows(entry.lineRows); setGroupRows(entry.groupRows); setPicked(new Set()); }
         setUndo((u) => u.slice(0, -1));
         // The gold back on the slide whose mark changed (its first line).
@@ -259,7 +308,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         setSug({ from: [r.title, r.artist].filter(Boolean).join(" — "), missing: next.map((v, i) => (isMark(v) ? -1 : i)).filter((i) => i >= 0) });
         setSel(Math.max(0, anchorIndex(next)));
         if (playing) pause();
-        seek(0);
+        seek(zero);
     };
     const anchorAt = (t) => {
         const i = anchorIndex(starts);
@@ -309,8 +358,9 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         const count = byLine ? slideOf.length : n;
         if (marked && !(await ask({ title: "Distribuir os slides?", text: `As ${marked} marcas de agora dão lugar a ${count} marcas espalhadas por ${fmtTime(duration).slice(0, -3)}. Desfazer volta atrás.`, ok: "Distribuir" }))) return;
         // Up to the Fim when there is one (owner 2026-11-12, F4).
+        // From the Início, when there is one (2026-11-28).
         const until = isMark(end) ? end : duration;
-        change(byLine ? distributeSlides(firsts, n, until) : distribute(n, until));
+        change(byLine ? distributeSlides(firsts, n, until, zero) : distribute(n, until, zero));
     };
 
     const leave = async (all = false) => {
@@ -321,6 +371,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         const extra = {
             ...((media || "") !== (mediaIn || "") ? { audio_url: media } : {}), ...(split > 0 ? { split } : {}),
             ...(end !== endStart || (end !== null && endFade !== fadeStart) ? { end_at: end, end_fade: endFade } : {}),
+            ...(start !== startFirst ? { start_at: start } : {}),
             ...(intro !== (introIn || "") ? { intro_mode: intro } : {}),
             // The parts inserted here, each before the sung line of the
             // lyrics it now precedes (insertParts in songImport.js).
@@ -341,11 +392,14 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     // The page's keys, before the console's (← → move what is on air there).
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        if (!active || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (!active) return;
         if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName) || e.target?.isContentEditable) return;
-        // The Fim's flag, focused, nudges itself with ← → (onEndKey).
-        if (e.target?.closest?.(".sync-mk.is-end") && (e.key === "ArrowLeft" || e.key === "ArrowRight")) return;
         if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
+        // Ctrl+Z undoes too (Backspace stays), as everywhere in KERYX.
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "z") { e.preventDefault(); e.stopPropagation(); undoLast(); return; }
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        // The Fim's and the Início's flags, focused, nudge themselves with ← → (onEndKey, onStartKey).
+        if (e.target?.closest?.(".sync-mk.is-end, .sync-mk.is-start") && (e.key === "ArrowLeft" || e.key === "ArrowRight")) return;
         const k = e.key;
         let done = true;
         if (k === " ") {
@@ -416,7 +470,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
     };
     const moveMarker = (e) => {
         const d = drag.current;
-        if (!d || d.end) return;
+        if (!d || d.end || d.start) return;
         if (!d.moved) {
             if (Math.abs(e.clientX - d.x) < MOVE_PX) return;
             d.moved = true;
@@ -425,7 +479,8 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
             setDone(null);
             setSel(d.i);
         }
-        if (!d.group) { setStarts(setMark(d.base, d.i, timeAtX(e.clientX))); return; }
+        // A mark never goes before the Início (the Início never passes it).
+        if (!d.group) { setStarts(setMark(d.base, d.i, Math.max(zero, timeAtX(e.clientX)))); return; }
         const next = shiftMarks(d.base, d.group, timeAtX(e.clientX) - d.from);
         setStarts(next);
         const moved = isMark(next[d.i]) && isMark(d.base[d.i]) ? next[d.i] - d.base[d.i] : 0;
@@ -436,7 +491,25 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         drag.current = null;
         setDragTip(null);
         // A click, not a drag: the gold goes to it and the time to its mark.
-        if (d && !d.end && !d.moved) { pointAt(d.i); if (isMark(starts[d.i])) seek(starts[d.i]); }
+        if (d && !d.end && !d.start && !d.moved) { pointAt(d.i); if (isMark(starts[d.i])) seek(starts[d.i]); }
+    };
+    // The Início's flag: the same threshold; a click goes to it.
+    const dragStart = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        drag.current = { start: true, x: e.clientX, moved: false };
+    };
+    const moveStart = (e) => {
+        const d = drag.current;
+        if (!d?.start) return;
+        if (!d.moved) { if (Math.abs(e.clientX - d.x) < MOVE_PX) return; d.moved = true; snapshot(); }
+        setStart(clampStart(starts, timeAtX(e.clientX), end, duration));
+    };
+    const dropStart = () => {
+        const d = drag.current;
+        drag.current = null;
+        if (d?.start && !d.moved && isMark(inicio)) seek(inicio);
     };
     // The Fim's flag: the same threshold; a click goes to it.
     const dragEnd = (e) => {
@@ -449,7 +522,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         const d = drag.current;
         if (!d?.end) return;
         if (!d.moved) { if (Math.abs(e.clientX - d.x) < MOVE_PX) return; d.moved = true; snapshot(); }
-        setEnd(clampEnd(starts, timeAtX(e.clientX), duration));
+        setEnd(clampEnd(starts, timeAtX(e.clientX), duration, inicio));
     };
     const dropEnd = () => {
         const d = drag.current;
@@ -498,7 +571,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
             byLine && canInsert && { label: "Inserir depois deste slide", icon: "plus", disabled: split > 0, title: split > 0 ? "Aplique ou desfaça a divisão da letra antes" : "Um slide sem letra: as telas mostram só o fundo; as marcas ficam como estão",
                 sub: PARTS.map((p) => ({ label: p, onSelect: () => insertPart(k, p) })) },
             { label: "Tirar a marca", icon: "x", disabled: !isMark(rows[k]?.value), onSelect: () => (g ? clearSlide(g) : unmark(i)) },
-            { label: "Tirar todas as marcações…", icon: "trash", disabled: !marked, onSelect: clearAll },
+            { label: "Tirar todas as marcações…", icon: "x", disabled: !marked, onSelect: clearAll },
         ].filter(Boolean) });
     };
     const openFind = () => { setRec(null); setFind({ auto: true }); };
@@ -528,6 +601,18 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
         setSel((v) => (v >= at ? v + 1 : v));
         setRec((v) => (v !== null && v >= at ? v + 1 : v));
         say?.(`${label} depois do slide ${k + 1}: um slide sem letra, sem tempo ainda. Aplicar põe na letra.`);
+    };
+
+    // The page opens at the Início (C3 A): the media there, the window around it.
+    const opened = useRef(false);
+    const onMeta = (e) => {
+        const el = e.currentTarget;
+        const d = Number.isFinite(el.duration) ? el.duration : null;
+        setMediaDur(d);
+        if (opened.current) return;
+        opened.current = true;
+        const at = clampStart(starts, start, end, d);
+        if (isMark(at)) { el.currentTime = at; setT(at); viewFollows.current = true; setFrom(Math.max(0, at - 2)); }
     };
 
     return (
@@ -602,8 +687,8 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                             </div>
                         )}
                         <div className={`sync-stage ${video ? "is-video" : ""}`}>
-                            {video && <video ref={mediaRef} src={media} preload="auto" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onLoadedMetadata={(e) => setMediaDur(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : null)} />}
-                            {!video && !live && <audio ref={mediaRef} src={media} preload="auto" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onLoadedMetadata={(e) => setMediaDur(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : null)} />}
+                            {video && <video ref={mediaRef} src={media} preload="auto" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onLoadedMetadata={onMeta} />}
+                            {!video && !live && <audio ref={mediaRef} src={media} preload="auto" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onLoadedMetadata={onMeta} />}
                             {!video && <span className="sync-src"><Icon name={live ? "clock" : "music"} />{live ? "Relógio ao vivo" : "Playback"}</span>}
                             {sug
                                 ? <div className="sync-lyric"><span className="kx-meta">Espere o canto começar com</span>{String(slides[anchor]?.text || "").split("\n").map((l, k) => <span key={k}>{l}</span>)}</div>
@@ -624,7 +709,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 : playingIdx >= 0 && !sug && <span className="sync-now">Slide {playingIdx + 1}{slides[playingIdx]?.label ? ` · ${slides[playingIdx].label}` : ""}</span>}
                         </div>
                         <div className="sync-ctl">
-                            <IconBtn name="skip-back" title="Voltar ao início" onClick={() => seek(0)} />
+                            <IconBtn name="skip-back" title={inicio ? "Voltar ao Início marcado" : "Voltar ao início"} onClick={() => seek(zero)} />
                             <button type="button" className="kx-btn kx-t sync-skip" onClick={() => seek(now() - SEEK_SECONDS)} title="Voltar 2 segundos · ←">−2</button>
                             <IconBtn name={playing ? "pause" : "play"} className="sync-play" title={playing ? "Pausar · Espaço" : "Tocar · Espaço"} onClick={() => (playing ? pause() : play())} />
                             <button type="button" className="kx-btn kx-t sync-skip" onClick={() => seek(now() + SEEK_SECONDS)} title="Avançar 2 segundos · →">+2</button>
@@ -636,7 +721,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 <IconBtn name="plus" title="Afastar: mais segundos na tela · Ctrl + roda do mouse" disabled={span >= duration} onClick={() => zoom(1)} />
                                 <Btn small on={span >= duration} disabled={span >= duration} onClick={() => { setSpanStep(Infinity); setFrom(0); }} title="Ver a música inteira na linha do tempo">Música inteira</Btn>
                             </>}
-                            <IconBtn name="undo" title="Desfazer a última mudança · Backspace" disabled={!undo.length} onClick={undoLast} />
+                            <IconBtn name="undo" title="Desfazer a última mudança · Backspace ou Ctrl+Z" disabled={!undo.length} onClick={undoLast} />
                         </div>
                         <SyncTimeline duration={duration} t={t} from={from} span={span} laneRef={laneRef} media={live ? "" : media} tip={dragTip}
                             markers={starts.flatMap((v, i) => (isMark(v) ? [{
@@ -648,10 +733,11 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                             }] : []))}
                             overviewMarks={starts.filter(isMark)}
                             end={live ? null : end} endFade={endFade} onEndDown={dragEnd} onEndMove={moveEnd} onEndUp={dropEnd} onEndKey={onEndKey}
+                            start={inicio} onStartDown={dragStart} onStartMove={moveStart} onStartUp={dropStart} onStartKey={onStartKey}
                             onSeekStart={seekFromRuler} onSeekMove={seekFromRuler} onSeekEnd={() => {}}
                             onLaneClick={seekFromRuler} onCenter={(at) => { viewFollows.current = false; setFrom(clampFrom(at - span / 2, span, duration)); }} onWheel={onWheel} />
                         {sug && <span className="kx-meta">Tracejadas: as marcas da internet, ainda nos tempos da gravação original.</span>}
-                        <span className="kx-meta">A régua de cima leva o tempo (clique ou arraste) · arraste uma marca para ajustar (encaixa em {String(STEP).replace(".", ",")} s), um clique nela vai até o tempo dela · roda do mouse desliza, Ctrl + roda aproxima. Espaço marca (gravando) ou toca · Backspace desfaz · ← → 2 s · [ ] velocidade.</span>
+                        <span className="kx-meta">A régua de cima leva o tempo (clique ou arraste) · arraste uma marca para ajustar (encaixa em {String(STEP).replace(".", ",")} s), um clique nela vai até o tempo dela · roda do mouse desliza, Ctrl + roda aproxima. Espaço marca (gravando) ou toca · Backspace ou Ctrl+Z desfaz · ← → 2 s · [ ] velocidade.</span>
                     </Panel>
                 </div>
                 {col.split}
@@ -660,9 +746,24 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                         {!n && <Empty icon="list" title="Nenhum slide">Escreva a letra no editor primeiro.</Empty>}
                         <div className="sync-list">
                             {!live && n > 0 && (
+                                <div className={`sync-row sync-start ${isMark(inicio) ? "is-set" : ""}`} title="De onde o som começa no ar · o arquivo não muda e as marcas ficam no tempo dele">
+                                    <span className="n">Início</span>
+                                    <span className="sync-txt">{isMark(inicio) ? "Começa aqui no ar" : "Do começo do arquivo"}</span>
+                                    <TimeField label="Início da música" value={inicio} onCommit={(v) => changeStart(v)} />
+                                    <span className="sync-acts">
+                                        <IconBtn small name="minus" title="−0,1 s · Shift 1 s · Alt 0,01 s" disabled={!isMark(inicio)} onClick={(e) => changeStart(inicio - endStep(e))} />
+                                        <IconBtn small name="plus" title="+0,1 s · Shift 1 s · Alt 0,01 s" onClick={(e) => changeStart(zero + endStep(e))} />
+                                        <Btn small onClick={() => changeStart(now())} title="O início no tempo de agora">Aqui</Btn>
+                                        <Btn small disabled={Boolean(findWhy)} onClick={findSound} title={findWhy || "Põe o Início um pouco antes do primeiro som do arquivo"}>Achar o som</Btn>
+                                        <Btn small disabled={!isMark(inicio)} onClick={hearStart} title="Tocar do Início, entrando como no ar"><Icon name="play" size={12} />Ouvir o início</Btn>
+                                        <IconBtn small name="x" title="Tirar o início · o som começa no começo do arquivo" disabled={!isMark(inicio)} onClick={() => changeStart(null)} />
+                                    </span>
+                                </div>
+                            )}
+                            {!live && n > 0 && (
                                 <div className="sync-row sync-intro" title="O que as telas mostram antes do 1º slide entrar">
                                     <span className="n">Intro</span>
-                                    <span className="sync-txt sync-lines"><span>Antes do 1º slide{isMark(rows[0]?.value) ? ` · 0:00–${fmtTime(rows[0].value).slice(0, -3)}` : ""}</span></span>
+                                    <span className="sync-txt sync-lines"><span>Antes do 1º slide{isMark(rows[0]?.value) ? ` · ${fmtTime(zero).slice(0, -3)}–${fmtTime(rows[0].value).slice(0, -3)}` : ""}</span></span>
                                     <Seg small label="Antes do 1º slide" value={intro || "blank"} onChange={(v) => setIntro(v === "blank" ? "" : v)}
                                         options={[["blank", "Só o fundo"], ["title", "Título"], ["slide", "1º slide"]]} />
                                 </div>
@@ -695,7 +796,7 @@ export default function SyncView({ title = "", artist = "", slides: slideRows = 
                                 <div className={`sync-row sync-end ${isMark(end) ? "is-set" : ""}`} title="Onde o som começa a descer e a música sai do ar">
                                     <span className="n">Fim</span>
                                     <span className="sync-txt">Fim da música</span>
-                                    <TimeField value={end} onCommit={(v) => changeEnd(v)} />
+                                    <TimeField label="Fim da música" value={end} onCommit={(v) => changeEnd(v)} />
                                     <span className="sync-acts">
                                         <IconBtn small name="minus" title="−0,1 s · Shift 1 s · Alt 0,01 s" disabled={!isMark(end)} onClick={(e) => changeEnd(end - endStep(e))} />
                                         <IconBtn small name="plus" title="+0,1 s · Shift 1 s · Alt 0,01 s" disabled={!isMark(end)} onClick={(e) => changeEnd(end + endStep(e))} />

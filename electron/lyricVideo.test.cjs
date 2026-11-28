@@ -68,3 +68,23 @@ test("ffmpegArgs with the song's Fim: the picture to black and the sound out fro
     assert.ok(!one.includes("-af"));
     assert.match(one[one.indexOf("-filter_complex") + 1], /\[s0\]copy\[v\]$/);
 });
+
+test("the song's Início: the video leaves out the part before it (2026-11-28)", () => {
+    const { trimmed } = require("./lyricVideo.cjs");
+    // Every time moves to the video's own: the slides, the length, the Fim.
+    assert.deepEqual(trimmed([5, 20, null], 100, { at: 90, fade: 3 }, 4.5), { starts: [0.5, 15.5, null], total: 95.5, end: { at: 85.5, fade: 3 } });
+    const same = trimmed([5, 20], 100, null, 0);
+    assert.deepEqual(same, { starts: [5, 20], total: 100, end: null }, "no Início: as it was");
+    assert.equal(trimmed([5], 10, null, 20).total, 10, "an Início past the end is ignored");
+    // ffmpeg: the sound read from the Início (-ss before its -i), coming in over 0.15 s.
+    const cut = trimmed([5, 20], 33, { at: 30, fade: 3 }, 4);
+    const args = ffmpegArgs({ segs: segments(cut.starts, cut.total), fade: 0, frameFile: (f) => `F/${f}.png`, audio: "A/p.mp3", out: "O/x.mp4", total: cut.total, end: cut.end, from: 4 });
+    const i = args.indexOf("A/p.mp3");
+    assert.deepEqual(args.slice(i - 3, i + 1), ["-ss", "4", "-i", "A/p.mp3"]);
+    assert.equal(args[args.indexOf("-af") + 1], "afade=t=in:st=0:d=0.15,afade=t=out:st=26:d=3:curve=cub");
+    assert.equal(args[args.indexOf("-t", i) + 1], "29", "the video lasts the trimmed length");
+    // An Início with no Fim: only the fade in.
+    const noEnd = ffmpegArgs({ segs: segments([1], 10), fade: 0, frameFile: (f) => `F/${f}.png`, audio: "A/p.mp3", out: "O/y.mp4", total: 10, from: 2 });
+    assert.equal(noEnd[noEnd.indexOf("-af") + 1], "afade=t=in:st=0:d=0.15");
+    assert.ok(!ffmpegArgs({ segs: segments([1], 10), fade: 0, frameFile: (f) => `F/${f}.png`, audio: "A/p.mp3", out: "O/z.mp4", total: 10 }).includes("-ss"));
+});

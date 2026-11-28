@@ -70,3 +70,28 @@ test("orderItems never starts with an air action when there is a safe one, and d
     assert.deepEqual(orderItems([send]), [send]);
     assert.deepEqual(orderItems([prep, "sep", send]), [prep, "sep", send]);
 });
+
+test("placeSub: a submenu beside its item, turned where the right ends, inside the bounds (2026-11-28)", async () => {
+    const { placeSub } = await import("./contextMenu.js");
+    const vw = 1000;
+    const vh = 700;
+    const item = { left: 300, right: 520, top: 200, bottom: 232 };
+    // To the right, its first item level with the item (the menu's padding).
+    assert.deepEqual(placeSub({ anchor: item, w: 200, h: 150, vw, vh }), { left: 522, top: 194, maxHeight: null, flipped: false });
+    // No room on the right: to the left of the item, never over it.
+    const right = { left: 700, right: 920, top: 200, bottom: 232 };
+    const p = placeSub({ anchor: right, w: 200, h: 150, vw, vh });
+    assert.equal(p.flipped, true);
+    assert.equal(p.left, 700 - 2 - 200);
+    // Near the bottom: moved up, still beside.
+    const low = { left: 300, right: 520, top: 640, bottom: 672 };
+    assert.equal(placeSub({ anchor: low, w: 200, h: 150, vw, vh }).top, vh - 8 - 150);
+    // Taller than the window: a max height, from the top margin.
+    const tall = placeSub({ anchor: item, w: 200, h: 900, vw, vh });
+    assert.deepEqual([tall.top, tall.maxHeight], [8, vh - 16]);
+    // Inside a frame (THE window): its bounds, not the screen's.
+    const b = { left: 100, top: 50, right: 600, bottom: 500 };
+    const inFrame = placeSub({ anchor: { left: 300, right: 520, top: 100, bottom: 132 }, w: 200, h: 100, bounds: b });
+    assert.equal(inFrame.flipped, true);
+    assert.ok(inFrame.left >= b.left + 8 && inFrame.left + 200 <= b.right - 8);
+});

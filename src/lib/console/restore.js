@@ -4,14 +4,15 @@
 // live state's own helpers, by a relative path), so node --test can check it
 // (restore.test.mjs).
 import { livePosition } from "../../../shared/live-state.mjs";
+import { startArgs } from "./songEnd.js";
 
 // The op and args that put a history entry (live.history[i], see
 // shared/live-state.mjs) back on the projector.
 export function restoreArgs(entry) {
     const d = entry.data;
-    // The song's Fim and how it begins ride along (owner 2026-11-12): a song
-    // put back keeps ending where it was marked.
-    if (entry.layer === "content") return ["content.show", { kind: d.kind, ref: d.ref, title: d.title, artist: d.artist, slides: d.slides, index: d.index, style: d.style, stage: d.stage, audio: d.audio, follow: d.follow, ends: d.ends, introMode: d.introMode }];
+    // The song's Fim, its Início and how it begins ride along (owner
+    // 2026-11-12/28): a song put back keeps its marks.
+    if (entry.layer === "content") return ["content.show", { kind: d.kind, ref: d.ref, title: d.title, artist: d.artist, slides: d.slides, index: d.index, style: d.style, stage: d.stage, audio: d.audio, follow: d.follow, ends: d.ends, starts: d.starts, introMode: d.introMode }];
     if (entry.layer === "media") return d.playlist ? ["media.playlist", { items: d.playlist, index: d.playlistIndex }] : ["media.show", { kind: d.kind, url: d.url, title: d.title, duration: d.duration, id: d.id, poster: d.poster }];
     if (entry.layer === "communication") return d.playlist ? ["communication.show", { playlist: d.playlist, index: d.playlistIndex }] : ["communication.show", { item: d.item }];
     if (entry.layer === "tool") return ["tool.show", { mode: d.mode, text: d.text, style: d.style, durationMs: d.mode === "timer" ? Math.max(1, d.endsAt - d.startedAt) : undefined }];
@@ -46,10 +47,12 @@ export function undoEndOps(before, endedAt) {
     for (const layer of ["content", "media", "communication", "tool"]) {
         if (!before[layer]) continue;
         const op = restoreArgs({ layer, data: before[layer] });
+        // The song's own video starts again at its Início, not the file's 0.
+        if (layer === "media" && op[0] === "media.show") op[1] = { ...op[1], ...startArgs(before.content?.starts, op[1].url) };
         ops.push(layer === "media" ? asItWas(op, before.media) : op);
     }
     const v = before.video;
-    if (v) ops.push(asItWas(["video.show", { kind: v.kind, url: v.url, title: v.title, duration: v.duration, id: v.id }], v));
+    if (v) ops.push(asItWas(["video.show", { kind: v.kind, url: v.url, title: v.title, duration: v.duration, id: v.id, ...startArgs(before.content?.starts, v.url) }], v));
     if (before.audio) ops.push(musicBack(before.audio, endedAt));
     if (ops.length && (before.screen === "black" || before.screen === "logo")) ops.push(["screen.set", { mode: before.screen }]);
     // Esc may have put the papel de parede on the Fundo: the one the item was

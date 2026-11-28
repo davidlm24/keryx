@@ -3169,7 +3169,40 @@ marked, moved or taken off while the song is on air), and `restoreArgs`
 carries `ends`/`introMode` (Desfazer, Voltar ao anterior, the item after
 Esc). **The player's bar ends at the Fim** (`endLength`: the total, the
 remaining time, the seek and the ticks stop at the mark, within the file). The exported video stops at end + fade, fading to black
-(`ffmpegArgs` `end`). **The fade is a curve** (owner 2026-11-14: the
+(`ffmpegArgs` `end`). **The song's Início** (owner 2026-11-28, mockup
+"Cortar o começo da música", C1 A · C2 A · C3 A; the Fim's mirror):
+`Song.start_at` (s, stored as text, read with `Number()`) is where the
+file starts playing on air; the file is never re-encoded and the marks
+stay in the FILE's time, never moved. Only a file of the computer.
+`songStart` (content.js) clamps it to the first marked slide (by the
+marks) and a tenth before the Fim, and songContent sends it as
+`content.starts = { url, at }` (the store keeps the raw value; the page
+clamps it with `clampStart`, lyricSync.js); unmarked slides before the
+first mark count from it (`followStarts` `from`), and an Início under
+0,5 s from the first slide has no introduction. `send` shows the song's
+video or playback from it with a 150 ms fade in (`startArgs`,
+`START_FADE_MS` in songEnd.js, console only); in the live state only
+`content.show`/`.update` keep `starts`, `slideProgress`'s introduction
+counts from it and `playbackPlan` seeks a fresh element (currentTime 0)
+to `playback.position` (never a loop) — the outputs' budget allows no
+more. The player's bar counts from it (`startFrom`; `fromOp` keeps ⏮,
+−10, the drag and the phone's seek after it; the phone's bar stays in the
+file's time); Desfazer, Voltar ao anterior and `songSaved` keep it.
+Marcar os tempos' **Início** row (white flag `.sync-mk.is-start`, the
+part before it hatched, the page opening there): − / + (Shift 1 s, Alt
+0,01 s), Aqui, **Achar o som** (`leadSilence` in waveform.js: the first
+run of five 10 ms windows above max(0,001, peak × 0,5 %) in the first
+120 s, the Início `LEAD_PRE` 0,15 s before it; off with its reason),
+Ouvir o início, ✕. The editor says "Começa em · Termina em" under the
+media; the exported video leaves the part out (`trimmed`, `-ss` and the
+0,15 s `afade` in, lyricVideo.cjs). **Submenus open beside their item**
+(owner 2026-11-28, every menu: in a right-click menu one opened inside
+and pushed the items down): `.mb-sub` is `position: fixed`, placed by
+`usePlaced` `beside` (`placeSub`, contextMenu.js), still a child of its
+row; hover intent is `subAim` (menuNav.js: `SUB_OPEN_MS` 200 to open,
+`SUB_CLOSE_MS` 300 of tolerance on the way into it, a disabled item never
+opens one, a click never toggles it shut, the keys as before); scrolling
+the menu closes it. **The fade is a curve** (owner 2026-11-14: the
 straight line sounded loud to the end, then cut): every leaving sound — the
 Fim, Esc, Limpar, a sound giving way — comes down as `fadeGain` (the cube of
 what is left, shared/live-state.mjs; LiveVideo's `left()`, `endGain`, the

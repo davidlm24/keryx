@@ -43,3 +43,43 @@ export function columns(p, duration, from, span, width) {
     }
     return out;
 }
+
+// "Achar o som" (owner 2026-11-28, mockup "Cortar o começo da música", C2 A):
+// where the sound of a file starts, in seconds, from its decoded samples —
+// the first of `run` 10 ms windows in a row whose loudest sample is above
+// the threshold (a click is one window and does not count), the threshold a
+// fraction of the file's peak (a quiet track still has its own), never under
+// the noise floor `min`; only the first `within` seconds are searched. null
+// when nothing there sounds (a mute file, or silence that long).
+export const LEAD_PRE = 0.15; // the Início lands this much before the first sound
+export const LEAD_MIN = 0.3; // under this the song already starts with sound
+export function leadSilence(channels, sampleRate, { within = 120, windowMs = 10, run = 5, ratio = 0.005, min = 0.001 } = {}) {
+    const len = channels?.[0]?.length || 0;
+    if (!len || !(sampleRate > 0)) return null;
+    let peak = 0;
+    for (const ch of channels) for (let i = 0; i < len; i++) { const v = Math.abs(ch[i]); if (v > peak) peak = v; }
+    const threshold = Math.max(min, peak * ratio);
+    if (peak <= min) return null;
+    const size = Math.max(1, Math.round((sampleRate * windowMs) / 1000));
+    const stop = Math.min(len, Math.round(within * sampleRate));
+    let first = -1;
+    let count = 0;
+    for (let w = 0; w * size < stop; w++) {
+        const a = w * size;
+        const b = Math.min(stop, a + size);
+        let loud = false;
+        for (const ch of channels) { for (let i = a; i < b; i++) if (Math.abs(ch[i]) > threshold) { loud = true; break; } if (loud) break; }
+        if (!loud) { count = 0; continue; }
+        if (count === 0) first = w;
+        if (++count >= run) return Math.round(((first * size) / sampleRate) * 100) / 100;
+    }
+    return null;
+}
+
+// The Início "Achar o som" proposes for a sound starting at `lead` (s):
+// { at } a little before it, or { why } when it cannot help.
+export function leadStart(lead) {
+    if (lead === null || lead === undefined) return { why: "Não há som nos primeiros 2 minutos" };
+    if (lead < LEAD_MIN) return { why: "A música já começa com som" };
+    return { at: Math.round((lead - LEAD_PRE) * 100) / 100 };
+}

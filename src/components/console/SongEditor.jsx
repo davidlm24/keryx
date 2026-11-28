@@ -8,7 +8,7 @@ import { Panel, Btn, IconBtn, Field, Seg, NumBox, Empty, WinBar, useUnloadGuard 
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { frameState } from "@/lib/console/lyricVideo";
 import { emptyState } from "@shared/live-state.mjs";
-import { songContent, isVideoUrl } from "@/lib/console/content";
+import { songContent, songStart, isVideoUrl } from "@/lib/console/content";
 import { soundModeFor, songSoundWhy, soundModeValue } from "@/lib/console/videoSound";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { parseChords, slidesFromLyrics, reflowLyrics, linesLimit, parseDuration, formatDuration, insertParts, sungLines } from "@/lib/songImport";
@@ -34,7 +34,7 @@ const THUMBS_KEY = "keryx.console.editor.thumbs";
 const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); return ["s", "m", "l"].includes(v) ? v : "m"; } catch { return "m"; } };
 
 
-const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", playback_mode: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false, follow_mode: "", slide_seconds: null, end_at: null, end_fade: null, intro_mode: "" };
+const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", playback_mode: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false, follow_mode: "", slide_seconds: null, start_at: null, end_at: null, end_fade: null, intro_mode: "" };
 const unCR = (t) => String(t ?? "").replace(/\r\n?/g, "\n");
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
@@ -390,6 +390,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         // The song's Fim and beginning (owner 2026-11-12), edited there too.
         end: song.end_at ?? null,
         endFade: song.end_fade ?? null,
+        // And its Início (2026-11-28): where the file starts on air.
+        start: song.start_at ?? null,
         introMode: song.intro_mode || "",
         // Aplicar brings the marks, and the video or playback chosen there.
         onApply: (next, extra) => {
@@ -407,6 +409,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             // editor takes the same split (2/4 linhas rewrite the text).
             if (extra?.split > 0) pickSplit(extra.split);
             if (extra && "end_at" in extra) set({ end_at: extra.end_at, end_fade: extra.end_fade });
+            if (extra && "start_at" in extra) set({ start_at: extra.start_at });
             if (extra && "intro_mode" in extra) set({ intro_mode: extra.intro_mode });
             setDirty(true);
         },
@@ -524,7 +527,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     <IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label="Favorita" onClick={() => set({ is_favorite: !song.is_favorite })} />
                     {foldSeg}
                     {songId !== "new" && <Btn small onClick={remove} title="Excluir esta música · pergunta antes">Excluir…</Btn>}
-                    <Btn small onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir</Btn>
+                    <Btn small onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir…</Btn>
                 </>} bodyStyle={{ overflow: "auto" }}>
                     <CfgGroup id="song.dados" title="Dados" fold={false}>
                     <div className="frm">
@@ -638,7 +641,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         <Btn small className={picking ? "is-on" : ""} disabled={busy === "audio_url"} onClick={() => setPicking(!picking)} title="Um vídeo ou um playback da Mídia, ou do computador" aria-haspopup="dialog" aria-expanded={picking}>{busy === "audio_url" ? "Enviando…" : media ? "Trocar…" : "Vídeo ou playback…"}</Btn>
                     </span>
                     {picking && <PlaybackPicker anchorRef={pickAnchor} media={libMedia} current={media} onPick={chooseMedia} onClose={() => setPicking(false)} onComputer={() => { setPicking(false); fileRef.current?.click(); }} />}
-                    {media && <Btn small onClick={() => set({ audio_url: "" })} title="As marcas ficam: sem mídia, a letra segue o relógio ao vivo">Remover</Btn>}
+                    {media && <Btn small onClick={() => set({ audio_url: "" })} title="As marcas ficam: sem mídia, a letra segue o relógio ao vivo">Tirar</Btn>}
                 </>} bodyStyle={{ display: "flex", flexDirection: media ? "row" : "column", flexWrap: media ? "wrap" : "nowrap", alignContent: "flex-start", gap: "var(--space-2)", padding: "0 var(--space-2) var(--space-2)", overflow: "auto" }}>
                     <input ref={fileRef} type="file" accept="video/*,audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; fromComputer(f); }} />
                     {!media && <Empty icon="film" title="Sem vídeo nem playback">Um vídeo vai para as telas de vídeo junto com a letra; um playback toca no canal de áudio. Sem mídia, a letra pode seguir a banda: pelas marcas (Marcar os tempos) ou por tempo, e no ar o Iniciar do player começa.</Empty>}
@@ -647,6 +650,13 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             ? <video ref={mediaRef} src={media} controls preload="metadata" />
                             : <audio ref={mediaRef} src={media} controls preload="metadata" />}
                             <span className="kx-meta">{soundOnly ? "Vídeo · só o som, no canal de áudio" : video ? "Vídeo · vai às telas de vídeo" : "Playback · toca no canal de áudio"}</span>
+                            {/* Where it starts and ends on air (Marcar os tempos' Início and Fim), whenever there is media. */}
+                            {(() => {
+                                const from = songStart(song, draftSlides)?.at;
+                                const end = Number(song.end_at) > 0 ? Number(song.end_at) : null;
+                                if (!from && !end) return null;
+                                return <span className="ed-endline">{[from ? `Começa em ${mmss(from)}` : "", end ? `Termina em ${mmss(end)} · fade ${String(song.end_fade ?? 3).replace(".", ",")} s` : ""].filter(Boolean).join(" · ")}</span>;
+                            })()}
                         </div>
                     )}
                     <div className="ed-syncstat">
@@ -682,8 +692,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         </>}
                         {advance === "marks" && <>
                             <span className={`ed-syncn ${marked ? "is-on" : ""}`}><Icon name={media ? "music" : "clock"} />{marked}/{slides.length} slides marcados
-                                {linesMarked > 0 && <Btn small onClick={clearMarks} title="Tira o tempo de todos os slides (o Fim fica)"><Icon name="trash" size={12} />Tirar todas as marcações…</Btn>}</span>
-                            {media && Number(song.end_at) > 0 && <span className="ed-endline"><Icon name="arrow-right" size={14} />Termina em {mmss(Number(song.end_at))} · fade {String(song.end_fade ?? 3).replace(".", ",")} s</span>}
+                                {linesMarked > 0 && <Btn small onClick={clearMarks} title="Tira o tempo de todos os slides (o Fim fica)"><Icon name="x" size={12} />Tirar todas as marcações…</Btn>}</span>
                             <span className="kx-meta">{!marked ? "Sem marcas: use Marcar os tempos"
                                 : !media ? "No ar: Iniciar letra automática no player, na introdução."
                                 : video ? "No ar, a letra segue o vídeo." : "No ar, a letra segue o playback."}</span>

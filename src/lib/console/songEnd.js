@@ -62,3 +62,32 @@ export function endGain(t, end, fade = 3) {
 export const endArgs = (live) => ({ ended: true, soundFade: Math.round((live?.content?.ends?.fade ?? 3) * 1000) });
 
 export const END_SAY = "A música terminou no fim marcado.";
+
+// The song's Início (owner 2026-11-28, mockup "Cortar o começo da música",
+// C1–C3 A): songContent puts it on the content as `starts: { url, at }`
+// (content.js songStart). The file is never re-encoded: the console sends
+// the song's media from `at` with a short fade in, the player's bar counts
+// from it (0:00 at the Início) and never seeks before it; the marks stay in
+// the file's time. Console only, so the outputs' path stays as it was.
+export const START_FADE_MS = 150;
+
+// Where `item` (a layer's item) starts on the bar: the Início when it is the
+// song's media, else 0.
+export function startFrom(live, item) {
+    const starts = live?.content?.starts;
+    const at = Number(starts?.at);
+    return starts?.url && item?.url === starts.url && at > 0 ? at : 0;
+}
+
+// What a show op of the song's media adds to start at the Início.
+export function startArgs(starts, url) {
+    const at = Number(starts?.at);
+    return url && starts?.url === url && at > 0 ? { position: at, fadeIn: START_FADE_MS } : {};
+}
+
+// A player op that never seeks before the Início (⏮, −10, the drag, the
+// phone): `from` in the file's time.
+export function fromOp(op, from) {
+    if (!op || !(from > 0) || op[0] !== "transport" || op[1]?.action !== "seek") return op;
+    return [op[0], { ...op[1], time: Math.max(from, Number(op[1].time) || 0) }];
+}
