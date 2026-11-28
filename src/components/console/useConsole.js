@@ -14,7 +14,7 @@ import { styleMetrics } from "@/lib/console/fontMetrics";
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { withManualIntro } from "@/lib/console/content";
-import { endDue, endArgs, END_SAY, endBefore } from "@/lib/console/songEnd";
+import { endDue, endArgs, END_SAY, endBefore, startArgs } from "@/lib/console/songEnd";
 import { soundStays, undoSoundStays } from "@/lib/console/videoSound";
 import { withTransitions } from "@/lib/console/transitions";
 import { churchAlertLook, sentAlertLook } from "@/lib/outputPrefs";
@@ -435,10 +435,10 @@ export function useConsole() {
         try {
             if (!live?.session) await projection.startSession(ref.serviceId || null);
             if (sound) await callOp("media.toAudio", {});
-            if (stage.video) await callOp("video.show", { kind: "video", url: stage.video, title: stage.title });
+            if (stage.video) await callOp("video.show", { kind: "video", url: stage.video, title: stage.title, ...startArgs(stage.args?.starts, stage.video) });
             // A song's playback: the audio channel, with the player (Rodada
             // D4); a video there when the song plays only its sound.
-            if (stage.playback) await callOp("audio.show", { kind: stage.playbackKind || "audio", url: stage.playback, title: stage.title });
+            if (stage.playback) await callOp("audio.show", { kind: stage.playbackKind || "audio", url: stage.playback, title: stage.title, ...startArgs(stage.args?.starts, stage.playback) });
             // The item's own background (its own, its theme's, the default
             // theme's) goes to the Fundo layer first, unless the padlock
             // holds it (backgroundSpec.js fundoOps).

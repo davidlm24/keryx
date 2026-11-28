@@ -768,6 +768,7 @@ const OPS = {
                 index,
                 ...introOn(items, follow, index, a.introMode),
                 ...(a.ends ? { ends: loose(a.ends, "Fim") } : {}),
+                ...(a.starts ? { starts: loose(a.starts, "Início") } : {}),
                 style: style(a.style),
                 stage: loose(a.stage, "Dados do palco") || {},
                 // A song's playback track, played by the main projector (rows
@@ -793,7 +794,7 @@ const OPS = {
         if (a.style !== undefined) next.style = style(a.style);
         if (a.stage !== undefined) next.stage = loose(a.stage, "Dados do palco") || {};
         if (a.audio !== undefined) next.audio = text(a.audio, "Áudio", { max: MAX_URL }) || null;
-        if (a.ends !== undefined) { delete next.ends; if (a.ends) next.ends = loose(a.ends, "Fim"); }
+        for (const [k, w] of [["ends", "Fim"], ["starts", "Início"]]) if (a[k] !== undefined) { delete next[k]; if (a[k]) next[k] = loose(a[k], w); }
         next.index = clampIndex(a.index ?? current.index, next.slides.length);
         if (a.slides !== undefined && current.revealed) next.revealed = revealedFor(current.revealed, next.slides);
         // New marks (the song saved while on air): a follow still running keeps
@@ -1334,7 +1335,7 @@ export function followIndex(state, now) {
 // How far the slide on air is through its own time, for the Palco's progress
 // bar (owner 2026-11-14: "os pontos enchem até o próximo slide"): the slide's
 // start to the next one's, the last one's to the song's Fim; the
-// introduction's from 0 to the first mark. { index (-1: introduction), intro,
+// introduction's from the Início (0) to the first mark. { index (-1: introduction), intro,
 // frac 0-1, left (seconds, null when the end is not known), warn (the last
 // `PROGRESS_WARN` seconds of a slide that lasts at least 10) } — or null when
 // nothing says how long it takes: no follow, paused, its source not playing,
@@ -1349,7 +1350,7 @@ export function slideProgress(state, now) {
     const t = pos + (f.offset || 0);
     const intro = Boolean(c.intro);
     const index = intro ? -1 : Math.min(Math.max(0, c.index || 0), c.slides.length - 1);
-    const start = intro ? 0 : c.slides[index]?.start;
+    const start = intro ? c.starts?.at || 0 : c.slides[index]?.start;
     if (!Number.isFinite(start)) return null;
     const last = !intro && index === c.slides.length - 1;
     const end = last ? (Number.isFinite(c.ends?.at) ? c.ends.at : NaN) : c.slides[index + 1]?.start;
@@ -1373,6 +1374,8 @@ export function playbackPlan(el, playback, now, { loop = false, tolerance = 1.5 
     const finished = !loop && duration && target >= duration;
     // Finished (no loop): rest on the last frame rather than replay.
     if (Math.abs((el.currentTime || 0) - target) > tolerance) plan.seek = target;
+    // A fresh element of a song with an Início starts exactly there.
+    else if (!loop && !el.currentTime && playback.position > 0) plan.seek = playback.position;
     if (playback.paused) {
         if (!el.paused && !fadingOut(playback, now)) plan.pause = true;
     } else if (el.paused && !finished && !(el.ended && !loop)) {

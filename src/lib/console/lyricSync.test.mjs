@@ -234,3 +234,21 @@ test("remapMarks: an edit to the lyrics moves no other slide's time (owner 2026-
     const back = remapMarks(mid, fixed, m2);
     assert.deepEqual(back, [1, null, 3, null, 5, null]);
 });
+
+test("the Início: clampStart, followStarts from it, clampEnd after it (2026-11-28)", async () => {
+    const { clampStart } = await import("./lyricSync.js");
+    assert.equal(clampStart([8, 20], 4.567), 4.57, "to a hundredth");
+    assert.equal(clampStart([8, 20], 12), 8, "never past the first marked slide");
+    assert.equal(clampStart([null, null], 50, 30), 29.9, "a tenth before the Fim");
+    assert.equal(clampStart([], 300, null, 200), 200, "inside the file");
+    assert.equal(clampStart([8], 0), null, "0 is the file's start");
+    assert.equal(clampStart([0, 8], 3), null, "a slide marked at 0 leaves no Início");
+    assert.equal(clampStart([8], null), null);
+    assert.equal(clampStart([8], "x"), null);
+    // Unmarked slides before the first mark count from the Início.
+    assert.deepEqual(followStarts([{}, {}, { start: 10 }], { from: 4 }), [4, 7, 10]);
+    assert.deepEqual(followStarts([{}, {}, { start: 10 }]), [0, 5, 10], "no Início: from 0");
+    assert.deepEqual(followStarts([{}, { start: 10 }], { from: 12 }), [0, 10], "an Início past the mark is ignored");
+    assert.deepEqual(withFollowStarts([{}, { start: 10 }], { source: "audio" }, 4).map((s) => s.start), [4, 10]);
+    assert.equal(clampEnd([], 3, null, 5), 5.1, "the Fim after the Início");
+});

@@ -74,3 +74,39 @@ export function altTap(state, ev) {
 export function focusAfterClose({ openedBy, closedBy, focusFree, trigger }) {
     return openedBy === "key" && closedBy === "key" && focusFree && trigger ? "trigger" : "none";
 }
+
+// Hover intent for submenus (owner 2026-11-28: "Inserir depois deste slide"
+// opened as the pointer passed on its way to "Tirar a marca"): a submenu
+// opens after the pointer rests SUB_OPEN_MS on its item, or at once with a
+// click, → or Enter; passing over an item cancels an opening not yet done;
+// an open submenu waits SUB_CLOSE_MS before it closes, so the pointer can
+// cross the items between on its way into it; a disabled item never opens
+// one; a click on the open item keeps it open (it never toggles shut).
+// `open`: the item whose submenu is open ({ i }) or null. ev: { type:
+// "enter" (an item; `i`, `sub`: has a submenu, `disabled`) | "sub" (the
+// pointer inside the open submenu) | "leave" (out of the menu) | "click"
+// (`i`, `sub`, `disabled`), pending: what a timer already waits to do
+// (undefined none, null a close, { i } an opening) }.
+// -> { now?: the open state at once, later?: { ms, open } | null (null:
+// drop the timer), keep?: true (leave the timer as it is) }
+export const SUB_OPEN_MS = 200;
+export const SUB_CLOSE_MS = 300;
+export function subAim(open, ev) {
+    const pending = ev.pending;
+    if (ev.type === "click") {
+        if (!ev.sub || ev.disabled) return { keep: true };
+        return { now: { i: ev.i, byKey: false }, later: null };
+    }
+    if (ev.type === "sub") return { later: null };
+    if (ev.type === "leave") return open ? (pending === null ? { keep: true } : { later: { ms: SUB_CLOSE_MS, open: null } }) : { later: null };
+    // "enter": the item already open stays open.
+    if (open && open.i === ev.i) return { later: null };
+    if (ev.sub && !ev.disabled) {
+        if (pending && pending.i === ev.i) return { keep: true };
+        return { later: { ms: open ? SUB_CLOSE_MS : SUB_OPEN_MS, open: { i: ev.i, byKey: false } } };
+    }
+    // An item with no submenu (or a disabled one): an opening waiting is
+    // dropped; an open submenu closes after the tolerance.
+    if (!open) return { later: null };
+    return pending === null ? { keep: true } : { later: { ms: SUB_CLOSE_MS, open: null } };
+}

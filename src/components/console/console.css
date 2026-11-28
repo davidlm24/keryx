@@ -120,9 +120,11 @@
    only while Alt is held or the bar has the keyboard, as in Windows. */
 .console .topbar .tb-menus:is(.show-ak, :focus-within) .tb-ak { text-decoration: underline; text-underline-offset: 3px; }
 .console .mb-pop { min-width: 232px; max-height: calc(100% - var(--pop-top) - 12px); overflow: visible; }
-.console .mb-pop .mb-row { position: relative; }
-.console .mb-pop .kx-menu-item.is-on { background: var(--bg-3); }
-.console .mb-pop .mb-sub { position: absolute; left: 100%; top: -6px; margin-left: 2px; min-width: 200px; z-index: var(--z-screen); }
+/* A submenu (every menu: the bar, the (+), the right click; owner
+   2026-11-28): a box beside its item, placed by usePlaced `beside`
+   (Menu.jsx) — never inside the menu, pushing the items under it down. */
+.console .kx-pop .kx-menu-item.is-on { background: var(--bg-3); }
+.console .mb-sub { position: fixed; min-width: 200px; z-index: var(--z-screen); }
 .console .topbar .tb-menubtn { display: none; height: 28px; padding: 0 10px 0 8px; gap: 6px; border-radius: var(--radius-control); font-size: var(--fs-content); color: var(--fg-2); flex: none; }
 .console .topbar .tb-menubtn:hover, .console .topbar .tb-menubtn.is-on { background: var(--bg-2); color: var(--fg-1); }
 @container topbar (max-width: 1240px) {
@@ -1618,8 +1620,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .ed-syncstat > * { flex-shrink: 0; }
 .console .ed-syncn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-content); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .ed-syncn.is-on { color: var(--fg-1); }
-/* The song's Fim (2026-11-12): where it ends, under the marks. */
-.console .ed-endline { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-ui); color: var(--danger-fg); font-variant-numeric: tabular-nums; }
+/* The song's Início and Fim (2026-11-12/28): where it starts and ends on air, under the media. */
+.console .ed-endline { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-ui); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 /* "Só o som do vídeo" on by itself: the lyrics follow the marks (2026-11-12). */
 .console .ed-soundwhy { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-ui); color: var(--brand-hover); }
 .console .ed-unmarked { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
@@ -2571,6 +2573,7 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-ov > i { position: absolute; pointer-events: none; }
 .console .sync .sync-ov-mk { top: 4px; width: 2px; height: 6px; margin-left: -1px; background: var(--fg-3); }
 .console .sync .sync-ov-end { top: 2px; bottom: 2px; width: 2px; margin-left: -1px; background: var(--danger); }
+.console .sync .sync-ov-start { top: 2px; bottom: 2px; width: 2px; margin-left: -1px; background: var(--fg-1); }
 .console .sync .sync-ov-frame { top: -1px; bottom: -1px; border-radius: 4px; background: color-mix(in srgb, var(--fg-1) 8%, transparent); box-shadow: inset 0 0 0 1.5px var(--fg-1); }
 .console .sync .sync-ov-head { top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--air); }
 .console .sync .sync-frame { position: relative; border-radius: var(--radius-control); background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
@@ -2585,6 +2588,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-played { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--fg-1) 5%, transparent); }
 .console .sync .sync-fade { position: absolute; top: 0; bottom: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--danger) 35%, transparent), transparent); }
 .console .sync .sync-after { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--bg-0) 70%, transparent) 0 4px, transparent 4px 8px); }
+/* Before the Início (2026-11-28, C1 A): the part that never plays on air, hatched. */
+.console .sync .sync-before { position: absolute; top: 0; bottom: 0; left: 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--bg-0) 70%, transparent) 0 4px, transparent 4px 8px); }
 /* A mark is a flag: its number on top, its line down the lane. */
 .console .sync .sync-mk { position: absolute; top: 6px; bottom: 6px; width: 2px; margin-left: -1px; padding: 0; background: var(--fg-2); cursor: ew-resize; z-index: var(--z-screen); font-size: 0; }
 /* The number: a tab hanging off the top of the line. */
@@ -2598,8 +2603,12 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 /* The Fim (2026-11-12): a red flag with its time. */
 .console .sync .sync-mk.is-end { background: var(--danger); font-size: var(--fs-meta); }
 .console .sync .sync-mk.is-end > .sync-mk-n { background: var(--danger); color: var(--fg-1); font-weight: 700; }
-/* The Fim's flag takes the keyboard (← → nudge it): its ring when focused. */
+/* The Início (2026-11-28): a white flag with its time. */
+.console .sync .sync-mk.is-start { background: var(--fg-1); font-size: var(--fs-meta); }
+.console .sync .sync-mk.is-start > .sync-mk-n { background: var(--fg-1); color: var(--bg-0); font-weight: 700; }
+/* The Fim's and the Início's flags take the keyboard (← → nudge them): a ring when focused. */
 .console .sync .sync-mk.is-end:focus-visible { outline: 2px solid var(--fg-1); outline-offset: 2px; }
+.console .sync .sync-mk.is-start:focus-visible { outline: 2px solid var(--prev); outline-offset: 2px; }
 .console .sync .sync-head { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--air); pointer-events: none; z-index: var(--z-mark); }
 .console .sync .sync-span { min-width: 44px; text-align: center; font-size: var(--fs-ui); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 /* The rows of the song's beginning and end (2026-11-12, I1 and F1). */
@@ -2610,6 +2619,12 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
 .console .sync .sync-end.is-set { background: color-mix(in srgb, var(--danger) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 45%, transparent); }
 .console .sync .sync-end .n { color: var(--danger-fg); }
 .console .sync .sync-end .sync-acts { opacity: 1; }
+.console .sync .sync-start .n { width: auto; min-width: 28px; font-weight: 700; color: var(--fg-1); }
+.console .sync .sync-start .sync-acts { opacity: 1; margin-left: auto; }
+/* Its six controls go under the words when the column is narrow, never over them. */
+.console .sync .sync-start { flex-wrap: wrap; }
+.console .sync .sync-start .sync-txt { min-width: 110px; }
+.console .sync .sync-start.is-set { background: color-mix(in srgb, var(--fg-1) 6%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg-1) 35%, transparent); }
 .console .sync .sync-endnote { padding: 0 var(--space-2) var(--space-1); }
 .console .sync .sync-list { display: flex; flex-direction: column; gap: 2px; padding: var(--space-1); }
 .console .sync .sync-row { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 2px 4px 2px 8px; border-radius: var(--radius-control); }
@@ -2774,6 +2789,8 @@ html[data-dock-dragging], html[data-dock-dragging] * { cursor: grabbing !importa
   .console .sync-marks .sm-row.is-prev { outline: 2px dashed LinkText; outline-offset: -2px; }
   .console .sync-marks .sm-row.is-prev .sm-radio { background: LinkText; }
   .console :is(.sync .sync-note, .sync-marks .sm-chip) { outline: 1px solid CanvasText; outline-offset: -1px; }
+  /* Marcar os tempos' Início and Fim flags (lines drawn as backgrounds). */
+  .console .sync .sync-mk:is(.is-start, .is-end), .console .sync .sync-mk:is(.is-start, .is-end) > .sync-mk-n { background: CanvasText; color: Canvas; }
   /* Floating surfaces lose their shadow: an edge instead. */
   .console :is(.pop, .kx-pop, .ctx-menu, .dialog, .palette, .qj, .verif-overlay, .addmenu-pop, .lyr, .pl-pop, .lib-dialog, .media-peek) { outline: 1px solid CanvasText; }
   /* Slides, No ar cards, verses, Setlist, Biblioteca and Mídia rows, the

@@ -628,3 +628,14 @@ test("state: prevItemId is the playable item before the one sent last, in Setlis
     assert.equal((await run(fakeConsole({ items, airItemId: "t", airNow: null }), "state")).data.prevItemId, "a", "the last sent, off the air");
     assert.equal((await run(fakeConsole({ items, airItemId: null, airNow: null }), "state")).data.prevItemId, null, "nothing sent yet");
 });
+
+test("player: the phone never seeks before the song's Início (2026-11-28)", async () => {
+    const d = playing(fakeConsole());
+    d.cur = { ...d.cur, content: { ...d.cur.content, starts: { url: "http://x/media/v.mp4", at: 25 } } };
+    await run(d, "player", { do: "prev" });
+    assert.deepEqual(d.calls.at(-1), ["callOp", "transport", { layer: "media", action: "seek", time: 25 }], "⏮ goes to the Início");
+    await run(d, "player", { do: "back" });
+    assert.equal(d.calls.at(-1)[2].time, 25, "−10 stops at the Início");
+    await run(d, "player", { do: "seek", to: 40 });
+    assert.equal(d.calls.at(-1)[2].time, 40, "after it: as asked (the phone's bar is in the file's time)");
+});

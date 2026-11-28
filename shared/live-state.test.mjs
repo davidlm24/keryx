@@ -1467,3 +1467,30 @@ test("slideProgress: how far the slide on air is through its time (2026-11-14)",
     assert.equal(slideProgress(run([["content.show", song]]), T0), null);
     assert.equal(slideProgress(null, T0), null);
 });
+
+test("the song's Início: kept like the Fim, the introduction counts from it, a fresh element starts exactly there (2026-11-28)", () => {
+    const marked = { title: "Canção", slides: [{ text: "um", start: 8 }, { text: "dois", start: 20 }], starts: { url: "/a.mp3", at: 4 }, follow: { source: "audio", url: "/a.mp3", length: 60 } };
+    const s = run([["content.show", marked], ["audio.show", { url: "/a.mp3", position: 4, fadeIn: 150 }]]);
+    assert.deepEqual(s.content.starts, { url: "/a.mp3", at: 4 });
+    assert.equal(s.audio.playback.position, 4, "the media starts at the Início");
+    assert.equal(s.audio.playback.ramp.ms, 150);
+    // Kept by an update, swapped, dropped with null; the Fim beside it too.
+    assert.deepEqual(applyOp(s, "content.update", { title: "Outra" }, T0).content.starts, s.content.starts);
+    assert.deepEqual(applyOp(s, "content.update", { starts: { url: "/a.mp3", at: 5 } }, T0).content.starts, { url: "/a.mp3", at: 5 });
+    assert.equal(applyOp(s, "content.update", { starts: null }, T0).content.starts, undefined);
+    const both = applyOp(s, "content.update", { starts: null, ends: { url: "/a.mp3", at: 50, fade: 3 } }, T0).content;
+    assert.deepEqual([both.starts, both.ends?.at], [undefined, 50]);
+    assert.throws(() => run([["content.show", { ...marked, starts: { at: 1n } }]]), LiveError);
+    // The introduction runs from the Início (4 s) to the first mark (8 s): halfway at 6 s.
+    assert.equal(s.content.intro, true);
+    const p = slideProgress(s, T0 + 2 * S);
+    assert.deepEqual([p.index, p.frac, p.left], [-1, 0.5, 2]);
+    // A fresh element (currentTime 0) seeks to the Início, never plays the silence before it.
+    const pb = s.audio.playback;
+    const fresh = { currentTime: 0, paused: true, ended: false, duration: 60 };
+    assert.equal(playbackPlan(fresh, pb, T0 + 300).seek, 4.3, "past the tolerance: the live target, as before");
+    assert.equal(playbackPlan(fresh, { ...pb, position: 1 }, T0 + 100).seek, 1, "an Início under the tolerance too");
+    assert.equal(playbackPlan(fresh, { ...pb, position: 0 }, T0 + 300).seek, undefined, "no Início: as before");
+    assert.equal(playbackPlan({ ...fresh, currentTime: 4.2 }, pb, T0 + 300).seek, undefined, "the element already there (the eye, a resume)");
+    assert.equal(playbackPlan(fresh, { ...pb, position: 1 }, T0 + 100, { loop: true }).seek, undefined, "never a loop");
+});

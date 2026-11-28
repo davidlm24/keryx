@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { IconBtn, MenuItem } from "./kx";
-import { menuStep, focusAfterClose } from "@/lib/console/menuNav";
-import { placeBox } from "@/lib/console/contextMenu";
+import { menuStep, focusAfterClose, subAim } from "@/lib/console/menuNav";
+import { placeBox, placeSub } from "@/lib/console/contextMenu";
 
 // The one menu of the console (audit C-15, 2026-10-16): the menu bar, the
 // logo's menu, Ver, the (+) menus, the right-click menus, the tabs lists and
@@ -74,7 +74,8 @@ function fixedHost(el) {
 // button it opens from. Writes left, top and max-height inline, again when
 // the window changes size (the console's zoom too) or the menu does. Inside
 // a transformed frame the menu stays inside that frame, which clips it.
-export function usePlaced(ref, anchorRef, { open = true, align = "end" } = {}) {
+// `beside`: a submenu, beside its item instead of under it (placeSub).
+export function usePlaced(ref, anchorRef, { open = true, align = "end", beside = false } = {}) {
     useLayoutEffect(() => {
         const el = ref.current;
         if (!open || !el) return undefined;
@@ -92,7 +93,7 @@ export function usePlaced(ref, anchorRef, { open = true, align = "end" } = {}) {
                 left: Math.max(0, host?.left ?? 0), right: Math.min(vw, host?.right ?? vw),
                 top: Math.max(0, host?.top ?? 0, bar && !host ? bar.bottom : 0), bottom: Math.min(vh, host?.bottom ?? vh),
             };
-            const p = placeBox({ anchor: a.getBoundingClientRect(), w: el.offsetWidth, h: el.scrollHeight, bounds, align });
+            const p = (beside ? placeSub : placeBox)({ anchor: a.getBoundingClientRect(), w: el.offsetWidth, h: el.scrollHeight, bounds, align });
             el.style.left = `${p.left - origin.left}px`;
             el.style.top = `${p.top - origin.top}px`;
             if (p.maxHeight != null) { el.style.maxHeight = `${p.maxHeight}px`; el.style.overflowY = "auto"; }
@@ -102,7 +103,17 @@ export function usePlaced(ref, anchorRef, { open = true, align = "end" } = {}) {
         const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => place());
         ro?.observe(el);
         return () => { window.removeEventListener("resize", place); ro?.disconnect(); };
-    }, [ref, anchorRef, open, align]);
+    }, [ref, anchorRef, open, align, beside]);
+}
+
+// A submenu: a box of its own beside its item (position: fixed, placed by
+// usePlaced `beside`), never inside the menu pushing the items under it.
+// It stays a child of its row, so the keyboard and a pointer leaving the
+// row work as before; the pointer inside it keeps it open (`onAim`).
+function SubMenu({ rowRef, onAim, ...props }) {
+    const list = useRef(null);
+    usePlaced(list, rowRef, { beside: true });
+    return <MenuList {...props} listRef={list} onPointerEnter={() => onAim({ type: "sub" })} />;
 }
 
 // A focused item in a menu that scrolls (a max-height from usePlaced, the
@@ -128,6 +139,23 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
     const box = useRef(null);
     const [sub, setSub] = useState(null); // { i, byKey }
     const setRef = (el) => { box.current = el; if (listRef) listRef.current = el; };
+    // Hover intent (subAim, menuNav.js): one timer, what it waits to do in
+    // `wait` (undefined nothing, null a close, { i } an opening).
+    const timer = useRef(null);
+    const wait = useRef(undefined);
+    const rows = useRef({}); // each submenu's row, as a stable ref (its anchor)
+    const rowRef = (i) => rows.current[i] || (rows.current[i] = { current: null });
+    const drop = () => { clearTimeout(timer.current); timer.current = null; wait.current = undefined; };
+    useEffect(() => drop, []);
+    const aim = (ev) => {
+        const r = subAim(sub, { ...ev, pending: wait.current });
+        if (r.now !== undefined) setSub(r.now);
+        if (r.keep) return;
+        drop();
+        if (!r.later) return;
+        wait.current = r.later.open;
+        timer.current = setTimeout(() => { timer.current = null; wait.current = undefined; setSub(r.later.open); }, r.later.ms);
+    };
 
     useEffect(() => {
         if (!autoFocus) return;
@@ -149,6 +177,7 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
 
     const onKeyDown = (e) => {
         if (e.defaultPrevented) return;
+        drop();
         const list = itemsOf(box.current);
         const at = list.indexOf(document.activeElement);
         const step = menuStep(list.map((el) => ({ disabled: el.disabled })), at, e.key);
@@ -181,7 +210,9 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
     const itemOfEl = (el) => items[Number(el?.dataset.mi)];
 
     return (
-        <div ref={setRef} role="menu" aria-label={label} className={className} style={style} onKeyDown={onKeyDown} {...rest}>
+        <div ref={setRef} role="menu" aria-label={label} className={className} style={style} onKeyDown={onKeyDown}
+            // A submenu is placed beside its item: scrolling the menu leaves it behind, so it closes.
+            onScroll={sub ? (e) => { if (e.target === box.current) { drop(); setSub(null); } } : undefined} {...rest}>
             {items.map((it, i) => {
                 if (!it) return null;
                 if (isSep(it)) return <div key={`s${i}`} className="kx-menu-sep" role="separator" />;
@@ -199,8 +230,8 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
                         role={role} aria-checked={role === "menuitemcheckbox" ? Boolean(it.checked) : undefined}
                         aria-disabled={it.ariaDisabled || undefined} aria-haspopup={it.sub ? "menu" : undefined} aria-expanded={it.sub ? open : undefined}
                         className={`${it.air ? "is-air" : ""} ${open ? "is-on" : ""} ${it.meta ? "has-meta" : ""} ${it.indent ? "is-indent" : ""}`}
-                        onPointerEnter={it.sub ? () => setSub({ i, byKey: false }) : sub ? () => setSub(null) : undefined}
-                        onClick={() => (it.sub ? setSub(open ? null : { i, byKey: false }) : pick(it))}>
+                        onPointerEnter={() => aim({ type: "enter", i, sub: Boolean(it.sub), disabled: Boolean(it.disabled) })}
+                        onClick={() => (it.sub ? aim({ type: "click", i, sub: true, disabled: Boolean(it.disabled) }) : pick(it))}>
                         {it.meta
                             ? <span className="kx-menu-l2"><span>{it.label}</span><span className="kx-meta">{it.meta}</span></span>
                             : <span className="kx-menu-l">{it.label}</span>}
@@ -208,11 +239,12 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
                 );
                 if (!it.sub) return button;
                 return (
-                    <div key={`${it.label}${i}`} className="mb-row" onPointerLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setSub(null); }}>
+                    <div key={`${it.label}${i}`} className="mb-row" ref={(el) => { rowRef(i).current = el; }}
+                        onPointerLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget) && !box.current?.contains(e.relatedTarget)) aim({ type: "leave" }); }}>
                         {button}
                         {open && (
-                            <MenuList className="kx-pop mb-sub" label={it.label} items={it.sub} autoFocus={sub.byKey} closeOnPick={closeOnPick} onClose={onClose} onPick={onPick}
-                                onLeave={() => { setSub(null); focusAt(itemsOf(box.current).findIndex((el) => Number(el.dataset.mi) === i)); }} />
+                            <SubMenu rowRef={rowRef(i)} onAim={aim} className="kx-pop mb-sub" label={it.label} items={it.sub} autoFocus={sub.byKey} closeOnPick={closeOnPick} onClose={onClose} onPick={onPick}
+                                onLeave={() => { drop(); setSub(null); focusAt(itemsOf(box.current).findIndex((el) => Number(el.dataset.mi) === i)); }} />
                         )}
                     </div>
                 );

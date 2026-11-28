@@ -599,7 +599,7 @@ export default function Console() {
         // The slide on screen stays the same words, wherever the edit moved
         // them (FUNC-001); in the introduction nothing moves.
         const index = on.intro ? undefined : slideOnAirAfterEdit(on.slides, on.index, s.args.slides);
-        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage, follow: s.args.follow ?? null, ends: s.args.ends ?? null, ...(index !== undefined ? { index } : {}) }); } catch { /* callOp said why */ }
+        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage, follow: s.args.follow ?? null, ends: s.args.ends ?? null, starts: s.args.starts ?? null, ...(index !== undefined ? { index } : {}) }); } catch { /* callOp said why */ }
     }, [c, data.themes]);
 
     const prepareItem = useCallback(async (item, index) => {

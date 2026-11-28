@@ -23,6 +23,7 @@ import { formatReference, BIBLE_VERSIONS } from "../bibleBooks.js";
 import { timerChoices } from "./timerPresets.js";
 import { orderPresets } from "./alertPresets.js";
 import { livePosition } from "../../../shared/live-state.mjs";
+import { startFrom, fromOp } from "./songEnd.js";
 
 const M = PROTOCOL.messages;
 const STATUS = PROTOCOL.codes;
@@ -71,7 +72,8 @@ async function player({ d, live, args }) {
     // As the console's player: the item's length, else what its output reported, else the song's.
     const duration = item.duration || d.reportedDuration?.(layer, item.url) || (followsItem(follow, item) ? follow.length || null : null);
     const pos = args.do === "seek" ? args.to : livePosition(item.playback, d.now());
-    const op = playerOp(live, layer, args.do, { pos, duration, volume: args.volume === undefined ? null : args.volume / 100 });
+    // Never before the song's Início (the phone's bar stays in the file's time).
+    const op = fromOp(playerOp(live, layer, args.do, { pos, duration, volume: args.volume === undefined ? null : args.volume / 100 }), startFrom(live, item));
     if (!op) return fail("nothing", args.do === "next" ? "Não há próxima faixa." : M.nothingPlaying);
     await d.callOp(op[0], op[1]);
     return ok(remoteSay("player", args.do === "volume" ? `volume ${args.volume}%` : PLAYER_WORD[args.do]));

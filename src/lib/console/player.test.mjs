@@ -122,3 +122,16 @@ test("letra por tempo (Rodada P7): the chip says it, Iniciar starts it; a song s
     assert.deepEqual(songFollow(marked, marked.slides), { source: "clock", length: 60 });
     assert.deepEqual(songContent(marked).slides.map((s) => s.start), [0, 10, 20]);
 });
+
+test("the Início on the bar: ticks in bar time, ⏮ and −10 through fromOp (2026-11-28)", async () => {
+    const { followTicks } = await import("./player.js");
+    const { fromOp } = await import("./songEnd.js");
+    const slides = [{ text: "a", start: 10 }, { text: "b", start: 30 }];
+    const follow = { source: "audio", url: "a" };
+    // The bar runs from the Início (10 s): the first slide at 0:00 of it.
+    assert.deepEqual(followTicks(slides, { ...follow, offset: 10 }, 40).map((t) => t.t), [0, 20]);
+    const d = { audio: { kind: "audio", url: "a", playback: pb({ position: 15 }) } };
+    assert.equal(fromOp(playerOp(d, "audio", "prev", { pos: 15 }), 10)[1].time, 10);
+    assert.equal(fromOp(playerOp(d, "audio", "back", { pos: 15 }), 10)[1].time, 10);
+    assert.equal(fromOp(playerOp(d, "audio", "forward", { pos: 15, duration: 50 }), 10)[1].time, 25);
+});

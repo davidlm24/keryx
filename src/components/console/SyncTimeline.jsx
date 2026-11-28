@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fmtTime } from "@/lib/console/lyricSync";
 import { fracOf, timeOf, ticks } from "@/lib/console/timelineView";
-import { peaks, columns, BUCKETS } from "@/lib/console/waveform";
+import { peaks, columns, leadSilence, BUCKETS } from "@/lib/console/waveform";
 
 // Marcar os tempos' timeline (owner 2026-11-12, mockup "Fim da música com
 // fade", T1–T4; the old one was one 30 px strip where moving the time
@@ -11,36 +11,45 @@ import { peaks, columns, BUCKETS } from "@/lib/console/waveform";
 //   - the ruler: the minutes and seconds of the window; a click or a drag
 //     only moves the time (the playhead's grip);
 //   - the lane: only the marks (a flag per slide with its number, the Fim in
-//     red with its fade band, past it hatched), over the sound's wave.
+//     red with its fade band, past it hatched; the Início in white, before
+//     it hatched — owner 2026-11-28, C1 A), over the sound's wave.
 // The wheel slides the window, Ctrl + the wheel zooms (onWheel). The marks'
 // drags are SyncView's (laneRef maps the pointer to a time).
 
-// The decoded wave of a file, once per url for the page's life.
-const WAVES = new Map();
-function useWaveform(url) {
-    const [wave, setWave] = useState(() => WAVES.get(url) || null);
-    useEffect(() => {
-        if (!url) { setWave(null); return undefined; }
-        if (WAVES.has(url)) { setWave(WAVES.get(url)); return undefined; }
-        let alive = true;
-        setWave(null);
-        (async () => {
+// The decoded wave of a file, once per url for the page's life, shared by
+// the timeline and the page ("Achar o som" reads its `lead`, where the
+// sound starts): { state: "reading" | "failed" | "ready", wave }.
+const WAVES = new Map(); // url -> the wave, or null when it could not be read
+const READING = new Map(); // url -> the decode in flight
+function decode(url) {
+    if (!READING.has(url)) {
+        READING.set(url, (async () => {
             try {
                 const buf = await (await fetch(url)).arrayBuffer();
                 const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
                 const audio = await new Ctx(1, 1, 44100).decodeAudioData(buf);
                 const channels = Array.from({ length: audio.numberOfChannels }, (_, i) => audio.getChannelData(i));
-                const w = { peaks: peaks(channels, BUCKETS), duration: audio.duration };
-                WAVES.set(url, w);
-                if (alive) setWave(w);
+                WAVES.set(url, { peaks: peaks(channels, BUCKETS), duration: audio.duration, lead: leadSilence(channels, audio.sampleRate) });
             } catch {
                 // A file the browser cannot decode (a codec it lacks): no wave.
                 WAVES.set(url, null);
             }
-        })();
+            READING.delete(url);
+        })());
+    }
+    return READING.get(url);
+}
+const waveOf = (url) => (!url ? { state: "failed", wave: null } : !WAVES.has(url) ? { state: "reading", wave: null } : WAVES.get(url) ? { state: "ready", wave: WAVES.get(url) } : { state: "failed", wave: null });
+export function useWaveform(url) {
+    const [got, setGot] = useState(() => waveOf(url));
+    useEffect(() => {
+        setGot(waveOf(url));
+        if (!url || WAVES.has(url)) return undefined;
+        let alive = true;
+        decode(url).then(() => { if (alive) setGot(waveOf(url)); });
         return () => { alive = false; };
     }, [url]);
-    return wave;
+    return got;
 }
 
 function WaveCanvas({ wave, from, span, t }) {
@@ -77,8 +86,8 @@ function WaveCanvas({ wave, from, span, t }) {
     return <canvas ref={ref} className="sync-wave" aria-hidden="true" />;
 }
 
-export default function SyncTimeline({ duration, t, from, span, laneRef, markers = [], end = null, endFade = 3, onEndDown, onEndMove, onEndUp, onEndKey = null, tip = null, media = "", overviewMarks = [], onSeekStart, onSeekMove, onSeekEnd, onLaneClick, onCenter, onWheel }) {
-    const wave = useWaveform(media || "");
+export default function SyncTimeline({ duration, t, from, span, laneRef, markers = [], end = null, endFade = 3, onEndDown, onEndMove, onEndUp, onEndKey = null, start = null, onStartDown, onStartMove, onStartUp, onStartKey = null, tip = null, media = "", overviewMarks = [], onSeekStart, onSeekMove, onSeekEnd, onLaneClick, onCenter, onWheel }) {
+    const { wave } = useWaveform(media || "");
     const pct = (x) => `${fracOf(x, from, span) * 100}%`;
     const whole = (x) => `${duration ? Math.min(100, Math.max(0, (x / duration) * 100)) : 0}%`;
     const boxRef = useRef(null);
@@ -111,6 +120,7 @@ export default function SyncTimeline({ duration, t, from, span, laneRef, markers
                 <div className="sync-ov" role="presentation" title="A música inteira · clique para ver aquele trecho" onPointerDown={(e) => onCenter?.(overviewAt(e))}>
                     {overviewMarks.map((v, k) => <i key={k} className="sync-ov-mk" style={{ left: whole(v) }} />)}
                     {Number.isFinite(end) && <i className="sync-ov-end" style={{ left: whole(end) }} />}
+                    {Number.isFinite(start) && <i className="sync-ov-start" style={{ left: whole(start) }} />}
                     <i className="sync-ov-frame" style={{ left: whole(from), width: `${(span / duration) * 100}%` }} />
                     <i className="sync-ov-head" style={{ left: whole(t) }} />
                 </div>
@@ -133,6 +143,7 @@ export default function SyncTimeline({ duration, t, from, span, laneRef, markers
                     {wave && <WaveCanvas wave={wave} from={from} span={span} t={t} />}
                     {Number.isFinite(end) && <i className="sync-fade" style={{ left: pct(end), width: `${((endFade || 0) / span) * 100}%` }} />}
                     {endTo !== null && duration > endTo && <i className="sync-after" style={{ left: pct(endTo) }} />}
+                    {Number.isFinite(start) && <i className="sync-before" style={{ right: `${(1 - Math.max(0, Math.min(1, fracOf(start, from, span)))) * 100}%` }} />}
                     {markers.map((m) => (
                         <span key={m.key} className={`sync-mk ${m.cls || ""}`} style={{ left: pct(m.v) }} title={m.title}
                             onPointerDown={m.onPointerDown} onPointerMove={m.onPointerMove} onPointerUp={m.onPointerUp} onPointerCancel={m.onPointerUp}>{m.label !== "" && m.label != null && <span className="sync-mk-n">{m.label}</span>}</span>
@@ -141,6 +152,11 @@ export default function SyncTimeline({ duration, t, from, span, laneRef, markers
                         <span className="sync-mk is-end" style={{ left: pct(end) }} title={`Fim da música · ${fmtTime(end)} · o som desce em ${String(endFade).replace(".", ",")} s · arraste, ou ← → (Shift 1 s, Alt 0,01 s)`}
                             role="slider" tabIndex={0} aria-label="Fim da música" aria-valuenow={end} aria-valuetext={fmtTime(end)} aria-valuemin={0} aria-valuemax={duration || undefined} onKeyDown={onEndKey || undefined}
                             onPointerDown={onEndDown} onPointerMove={onEndMove} onPointerUp={onEndUp} onPointerCancel={onEndUp}><span className="sync-mk-n">Fim · {fmtTime(end).replace(".", ",")}</span></span>
+                    )}
+                    {Number.isFinite(start) && (
+                        <span className="sync-mk is-start" style={{ left: pct(start) }} title={`Início da música · ${fmtTime(start)} · no ar o som começa aqui · arraste, ou ← → (Shift 1 s, Alt 0,01 s)`}
+                            role="slider" tabIndex={0} aria-label="Início da música" aria-valuenow={start} aria-valuetext={fmtTime(start)} aria-valuemin={0} aria-valuemax={duration || undefined} onKeyDown={onStartKey || undefined}
+                            onPointerDown={onStartDown} onPointerMove={onStartMove} onPointerUp={onStartUp} onPointerCancel={onStartUp}><span className="sync-mk-n">Início · {fmtTime(start).replace(".", ",")}</span></span>
                     )}
                     {tip && <span className="sync-tip" style={{ left: tip.left }} role="status">{tip.text}</span>}
                 </div>

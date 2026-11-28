@@ -112,3 +112,20 @@ test("a song put back keeps its Fim and its beginning (owner 2026-11-12)", () =>
     const after = run(applyOp(on, "clear", {}, T + 2), undoEndOps(on));
     assert.deepEqual(after.content.ends, ends);
 });
+
+test("a song put back keeps its Início; its own video starts there again (2026-11-28)", () => {
+    const starts = { url: "keryx-media://clip.mp4", at: 4 };
+    let on = applyOp(emptyState(T), "video.show", { kind: "video", url: starts.url, position: 4, fadeIn: 150 }, T);
+    on = applyOp(on, "content.show", { kind: "lyrics", title: "Canto", slides: [{ text: "um" }], starts }, T);
+    const [, args] = restoreArgs({ layer: "content", data: on.content });
+    assert.deepEqual(args.starts, starts);
+    const video = undoEndOps(on).find(([op]) => op === "video.show");
+    assert.equal(video[1].position, 4, "the video channel comes back at the Início");
+    assert.equal(video[1].fadeIn, 150);
+    // A video of the projector's media layer too.
+    const m = { ...applyOp(emptyState(T), "media.show", { kind: "video", url: starts.url }, T), content: { kind: "lyrics", starts, slides: [{ text: "um" }], index: 0 } };
+    assert.equal(undoEndOps(m).find(([op]) => op === "media.show")[1].position, 4);
+    // Another video: from its start.
+    const other = applyOp(emptyState(T), "video.show", { kind: "video", url: "keryx-media://outro.mp4" }, T);
+    assert.equal(undoEndOps({ ...other, content: { kind: "lyrics", starts, slides: [], index: 0 } }).find(([op]) => op === "video.show")[1].position, undefined);
+});

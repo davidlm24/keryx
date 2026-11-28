@@ -64,6 +64,11 @@
       "maximum": 120,
       "description": "Por tempo: segundos de cada slide (vazio = 8)"
     },
+    "start_at": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Início da música (2026-11-28, espelho do Fim): de onde, no vídeo ou playback do computador, o som começa no ar, em segundos; o arquivo nunca é regravado e as marcas ficam no tempo do arquivo; vazio = do começo do arquivo (src/lib/console/content.js songStart)"
+    },
     "end_at": {
       "type": ["number", "null"],
       "minimum": 0,

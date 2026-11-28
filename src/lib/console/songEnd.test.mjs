@@ -93,3 +93,39 @@ test("endGain: full before the Fim, down over the fade, silent after (owner 2026
     assert.equal(endGain(30, 30, 0), 0, "no fade: silent at the Fim");
     assert.equal(endGain(29.99, 30, 0), 1);
 });
+
+test("the Início: songStart clamps it, songContent carries it, startFrom/startArgs/fromOp keep the player after it (2026-11-28)", async () => {
+    const { songStart } = await import("./content.js");
+    const { startFrom, startArgs, fromOp, START_FADE_MS } = await import("./songEnd.js");
+    const song = { id: "s1", title: "Canção", lyrics: "um\n\ndois", audio_url: URL, start_at: 4.5, slides: [{ text: "um", start: 8 }, { text: "dois", start: 50 }] };
+    assert.deepEqual(songStart(song), { url: URL, at: 4.5 });
+    assert.deepEqual(songStart({ ...song, start_at: "4.5" }), { url: URL, at: 4.5 }, "stored as text");
+    assert.equal(songStart({ ...song, start_at: 20 }).at, 8, "never past the first marked slide");
+    assert.equal(songStart({ ...song, start_at: 20, follow_mode: "off" }).at, 20, "not by the marks: only the Fim holds it");
+    assert.equal(songStart({ ...song, start_at: 200, end_at: 100, follow_mode: "off" }).at, 99.9, "a tenth before the Fim");
+    for (const v of [null, "", 0, -1, "x"]) assert.equal(songStart({ ...song, start_at: v }), null);
+    assert.equal(songStart({ ...song, audio_url: "" }), null);
+    assert.equal(songStart({ ...song, audio_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }), null, "never a YouTube link");
+    // songContent: the starts, the slides before the first mark from the Início, the intro.
+    const c = songContent({ ...song, slides: [{ text: "um" }, { text: "dois", start: 50 }] });
+    assert.deepEqual(c.starts, { url: URL, at: 4.5 });
+    assert.equal(c.slides[0].start, 4.5, "an unmarked first slide comes in at the Início");
+    assert.equal(c.introMode, "slide", "under half a second from the first slide: no introduction");
+    assert.equal(songContent(song).introMode, "blank");
+    assert.equal(songContent({ ...song, start_at: null }).starts, undefined);
+    // On air: the bar counts from it; the ops never go before it.
+    const live = { content: { starts: { url: URL, at: 4.5 } } };
+    assert.equal(startFrom(live, { url: URL }), 4.5);
+    assert.equal(startFrom(live, { url: "keryx-media://other.mp3" }), 0);
+    assert.equal(startFrom({ content: null }, { url: URL }), 0);
+    assert.deepEqual(startArgs({ url: URL, at: 4.5 }, URL), { position: 4.5, fadeIn: START_FADE_MS });
+    assert.deepEqual(startArgs({ url: URL, at: 4.5 }, "keryx-media://v.mp4"), {});
+    assert.deepEqual(startArgs(null, URL), {});
+    assert.deepEqual(fromOp(["transport", { layer: "audio", action: "seek", time: 0 }], 4.5), ["transport", { layer: "audio", action: "seek", time: 4.5 }], "⏮ goes to the Início");
+    assert.equal(fromOp(["transport", { layer: "audio", action: "seek", time: 30 }], 4.5)[1].time, 30);
+    const pause = ["transport", { layer: "audio", action: "pause" }];
+    assert.equal(fromOp(pause, 4.5), pause);
+    assert.equal(fromOp(null, 4.5), null);
+    const seek0 = ["transport", { layer: "audio", action: "seek", time: 0 }];
+    assert.equal(fromOp(seek0, 0), seek0, "no Início: as it was");
+});

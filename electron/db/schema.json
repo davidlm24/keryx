@@ -1840,6 +1840,9 @@
         "slide_seconds": {
           "type": "real"
         },
+        "start_at": {
+          "type": "text"
+        },
         "end_at": {
           "type": "text"
         },
